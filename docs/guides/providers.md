@@ -1,32 +1,23 @@
 # Provider Guide
 
-Packaged provider manifests live under `providers/packages/<provider>/provider.json`. Installing a provider copies its validated manifest into the local registry. Loading an external provider performs the same manifest validation before registration. Installed provider cards expose **Uninstall**, which removes that provider manifest from the local registry.
+Providers are manifest-based plugins. Bundled packages appear on **Providers** as Available until installed. Installed providers become selectable in Accounts and Tasks. **Uninstall** removes the local installed manifest but keeps a bundled package available for reinstall.
 
-## Bundled providers
+## Stripe
 
-### Stripe
+Credential: secret/restricted key. Modes: Test and Live.
 
-Packaged at `providers/packages/stripe/provider.json`.
+The built-in runtime implements customer lookup/create, draft invoice creation, invoice items, finalize, send-invoice, deterministic idempotency keys, stable multi-account assignment, and failed-recipient retry state. Template currency is converted to Stripe's lowercase API code and monetary values are converted to provider minor-unit rules.
 
-Credential contract:
+## Refrens
 
-- `secret_key` — required password field.
-- Accepted reference-app key families include `sk_test_`, `sk_live_`, `rk_test_`, and `rk_live_`.
-- Account modes exposed by the manifest: `Test`, `Live`.
+Credentials: API Base URL, URL Key, App ID, App Secret.
 
-### Refrens
+The built-in runtime implements app-secret authentication, invoice payload construction, invoice creation, and the documented create-time email-delivery payload. Refrens requires `billedTo.name` and `billedTo.country`; the approved Invio Customer List currently supplies email only. Invio does not invent billing country, so normal Refrens task execution is blocked before network invoice creation until that required data is available through an owner-approved customer-data extension.
 
-Packaged at `providers/packages/refrens/provider.json` and based on the supplied Refrens Invoice Sender v1.0.3 account/profile contract.
+## External providers
 
-Credential contract:
+The existing `register_task_runner(provider_id, runner)` extension point remains available. Loading a manifest alone declares provider metadata; executable behavior still requires a corresponding runner/adapter.
 
-- `base_url` — required API Base URL. Reference default: `https://api.refrens.com`.
-- `url_key` — required Refrens business URL Key.
-- `app_id` — required App ID.
-- `app_secret` — required password field.
+## Visibility
 
-The current provider integrations validate required credential structure. Network authentication/API verification is available only when implemented by the selected provider integration.
-
-## Visibility rule
-
-A packaged provider may be listed as **Available** on the Providers page, but it is not selectable in Accounts or Tasks until the user installs it. Installed manifests live under `providers/registry/`. Uninstalling a bundled provider does not remove its package under `providers/packages/`, so it returns to the **Available** state and can be installed again. Existing in-memory accounts/tasks are not deleted by provider uninstall.
+Only installed providers are exposed to Accounts/Tasks. Existing in-memory accounts/tasks are not silently deleted when a provider is uninstalled.

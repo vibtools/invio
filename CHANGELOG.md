@@ -1,33 +1,99 @@
 # Changelog
 
-## Unreleased
+## Unreleased - Production Readiness Documentation
 
-No unapproved changes are scheduled. Future implementation requires explicit approval and a new scope lock.
+### Documentation
+- Frozen `v1.0.0.1.5` as the production-hardening planning baseline without changing runtime code or the application version.
+- Added a forensic production-readiness report covering Provider, Accounts/API Test, Customer Lists, Invoice Templates, Tasks, worker threading, Stripe/Refrens execution, retry, persistence, reports/logs, shutdown safety, and test-certification gaps.
+- Added an ordered `G0 + P01-P14` production roadmap, phase completion ledger, and strict production update protocol.
+- Added developer-facing Actual Implementation Status and Error Handling inventories so working/partial/missing behavior is updated after every future phase.
+- Added the missing `BASELINE_FREEZE_v1.0.0.1.5.md` private baseline record.
+
+### Scope protection
+- Documentation-only delta: no file under `src/`, `providers/`, `tests/`, `assets/`, `requirements.txt`, `pyproject.toml`, or runtime metadata is changed.
+- No production phase is authorized by these planning documents; each phase still requires a separate explicit owner scope lock.
+
+## 1.0.0.1.5 - 2026-08-08
+
+### Fixed
+- Repaired the Invoice Template editor's broken vertical geometry introduced by the previous anti-stretch sizing override.
+- Removed Invoice Template card-level `QSizePolicy.Maximum` overrides that allowed compact scroll-area layouts to shrink cards below the height required by their controls and wrapped helper text.
+- Added an Invoice-Template-local minimum-height/height-for-width text contract so wrapped descriptions and captions retain the space required for their rendered text without changing shared application widget behavior.
+- Moved Currency and Invoice Type helper text onto dedicated full-width grid rows so narrow form columns cannot make those notes collide with the following label/control.
+- Wrapped the two-column upper form region in a bounded minimum-height host and top-aligned the Invoice Template cards so surplus scroll viewport space is absorbed only by the terminal stretch instead of creating broken gaps between sections.
+- Applied a minimum-size constraint to the Invoice Template scroll content layout so the resizable scroll area scrolls when content needs more height instead of compressing the form below its minimum geometry.
+- Fixed the compact note/footer text editors to a stable 52 px height so their controls cannot collapse under layout pressure.
+
+### Verification
+- Replaced the prior source contract that required the faulty `QSizePolicy.Maximum` behavior with regression checks for minimum-content sizing, dedicated caption rows, top-aligned bounded cards, and stable multiline editor heights.
+- Re-ran the complete project test suite and repository audit after applying the update to the frozen `v1.0.0.1.4` baseline.
+- Updated release metadata, README, versioning, Invoice Template documentation, release notes, patch manifest, and private forensic/update records.
+
+### Scope protection
+- This release changes only Invoice Template UI geometry plus mandatory release metadata/documentation/tests.
+- Invoice-template fields, validation, currency catalog/search behavior, provider mapping, task binding, account/customer models, provider runtimes, worker-thread behavior, other pages, dependencies, and public APIs are unchanged.
+
+## 1.0.0.1.4 - 2026-08-07
+
+### Fixed
+- Removed Windows light/white scroll-content surfaces from Settings and the Invoice Template editor by explicitly applying the frozen Vib Tools page background to application scroll viewports/content hosts.
+- Corrected Invoice Template card/stretch behavior so compact sections keep their intended height and spacing instead of expanding into broken empty gaps.
+- Rebalanced the Currency and Days until due controls so the Currency field is intentionally narrower and aligned with the compact template form.
+
+### Changed
+- Currency selection is now editable type-to-search with case-insensitive contains matching and a maximum of eight visible results instead of an oversized full currency popup.
+- Currency input is still validated against the existing approved uppercase currency catalog before the template can be saved; provider/task invoice creation and send bindings are unchanged.
+
+### Verification
+- Added UI regression contracts for dark scroll backdrops, searchable currency completion, valid-currency enforcement, and compact Invoice Template card sizing.
+- Updated README, release notes, version metadata, baseline/update records, and forensic verification documentation.
+
+### Scope protection
+- No page, provider, task, account, customer-list, invoice-template field, provider runtime operation, worker-thread behavior, provider manifest, or dependency was removed, renamed, replaced, or expanded.
+
+## 1.0.0.1.3 - 2026-08-07
+
+### Added
+- Added the Dashboard page using only live Invio state: provider/account/template/customer counts, task activity, account reservation summary, and context-sensitive next step.
+- Added reusable invoice-template fields for invoice title, optional subtitle, invoice type, invoice note, customer note, terms, and per-line tax rate without adding customer, billing, shipping, or payment details to templates.
+- Added an uppercase provider-compatible invoice currency catalog and provider-bound currency normalization.
+- Added required invoice-template selection to task creation and persisted the template ID/name on each task.
+- Added `src/core/provider_runtime/` with built-in Stripe and Refrens REST contracts using the Python standard library.
+- Added deterministic Stripe idempotency keys and failed-recipient state used by Retry Failed.
+
+### Changed
+- Reworked the Invoice Template dialog into compact, scroll-safe sections with corrected table/header presentation and provider-oriented template fields.
+- Compacted Settings text sizing/spacing and added an explicit visual checkmark asset for checked checkboxes.
+- Restyled Live Logs and Reports to the approved compact Vib Tools reference layout while preserving their existing Invio actions.
+- Reports now identify the invoice template assigned to each task.
+- Settings startup-page choices now include Dashboard; the default remains Accounts.
+
+### Provider execution
+- Stripe tasks now run real draft-invoice -> line-item -> finalize -> send-invoice operations inside the task-owned worker thread.
+- Refrens authentication, payload, create, and documented create-time email delivery are implemented; task execution is intentionally blocked before any create/send call when `billedTo.country` is unavailable from the approved email-only Customer List model. No country is guessed.
+- External/custom providers continue to use the existing registered task-runner extension point.
+
+### Verification
+- Added provider-runtime execution tests, invoice-template/task binding tests, Dashboard/UI contracts, and Refrens required-data protection tests.
+- Updated README, public user/developer/configuration/troubleshooting documentation, release metadata, patch manifest, and private forensic records.
+
+### Scope protection
+- No existing feature/page was removed or renamed.
+- Existing Step-40J core color and sizing tokens remain frozen.
+- No provider manifest/credential schema was changed.
+- No customer-list schema, billing/shipping/payment data model, account reservation rule, or per-task QThread model was replaced.
+- No new third-party dependency was added.
 
 ## 1.0.0.1.2 - 2026-08-07
 
-### Added
-- Added a real **Uninstall** action for installed provider cards. Uninstall removes only the validated local registry manifest; packaged provider files and current in-memory account/task data are not deleted.
-
-### Updated
-- Made the Add Account dialog wider and shorter, tightened its margins/spacing, and arranged provider/account controls in a compact two-column form.
-- Added adaptive one/two-column credential layout: providers with more than two credential fields use two columns while smaller credential sets remain single-column.
-- Applied shared compact sizing to all application-owned custom dialogs and application message/confirmation boxes.
-- Reflowed the Invoice Template dialog into a wider, shorter two-column upper section without changing template fields or behavior.
-- Reduced the New Task account-list minimum height to support the compact modal layout without changing account selection behavior.
-
-### Backend
-- Added `ProviderManager.uninstall()` with validated installed-provider lookup and explicit manifest-removal error handling.
-- Wired provider Uninstall through the existing Providers page → MainWindow → ProviderManager callback boundary.
+### Added / Fixed
+- Added working provider Uninstall actions while keeping bundled provider packages available for reinstall.
+- Made Add Account credentials compact and two-column when a provider declares more than two credential fields.
+- Applied compact responsive sizing to application-owned modal and message dialogs.
+- Preserved all provider IDs, credential fields, account reservation behavior, page inventory, and worker-thread architecture.
 
 ### Verification
-- Added provider uninstall tests, compact-modal source contracts, and Add Account two-column layout contracts.
-- Updated README, user/provider/developer/configuration/API/installation/troubleshooting documentation, release notes, version metadata, patch manifest, and private forensic/update records for `v1.0.0.1.2`.
-
-### Scope protection
-- No page, provider ID, provider credential field, provider capability, account mode, account/task model, settings behavior, task runner contract, dependency, or existing feature was removed, renamed, or replaced.
-- Provider uninstall does not delete packaged providers, accounts, tasks, customer lists, invoice templates, reports, logs, or settings.
-- Native operating-system file/folder picker behavior is unchanged.
+- Added provider uninstall and compact-dialog regression contracts and recorded the replace-ready `v1.0.0.1.2` delta.
 
 ## 1.0.0.1.1 - 2026-08-07
 

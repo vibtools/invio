@@ -19,6 +19,8 @@ class Task:
     processed: int = 0
     last_message: str = "Ready"
     account_names: list[str] = field(default_factory=list)
+    invoice_template_id: str = ""
+    invoice_template_name: str = ""
 
     @property
     def remaining(self) -> int:

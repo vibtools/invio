@@ -38,3 +38,9 @@ Provider manifests are validated JSON files describing provider identity, creden
 
 - `stripe` `v1.0.0`: `secret_key`; modes `Test`, `Live`.
 - `refrens` `v1.0.3`: `base_url`, `url_key`, `app_id`, `app_secret`; mode `Default`.
+
+## Execution binding in v1.0.0.1.3
+
+Manifest installation and executable provider behavior remain separate concerns. `MainWindow` first checks the existing explicitly registered task-runner extension point; when none is registered, packaged Stripe/Refrens behavior is resolved by `src.core.provider_runtime.ProviderRuntime`.
+
+A manifest capability therefore describes supported intent but does not make arbitrary external provider code executable by itself. Custom/external providers still require an owner-approved runner implementation.

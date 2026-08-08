@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from .tokens import COLORS as c, CONST
 
 
 def app_qss() -> str:
+    check_icon = (Path(__file__).resolve().parents[2] / "assets" / "icons" / "checkmark.svg").as_posix()
     return f"""
     * {{
         font-family: 'Segoe UI Variable', 'Segoe UI';
@@ -22,6 +25,12 @@ def app_qss() -> str:
         max-height: {CONST.header_height}px;
     }}
     QScrollArea, QScrollArea::viewport {{ background: transparent; border: none; }}
+    QScrollArea#MinimalScrollArea, QScrollArea#MinimalScrollArea::viewport {{
+        background: {c['page_background']}; border: none;
+    }}
+    QWidget#SettingsContent, QWidget#DialogContent {{
+        background: {c['page_background']}; border: none;
+    }}
     QWidget#Sidebar QScrollArea#MinimalScrollArea,
     QWidget#Sidebar QScrollArea#MinimalScrollArea::viewport,
     QWidget#Sidebar QWidget#SidebarNavHost {{
@@ -152,9 +161,22 @@ def app_qss() -> str:
     QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QTextEdit:hover, QPlainTextEdit:hover {{ border-color: #334155; }}
     QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus {{ border-color: {c['focus']}; }}
     QComboBox QAbstractItemView {{ background: {c['surface']}; color: {c['primary_text']}; border: 1px solid {c['input_border']}; selection-background-color: {c['selection']}; }}
+    QAbstractItemView#CurrencySearchResults {{
+        background: {c['surface']}; color: {c['primary_text']};
+        border: 1px solid {c['input_border']};
+        selection-background-color: {c['selection']};
+        selection-color: {c['primary_text']};
+    }}
+    QAbstractItemView#CurrencySearchResults::item {{
+        min-height: 26px; padding: 0px 8px;
+    }}
     QCheckBox {{ spacing: 8px; color: {c['primary_text']}; }}
     QCheckBox::indicator {{ width: 14px; height: 14px; border-radius: 4px; border: 1px solid #30363D; background: {c['window_background']}; }}
-    QCheckBox::indicator:checked {{ background: {c['primary']}; border-color: {c['primary_hover']}; }}
+    QCheckBox::indicator:checked {{
+        background: {c['primary']};
+        border-color: {c['primary_hover']};
+        image: url("{check_icon}");
+    }}
     QTreeWidget, QTableWidget {{
         background: transparent; alternate-background-color: rgba(255,255,255,3);
         border: 1px solid {c['border']}; border-radius: {CONST.common_radius}px;
@@ -169,6 +191,17 @@ def app_qss() -> str:
         min-height: {CONST.table_header_height}px; max-height: {CONST.table_header_height}px;
         font-size: 11px; font-weight: 600;
     }}
+
+    QWidget#SettingsPage QLabel#Description {{ font-size: 11px; color: {c['secondary_text']}; }}
+    QWidget#SettingsPage QLabel#Caption {{ font-size: 10px; color: {c['muted_text']}; }}
+    QWidget#SettingsPage QLabel#CardTitle {{ font-size: 12px; font-weight: 600; color: {c['title_text']}; }}
+    QWidget#SettingsPage QLabel#FormLabel {{ font-size: 10px; font-weight: 600; color: {c['secondary_text']}; }}
+    QWidget#SettingsPage QCheckBox {{ font-size: 11px; color: {c['primary_text']}; spacing: 7px; }}
+    QWidget#SettingsPage QFrame#Card[settingsCard="true"] {{ background: {c['surface']}; border: 1px solid {c['border']}; }}
+    QPlainTextEdit#LogViewer {{ background: {c['nested_surface']}; border: 1px solid {c['input_border']}; padding: 10px 12px; }}
+    QTableWidget#ReportTable {{ background: {c['page_background']}; border-radius: 6px; }}
+    QTableWidget#InvoiceItemsTable {{ background: {c['page_background']}; }}
+
     QProgressBar {{
         min-height: 6px; max-height: 6px; border: none; background: {c['border']}; border-radius: 3px; text-align: center;
     }}

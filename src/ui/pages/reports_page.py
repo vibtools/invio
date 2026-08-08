@@ -16,21 +16,34 @@ class ReportsPage(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
         root.setSpacing(10)
+
         export = button("Export CSV")
         export.clicked.connect(on_export)
-        root.addWidget(page_header("Reports", "Task-level sending summaries and outcome counters.", [export]))
-        host = card("Task Reports", "Reports update from task state and include results supplied by active task runners.")
-        self.table = QTableWidget(0, 8)
-        self.table.setHorizontalHeaderLabels(["Task", "Provider", "Accounts", "Customer List", "Total", "Success", "Failed", "Status"])
+        root.addWidget(
+            page_header(
+                "Reports",
+                "Live task-level invoice delivery summaries from the current application session.",
+                [export],
+            )
+        )
+
+        host = card()
+        host.setObjectName("ReportTableSurface")
+        self.table = QTableWidget(0, 9)
+        self.table.setObjectName("ReportTable")
+        self.table.setHorizontalHeaderLabels(
+            ["Task", "Provider", "Template", "Accounts", "Customer List", "Total", "Success", "Failed", "Status"]
+        )
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        for col in (0, 1, 5, 6, 7, 8):
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        for col in range(4, 8):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        host.layout().setContentsMargins(8, 8, 8, 8)
         host.layout().addWidget(self.table)
         root.addWidget(host, 1)
         self.refresh()
@@ -43,6 +56,7 @@ class ReportsPage(QWidget):
             values = [
                 task.name,
                 task.provider_name,
+                task.invoice_template_name,
                 ", ".join(task.account_names),
                 task.customer_list_name,
                 str(task.total),

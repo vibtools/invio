@@ -1,59 +1,35 @@
 # User Guide
 
-## 1. Providers
+## 1. Dashboard
 
-Open **Providers** first. Stripe and Refrens are bundled as packaged providers and appear as `Available`. Select **Install** to place the validated manifest in the local provider registry. After installation, the same card exposes **Uninstall**. Uninstall removes only the registry manifest; bundled provider files and current in-memory account/task data are kept. Only installed/loaded providers appear in Accounts and new Task selection.
+Dashboard shows current Invio state only: installed providers, accounts, templates, customer-email count, task activity, account usage and the next setup/action. Use **New Task** when prerequisites are ready.
 
-The provider cards follow the official Vib Tools Plugin Page visual contract: compact dark cards, version/category-style chip, availability status, provider title/description, capability information, credential-field count, and the Install/Uninstall state and action.
+## 2. Providers
 
-## 2. Accounts
+Open **Providers**, then Install Stripe/Refrens or load an approved external manifest. Uninstall removes the installed registration; bundled providers remain available to reinstall.
 
-Open **Accounts** and choose **Add Account**. The compact dialog is wider and shorter than the previous layout. Select an installed provider, enter an account label, provider mode, and the provider-defined credential fields. Providers with more than two credential fields automatically use a two-column credential form.
+## 3. Accounts
 
-For Stripe, enter the Stripe secret/restricted API key. For Refrens, enter API Base URL, URL Key, App ID, and App Secret.
+Open **Accounts**, choose **Add Account**, select an installed provider/mode and enter the provider-defined credentials. Accounts are grouped by provider. An account reserved by an open task cannot be assigned to another task.
 
-The existing **API Test** control validates the required credential structure for the current provider integration. Network verification is unavailable unless implemented by that provider integration. Credentials remain in memory for the active application session and are not persisted.
+## 4. Invoice Templates
 
-Accounts are displayed under their provider group. If an account is reserved by a task, the assigned task is shown.
+Create reusable invoice content. The compact editor includes title/subtitle/type, due period, uppercase currency, invoice note, customer note, footer, terms, provider options, and line items with optional tax rate. Do not put customer/billing/shipping/payment details in a template.
 
-## 3. Invoice Templates
+## 5. Customer Lists
 
-Open **Invoice Templates** and create a reusable invoice definition. Templates contain invoice settings and line items only. They do not contain customer, billing, or shipping data.
+Create independent named lists and import email data from CSV, TSV, XLSX, XLSM, or TXT. Each list deduplicates its own email addresses.
 
-## 4. Customer Lists
+## 6. Tasks
 
-Create multiple named lists. Select a list and upload email data from CSV, TSV, XLSX, XLSM, or TXT. Each list maintains its own unique email set.
+Choose **New Task** and select Provider, Account(s), Invoice Template, and Customer List. Start uses the provider execution layer in a task-owned thread. Pause/Resume/Stop remain per task. **Retry Failed** retries failed Stripe recipients retained by the provider runtime. Close releases the accounts.
 
-## 5. Tasks
+Stripe can create/finalize/send invoices with the built-in runtime. Refrens task execution currently blocks before creation because Refrens requires customer country while Customer Lists contain email only; Invio does not guess that billing data.
 
-Choose **New Task**, then select:
+## 7. Reports and Live Logs
 
-1. Provider
-2. One or more available accounts belonging to that provider
-3. Customer list
+Reports use a compact table and include the assigned invoice template. Export remains CSV. Live Logs has compact Save Logs/Clear Logs actions and displays the current auto-scroll state. Stripe-style secret/restricted key patterns remain masked.
 
-Once the task is created, its selected accounts are reserved. They cannot be selected by another task until the task is closed and those accounts are released.
+## 8. Settings
 
-Task cards include Start, Pause, Resume, Stop, Retry Failed, Close Task, status, progress, and counters. A task starts only when a task runner is registered for its provider. If no runner is registered, the provider is reported as unavailable and no invoice is sent.
-
-## 6. Reports and Logs
-
-Reports summarize current task state and can be exported to CSV. Live Logs contain application/task messages and mask Stripe-style secret-key patterns.
-
-
-## 7. Settings
-
-Open **Settings** to control existing Invio application behavior without editing configuration files. The page is divided into Startup & Window, Confirmations, Live Logs, and File Locations.
-
-- Choose a fixed start page or **Last page used**.
-- Optionally remember the window size and position.
-- Turn individual confirmation prompts on or off for active-task exit, closing tasks, deleting invoice templates, deleting customer lists, and clearing Live Logs.
-- Choose whether Live Logs show timestamps, follow new entries automatically, and retain an unlimited or limited number of lines.
-- Choose a default file folder and optionally remember the last folder used by provider loading, customer import, report export, and log export dialogs.
-
-Select **Save Changes** to validate, persist, and apply the settings. **Restore Defaults** loads the behavior-compatible default values into the page; select **Save Changes** to persist them. Settings are stored locally for the current operating-system user. Account credentials are never written to the application settings file.
-
-
-## 8. Compact dialogs
-
-Application-owned custom dialogs and Invio message/confirmation boxes use compact sizing relative to the main window. The Invoice Template dialog uses a two-column upper section and the New Task dialog uses a shorter account-list area. Native operating-system file/folder picker windows keep their platform behavior.
+Settings controls startup/window, confirmations, Live Logs, and file locations. Dashboard can be selected as a startup page, but Accounts remains the default. Checked options display an explicit checkmark. **Save Changes** validates and persists preferences; credentials are never stored in the settings JSON.

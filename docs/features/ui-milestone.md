@@ -1,10 +1,16 @@
 # Desktop UI Baseline
 
-The Invio desktop UI baseline contains the requested Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings pages. It preserves the installed-provider visibility rule, one-account-one-task reservation invariant, and the per-task worker-thread execution boundary.
+Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Release `v1.0.0.1` corrects the sidebar surface and aligns the Providers card presentation with the official Vib Tools Plugin Page design contract. No application feature or provider workflow is removed or replaced by this update.
+Current pages in `v1.0.0.1.5` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
 
-Release `v1.0.0.1.1` keeps the same page inventory and visual baseline while implementing the existing Settings page as a real persistent preference surface. Only startup/window, confirmation, Live Logs, and file-dialog behavior is configurable; provider, task-thread, account-reservation, and invoice/customer domain contracts remain unchanged.
+Release history relevant to the current UI:
 
+- `v1.0.0.1`: official dark sidebar and Providers plugin-card correction.
+- `v1.0.0.1.1`: persistent Settings surface.
+- `v1.0.0.1.2`: provider Uninstall and compact application-owned dialogs.
+- `v1.0.0.1.3`: Dashboard; compact Invoice Template editor; Settings typography/checkmarks; compact Live Logs and Reports based on supplied Vib Tools references.
+- `v1.0.0.1.4`: corrected dark scroll/content surfaces in Settings and Invoice Template, repaired compact template spacing, and changed Currency to bounded type-to-search completion.
+- `v1.0.0.1.5`: repaired Invoice Template card/form geometry so wrapped notes and controls retain minimum content height and no longer overlap inside the compact scroll area.
 
-Release `v1.0.0.1.2` adds the approved provider Uninstall action and compact application-owned modal layouts. It does not alter page inventory, provider credential schemas, task/account domain rules, settings behavior, or the per-task worker-thread boundary.
+The core Step-40J tokens, provider/account reservation behavior, and one-QThread-per-active-task execution boundary remain preserved.

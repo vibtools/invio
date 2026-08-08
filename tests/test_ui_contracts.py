@@ -30,6 +30,7 @@ class UiContractTests(unittest.TestCase):
         self.assertEqual(
             [name for name, _key in NAV_ITEMS],
             [
+                "Dashboard",
                 "Accounts",
                 "Invoice Templates",
                 "Customer Lists",
@@ -149,6 +150,125 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("QGridLayout(self.credentials_host)", source)
         self.assertIn("column_count = 2 if len(provider.credential_fields) > 2 else 1", source)
         self.assertIn("row, column = divmod(index, column_count)", source)
+
+    def test_dashboard_uses_actual_invio_state_metrics(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
+        for model in ("invoice_templates", "customer_lists", "account_reservations", "state.tasks"):
+            self.assertIn(model, source)
+        self.assertNotIn("License Summary", source)
+        self.assertNotIn("Authorized", source)
+
+    def test_invoice_template_dialog_has_global_template_fields_and_compact_items_table(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        for marker in (
+            "SUPPORTED_INVOICE_CURRENCIES",
+            'form_group("Invoice note (optional)"',
+            'form_group("Customer note (optional)"',
+            'form_group("Invoice type"',
+            '["Description", "Quantity", "Unit amount", "Tax %"]',
+            'self.items.verticalHeader().setVisible(False)',
+        ):
+            self.assertIn(marker, source)
+        self.assertIn('invoice_template_id', source)
+
+    def test_settings_checked_checkbox_uses_visible_checkmark_asset(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertTrue((root / "assets" / "icons" / "checkmark.svg").is_file())
+        self.assertIn('QCheckBox::indicator:checked', styles)
+        self.assertIn('image: url("{check_icon}")', styles)
+        self.assertIn('QWidget#SettingsPage QCheckBox', styles)
+
+    def test_live_logs_and_reports_use_compact_reference_aligned_surfaces(self):
+        root = Path(__file__).resolve().parents[1]
+        logs = (root / "src" / "ui" / "pages" / "logs_page.py").read_text(encoding="utf-8")
+        reports = (root / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+        self.assertIn('button("Save Logs")', logs)
+        self.assertIn('button("Clear Logs", "danger")', logs)
+        self.assertIn('setObjectName("CompactControlBar")', logs)
+        self.assertIn('setObjectName("LogViewer")', logs)
+        self.assertIn('setObjectName("ReportTableSurface")', reports)
+        self.assertIn('setObjectName("ReportTable")', reports)
+
+    def test_task_dialog_requires_invoice_template_selection(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        self.assertIn('self.invoice_template', source)
+        self.assertIn('"invoice_template_id": str(self.invoice_template.currentData())', source)
+
+    def test_stylesheet_generation_is_runtime_safe(self):
+        from src.ui.styles import app_qss
+
+        qss = app_qss()
+        self.assertIn("checkmark.svg", qss)
+        self.assertIn("QWidget#SettingsPage", qss)
+        self.assertIn("QPlainTextEdit#LogViewer", qss)
+
+    def test_invoice_currency_catalog_is_uppercase_and_broad(self):
+        from src.invoices.templates import SUPPORTED_INVOICE_CURRENCIES
+
+        self.assertGreaterEqual(len(SUPPORTED_INVOICE_CURRENCIES), 135)
+        self.assertEqual(len(SUPPORTED_INVOICE_CURRENCIES), len(set(SUPPORTED_INVOICE_CURRENCIES)))
+        self.assertTrue(all(code == code.upper() for code in SUPPORTED_INVOICE_CURRENCIES))
+        for required in ("USD", "EUR", "GBP", "BDT", "JPY", "INR"):
+            self.assertIn(required, SUPPORTED_INVOICE_CURRENCIES)
+
+    def test_scroll_backdrops_use_explicit_dark_surface(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("QScrollArea#MinimalScrollArea::viewport", styles)
+        self.assertIn("QWidget#SettingsContent, QWidget#DialogContent", styles)
+        self.assertIn("background: {c['page_background']}; border: none;", styles)
+
+    def test_invoice_currency_uses_searchable_compact_completion(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        self.assertIn("self.currency.setEditable(True)", source)
+        self.assertIn("QComboBox.InsertPolicy.NoInsert", source)
+        self.assertIn("self.currency.setMaxVisibleItems(8)", source)
+        self.assertIn("QCompleter(SUPPORTED_INVOICE_CURRENCIES, self.currency)", source)
+        self.assertIn("Qt.MatchFlag.MatchContains", source)
+        self.assertIn("currency_code not in SUPPORTED_INVOICE_CURRENCIES", source)
+        self.assertIn("settings_grid.setColumnStretch(0, 2)", source)
+        self.assertIn("settings_grid.setColumnStretch(1, 3)", source)
+
+    def test_invoice_template_cards_do_not_absorb_scroll_viewport_height(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        invoice_source = source[source.index("class InvoiceTemplateDialog") : source.index("class NewTaskDialog")]
+        self.assertNotIn(
+            "setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)",
+            invoice_source,
+        )
+        self.assertIn("upper_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)", source)
+        self.assertIn("content_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)", source)
+        self.assertIn("content_layout.addWidget(upper_host, 0, Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("upper.addWidget(settings_card, 0, 0, Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("upper.addWidget(content_card, 0, 1, Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("content_layout.addWidget(secondary_card, 0, Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("content_layout.addWidget(items_card, 0, Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("content_layout.addStretch(1)", source)
+        self.assertIn("upper.setAlignment(Qt.AlignmentFlag.AlignTop)", source)
+        self.assertIn("secondary_grid.setAlignment(Qt.AlignmentFlag.AlignTop)", source)
+
+    def test_invoice_template_wrapped_notes_have_height_for_width_and_separate_rows(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        self.assertIn("def _invoice_wrapped_label", source)
+        self.assertIn("QSizePolicy.Policy.Minimum", source)
+        self.assertIn("policy.setHeightForWidth(True)", source)
+        self.assertIn("def _invoice_form_group", source)
+        self.assertIn('_invoice_form_group("Currency", self.currency)', source)
+        self.assertIn('_invoice_form_group("Days until due", self.days_due)', source)
+        self.assertIn('"Displayed in uppercase; provider API formatting is handled automatically."', source)
+        self.assertIn('_invoice_form_group("Invoice type", self.invoice_type)', source)
+        self.assertIn('"BOS is used only by providers that support it."', source)
+        self.assertIn("self.memo.setFixedHeight(52)", source)
+        self.assertIn("self.customer_note.setFixedHeight(52)", source)
+        self.assertIn("self.footer.setFixedHeight(52)", source)
+        self.assertIn("self.terms.setFixedHeight(52)", source)
 
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")

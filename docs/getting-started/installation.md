@@ -11,7 +11,7 @@
 python -m pip install -r requirements.txt
 ```
 
-Stripe and Refrens are packaged as validated provider manifests. No provider SDK is added by release `v1.0.0.1.2`.
+`v1.0.0.1.3` adds no dependency. Stripe and Refrens remain packaged provider manifests, and built-in provider HTTPS execution uses Python's standard library rather than adding provider SDK packages.
 
 ## Start Invio
 
@@ -19,9 +19,8 @@ Stripe and Refrens are packaged as validated provider manifests. No provider SDK
 python main.py
 ```
 
-The UI uses PySide6 and the official Vib Tools dark desktop baseline. After launch, open **Providers** and install the packaged provider(s) you want to expose to Accounts and Tasks. Installed provider cards can be returned to the Available state with **Uninstall**; no extra dependency is required.
-
+After launch, use **Providers** to install the bundled provider(s). Then add an account, create an Invoice Template, create/import a Customer List, and create a Task. Dashboard provides the live setup/readiness summary.
 
 ## User settings storage
 
-No extra setup is required for Settings. Invio creates its per-user `settings.json` only when a preference or opted-in runtime convenience value needs to be saved. The file stores non-sensitive application preferences only; account credentials remain outside this settings store.
+Settings creates per-user `settings.json` only when needed. It contains non-sensitive preferences/runtime convenience state; account credentials remain outside the settings store.

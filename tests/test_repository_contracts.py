@@ -21,6 +21,7 @@ class RepositoryContractTests(unittest.TestCase):
         page_dir = ROOT / "src" / "ui" / "pages"
         required = {
             "accounts_page.py",
+            "dashboard_page.py",
             "invoice_templates_page.py",
             "customer_lists_page.py",
             "tasks_page.py",
@@ -35,13 +36,18 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "src" / "core" / "settings" / "manager.py").is_file())
         self.assertTrue((ROOT / "src" / "core" / "settings" / "__init__.py").is_file())
 
-    def test_release_metadata_is_v10012(self):
+    def test_release_metadata_is_v10014(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.2"', pyproject)
-        self.assertIn('"version": "1.0.0.1.2"', project_meta)
-        self.assertIn('Production • v1.0.0.1.2', main_window)
+        self.assertIn('version = "1.0.0.1.5"', pyproject)
+        self.assertIn('"version": "1.0.0.1.5"', project_meta)
+        self.assertIn('Production • v1.0.0.1.5', main_window)
+
+    def test_builtin_provider_runtime_package_exists(self):
+        self.assertTrue((ROOT / "src" / "core" / "provider_runtime" / "runtime.py").is_file())
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"src.core.provider_runtime"', pyproject)
 
     def test_packaged_stripe_and_refrens_providers_exist(self):
         import json

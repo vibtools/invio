@@ -2,214 +2,59 @@
 
 ## 1. Scope
 
-Invio v1.0.0.1.2 is the production desktop architecture for the requested Vib Tools application. The page structure, domain boundaries, provider visibility rule, account-reservation invariant, and per-task threading boundary are defined. Packaged provider metadata currently includes Stripe and Refrens. Provider execution remains available only through a registered provider task runner, and persistent credential storage is not configured.
+Invio `v1.0.0.1.5` uses the same PySide6/AppState/WorkerManager/provider-runtime architecture as `v1.0.0.1.4`. This release changes only Invoice Template presentation geometry plus release metadata/tests/documentation; provider/task execution semantics are unchanged.
 
-## 2. Folder structure and responsibilities
+## 2. Core responsibilities
 
-```text
-main.py                         Desktop entry point
-src/app.py                      QApplication bootstrap
-src/ui/                         Step-40J shell, styles, reusable widgets, dialogs, pages
-src/accounts/                   Account domain model
-src/customers/                  Customer-list model and email import
-src/invoices/templates/         Invoice-only template models
-src/tasks/                      Task domain model
-src/core/state/                 In-memory application state and invariants
-src/core/provider_manager/      Provider manifest validation/install/load/uninstall
-src/core/settings/              Persistent non-sensitive application preferences
-src/core/worker_manager/        One-QThread-per-active-task execution boundary
-providers/packages/             Packaged Stripe/Refrens provider manifests available to install
-providers/registry/             Local installed-provider registry
-assets/                         UI assets
-config/                         Reserved project configuration location
-data/                           Reserved runtime/data location
-docs/                           Public project documentation
-project/                        Private development/audit records; Git-ignored
-scripts/test/audit.py           Repository compile/test/privacy audit
-tests/                          Domain and repository contract tests
-```
+- `src/core/provider_manager/`: validates provider manifests and handles packaged install, external load, and uninstall.
+- `src/core/provider_runtime/`: snapshots task inputs and implements packaged-provider API execution.
+- `src/core/settings/`: persistent non-sensitive user preferences.
+- `src/core/state/`: runtime Accounts, Customer Lists, Invoice Templates, Tasks, and reservation invariants.
+- `src/core/worker_manager/`: one `QThread` per active task and signal isolation.
+- `src/invoices/templates/`: reusable invoice content and supported-currency normalization.
+- `src/ui/`: frozen Vib Tools shell plus Dashboard/pages/dialogs.
 
-## 3. Component relationships
+## 3. Domain data flow
 
-```text
-MainWindow
-  ├─ ProviderManager ── providers/packages + providers/registry
-  ├─ SettingsManager ── per-user settings.json
-  ├─ AppState
-  │   ├─ Account
-  │   ├─ CustomerList
-  │   ├─ InvoiceTemplate
-  │   └─ Task + account_reservations
-  ├─ Pages / dialogs
-  │   └─ read/write through MainWindow callbacks and AppState
-  └─ WorkerManager
-      └─ QThread(task_id) -> injected provider TaskRunner
-```
+Provider installation controls provider visibility. Account creation uses that provider's manifest fields. Invoice Templates remain customer-independent. Customer Lists remain email-only. Task creation validates all inputs, binds the selected template, and reserves selected accounts.
 
-The UI does not import a provider SDK and does not execute provider code. Provider manifests describe provider identity, credential fields, account modes, and declared capabilities only. `src.core.provider_manager` publicly exports `ProviderManager`, `ProviderManifest`, `ProviderManifestError`, and `CredentialField`; this keeps the existing `MainWindow` error-handling import valid.
+A bound template cannot be deleted while an open task references it. A selected account cannot be reserved by two tasks.
 
-## 4. Data flow
+## 4. Execution flow
 
-### Provider installation
+1. UI creates a Task in `AppState`.
+2. Start asks `MainWindow._runner_for_task()` for either an explicitly injected provider runner or `ProviderRuntime.make_task_runner()`.
+3. `ProviderRuntime` snapshots account credentials, customer emails, and a deep copy of the template before worker execution.
+4. `WorkerManager.start()` creates a distinct `InvioTaskThread-<task id>` and moves the worker into it.
+5. Provider HTTPS calls execute inside the worker runner.
+6. Progress/status/log signals update task state, Reports, Dashboard, and Live Logs.
+7. Closing the task releases reservations and clears runtime retry state.
 
-1. Providers page reads packaged manifests through `ProviderManager.list_available()`. Current packages are Stripe and Refrens.
-2. User installs a packaged provider or loads a validated external manifest.
-3. The manifest is copied to `providers/registry/<provider-id>.json`.
-4. An installed provider can be uninstalled; `ProviderManager.uninstall()` removes only its registry manifest after validated lookup. Bundled package files and current in-memory domain data are not deleted.
-5. Accounts and Task dialogs read only `list_installed()`.
-6. Consequently, a provider does not appear in those selectors before installation/loading and stops appearing for new selection after uninstall.
+No provider network operation is intentionally executed in the task GUI callback path.
 
-### Account creation
+## 5. Stripe adapter
 
-1. Add Account receives installed provider manifests.
-2. The selected manifest dynamically defines the credential fields and account modes.
-3. Current **API Test** performs required-field/credential-structure validation only.
-4. The account is added to in-memory `AppState` and grouped by provider in the Accounts tree.
-5. Credentials remain runtime-only and are not persisted in v1.0.0.1.2.
+The built-in Stripe adapter uses HTTPS form requests without adding the Stripe SDK. It performs customer lookup/create, draft invoice creation with `collection_method=send_invoice`, invoice item creation, finalize, and send. Template currency is stored uppercase but sent lowercase. Amounts are converted to minor units with zero-decimal and ISK/UGX handling. Invoice item decimal quantity uses Stripe's decimal quantity field when required.
 
-### Customer-list import
+Stable recipient-to-account assignment prevents a Retry Failed operation from changing accounts merely because the retry set is smaller. Deterministic per-stage idempotency keys reduce accidental duplicate operations when a network call is retried by the user/task flow.
 
-1. User creates a named `CustomerList`.
-2. Importer reads CSV, TSV, TXT, XLSX, or XLSM.
-3. Email-like values are normalized and de-duplicated.
-4. Imported emails are attached only to the selected named list.
+## 6. Refrens adapter and current data boundary
 
-### Invoice-template flow
+The adapter includes app-secret authentication, invoice payload construction, invoice creation, and the documented create-time email-delivery payload. Refrens requires `billedTo.name` and `billedTo.country`. Current Customer Lists provide only email. The task runner therefore rejects Refrens execution before the create call instead of inventing billing country. This preserves the approved template/customer scope.
 
-1. User creates/edits a reusable `InvoiceTemplate`.
-2. Template data contains invoice settings/content and line items only.
-3. Customer, billing, and shipping fields are intentionally not part of the model.
+## 7. UI flow
 
-### Task creation
+Dashboard is a read-only operational overview backed by current state. Invoice Template uses compact two-column sections and a scroll-safe item editor. Its scroll/content host is explicitly dark, compact cards are top-aligned and non-stretching, and Currency uses editable bounded completion against the existing catalog. Settings keeps its existing controls and now uses an explicit dark scroll/content backdrop. Live Logs and Reports are unchanged in this release.
 
-1. User selects an installed provider.
-2. Dialog shows accounts belonging to that provider.
-3. Accounts already present in `account_reservations` are disabled.
-4. User selects one or more free accounts and a non-empty customer list.
-5. `AppState.create_task()` re-validates provider ownership and reservation state.
-6. On success, every selected account is atomically reserved to that task in application state.
-7. Closing a non-running task removes the task and releases its reservations.
-
-## 5. Execution and threading flow
-
-`WorkerManager` owns a separate `QThread` for every active task ID. It never uses a single global worker slot.
-
-```text
-Start Task
-  -> MainWindow resolves provider runner
-  -> WorkerManager.start(task, runner)
-  -> create QThread + _TaskWorker for that task
-  -> worker invokes TaskRunner(TaskExecutionContext)
-  -> progress/status/log signals return to GUI
-  -> finished -> thread.quit -> cleanup slot
-```
-
-`TaskExecutionContext` supplies:
-
-- task snapshot/reference;
-- cooperative `pause_gate`;
-- cooperative `stop_flag`;
-- progress callback;
-- log callback.
-
-Provider sending, when supplied by a registered provider runner, must execute inside the injected runner and must not execute on the GUI thread. If no runner is registered for a selected provider, Invio reports **Provider Unavailable** and sends nothing.
-
-
-### Application modal presentation
-
-All Invio-owned custom dialogs use the shared compact geometry helper in `src/ui/dialogs.py`. Width is derived from the parent application window within per-dialog bounds, while height is capped for compact workflows. Add Account uses a two-column credential grid only when a provider declares more than two credential fields. Invoice Template places Template Settings and Invoice Content side by side to reduce vertical height. MainWindow information/question boxes use the same compact message-box path. Native operating-system file/folder pickers are intentionally unchanged.
-
-## 6. Account reservation invariant
-
-`AppState.account_reservations` is a map of `account_id -> task_id`.
-
-The invariant is:
-
-```text
-For every account ID, zero or one task may own the reservation.
-```
-
-Both the dialog and `AppState.create_task()` enforce this. The dialog restriction is usability; the state validation is authoritative for the current in-memory model. A future persistent backend must preserve the same invariant transactionally.
-
-## 7. Provider API contract
-
-### Manifest contract
-
-Documented in `docs/api/provider-manifest.md`. Manifests are validated data and are not executable provider code.
-
-### Task runner contract
-
-Internal extension point:
-
-```python
-MainWindow.register_task_runner(provider_id, runner)
-```
-
-`runner` must satisfy the `TaskRunner` callable protocol and receive a `TaskExecutionContext`.
-
-A future adapter must use account-scoped/request-scoped provider credentials. The legacy process-global Stripe key pattern is explicitly prohibited by the audit.
-
-## 8. Public and internal interfaces
-
-This desktop application does not expose a network/public API in v1.0.0.1.2.
-
-Key internal APIs are:
-
-- `ProviderManager.list_available()`
-- `ProviderManager.list_installed()`
-- `ProviderManager.install_packaged()`
-- `ProviderManager.load_external()`
-- `ProviderManager.uninstall()`
-- `ProviderManifestError` (public provider-manager validation exception)
-- `AppState.create_task()` / `close_task()`
-- `AppState.accounts_for_provider()`
-- `WorkerManager.start()` / `pause()` / `resume()` / `stop()`
-- `SettingsManager.update()` / `startup_page()` / `dialog_directory()`
-- `SettingsManager.record_last_page()` / `record_last_folder()` / `record_window_state()`
-- `MainWindow.register_task_runner()`
-
-These are current architecture boundaries, not commitments to an external compatibility API.
-
-## 9. Dependencies
+## 8. Dependencies
 
 - Python 3.12+
-- PySide6 6.7+ for the official Vib Tools Qt desktop UI implementation
-- openpyxl 3.1+ for XLSX/XLSM customer email import
+- PySide6 6.7+
+- openpyxl 3.1+
+- Python standard library for provider HTTP/JSON/form operations
 
-No provider SDK is a dependency in v1.0.0.1.2.
+No dependency change was made in `v1.0.0.1.5`.
 
-## 10. Configuration and runtime state
+## 9. Extension points
 
-- `src/core/settings/` owns validated, non-sensitive desktop preferences.
-- Settings are stored as schema-tagged JSON in the current operating-system user's configuration directory, not inside the project tree.
-- Explicit settings saves use an atomic temporary-file replacement. Malformed existing settings fall back to baseline defaults and produce a Live Logs warning rather than blocking startup.
-- User settings cover startup page, optional window geometry, confirmation prompts, Live Logs presentation/retention, and file-dialog starting folders.
-- Runtime convenience state includes last page, last folder, and normal window geometry only when the corresponding preference requires it.
-- Account/provider credentials are explicitly outside the settings payload and remain session-only.
-- `providers/packages/` contains distributable Stripe and Refrens manifests.
-- `providers/registry/` is local runtime installation state and is Git-ignored except `.gitkeep`.
-- `project/` is personal/private development material and is Git-ignored.
-- Domain data is currently in memory; no persistent domain-data format is configured.
-
-## 11. Extension points frozen for backend work
-
-Future explicitly approved implementation can add the following behind the current boundaries:
-
-- persistent account/customer/template/task repositories;
-- protected credential storage;
-- provider-specific network adapters and actual API tests;
-- task runners/sending;
-- retry/idempotency state;
-- persistent reports/logs.
-
-Those implementations must preserve the approved UI/page structure, installed-provider visibility rule, provider-grouped accounts, account exclusivity, and per-task worker isolation unless the user explicitly approves a change.
-
-## 12. Architecture decisions and feature history
-
-- **ADR-0001:** PySide6 selected because the supplied official Vib Tools Step-40J validation application is implemented with PySide6 and this is a new blank Invio project rather than a modification of the legacy PyQt6 codebase.
-- **0.1.0:** UI-first architecture created with eight requested pages, manifest-only provider registry, in-memory domain state, account reservation, and separate task thread manager.
-- **1.0.0 baseline:** frozen the supplied current project containing the `ProviderManifestError` export fix and bundled Stripe/Refrens provider manifests.
-- **1.0.0.1:** corrected the sidebar surface, aligned existing provider cards with the official Vib Tools Plugin Page visual contract, removed development-stage product labels from current application surfaces, and preserved all existing runtime/domain behavior.
-- **1.0.0.1.1:** implemented the existing Settings page as a persistent non-sensitive preference surface and wired only those preferences into existing startup, confirmation, log, file-dialog, and window behaviors.
-- **1.0.0.1.2:** added validated provider uninstall through the existing provider-manager callback boundary and compacted application-owned modal layouts, including adaptive two-column Add Account credentials, without changing domain models, task threading, settings behavior, provider schemas, or dependencies.
-- Legacy forensic findings and backend constraints are recorded privately in `project/research/FORENSIC_AUDIT_LEGACY_APP.md`.
+`MainWindow.register_task_runner(provider_id, runner)` remains the explicit custom-provider execution hook. Future customer-data expansion, credential persistence, or additional provider-specific fields require separate owner approval and are not silently introduced through provider manifests.

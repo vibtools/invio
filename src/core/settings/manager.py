@@ -10,6 +10,7 @@ from typing import Any
 SETTINGS_SCHEMA_VERSION = 1
 START_PAGE_LAST = "__last_page__"
 START_PAGES = (
+    "Dashboard",
     "Accounts",
     "Invoice Templates",
     "Customer Lists",

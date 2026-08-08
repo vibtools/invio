@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.provider_manager import ProviderManager, ProviderManifestError
+from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
 from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowState
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
@@ -34,6 +35,7 @@ from .dialogs import AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDia
 from .pages import (
     AccountsPage,
     CustomerListsPage,
+    DashboardPage,
     InvoiceTemplatesPage,
     LogsPage,
     ProvidersPage,
@@ -56,6 +58,7 @@ class MainWindow(QMainWindow):
         self.app_settings = self.settings_manager.settings
         self.state = AppState()
         self.providers = ProviderManager(self.project_root)
+        self.provider_runtime = ProviderRuntime()
         self.worker_manager = WorkerManager(self)
         self.task_runners: dict[str, TaskRunner] = {}
         self.pages: dict[str, QWidget] = {}
@@ -73,7 +76,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.2 started.")
+        self.log("Invio v1.0.0.1.5 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
 
@@ -118,6 +121,7 @@ class MainWindow(QMainWindow):
     def _icon_for(self, key: str):
         style = QApplication.style()
         mapping = {
+            "dashboard": QStyle.StandardPixmap.SP_ComputerIcon,
             "accounts": QStyle.StandardPixmap.SP_DirHomeIcon,
             "invoice": QStyle.StandardPixmap.SP_FileDialogDetailedView,
             "customers": QStyle.StandardPixmap.SP_FileDialogListView,
@@ -164,6 +168,7 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def _register_pages(self) -> None:
+        self.dashboard_page = DashboardPage(self.state, self.providers, self.new_task)
         self.accounts_page = AccountsPage(self.state, self.providers, self.add_account)
         self.invoice_page = InvoiceTemplatesPage(self.state, self.new_template, self.edit_template, self.delete_template)
         self.customer_page = CustomerListsPage(self.state, self.new_customer_list, self.import_customer_emails, self.delete_customer_list)
@@ -183,6 +188,7 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.app_settings, self.save_app_settings)
 
         ordered = [
+            ("Dashboard", self.dashboard_page),
             ("Accounts", self.accounts_page),
             ("Invoice Templates", self.invoice_page),
             ("Customer Lists", self.customer_page),
@@ -200,7 +206,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.2")
+        self.runtime_status = QLabel("Production • v1.0.0.1.5")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -217,7 +223,9 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Viewing: {name}")
         if name in self.nav_buttons:
             self.nav_buttons[name].setChecked(True)
-        if name == "Accounts":
+        if name == "Dashboard":
+            self.dashboard_page.refresh()
+        elif name == "Accounts":
             self.accounts_page.refresh()
         elif name == "Invoice Templates":
             self.invoice_page.refresh()
@@ -320,6 +328,10 @@ class MainWindow(QMainWindow):
         if hasattr(self, "logs_page"):
             self.logs_page.append(rendered)
 
+    def _refresh_dashboard(self) -> None:
+        if hasattr(self, "dashboard_page"):
+            self.dashboard_page.refresh()
+
     # Provider workflow -------------------------------------------------
     def install_provider(self, provider_id: str) -> None:
         try:
@@ -330,6 +342,7 @@ class MainWindow(QMainWindow):
         self.log(f"Provider installed: {provider.name} v{provider.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self._refresh_dashboard()
 
     def uninstall_provider(self, provider_id: str) -> None:
         provider = self.providers.get_installed(provider_id)
@@ -350,6 +363,7 @@ class MainWindow(QMainWindow):
         self.log(f"Provider uninstalled: {removed.name} v{removed.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self._refresh_dashboard()
 
     def load_provider(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Load Provider Manifest", self._dialog_directory(), "Provider Manifest (*.json);;JSON (*.json)")
@@ -364,6 +378,7 @@ class MainWindow(QMainWindow):
         self.log(f"External provider manifest loaded: {provider.name} v{provider.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self._refresh_dashboard()
 
     # Accounts ----------------------------------------------------------
     def add_account(self) -> None:
@@ -381,6 +396,7 @@ class MainWindow(QMainWindow):
             return
         self.log(f"Account added: {account.provider_name}/{account.name} ({account.mode}).")
         self.accounts_page.refresh()
+        self._refresh_dashboard()
 
     # Invoice templates ------------------------------------------------
     def new_template(self) -> None:
@@ -393,6 +409,7 @@ class MainWindow(QMainWindow):
                 return
             self.log(f"Invoice template created: {template.name}")
             self.invoice_page.refresh()
+            self._refresh_dashboard()
 
     def edit_template(self, template_id: str) -> None:
         template = self.state.invoice_templates.get(template_id)
@@ -407,6 +424,7 @@ class MainWindow(QMainWindow):
                 return
             self.log(f"Invoice template updated: {template.name}")
             self.invoice_page.refresh()
+            self._refresh_dashboard()
 
     def delete_template(self, template_id: str) -> None:
         template = self.state.invoice_templates.get(template_id)
@@ -416,9 +434,14 @@ class MainWindow(QMainWindow):
             answer = self._question("Delete Template", f"Delete invoice template '{template.name}'?")
             if answer != QMessageBox.StandardButton.Yes:
                 return
-        self.state.delete_invoice_template(template_id)
+        try:
+            self.state.delete_invoice_template(template_id)
+        except StateError as exc:
+            self._message("Invoice Template", str(exc), QMessageBox.Icon.Warning)
+            return
         self.log(f"Invoice template deleted: {template.name}")
         self.invoice_page.refresh()
+        self._refresh_dashboard()
 
     # Customer lists ---------------------------------------------------
     def new_customer_list(self) -> None:
@@ -432,6 +455,7 @@ class MainWindow(QMainWindow):
             return
         self.log(f"Customer list created: {item.name}")
         self.customer_page.refresh(item.id)
+        self._refresh_dashboard()
 
     def import_customer_emails(self, list_id: str) -> None:
         customer_list = self.state.customer_lists.get(list_id)
@@ -454,6 +478,7 @@ class MainWindow(QMainWindow):
             return
         self.log(f"Imported {added} email(s) into customer list '{customer_list.name}'.")
         self.customer_page.refresh(list_id)
+        self._refresh_dashboard()
         if warnings:
             self._message("Customer List", "\n".join(warnings), QMessageBox.Icon.Warning)
 
@@ -472,6 +497,7 @@ class MainWindow(QMainWindow):
             return
         self.log(f"Customer list deleted: {item.name}")
         self.customer_page.refresh()
+        self._refresh_dashboard()
 
     # Tasks ------------------------------------------------------------
     def new_task(self) -> None:
@@ -481,6 +507,9 @@ class MainWindow(QMainWindow):
             return
         if not self.state.accounts:
             self._message("Task", "Add at least one provider account first.", QMessageBox.Icon.Warning)
+            return
+        if not self.state.invoice_templates:
+            self._message("Task", "Create an invoice template first.", QMessageBox.Icon.Warning)
             return
         if not self.state.customer_lists:
             self._message("Task", "Create a customer list first.", QMessageBox.Icon.Warning)
@@ -493,30 +522,39 @@ class MainWindow(QMainWindow):
         except StateError as exc:
             self._message("Task", str(exc), QMessageBox.Icon.Warning)
             return
-        self.log(f"{task.name} created with provider {task.provider_name}, {len(task.account_ids)} account(s), list '{task.customer_list_name}'.")
+        self.log(
+            f"{task.name} created with provider {task.provider_name}, template '{task.invoice_template_name}', "
+            f"{len(task.account_ids)} account(s), list '{task.customer_list_name}'."
+        )
         self.tasks_page.refresh()
         self.accounts_page.refresh()
         self.reports_page.refresh()
+        self._refresh_dashboard()
 
-    def _runner_for_task(self, task_id: str) -> tuple[object | None, TaskRunner | None]:
+    def _runner_for_task(self, task_id: str, *, retry_failed: bool = False) -> tuple[object | None, TaskRunner | None, str]:
         task = self.state.tasks.get(task_id)
         if not task:
-            return None, None
-        return task, self.task_runners.get(task.provider_id)
+            return None, None, "Task was not found."
+        injected = self.task_runners.get(task.provider_id)
+        if injected is not None:
+            return task, injected, ""
+        try:
+            runner = self.provider_runtime.make_task_runner(task, self.state, retry_failed=retry_failed)
+        except ProviderRuntimeError as exc:
+            return task, None, str(exc)
+        return task, runner, ""
 
     def start_task(self, task_id: str) -> None:
-        task, runner = self._runner_for_task(task_id)
+        task, runner, error = self._runner_for_task(task_id)
         if task is None:
             return
         if runner is None:
-            self.state.set_task_status(task_id, "Ready", "No task runner is registered for this provider.")
+            message = error or "No task runner is available for this provider."
+            self.state.set_task_status(task_id, "Ready", message)
             self.tasks_page.refresh_task(task_id)
-            self.log(f"{task.name}: start requested; no task runner registered for provider '{task.provider_id}'.")
-            self._message(
-                "Provider Unavailable",
-                "This provider cannot start because no task runner is registered. No invoice was sent.",
-                QMessageBox.Icon.Information,
-            )
+            self.log(f"{task.name}: start blocked: {message}")
+            self._message("Provider Unavailable", f"{message} No invoice was sent.", QMessageBox.Icon.Warning)
+            self._refresh_dashboard()
             return
         self.worker_manager.start(task, runner)
 
@@ -530,12 +568,13 @@ class MainWindow(QMainWindow):
         self.worker_manager.stop(task_id)
 
     def retry_task(self, task_id: str) -> None:
-        task, runner = self._runner_for_task(task_id)
+        task, runner, error = self._runner_for_task(task_id, retry_failed=True)
         if task is None:
             return
         if runner is None:
-            self.log(f"{task.name}: retry requested; no task runner is registered for provider '{task.provider_id}'.")
-            self._message("Provider Unavailable", "Retry cannot start because no task runner is registered for this provider.")
+            message = error or "Retry cannot start because no task runner is available for this provider."
+            self.log(f"{task.name}: retry blocked: {message}")
+            self._message("Provider Unavailable", message, QMessageBox.Icon.Warning)
             return
         self.worker_manager.start(task, runner)
 
@@ -551,16 +590,19 @@ class MainWindow(QMainWindow):
             if answer != QMessageBox.StandardButton.Yes:
                 return
         self.state.close_task(task_id)
+        self.provider_runtime.clear_task(task_id)
         self.log(f"{task.name} closed; reserved accounts released.")
         self.tasks_page.refresh()
         self.accounts_page.refresh()
         self.reports_page.refresh()
+        self._refresh_dashboard()
 
     def _worker_status(self, task_id: str, status: str, message: str) -> None:
         if task_id in self.state.tasks:
             self.state.set_task_status(task_id, status, message)
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
+            self._refresh_dashboard()
 
     def _worker_progress(self, task_id: str, processed: int, success: int, failed: int, message: str) -> None:
         if task_id in self.state.tasks:
@@ -568,13 +610,20 @@ class MainWindow(QMainWindow):
             self.state.set_task_status(task_id, self.state.tasks[task_id].status, message)
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
+            self._refresh_dashboard()
 
     def _worker_finished(self, task_id: str, status: str) -> None:
         if task_id in self.state.tasks:
-            self.state.set_task_status(task_id, status, f"Worker finished with status: {status}")
+            task = self.state.tasks[task_id]
+            if status == "Failed" and task.failed:
+                message = f"{task.failed} recipient(s) failed. Review Live Logs and use Retry Failed."
+            else:
+                message = f"Worker finished with status: {status}"
+            self.state.set_task_status(task_id, status, message)
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
-            self.log(f"{self.state.tasks[task_id].name}: worker finished with {status}.")
+            self._refresh_dashboard()
+            self.log(f"{task.name}: worker finished with {status}.")
 
     # Reports / logs ---------------------------------------------------
     def export_report(self) -> None:
@@ -584,12 +633,13 @@ class MainWindow(QMainWindow):
         self._remember_dialog_path(path)
         with Path(path).open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["Task", "Provider", "Accounts", "Customer List", "Total", "Success", "Failed", "Remaining", "Status"])
+            writer.writerow(["Task", "Provider", "Invoice Template", "Accounts", "Customer List", "Total", "Success", "Failed", "Remaining", "Status"])
             for task in self.state.tasks.values():
                 writer.writerow(
                     [
                         task.name,
                         task.provider_name,
+                        task.invoice_template_name,
                         "; ".join(task.account_names),
                         task.customer_list_name,
                         task.total,

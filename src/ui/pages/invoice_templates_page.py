@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QHBoxLayout, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from ...core.state import AppState
 from ..widgets import button, card, page_header
@@ -32,20 +32,20 @@ class InvoiceTemplatesPage(QWidget):
         root.addWidget(
             page_header(
                 "Invoice Templates",
-                "Create reusable invoice content only. Billing, shipping and customer records are deliberately excluded from templates.",
+                "Reusable provider-ready invoice content. Customer, billing, shipping and payment details are deliberately excluded.",
                 [new],
             )
         )
 
-        host = card("Templates", "Invoice settings, memo/footer and line items are kept together as a reusable template definition.")
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Template", "Currency", "Due", "Items", "Tax", "Actions"])
+        host = card("Templates", "Each task selects one template; provider adapters map supported fields when invoices are created and sent.")
+        self.table = QTableWidget(0, 7)
+        self.table.setHorizontalHeaderLabels(["Template", "Currency", "Type", "Due", "Items", "Tax", "Actions"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for col in range(1, 6):
+        for col in range(1, 7):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         host.layout().addWidget(self.table)
         root.addWidget(host, 1)
@@ -59,17 +59,16 @@ class InvoiceTemplatesPage(QWidget):
             values = [
                 template.name,
                 template.currency.upper(),
+                template.invoice_type,
                 f"{template.days_until_due} days",
                 str(len(template.items)),
-                "On" if template.automatic_tax else "Off",
+                "Auto" if template.automatic_tax else "Off",
             ]
             for column, value in enumerate(values):
                 cell = QTableWidgetItem(value)
                 cell.setData(Qt.ItemDataRole.UserRole, template.id)
                 self.table.setItem(row, column, cell)
             actions = QWidget()
-            from PySide6.QtWidgets import QHBoxLayout
-
             layout = QHBoxLayout(actions)
             layout.setContentsMargins(0, 1, 0, 1)
             layout.setSpacing(4)
@@ -79,4 +78,4 @@ class InvoiceTemplatesPage(QWidget):
             delete.clicked.connect(lambda _checked=False, tid=template.id: self.on_delete(tid))
             layout.addWidget(edit)
             layout.addWidget(delete)
-            self.table.setCellWidget(row, 5, actions)
+            self.table.setCellWidget(row, 6, actions)

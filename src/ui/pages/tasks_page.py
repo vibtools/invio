@@ -68,6 +68,7 @@ class TaskCard(QWidget):
         summary = QHBoxLayout()
         for title_text, value in (
             ("Provider", task.provider_name),
+            ("Invoice Template", task.invoice_template_name),
             ("Accounts", ", ".join(task.account_names)),
             ("Customer List", task.customer_list_name),
         ):
@@ -178,7 +179,7 @@ class TasksPage(QWidget):
             else:
                 self.cards[task.id].refresh(task)
         if not self.state.tasks and not hasattr(self, "empty"):
-            self.empty = card("No Tasks", "Create a task after installing a provider, adding provider accounts and preparing a customer list.")
+            self.empty = card("No Tasks", "Create a task after installing a provider, adding provider accounts, creating an invoice template and preparing a customer list.")
             self.layout.insertWidget(0, self.empty)
         elif self.state.tasks and hasattr(self, "empty"):
             self.layout.removeWidget(self.empty)

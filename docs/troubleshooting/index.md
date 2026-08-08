@@ -1,59 +1,41 @@
 # Troubleshooting
 
-## `ImportError: cannot import name 'ProviderManifestError'`
-
-This was caused by the provider-manager package not re-exporting `ProviderManifestError`. The package exports it from `src.core.provider_manager`, matching the existing import used by `MainWindow`.
-
-## Sidebar navigation appears light on Windows
-
-Release `v1.0.0.1` explicitly applies the Vib Tools sidebar background to the sidebar scroll area, its viewport, and the navigation host. Confirm the updated `src/ui/main_window.py` and `src/ui/styles.py` are both present.
-
 ## Provider does not appear in Accounts or Tasks
 
-Install it from **Providers** or load a valid provider JSON manifest. A bundled provider may be visible as `Available` on the Providers page while still being intentionally absent from Accounts and Tasks until installation.
+Install it from **Providers**. Bundled packages can be Available without being installed.
 
-## Stripe or Refrens does not appear on the Providers page
+## A bundled provider remains on Providers after Uninstall
 
-Confirm these files exist:
-
-- `providers/packages/stripe/provider.json`
-- `providers/packages/refrens/provider.json`
-
-Then restart Invio.
-
-
-## Provider Uninstall does not remove Stripe/Refrens from the Providers page
-
-This is expected for bundled providers. **Uninstall** removes the installed copy from `providers/registry/`, so the provider changes from **Installed** to **Available**. Its packaged manifest remains under `providers/packages/` so it can be installed again. Current in-memory accounts/tasks are not deleted.
-
-## A modal looks wider than before
-
-Release `v1.0.0.1.2` intentionally uses wider, shorter application-owned dialogs for more compact workflows. Add Account uses two credential columns only when the selected provider declares more than two credential fields. Native operating-system file/folder picker windows are not resized by Invio.
-
-## Add Account says API Test Pending
-
-Run **API Test** after completing all required provider credential fields. The current provider integrations perform credential-structure validation; network verification is unavailable unless implemented by that provider integration.
-
-## Start Task does not send
-
-The selected provider has no registered task runner. Invio reports the provider as unavailable and sends nothing. This prevents a missing integration from being represented as a successful operation.
+Expected. Uninstall removes its installed registry copy and returns the bundled provider to Available status so it can be installed again.
 
 ## Account cannot be selected for a new task
 
-The account is reserved by another task. Close the owning task to release it.
+It is reserved by another open task. Stop/close the owning task to release it.
+
+## New Task says an invoice template is required
+
+Create at least one template first. Every `v1.0.0.1.3` task must bind to an invoice template.
+
+## Stripe task fails
+
+Open Live Logs for the provider response. Common causes include key/mode mismatch, API permissions, unsupported account/currency combinations, automatic-tax configuration, invalid invoice values, or network failure. Failed recipients remain available to **Retry Failed** while the task remains open.
+
+## Refrens task is blocked with `billedTo.country`
+
+This is deliberate data-integrity protection. Refrens requires a customer name and ISO country for invoice creation, while the approved Customer List model currently stores email only. Invio does not guess a billing country and sends no create request in this state.
+
+## Invoice Template dialog does not fit the display
+
+The editor is compact and internally scrollable. Resize the main window if needed; the dialog is bounded relative to the application window.
+
+## Settings checkbox looks unchecked after patching
+
+Confirm `assets/icons/checkmark.svg` and the updated `src/ui/styles.py` are both present. The checked indicator references that bundled asset.
 
 ## Settings do not save
 
-Select **Save Changes** and read the message at the bottom of the Settings page. If the selected **Default file folder** does not exist, choose an existing folder or leave the field blank. Invio also reports filesystem write errors instead of silently accepting an unsaved preference.
+Select **Save Changes** and read the feedback. A configured default folder must exist. Invalid/corrupt settings files fall back to defaults rather than preventing startup.
 
-## Invio starts with default settings after a settings-file problem
+## Reports or Live Logs look different
 
-If the per-user settings JSON is malformed or cannot be parsed, Invio uses baseline defaults so the desktop app can still start. A warning is written to Live Logs. Correct or remove the damaged settings file, then save preferences again from **Settings**.
-
-## Invio did not restore my previous window position
-
-**Remember window size and position** must be enabled before exit. Invio intentionally ignores a saved position that is not on a currently available screen, which prevents an old multi-monitor position from reopening the window off-screen.
-
-## File dialogs do not open in the expected folder
-
-Check **Settings → File Locations**. A valid remembered last folder takes priority when **Remember the last folder I used** is enabled. Otherwise Invio uses the configured default folder, or the operating-system default when the field is blank.
+`v1.0.0.1.3` intentionally applies the approved compact Vib Tools reference layout. Existing report CSV export, log save/clear behavior, masking, and log settings remain.

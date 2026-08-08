@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from ...accounts.models import Account
 from ...customers.models import CustomerList
-from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate
+from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
 from ...tasks.models import Task
 
 
@@ -93,48 +93,92 @@ class AppState:
         footer: str,
         automatic_tax: bool,
         reuse_customer: bool,
-        items: list[tuple[str, str, str]],
+        items: list[tuple[str, ...]],
+        invoice_title: str = "Invoice",
+        invoice_subtitle: str = "",
+        invoice_type: str = "INVOICE",
+        customer_note: str = "",
+        terms: list[str] | tuple[str, ...] = (),
     ) -> InvoiceTemplate:
         clean_name = name.strip()
-        clean_currency = currency.strip().lower()
         if not clean_name:
             raise StateError("Template name is required.")
-        if len(clean_currency) != 3 or not clean_currency.isalpha():
-            raise StateError("Currency must be a three-letter code.")
+        try:
+            clean_currency = normalize_invoice_currency(currency)
+        except ValueError as exc:
+            raise StateError(str(exc)) from exc
+
+        due_days = int(days_until_due)
+        if due_days < 1 or due_days > 365:
+            raise StateError("Days until due must be between 1 and 365.")
+
+        normalized_type = invoice_type.strip().upper() or "INVOICE"
+        if normalized_type not in {"INVOICE", "BOS"}:
+            raise StateError("Invoice type must be INVOICE or BOS.")
+
         parsed_items: list[InvoiceItemTemplate] = []
-        for index, (description, quantity, amount) in enumerate(items, 1):
+        for index, raw_item in enumerate(items, 1):
+            if len(raw_item) not in {3, 4}:
+                raise StateError(f"Item {index}: invalid invoice item structure.")
+            description, quantity, amount = raw_item[:3]
+            tax_rate = raw_item[3] if len(raw_item) == 4 else "0"
             if not description.strip():
                 raise StateError(f"Item {index}: description is required.")
             try:
                 quantity_value = Decimal(quantity)
                 amount_value = Decimal(amount)
+                tax_rate_value = Decimal(tax_rate or "0")
             except Exception as exc:
-                raise StateError(f"Item {index}: quantity and amount must be numeric.") from exc
+                raise StateError(f"Item {index}: quantity, amount and tax rate must be numeric.") from exc
             if quantity_value <= 0 or amount_value < 0:
                 raise StateError(f"Item {index}: quantity must be greater than zero and amount cannot be negative.")
-            parsed_items.append(InvoiceItemTemplate(description.strip(), quantity_value, amount_value))
+            if tax_rate_value < 0 or tax_rate_value > 100:
+                raise StateError(f"Item {index}: tax rate must be between 0 and 100.")
+            parsed_items.append(
+                InvoiceItemTemplate(
+                    description.strip(),
+                    quantity_value,
+                    amount_value,
+                    tax_rate_value,
+                )
+            )
         if not parsed_items:
             raise StateError("At least one invoice item is required.")
 
+        clean_terms = [str(term).strip() for term in terms if str(term).strip()]
         identifier = template_id or self._id("tpl")
         template = InvoiceTemplate(
             id=identifier,
             name=clean_name,
             currency=clean_currency,
-            days_until_due=int(days_until_due),
+            days_until_due=due_days,
             memo=memo.strip(),
             footer=footer.strip(),
-            automatic_tax=automatic_tax,
-            reuse_customer=reuse_customer,
+            automatic_tax=bool(automatic_tax),
+            reuse_customer=bool(reuse_customer),
             items=parsed_items,
+            invoice_title=invoice_title.strip() or "Invoice",
+            invoice_subtitle=invoice_subtitle.strip(),
+            invoice_type=normalized_type,
+            customer_note=customer_note.strip(),
+            terms=clean_terms,
         )
         self.invoice_templates[identifier] = template
         return template
 
     def delete_invoice_template(self, template_id: str) -> None:
+        if any(task.invoice_template_id == template_id for task in self.tasks.values()):
+            raise StateError("This invoice template is currently used by a task.")
         self.invoice_templates.pop(template_id, None)
 
-    def create_task(self, provider_id: str, provider_name: str, account_ids: list[str], customer_list_id: str) -> Task:
+    def create_task(
+        self,
+        provider_id: str,
+        provider_name: str,
+        account_ids: list[str],
+        customer_list_id: str,
+        invoice_template_id: str,
+    ) -> Task:
         if not account_ids:
             raise StateError("Select at least one account.")
         customer_list = self.customer_lists.get(customer_list_id)
@@ -142,6 +186,9 @@ class AppState:
             raise StateError("Select a customer list.")
         if not customer_list.emails:
             raise StateError("The selected customer list has no email addresses.")
+        invoice_template = self.invoice_templates.get(invoice_template_id)
+        if invoice_template is None:
+            raise StateError("Select an invoice template.")
 
         accounts: list[Account] = []
         for account_id in account_ids:
@@ -166,6 +213,8 @@ class AppState:
             account_names=[account.name for account in accounts],
             customer_list_id=customer_list.id,
             customer_list_name=customer_list.name,
+            invoice_template_id=invoice_template.id,
+            invoice_template_name=invoice_template.name,
             total=customer_list.count,
         )
         self.tasks[task.id] = task

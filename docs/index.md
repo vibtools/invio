@@ -1,14 +1,26 @@
 # Invio Documentation
 
-Invio is a Vib Tools production desktop application for provider-based invoice automation. Provider operations execute only when the selected provider has an actual registered task runner; unavailable operations are reported explicitly and are not simulated.
+Current version: **v1.0.0.1.5**.
 
-Start with:
+Invio is a Vib Tools desktop application for provider-managed invoice automation. Its current workflow is:
 
-- `getting-started/installation.md`
-- `user/usage.md`
-- `configuration/index.md`
-- `developer/architecture.md`
-- `api/provider-manifest.md`
-- `troubleshooting/index.md`
+**Provider -> Account(s) -> Invoice Template -> Customer List -> Task -> Provider Runtime -> Reports/Live Logs**
 
-Packaged provider metadata currently includes **Stripe** and **Refrens**. Install a provider from the Providers page before using it in Accounts or Tasks. Installed provider cards also expose **Uninstall**, which removes only the local registry manifest. Release `v1.0.0.1.2` also uses compact application-owned modal layouts.
+Use these documents:
+
+- `getting-started/installation.md` - installation and startup.
+- `user/usage.md` - end-user workflow.
+- `guides/invoice-templates.md` - reusable template fields and provider mapping.
+- `guides/tasks.md` - task creation/control and account reservation.
+- `guides/providers.md` - provider installation and built-in execution behavior.
+- `configuration/index.md` - Settings and runtime configuration.
+- `developer/architecture.md` - modules, data flow, threading and provider adapters.
+- `troubleshooting/index.md` - operational issues and provider constraints.
+- `release-notes/1.0.0.1.5.md` - this release.
+
+## Production Readiness References
+
+- `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing implementation inventory for the frozen baseline.
+- `developer/ERROR_HANDLING.md` - current handled errors plus production error-handling gaps and phase mapping.
+
+The detailed forensic report, phase roadmap, phase completion ledger and update protocol are private development records under `project/` and are not public documentation.

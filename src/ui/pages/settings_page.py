@@ -29,11 +29,11 @@ class SettingsPage(QWidget):
     def __init__(self, settings: AppSettings, on_save: SaveSettingsHandler):
         super().__init__()
         self._on_save = on_save
-        self.setObjectName("PageContent")
+        self.setObjectName("SettingsPage")
 
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
-        root.setSpacing(10)
+        root.setSpacing(8)
 
         restore = button("Restore Defaults")
         save = button("Save Changes", "primary")
@@ -53,14 +53,14 @@ class SettingsPage(QWidget):
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         content = QWidget()
-        content.setObjectName("PageInner")
+        content.setObjectName("SettingsContent")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(10)
+        content_layout.setSpacing(8)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(8)
         grid.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # General -------------------------------------------------------
@@ -158,6 +158,11 @@ class SettingsPage(QWidget):
             )
         )
         grid.addWidget(files, 1, 1)
+
+        for settings_card in (general, safety, logs, files):
+            settings_card.setProperty("settingsCard", True)
+            settings_card.layout().setContentsMargins(12, 11, 12, 11)
+            settings_card.layout().setSpacing(5)
 
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)

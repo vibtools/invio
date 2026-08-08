@@ -62,6 +62,7 @@ class UiConstants:
 CONST = UiConstants()
 
 NAV_ITEMS = (
+    ("Dashboard", "dashboard"),
     ("Accounts", "accounts"),
     ("Invoice Templates", "invoice"),
     ("Customer Lists", "customers"),
