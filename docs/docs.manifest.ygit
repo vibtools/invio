@@ -1,0 +1,149 @@
+{
+  "$schema": "https://schema.ygit.dev/dpms/v1/docs.manifest.schema.json",
+  "schemaVersion": 1,
+  "manifestVersion": "1.0.0",
+  "documentation": {
+    "id": "invio",
+    "title": "Invio Documentation",
+    "description": "Documentation for the Invio Vib Tools desktop application, including installation, usage, provider manifests, task architecture, configuration, and troubleshooting.",
+    "docsRoot": "docs/",
+    "defaultLanguage": "en",
+    "status": "published",
+    "tags": [
+      "invio",
+      "desktop-application",
+      "pyside6",
+      "providers",
+      "invoice-automation",
+      "vib-tools"
+    ],
+    "defaultDocument": "index.md"
+  },
+  "discovery": {
+    "enabled": true,
+    "recursive": true,
+    "include": [
+      "**/*.md",
+      "**/*.mdx"
+    ],
+    "exclude": [
+      "media/**",
+      "**/README.md"
+    ],
+    "extensions": [
+      "md",
+      "mdx"
+    ],
+    "ignoreHidden": true,
+    "followSymlink": false
+  },
+  "structure": {
+    "autoGenerate": true,
+    "sort": "manual",
+    "maxDepth": 10,
+    "sections": [
+      {
+        "id": "getting-started",
+        "title": "Getting Started",
+        "description": "Introduction and initial project setup.",
+        "icon": "rocket",
+        "path": "getting-started/",
+        "order": 1,
+        "hidden": false,
+        "collapsed": false
+      },
+      {
+        "id": "guides",
+        "title": "Guides",
+        "description": "Step-by-step usage guides.",
+        "icon": "book-open",
+        "path": "guides/",
+        "order": 2,
+        "hidden": false,
+        "collapsed": false
+      },
+      {
+        "id": "features",
+        "title": "Features",
+        "description": "Project features and capabilities.",
+        "icon": "sparkles",
+        "path": "features/",
+        "order": 3,
+        "hidden": false,
+        "collapsed": false
+      },
+      {
+        "id": "configuration",
+        "title": "Configuration",
+        "description": "Configuration files and settings.",
+        "icon": "settings",
+        "path": "configuration/",
+        "order": 4,
+        "hidden": false,
+        "collapsed": false
+      },
+      {
+        "id": "api",
+        "title": "API Reference",
+        "description": "Public APIs and interfaces.",
+        "icon": "code",
+        "path": "api/",
+        "order": 5,
+        "hidden": false,
+        "collapsed": true
+      },
+      {
+        "id": "tutorials",
+        "title": "Tutorials",
+        "description": "Hands-on learning resources.",
+        "icon": "graduation-cap",
+        "path": "tutorials/",
+        "order": 6,
+        "hidden": false,
+        "collapsed": true
+      },
+      {
+        "id": "faq",
+        "title": "FAQ",
+        "description": "Frequently asked questions.",
+        "icon": "circle-help",
+        "path": "faq/",
+        "order": 7,
+        "hidden": false,
+        "collapsed": true
+      },
+      {
+        "id": "troubleshooting",
+        "title": "Troubleshooting",
+        "description": "Common problems and solutions.",
+        "icon": "triangle-alert",
+        "path": "troubleshooting/",
+        "order": 8,
+        "hidden": false,
+        "collapsed": true
+      },
+      {
+        "id": "release-notes",
+        "title": "Release Notes",
+        "description": "Version history and release changes.",
+        "icon": "history",
+        "path": "release-notes/",
+        "order": 9,
+        "hidden": false,
+        "collapsed": true
+      }
+    ]
+  },
+  "versions": {
+    "enabled": false,
+    "current": "1.0.0.1",
+    "latest": "1.0.0.1",
+    "available": [
+      "0.1.0",
+      "1.0.0",
+      "1.0.0.1"
+    ],
+    "strategy": "directory"
+  },
+  "custom": {}
+}

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://schema.ygit.dev/vpms/v2/vibproject.schema.json",
+  "schemaVersion": 2,
+  "manifestVersion": "2.0.0",
+  "project": {
+    "id": "invio",
+    "name": "invio",
+    "slug": "invio",
+    "displayName": "Invio",
+    "description": "Vib Tools desktop application for provider-based invoice automation workflows with provider-managed accounts, invoice templates, named customer lists, and isolated task execution.",
+    "summary": "Vib Tools desktop application defining provider, account, customer-list, invoice-template, task, report, log, settings, and per-task worker architecture.",
+    "version": "1.0.0.1",
+    "status": "development",
+    "visibility": "public",
+    "category": "desktop-application",
+    "keywords": [
+      "invoice-automation",
+      "desktop-application",
+      "provider-plugins",
+      "task-runner",
+      "pyside6",
+      "vib-tools"
+    ],
+    "homepage": "https://vib.tools/",
+    "website": "https://vib.tools/"
+  },
+  "classification": {
+    "ownerType": "organization",
+    "productType": "application",
+    "applicationType": "desktop",
+    "distribution": "open-source",
+    "lifecycle": "development"
+  },
+  "organization": {
+    "company": "Vib Tools",
+    "owner": "Vib Tools",
+    "maintainers": [
+      "Vib Tools Core Team"
+    ],
+    "contributors": [],
+    "contact": {
+      "email": "opensource@vib.tools",
+      "website": "https://vib.tools/"
+    }
+  },
+  "repository": {
+    "provider": "GitHub",
+    "url": "",
+    "branch": "main",
+    "defaultBranch": "main",
+    "issues": "",
+    "discussions": "",
+    "wiki": "",
+    "documentation": ""
+  },
+  "links": {
+    "website": "https://vib.tools/",
+    "documentation": "",
+    "blog": "https://vib.tools/blog/",
+    "community": "",
+    "youtube": "https://www.youtube.com/@vibtools",
+    "linkedin": "https://www.linkedin.com/company/vib-tools/",
+    "x": "https://x.com/vibtools",
+    "github": ""
+  },
+  "branding": {
+    "productName": "Invio",
+    "shortName": "Invio",
+    "logo": "assets/images/logo.png",
+    "icon": "assets/icons/icon.png",
+    "banner": "assets/images/banner.png",
+    "favicon": "assets/icons/favicon.ico",
+    "theme": "dark"
+  },
+  "license": {
+    "name": "MIT License",
+    "spdx": "MIT",
+    "file": "LICENSE"
+  },
+  "technology": {
+    "languages": [
+      "Python",
+      "Markdown",
+      "YAML",
+      "JSON"
+    ],
+    "frameworks": [
+      "PySide6"
+    ],
+    "libraries": [
+      "openpyxl"
+    ],
+    "packageManagers": [
+      "pip"
+    ],
+    "databases": [],
+    "apis": []
+  },
+  "platform": {
+    "desktop": [
+      "Windows",
+      "Linux",
+      "macOS"
+    ],
+    "mobile": [],
+    "server": [],
+    "web": [],
+    "operatingSystems": [
+      "Windows",
+      "Linux",
+      "macOS"
+    ]
+  },
+  "runtime": {
+    "python": ">=3.12",
+    "node": "",
+    "docker": false,
+    "container": ""
+  },
+  "entrypoints": {
+    "application": "main.py",
+    "cli": "",
+    "gui": "main.py",
+    "api": "",
+    "documentation": "README.md",
+    "tests": "tests/"
+  },
+  "paths": {
+    "source": "src/",
+    "tests": "tests/",
+    "documentation": "docs/",
+    "scripts": "scripts/",
+    "assets": "assets/",
+    "examples": "examples/",
+    "configuration": "config/",
+    "data": "data/",
+    "project": "project/"
+  },
+  "dependencies": {
+    "required": [
+      "PySide6>=6.7,<7",
+      "openpyxl>=3.1,<4"
+    ],
+    "optional": [],
+    "externalServices": []
+  },
+  "documentation": {
+    "readme": "README.md",
+    "structure": "PROJECT_STRUCTURE.md",
+    "changelog": "CHANGELOG.md",
+    "license": "LICENSE",
+    "docsRoot": "docs/",
+    "website": ""
+  },
+  "support": {
+    "email": "opensource@vib.tools",
+    "documentation": "",
+    "community": "",
+    "security": ".github/SECURITY.md",
+    "issues": "",
+    "discussions": ""
+  },
+  "build": {
+    "buildSystem": "pip",
+    "packageFormat": [],
+    "commands": {
+      "install": "python -m pip install -r requirements.txt",
+      "build": "",
+      "test": "python scripts/test/audit.py",
+      "lint": "",
+      "format": ""
+    }
+  },
+  "release": {
+    "strategy": "manual",
+    "versioning": "Vib Tools release versioning",
+    "latestVersion": "1.0.0.1",
+    "releaseNotes": "docs/release-notes/"
+  },
+  "distribution": {
+    "githubReleases": "",
+    "dockerHub": "",
+    "npm": "",
+    "pypi": "",
+    "winget": "",
+    "homebrew": "",
+    "snap": "",
+    "flatpak": "",
+    "chocolatey": "",
+    "scoop": "",
+    "crates": "",
+    "nuget": "",
+    "maven": ""
+  },
+  "funding": {
+    "github": "",
+    "openCollective": "",
+    "patreon": "",
+    "custom": ""
+  },
+  "quality": {
+    "formatter": "",
+    "linter": "",
+    "testFramework": "unittest",
+    "coverage": "",
+    "security": [
+      "repository privacy contract",
+      "provider manifest validation"
+    ]
+  },
+  "security": {
+    "policy": ".github/SECURITY.md",
+    "sbom": "",
+    "signing": "",
+    "vulnerabilityReporting": ""
+  },
+  "automation": {
+    "ci": "GitHub Actions",
+    "cd": "",
+    "workflows": [
+      ".github/workflows/ci.yml"
+    ],
+    "scheduledTasks": []
+  },
+  "ai": {
+    "enabled": true,
+    "repositoryContext": true,
+    "documentationContext": true,
+    "projectStructure": true,
+    "codingGuidelines": true,
+    "architectureGuidelines": true,
+    "entrypointDiscovery": true
+  },
+  "metadata": {
+    "createdAt": "2026-08-07",
+    "updatedAt": "2026-08-07",
+    "manifestAuthor": "Vib Tools",
+    "generator": "Vib Tools project reconstruction",
+    "specification": "VPMS",
+    "specificationVersion": "2.0.0"
+  }
+}

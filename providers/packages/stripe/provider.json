@@ -1,0 +1,24 @@
+{
+  "id": "stripe",
+  "name": "Stripe",
+  "version": "1.0.0",
+  "description": "Stripe provider package for invoice automation accounts, Test/Live modes, and declared invoice workflow capabilities.",
+  "credential_fields": [
+    {
+      "key": "secret_key",
+      "label": "Secret key",
+      "kind": "password",
+      "required": true,
+      "placeholder": "sk_test_..., sk_live_..., rk_test_..., or rk_live_..."
+    }
+  ],
+  "account_modes": [
+    "Test",
+    "Live"
+  ],
+  "capabilities": [
+    "invoice",
+    "send_invoice",
+    "api_test"
+  ]
+}

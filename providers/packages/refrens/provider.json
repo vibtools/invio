@@ -1,0 +1,44 @@
+{
+  "id": "refrens",
+  "name": "Refrens",
+  "version": "1.0.3",
+  "description": "Refrens provider package for invoice automation accounts, provider credentials, and declared invoice workflow capabilities.",
+  "credential_fields": [
+    {
+      "key": "base_url",
+      "label": "API Base URL",
+      "kind": "text",
+      "required": true,
+      "placeholder": "https://api.refrens.com"
+    },
+    {
+      "key": "url_key",
+      "label": "URL Key",
+      "kind": "text",
+      "required": true,
+      "placeholder": "Refrens business URL key"
+    },
+    {
+      "key": "app_id",
+      "label": "App ID",
+      "kind": "text",
+      "required": true,
+      "placeholder": "Refrens App ID"
+    },
+    {
+      "key": "app_secret",
+      "label": "App Secret",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Refrens App Secret"
+    }
+  ],
+  "account_modes": [
+    "Default"
+  ],
+  "capabilities": [
+    "invoice",
+    "send_invoice",
+    "api_test"
+  ]
+}

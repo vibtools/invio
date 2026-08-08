@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build output
+build/
+dist/
+*.spec
+*.egg-info/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime data
+*.log
+data/runtime/
+data/exports/
+
+# Installed provider registry is local runtime state.
+providers/registry/*
+!providers/registry/.gitkeep
+
+# Personal development material. Never publish this folder.
+/project/

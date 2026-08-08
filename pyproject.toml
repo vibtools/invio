@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "invio"
+version = "1.0.0.1"
+description = "Vib Tools desktop application for provider-based invoice automation workflows."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Vib Tools" }]
+dependencies = [
+  "PySide6>=6.7,<7",
+  "openpyxl>=3.1,<4",
+]
+keywords = ["vib-tools", "desktop", "invoice", "automation", "pyside6"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: Microsoft :: Windows",
+  "Topic :: Office/Business :: Financial",
+]
+
+[project.scripts]
+invio = "src.app:main"
+
+[tool.setuptools]
+packages = [
+  "src",
+  "src.ui",
+  "src.ui.pages",
+  "src.core",
+  "src.core.state",
+  "src.core.provider_manager",
+  "src.core.worker_manager",
+  "src.accounts",
+  "src.accounts.models",
+  "src.customers",
+  "src.customers.models",
+  "src.customers.importers",
+  "src.invoices",
+  "src.invoices.templates",
+  "src.tasks",
+  "src.tasks.models",
+]

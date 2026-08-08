@@ -1,0 +1,522 @@
+from __future__ import annotations
+
+import csv
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Callable
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
+    QStyle,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..core.provider_manager import ProviderManager, ProviderManifestError
+from ..core.state import AppState, StateError
+from ..core.worker_manager import TaskRunner, WorkerManager
+from ..customers.importers import import_emails
+from .dialogs import AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog
+from .pages import (
+    AccountsPage,
+    CustomerListsPage,
+    InvoiceTemplatesPage,
+    LogsPage,
+    ProvidersPage,
+    ReportsPage,
+    SettingsPage,
+    TasksPage,
+)
+from .styles import app_qss
+from .tokens import CONST, NAV_ITEMS
+from .widgets import hbox, label, status_badge, token_chip, vbox
+
+_KEY_MASK = re.compile(r"\b(?:sk|rk)_(?:test|live)_[A-Za-z0-9_\-]+\b", re.I)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self, project_root: Path):
+        super().__init__()
+        self.project_root = Path(project_root)
+        self.state = AppState()
+        self.providers = ProviderManager(self.project_root)
+        self.worker_manager = WorkerManager(self)
+        self.task_runners: dict[str, TaskRunner] = {}
+        self.pages: dict[str, QWidget] = {}
+        self.page_indexes: dict[str, int] = {}
+        self.nav_buttons: dict[str, QPushButton] = {}
+
+        self.setWindowTitle("Invio — Vib Tools")
+        self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
+        self.resize(CONST.default_window_width, CONST.default_window_height)
+        self.setStyleSheet(app_qss())
+
+        self._build_shell()
+        self._build_status_bar()
+        self._connect_workers()
+        self.navigate("Accounts")
+        self.log("Invio v1.0.0.1 started.")
+
+    def register_task_runner(self, provider_id: str, runner: TaskRunner) -> None:
+        """Backend integration point: inject a provider task runner by provider id."""
+        self.task_runners[provider_id] = runner
+
+    def _build_shell(self) -> None:
+        root_widget = QWidget()
+        root_widget.setObjectName("AppRoot")
+        root = QVBoxLayout(root_widget)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        root.addWidget(self._build_header())
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+        body.addWidget(self._build_sidebar())
+
+        self.stack = QStackedWidget()
+        self.stack.setObjectName("PageViewport")
+        body.addWidget(self.stack, 1)
+        root.addLayout(body, 1)
+        self.setCentralWidget(root_widget)
+        self._register_pages()
+
+    def _build_header(self) -> QWidget:
+        header = QFrame()
+        header.setObjectName("WindowHeader")
+        layout = hbox(header, (12, 0, 12, 0), 5)
+        layout.addWidget(status_badge("VT", "info"))
+        layout.addWidget(label("Invio", "WindowTitle", False))
+        self.breadcrumb = label("Home / Accounts", "Breadcrumb", False)
+        self.breadcrumb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout.addWidget(self.breadcrumb, 1)
+        layout.addWidget(token_chip("Vib Tools"))
+        self.viewport_chip = token_chip("Medium")
+        layout.addWidget(self.viewport_chip)
+        return header
+
+    def _icon_for(self, key: str):
+        style = QApplication.style()
+        mapping = {
+            "accounts": QStyle.StandardPixmap.SP_DirHomeIcon,
+            "invoice": QStyle.StandardPixmap.SP_FileDialogDetailedView,
+            "customers": QStyle.StandardPixmap.SP_FileDialogListView,
+            "tasks": QStyle.StandardPixmap.SP_BrowserReload,
+            "providers": QStyle.StandardPixmap.SP_DriveNetIcon,
+            "reports": QStyle.StandardPixmap.SP_FileIcon,
+            "logs": QStyle.StandardPixmap.SP_MessageBoxInformation,
+            "settings": QStyle.StandardPixmap.SP_FileDialogContentsView,
+        }
+        return style.standardIcon(mapping.get(key, QStyle.StandardPixmap.SP_FileIcon))
+
+    def _build_sidebar(self) -> QWidget:
+        sidebar = QWidget()
+        sidebar.setObjectName("Sidebar")
+        layout = vbox(sidebar, (8, 8, 8, 8), 4)
+        layout.addWidget(label("Invio", "SidebarTitle", False))
+        layout.addWidget(label("Vib Tools • Invoice Automation", "Caption", False))
+
+        nav_host = QWidget()
+        nav_host.setObjectName("SidebarNavHost")
+        nav_layout = vbox(nav_host, (0, 8, 0, 0), 2)
+        for page_name, icon_key in NAV_ITEMS:
+            item = QPushButton(page_name)
+            item.setObjectName("NavItem")
+            item.setCheckable(True)
+            item.setAutoExclusive(True)
+            item.setIcon(self._icon_for(icon_key))
+            item.clicked.connect(lambda _checked=False, name=page_name: self.navigate(name))
+            self.nav_buttons[page_name] = item
+            nav_layout.addWidget(item)
+        nav_layout.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setObjectName("MinimalScrollArea")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(nav_host)
+        layout.addWidget(scroll, 1)
+
+        separator = QFrame()
+        separator.setObjectName("Divider")
+        layout.addWidget(separator)
+        layout.addWidget(label("Vib Tools • Production", "Caption", False))
+        return sidebar
+
+    def _register_pages(self) -> None:
+        self.accounts_page = AccountsPage(self.state, self.providers, self.add_account)
+        self.invoice_page = InvoiceTemplatesPage(self.state, self.new_template, self.edit_template, self.delete_template)
+        self.customer_page = CustomerListsPage(self.state, self.new_customer_list, self.import_customer_emails, self.delete_customer_list)
+        self.tasks_page = TasksPage(
+            self.state,
+            self.new_task,
+            self.start_task,
+            self.pause_task,
+            self.resume_task,
+            self.stop_task,
+            self.retry_task,
+            self.close_task,
+        )
+        self.providers_page = ProvidersPage(self.providers, self.install_provider, self.load_provider)
+        self.reports_page = ReportsPage(self.state, self.export_report)
+        self.logs_page = LogsPage(self.clear_logs, self.export_logs)
+        self.settings_page = SettingsPage()
+
+        ordered = [
+            ("Accounts", self.accounts_page),
+            ("Invoice Templates", self.invoice_page),
+            ("Customer Lists", self.customer_page),
+            ("Tasks", self.tasks_page),
+            ("Providers", self.providers_page),
+            ("Reports", self.reports_page),
+            ("Live Logs", self.logs_page),
+            ("Settings", self.settings_page),
+        ]
+        for index, (name, page) in enumerate(ordered):
+            self.pages[name] = page
+            self.page_indexes[name] = index
+            self.stack.addWidget(page)
+
+    def _build_status_bar(self) -> None:
+        self.status_label = QLabel("Viewing: Accounts")
+        self.statusBar().addWidget(self.status_label, 1)
+        self.runtime_status = QLabel("Production • v1.0.0.1")
+        self.statusBar().addPermanentWidget(self.runtime_status)
+
+    def _connect_workers(self) -> None:
+        self.worker_manager.progress_changed.connect(self._worker_progress)
+        self.worker_manager.status_changed.connect(self._worker_status)
+        self.worker_manager.log_message.connect(lambda task_id, message: self.log(f"{task_id}: {message}"))
+        self.worker_manager.finished.connect(self._worker_finished)
+
+    def navigate(self, name: str) -> None:
+        if name not in self.page_indexes:
+            return
+        self.stack.setCurrentIndex(self.page_indexes[name])
+        self.breadcrumb.setText(f"Home / {name}")
+        self.status_label.setText(f"Viewing: {name}")
+        if name in self.nav_buttons:
+            self.nav_buttons[name].setChecked(True)
+        if name == "Accounts":
+            self.accounts_page.refresh()
+        elif name == "Invoice Templates":
+            self.invoice_page.refresh()
+        elif name == "Customer Lists":
+            self.customer_page.refresh()
+        elif name == "Tasks":
+            self.tasks_page.refresh()
+        elif name == "Providers":
+            self.providers_page.refresh()
+        elif name == "Reports":
+            self.reports_page.refresh()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        width = self.width()
+        if width < CONST.compact_breakpoint:
+            text = "Compact"
+        elif width < CONST.medium_breakpoint:
+            text = "Medium"
+        else:
+            text = "Large"
+        self.viewport_chip.setText(text)
+        super().resizeEvent(event)
+
+    def _message(self, title: str, text: str, icon: QMessageBox.Icon = QMessageBox.Icon.Information) -> None:
+        box = QMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(text)
+        box.setIcon(icon)
+        box.exec()
+
+    def log(self, message: str) -> None:
+        safe = _KEY_MASK.sub(lambda match: f"{match.group(0)[:10]}…***MASKED***", str(message))
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        if hasattr(self, "logs_page"):
+            self.logs_page.append(f"{timestamp} | {safe}")
+
+    # Provider workflow -------------------------------------------------
+    def install_provider(self, provider_id: str) -> None:
+        try:
+            provider = self.providers.install_packaged(provider_id)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Provider installed: {provider.name} v{provider.version}")
+        self.providers_page.refresh()
+        self.accounts_page.refresh()
+
+    def load_provider(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "Load Provider Manifest", "", "Provider Manifest (*.json);;JSON (*.json)")
+        if not path:
+            return
+        try:
+            provider = self.providers.load_external(path)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"External provider manifest loaded: {provider.name} v{provider.version}")
+        self.providers_page.refresh()
+        self.accounts_page.refresh()
+
+    # Accounts ----------------------------------------------------------
+    def add_account(self) -> None:
+        providers = self.providers.list_installed()
+        if not providers:
+            self._message("Accounts", "Install or load a provider from the Providers page first.", QMessageBox.Icon.Warning)
+            return
+        dialog = AddAccountDialog(providers, self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        try:
+            account = self.state.add_account(**dialog.payload())
+        except StateError as exc:
+            self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Account added: {account.provider_name}/{account.name} ({account.mode}).")
+        self.accounts_page.refresh()
+
+    # Invoice templates ------------------------------------------------
+    def new_template(self) -> None:
+        dialog = InvoiceTemplateDialog(parent=self)
+        if dialog.exec() == dialog.DialogCode.Accepted:
+            try:
+                template = self.state.save_invoice_template(**dialog.payload())
+            except StateError as exc:
+                self._message("Invoice Template", str(exc), QMessageBox.Icon.Warning)
+                return
+            self.log(f"Invoice template created: {template.name}")
+            self.invoice_page.refresh()
+
+    def edit_template(self, template_id: str) -> None:
+        template = self.state.invoice_templates.get(template_id)
+        if not template:
+            return
+        dialog = InvoiceTemplateDialog(template, self)
+        if dialog.exec() == dialog.DialogCode.Accepted:
+            try:
+                template = self.state.save_invoice_template(**dialog.payload())
+            except StateError as exc:
+                self._message("Invoice Template", str(exc), QMessageBox.Icon.Warning)
+                return
+            self.log(f"Invoice template updated: {template.name}")
+            self.invoice_page.refresh()
+
+    def delete_template(self, template_id: str) -> None:
+        template = self.state.invoice_templates.get(template_id)
+        if not template:
+            return
+        answer = QMessageBox.question(self, "Delete Template", f"Delete invoice template '{template.name}'?")
+        if answer == QMessageBox.StandardButton.Yes:
+            self.state.delete_invoice_template(template_id)
+            self.log(f"Invoice template deleted: {template.name}")
+            self.invoice_page.refresh()
+
+    # Customer lists ---------------------------------------------------
+    def new_customer_list(self) -> None:
+        dialog = NewCustomerListDialog(self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        try:
+            item = self.state.create_customer_list(dialog.list_name())
+        except StateError as exc:
+            self._message("Customer List", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Customer list created: {item.name}")
+        self.customer_page.refresh(item.id)
+
+    def import_customer_emails(self, list_id: str) -> None:
+        customer_list = self.state.customer_lists.get(list_id)
+        if not customer_list:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Upload Customer Emails",
+            "",
+            "Customer Files (*.csv *.tsv *.xlsx *.xlsm *.txt);;All Files (*)",
+        )
+        if not path:
+            return
+        try:
+            emails, warnings = import_emails(path)
+            added = self.state.add_emails(list_id, emails)
+        except (OSError, ValueError) as exc:
+            self._message("Customer List", f"Import failed: {exc}", QMessageBox.Icon.Warning)
+            return
+        self.log(f"Imported {added} email(s) into customer list '{customer_list.name}'.")
+        self.customer_page.refresh(list_id)
+        if warnings:
+            self._message("Customer List", "\n".join(warnings), QMessageBox.Icon.Warning)
+
+    def delete_customer_list(self, list_id: str) -> None:
+        item = self.state.customer_lists.get(list_id)
+        if not item:
+            return
+        answer = QMessageBox.question(self, "Delete Customer List", f"Delete customer list '{item.name}'?")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self.state.delete_customer_list(list_id)
+        except StateError as exc:
+            self._message("Customer List", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Customer list deleted: {item.name}")
+        self.customer_page.refresh()
+
+    # Tasks ------------------------------------------------------------
+    def new_task(self) -> None:
+        providers = self.providers.list_installed()
+        if not providers:
+            self._message("Task", "Install or load a provider first.", QMessageBox.Icon.Warning)
+            return
+        if not self.state.accounts:
+            self._message("Task", "Add at least one provider account first.", QMessageBox.Icon.Warning)
+            return
+        if not self.state.customer_lists:
+            self._message("Task", "Create a customer list first.", QMessageBox.Icon.Warning)
+            return
+        dialog = NewTaskDialog(self.state, providers, self)
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        try:
+            task = self.state.create_task(**dialog.payload())
+        except StateError as exc:
+            self._message("Task", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"{task.name} created with provider {task.provider_name}, {len(task.account_ids)} account(s), list '{task.customer_list_name}'.")
+        self.tasks_page.refresh()
+        self.accounts_page.refresh()
+        self.reports_page.refresh()
+
+    def _runner_for_task(self, task_id: str) -> tuple[object | None, TaskRunner | None]:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            return None, None
+        return task, self.task_runners.get(task.provider_id)
+
+    def start_task(self, task_id: str) -> None:
+        task, runner = self._runner_for_task(task_id)
+        if task is None:
+            return
+        if runner is None:
+            self.state.set_task_status(task_id, "Ready", "No task runner is registered for this provider.")
+            self.tasks_page.refresh_task(task_id)
+            self.log(f"{task.name}: start requested; no task runner registered for provider '{task.provider_id}'.")
+            self._message(
+                "Provider Unavailable",
+                "This provider cannot start because no task runner is registered. No invoice was sent.",
+                QMessageBox.Icon.Information,
+            )
+            return
+        self.worker_manager.start(task, runner)
+
+    def pause_task(self, task_id: str) -> None:
+        self.worker_manager.pause(task_id)
+
+    def resume_task(self, task_id: str) -> None:
+        self.worker_manager.resume(task_id)
+
+    def stop_task(self, task_id: str) -> None:
+        self.worker_manager.stop(task_id)
+
+    def retry_task(self, task_id: str) -> None:
+        task, runner = self._runner_for_task(task_id)
+        if task is None:
+            return
+        if runner is None:
+            self.log(f"{task.name}: retry requested; no task runner is registered for provider '{task.provider_id}'.")
+            self._message("Provider Unavailable", "Retry cannot start because no task runner is registered for this provider.")
+            return
+        self.worker_manager.start(task, runner)
+
+    def close_task(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if not task:
+            return
+        if self.worker_manager.is_running(task_id):
+            self._message("Task", "Stop the task before closing it.", QMessageBox.Icon.Warning)
+            return
+        answer = QMessageBox.question(self, "Close Task", f"Close {task.name} and release its selected accounts?")
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self.state.close_task(task_id)
+        self.log(f"{task.name} closed; reserved accounts released.")
+        self.tasks_page.refresh()
+        self.accounts_page.refresh()
+        self.reports_page.refresh()
+
+    def _worker_status(self, task_id: str, status: str, message: str) -> None:
+        if task_id in self.state.tasks:
+            self.state.set_task_status(task_id, status, message)
+            self.tasks_page.refresh_task(task_id)
+            self.reports_page.refresh()
+
+    def _worker_progress(self, task_id: str, processed: int, success: int, failed: int, message: str) -> None:
+        if task_id in self.state.tasks:
+            self.state.set_task_progress(task_id, processed=processed, success=success, failed=failed)
+            self.state.set_task_status(task_id, self.state.tasks[task_id].status, message)
+            self.tasks_page.refresh_task(task_id)
+            self.reports_page.refresh()
+
+    def _worker_finished(self, task_id: str, status: str) -> None:
+        if task_id in self.state.tasks:
+            self.state.set_task_status(task_id, status, f"Worker finished with status: {status}")
+            self.tasks_page.refresh_task(task_id)
+            self.reports_page.refresh()
+            self.log(f"{self.state.tasks[task_id].name}: worker finished with {status}.")
+
+    # Reports / logs ---------------------------------------------------
+    def export_report(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "Export Task Report", "invio_task_report.csv", "CSV (*.csv)")
+        if not path:
+            return
+        with Path(path).open("w", encoding="utf-8-sig", newline="") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["Task", "Provider", "Accounts", "Customer List", "Total", "Success", "Failed", "Remaining", "Status"])
+            for task in self.state.tasks.values():
+                writer.writerow(
+                    [
+                        task.name,
+                        task.provider_name,
+                        "; ".join(task.account_names),
+                        task.customer_list_name,
+                        task.total,
+                        task.success,
+                        task.failed,
+                        task.remaining,
+                        task.status,
+                    ]
+                )
+        self.log(f"Report exported: {Path(path).name}")
+
+    def clear_logs(self) -> None:
+        self.logs_page.clear()
+        self.log("Log view cleared.")
+
+    def export_logs(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "Export Logs", "invio_logs.txt", "Text (*.txt)")
+        if not path:
+            return
+        Path(path).write_text(self.logs_page.viewer.toPlainText(), encoding="utf-8")
+
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        active = [task_id for task_id in self.state.tasks if self.worker_manager.is_running(task_id)]
+        if active:
+            answer = QMessageBox.question(self, "Exit Invio", "Active task worker threads are running. Stop them and exit?")
+            if answer != QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
+            self.worker_manager.stop_all()
+        event.accept()

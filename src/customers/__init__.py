@@ -1,0 +1,1 @@
+"""Customer-list domain."""
