@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -31,12 +32,65 @@ from ..invoices.templates import InvoiceTemplate
 from .widgets import button, card, form_group, label
 
 
+def _apply_compact_dialog_geometry(
+    dialog: QDialog,
+    parent: QWidget | None,
+    *,
+    width_ratio: float,
+    preferred_height: int,
+    min_width: int,
+    max_width: int,
+    min_height: int,
+) -> None:
+    """Size application-owned dialogs relative to the main window.
+
+    The width remains generous for readable forms while the height is capped to
+    keep modal workflows compact. Native operating-system file dialogs are not
+    altered by this helper.
+    """
+    width = min_width
+    height = preferred_height
+    if parent is not None and parent.width() > 0 and parent.height() > 0:
+        width = max(min_width, min(max_width, int(parent.width() * width_ratio)))
+        height = max(min_height, min(preferred_height, int(parent.height() * 0.72)))
+    else:
+        width = min(max_width, max(min_width, int(max_width * 0.9)))
+        height = max(min_height, preferred_height)
+    dialog.resize(width, height)
+
+
+def compact_message_box(
+    parent: QWidget | None,
+    title: str,
+    text: str,
+    *,
+    icon: QMessageBox.Icon = QMessageBox.Icon.Information,
+    buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+    default_button: QMessageBox.StandardButton | None = None,
+) -> QMessageBox.StandardButton:
+    box = QMessageBox(parent)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setIcon(icon)
+    box.setStandardButtons(buttons)
+    if default_button is not None:
+        box.setDefaultButton(default_button)
+    width = 520
+    if parent is not None and parent.width() > 0:
+        width = max(440, min(640, int(parent.width() * 0.42)))
+    box.setMinimumWidth(width)
+    result = box.exec()
+    return QMessageBox.StandardButton(result)
+
+
 class NewCustomerListDialog(QDialog):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("New Customer List")
         self.setModal(True)
-        self.setMinimumWidth(420)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.48, preferred_height=250, min_width=480, max_width=680, min_height=230
+        )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(14, 14, 14, 14)
         layout.setSpacing(10)
@@ -63,11 +117,13 @@ class AddAccountDialog(QDialog):
         self._validated = False
         self.setWindowTitle("Add Account")
         self.setModal(True)
-        self.setMinimumWidth(520)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.64, preferred_height=450, min_width=760, max_width=920, min_height=390
+        )
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 14, 14, 14)
-        root.setSpacing(10)
+        root.setContentsMargins(14, 12, 14, 12)
+        root.setSpacing(8)
         root.addWidget(label("Add Provider Account", "PageTitle", False))
         root.addWidget(label("Only installed providers are available. Credentials are kept in memory for the current application session.", "Description"))
 
@@ -80,12 +136,25 @@ class AddAccountDialog(QDialog):
         self.account_name.setPlaceholderText("Account label")
         self.mode_combo = QComboBox()
 
-        root.addWidget(form_group("Provider", self.provider_combo))
-        root.addWidget(form_group("Account name", self.account_name))
-        root.addWidget(form_group("Mode", self.mode_combo))
+        account_fields = QWidget()
+        account_grid = QGridLayout(account_fields)
+        account_grid.setContentsMargins(0, 0, 0, 0)
+        account_grid.setHorizontalSpacing(12)
+        account_grid.setVerticalSpacing(8)
+        account_grid.addWidget(form_group("Provider", self.provider_combo), 0, 0)
+        account_grid.addWidget(form_group("Mode", self.mode_combo), 0, 1)
+        account_grid.addWidget(form_group("Account name", self.account_name), 1, 0, 1, 2)
+        account_grid.setColumnStretch(0, 1)
+        account_grid.setColumnStretch(1, 1)
+        root.addWidget(account_fields)
 
         self.credentials_card = card("Credentials", "Provider-defined credential fields")
-        self.credentials_layout = self.credentials_card.layout()
+        self.credentials_host = QWidget()
+        self.credentials_layout = QGridLayout(self.credentials_host)
+        self.credentials_layout.setContentsMargins(0, 0, 0, 0)
+        self.credentials_layout.setHorizontalSpacing(12)
+        self.credentials_layout.setVerticalSpacing(8)
+        self.credentials_card.layout().addWidget(self.credentials_host)
         root.addWidget(self.credentials_card)
 
         self.validation_label = label("API test has not been run.", "Caption")
@@ -114,8 +183,8 @@ class AddAccountDialog(QDialog):
         return next((item for item in self.providers if item.id == provider_id), None)
 
     def _clear_dynamic_widgets(self) -> None:
-        while self.credentials_layout.count() > 2:
-            item = self.credentials_layout.takeAt(2)
+        while self.credentials_layout.count():
+            item = self.credentials_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
@@ -128,14 +197,22 @@ class AddAccountDialog(QDialog):
         if provider is None:
             return
         self.mode_combo.addItems(provider.account_modes or ("Default",))
-        for field in provider.credential_fields:
+        column_count = 2 if len(provider.credential_fields) > 2 else 1
+        for index, field in enumerate(provider.credential_fields):
             edit = QLineEdit()
             edit.setPlaceholderText(field.placeholder)
             if field.kind == "password":
                 edit.setEchoMode(QLineEdit.EchoMode.Password)
             edit.textChanged.connect(lambda _text: self._reset_validation())
             self.credential_inputs[field.key] = edit
-            self.credentials_layout.addWidget(form_group(field.label, edit, "Required" if field.required else "Optional"))
+            row, column = divmod(index, column_count)
+            self.credentials_layout.addWidget(
+                form_group(field.label, edit, "Required" if field.required else "Optional"),
+                row,
+                column,
+            )
+        for column in range(column_count):
+            self.credentials_layout.setColumnStretch(column, 1)
         self._reset_validation()
 
     def _reset_validation(self) -> None:
@@ -149,14 +226,15 @@ class AddAccountDialog(QDialog):
         if not self.account_name.text().strip():
             return False, "Account name is required."
         for field in provider.credential_fields:
-            if field.required and not self.credential_inputs.get(field.key, QLineEdit()).text().strip():
+            input_widget = self.credential_inputs.get(field.key)
+            if field.required and (input_widget is None or not input_widget.text().strip()):
                 return False, f"{field.label} is required."
         return True, ""
 
     def _ui_validate_credentials(self) -> None:
         valid, message = self._required_fields_present()
         if not valid:
-            QMessageBox.warning(self, "Account", message)
+            compact_message_box(self, "Account", message, icon=QMessageBox.Icon.Warning)
             return
         self._validated = True
         self.validation_label.setText("Credential structure validated. Network verification is unavailable for this provider integration.")
@@ -164,10 +242,10 @@ class AddAccountDialog(QDialog):
     def _accept_if_valid(self) -> None:
         valid, message = self._required_fields_present()
         if not valid:
-            QMessageBox.warning(self, "Account", message)
+            compact_message_box(self, "Account", message, icon=QMessageBox.Icon.Warning)
             return
         if not self._validated:
-            QMessageBox.information(
+            compact_message_box(
                 self,
                 "API Test Pending",
                 "Run API Test first. This provider integration currently validates the required credential fields only.",
@@ -194,7 +272,9 @@ class InvoiceTemplateDialog(QDialog):
         self.template = template
         self.setWindowTitle("Invoice Template")
         self.setModal(True)
-        self.resize(760, 620)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.68, preferred_height=540, min_width=820, max_width=980, min_height=500
+        )
 
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -217,14 +297,13 @@ class InvoiceTemplateDialog(QDialog):
         form.addRow("Currency", self.currency)
         form.addRow("Days until due", self.days_due)
         meta.layout().addLayout(form)
-        root.addWidget(meta)
 
         content = card("Invoice Content")
         self.memo = QTextEdit()
-        self.memo.setMaximumHeight(72)
+        self.memo.setMaximumHeight(56)
         self.memo.setPlaceholderText("Invoice memo / description")
         self.footer = QTextEdit()
-        self.footer.setMaximumHeight(72)
+        self.footer.setMaximumHeight(56)
         self.footer.setPlaceholderText("Invoice footer")
         self.automatic_tax = QCheckBox("Enable provider automatic tax when supported")
         self.reuse_customer = QCheckBox("Reuse exact-email provider customer when supported")
@@ -238,7 +317,12 @@ class InvoiceTemplateDialog(QDialog):
         content.layout().addWidget(form_group("Footer", self.footer))
         content.layout().addWidget(self.automatic_tax)
         content.layout().addWidget(self.reuse_customer)
-        root.addWidget(content)
+        upper = QHBoxLayout()
+        upper.setContentsMargins(0, 0, 0, 0)
+        upper.setSpacing(10)
+        upper.addWidget(meta, 1)
+        upper.addWidget(content, 1)
+        root.addLayout(upper)
 
         items_card = card("Invoice Items")
         self.items = QTableWidget(0, 3)
@@ -280,10 +364,10 @@ class InvoiceTemplateDialog(QDialog):
 
     def _validate_and_accept(self) -> None:
         if not self.name_edit.text().strip():
-            QMessageBox.warning(self, "Invoice Template", "Template name is required.")
+            compact_message_box(self, "Invoice Template", "Template name is required.", icon=QMessageBox.Icon.Warning)
             return
         if self.items.rowCount() == 0:
-            QMessageBox.warning(self, "Invoice Template", "Add at least one invoice item.")
+            compact_message_box(self, "Invoice Template", "Add at least one invoice item.", icon=QMessageBox.Icon.Warning)
             return
         self.accept()
 
@@ -315,7 +399,9 @@ class NewTaskDialog(QDialog):
         self.providers = providers
         self.setWindowTitle("New Task")
         self.setModal(True)
-        self.setMinimumWidth(560)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.58, preferred_height=470, min_width=680, max_width=840, min_height=420
+        )
 
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -331,7 +417,7 @@ class NewTaskDialog(QDialog):
 
         root.addWidget(label("Accounts", "FormLabel", False))
         self.accounts = QListWidget()
-        self.accounts.setMinimumHeight(140)
+        self.accounts.setMinimumHeight(112)
         root.addWidget(self.accounts)
         root.addWidget(label("Accounts already assigned to another task are not selectable.", "Caption"))
 
@@ -377,13 +463,13 @@ class NewTaskDialog(QDialog):
 
     def _validate_and_accept(self) -> None:
         if not self.provider_combo.currentData():
-            QMessageBox.warning(self, "Task", "Install and select a provider.")
+            compact_message_box(self, "Task", "Install and select a provider.", icon=QMessageBox.Icon.Warning)
             return
         if not self.selected_account_ids():
-            QMessageBox.warning(self, "Task", "Select at least one available account.")
+            compact_message_box(self, "Task", "Select at least one available account.", icon=QMessageBox.Icon.Warning)
             return
         if not self.customer_list.currentData():
-            QMessageBox.warning(self, "Task", "Create and select a customer list.")
+            compact_message_box(self, "Task", "Create and select a customer list.", icon=QMessageBox.Icon.Warning)
             return
         self.accept()
 

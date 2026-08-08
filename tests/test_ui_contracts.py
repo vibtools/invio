@@ -82,6 +82,74 @@ class UiContractTests(unittest.TestCase):
         ):
             self.assertNotIn(marker, corpus)
 
+    def test_settings_page_exposes_only_approved_basic_controls(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        for control in (
+            "start_page",
+            "remember_window",
+            "confirm_exit_active_tasks",
+            "confirm_close_task",
+            "confirm_delete_template",
+            "confirm_delete_customer_list",
+            "confirm_clear_logs",
+            "show_log_timestamps",
+            "auto_scroll_logs",
+            "max_log_entries",
+            "default_file_folder",
+            "remember_last_folder",
+        ):
+            self.assertIn(f"self.{control}", source)
+        self.assertIn('button("Save Changes", "primary")', source)
+        self.assertIn('button("Restore Defaults")', source)
+
+    def test_settings_are_wired_to_existing_runtime_actions(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        for hook in (
+            "confirm_exit_active_tasks",
+            "confirm_close_task",
+            "confirm_delete_template",
+            "confirm_delete_customer_list",
+            "confirm_clear_logs",
+            "show_log_timestamps",
+            "auto_scroll_logs",
+            "max_log_entries",
+            "dialog_directory",
+            "record_window_state",
+        ):
+            self.assertIn(hook, source)
+
+
+    def test_provider_cards_expose_real_uninstall_action(self):
+        root = Path(__file__).resolve().parents[1]
+        page_source = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        window_source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        manager_source = (root / "src" / "core" / "provider_manager" / "manager.py").read_text(encoding="utf-8")
+        self.assertIn('button("Uninstall", "danger")', page_source)
+        self.assertIn("self.on_uninstall(pid)", page_source)
+        self.assertIn("def uninstall_provider(self, provider_id: str)", window_source)
+        self.assertIn("removed = self.providers.uninstall(provider_id)", window_source)
+        self.assertIn("def uninstall(self, provider_id: str)", manager_source)
+        self.assertIn("target.unlink()", manager_source)
+
+    def test_application_owned_modals_use_compact_geometry(self):
+        root = Path(__file__).resolve().parents[1]
+        dialog_source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        window_source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertGreaterEqual(dialog_source.count("_apply_compact_dialog_geometry("), 5)
+        self.assertIn("def compact_message_box(", dialog_source)
+        self.assertIn("compact_message_box(self, title, text, icon=icon)", window_source)
+        self.assertNotIn("QMessageBox.question(", window_source)
+
+    def test_add_account_dialog_uses_compact_two_column_provider_fields(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        self.assertIn("width_ratio=0.64", source)
+        self.assertIn("QGridLayout(self.credentials_host)", source)
+        self.assertIn("column_count = 2 if len(provider.credential_fields) > 2 else 1", source)
+        self.assertIn("row, column = divmod(index, column_count)", source)
+
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
         self.assertIn("self._slots: dict[str, _WorkerSlot]", source)

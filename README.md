@@ -8,8 +8,8 @@
 - **Invoice Templates**: reusable invoice-only templates with currency, due period, memo, footer, tax/reuse flags, and line items. No customer, billing, or shipping data is stored in a template.
 - **Customer Lists**: multiple named lists, each containing its own bulk email set. CSV, TSV, XLSX, XLSM, and TXT email import is supported.
 - **Tasks**: provider → one or more provider accounts → customer list. Reserved accounts cannot be selected by another task.
-- **Providers**: manifest-based install/load flow. A provider appears in Accounts and Tasks only after installation/loading.
-- **Reports / Live Logs / Settings**: application reporting, diagnostic, and settings surfaces.
+- **Providers**: manifest-based install/load/uninstall flow. A provider appears in Accounts and Tasks only after installation/loading; uninstall removes only its local registry manifest.
+- **Reports / Live Logs / Settings**: task reporting, masked diagnostic logs, and persistent user-friendly application preferences for startup, confirmations, log display/retention, and file-dialog locations.
 - **Threading contract**: every active task receives a distinct `QThread` slot; a registered provider runner executes through that worker layer rather than the GUI thread.
 
 ## Packaged Providers
@@ -19,11 +19,25 @@ Two provider manifests are bundled and available from the **Providers** page:
 - **Stripe**: one secret/restricted API key field with Test and Live account modes.
 - **Refrens**: API Base URL, URL Key, App ID, and App Secret fields based on the supplied Refrens Invoice Sender v1.0.3 credential contract.
 
-Installing either provider copies its validated manifest into the local provider registry. Until then it does not appear in Accounts or Tasks.
+Installing either provider copies its validated manifest into the local provider registry. **Uninstall** removes that registry manifest and returns bundled providers to the Available state without deleting the packaged provider or current in-memory account/task data. Until installed, a provider does not appear in Accounts or new Task selection.
 
 ## Vib Tools UI Baseline
 
 The desktop UI follows the official Vib Tools Step-40J design baseline. The Providers page follows the official Plugin Page card contract, and the sidebar navigation surface uses the official dark shell background across the scroll area, viewport, and navigation host.
+
+Application-owned dialogs use a compact responsive modal layout in `v1.0.0.1.2`. Add Account is wider and shorter, and providers with more than two credential fields use a two-column credential form. Native operating-system file/folder pickers are unchanged.
+
+## Application Settings
+
+Open **Settings** to control only existing application behavior. Available preferences include:
+
+- startup page, including **Last page used**;
+- optional window size/position memory;
+- confirmation prompts for active-task exit, task close, template deletion, customer-list deletion, and Live Logs clearing;
+- Live Logs timestamps, auto-scroll, and optional maximum line retention;
+- default file folder and optional last-used-folder memory for provider loading, customer import, report export, and log export.
+
+Settings are saved as non-sensitive per-user JSON configuration outside the project directory. Account/provider credentials are not written to this settings file. Default values preserve the behavior of the frozen `v1.0.0.1` baseline until changed by the user.
 
 ## Runtime Availability
 
@@ -60,7 +74,7 @@ The audit validates source syntax, unit contracts, packaged and installed provid
 - Provider manifest contract: `docs/api/provider-manifest.md`
 - Architecture: `docs/developer/architecture.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.md`
+- Release notes: `docs/release-notes/1.0.0.1.2.md`
 
 ## Private Project Material
 

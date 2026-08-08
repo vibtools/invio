@@ -15,11 +15,13 @@ class ProvidersPage(QWidget):
         self,
         manager: ProviderManager,
         on_install: Callable[[str], None],
+        on_uninstall: Callable[[str], None],
         on_load: Callable[[], None],
     ):
         super().__init__()
         self.manager = manager
         self.on_install = on_install
+        self.on_uninstall = on_uninstall
         self.on_load = on_load
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
@@ -69,9 +71,11 @@ class ProvidersPage(QWidget):
         layout.addWidget(label(f"Capabilities: {capabilities}", "Caption"))
         layout.addWidget(label(f"Credential fields: {len(provider.credential_fields)}", "Caption", False))
 
-        action = button("Installed") if installed else button("Install", "primary")
-        action.setEnabled(not installed)
-        if not installed:
+        if installed:
+            action = button("Uninstall", "danger")
+            action.clicked.connect(lambda _checked=False, pid=provider.id: self.on_uninstall(pid))
+        else:
+            action = button("Install", "primary")
             action.clicked.connect(lambda _checked=False, pid=provider.id: self.on_install(pid))
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)

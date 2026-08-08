@@ -64,6 +64,24 @@ class ProviderManagerTests(unittest.TestCase):
     def test_provider_manifest_error_is_publicly_exported(self):
         self.assertTrue(issubclass(ProviderManifestError, ValueError))
 
+    def test_installed_provider_can_be_uninstalled_without_removing_package(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = self._root(td)
+            manager = ProviderManager(root)
+            installed = manager.install_packaged("demo")
+            self.assertEqual(installed.id, "demo")
+            removed = manager.uninstall("demo")
+            self.assertEqual(removed.id, "demo")
+            self.assertEqual(manager.list_installed(), [])
+            self.assertTrue((root / "providers" / "packages" / "demo" / "provider.json").exists())
+            self.assertEqual([item.id for item in manager.list_available()], ["demo"])
+
+    def test_uninstall_rejects_provider_that_is_not_installed(self):
+        with tempfile.TemporaryDirectory() as td:
+            manager = ProviderManager(self._root(td))
+            with self.assertRaises(ProviderManifestError):
+                manager.uninstall("demo")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,8 +6,9 @@ Start with:
 
 - `getting-started/installation.md`
 - `user/usage.md`
+- `configuration/index.md`
 - `developer/architecture.md`
 - `api/provider-manifest.md`
 - `troubleshooting/index.md`
 
-Packaged provider metadata currently includes **Stripe** and **Refrens**. Install a provider from the Providers page before using it in Accounts or Tasks.
+Packaged provider metadata currently includes **Stripe** and **Refrens**. Install a provider from the Providers page before using it in Accounts or Tasks. Installed provider cards also expose **Uninstall**, which removes only the local registry manifest. Release `v1.0.0.1.2` also uses compact application-owned modal layouts.

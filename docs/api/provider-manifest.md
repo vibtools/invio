@@ -30,6 +30,7 @@ Provider manifests are validated JSON files describing provider identity, creden
 - `name` and `version` are required.
 - Credential field `kind` must be `text` or `password`.
 - A provider is selectable by Accounts and Tasks only when its validated manifest exists in `providers/registry`.
+- `ProviderManager.uninstall(provider_id)` removes only the installed registry manifest after validated lookup; it does not delete the packaged provider manifest or current in-memory domain data.
 - Provider execution is supplied separately through the existing task-runner boundary; loading a manifest alone never executes provider code.
 - `ProviderManifestError` is part of the public `src.core.provider_manager` package surface so UI code can safely catch manifest validation/install errors.
 

@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
@@ -26,10 +26,11 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.provider_manager import ProviderManager, ProviderManifestError
+from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowState
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_emails
-from .dialogs import AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog
+from .dialogs import AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
 from .pages import (
     AccountsPage,
     CustomerListsPage,
@@ -51,6 +52,8 @@ class MainWindow(QMainWindow):
     def __init__(self, project_root: Path):
         super().__init__()
         self.project_root = Path(project_root)
+        self.settings_manager = SettingsManager()
+        self.app_settings = self.settings_manager.settings
         self.state = AppState()
         self.providers = ProviderManager(self.project_root)
         self.worker_manager = WorkerManager(self)
@@ -62,13 +65,17 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Invio — Vib Tools")
         self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
         self.resize(CONST.default_window_width, CONST.default_window_height)
+        self._restore_window_geometry()
         self.setStyleSheet(app_qss())
 
         self._build_shell()
         self._build_status_bar()
         self._connect_workers()
-        self.navigate("Accounts")
-        self.log("Invio v1.0.0.1 started.")
+        self._apply_app_settings()
+        self.navigate(self.settings_manager.startup_page())
+        self.log("Invio v1.0.0.1.2 started.")
+        if self.settings_manager.load_warning:
+            self.log(self.settings_manager.load_warning)
 
     def register_task_runner(self, provider_id: str, runner: TaskRunner) -> None:
         """Backend integration point: inject a provider task runner by provider id."""
@@ -170,10 +177,10 @@ class MainWindow(QMainWindow):
             self.retry_task,
             self.close_task,
         )
-        self.providers_page = ProvidersPage(self.providers, self.install_provider, self.load_provider)
+        self.providers_page = ProvidersPage(self.providers, self.install_provider, self.uninstall_provider, self.load_provider)
         self.reports_page = ReportsPage(self.state, self.export_report)
         self.logs_page = LogsPage(self.clear_logs, self.export_logs)
-        self.settings_page = SettingsPage()
+        self.settings_page = SettingsPage(self.app_settings, self.save_app_settings)
 
         ordered = [
             ("Accounts", self.accounts_page),
@@ -193,7 +200,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1")
+        self.runtime_status = QLabel("Production • v1.0.0.1.2")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -222,6 +229,7 @@ class MainWindow(QMainWindow):
             self.providers_page.refresh()
         elif name == "Reports":
             self.reports_page.refresh()
+        self.settings_manager.record_last_page(name)
 
     def resizeEvent(self, event) -> None:  # type: ignore[override]
         width = self.width()
@@ -231,21 +239,86 @@ class MainWindow(QMainWindow):
             text = "Medium"
         else:
             text = "Large"
-        self.viewport_chip.setText(text)
+        if hasattr(self, "viewport_chip"):
+            self.viewport_chip.setText(text)
         super().resizeEvent(event)
 
+    def _restore_window_geometry(self) -> None:
+        state = self.settings_manager.window_state()
+        if state is None:
+            return
+        saved_screen = QApplication.screenAt(QPoint(state.x, state.y))
+        screen = saved_screen or QApplication.primaryScreen()
+        if screen is None:
+            return
+        available = screen.availableGeometry()
+        width = min(max(CONST.min_window_width, state.width), max(CONST.min_window_width, available.width()))
+        height = min(max(CONST.min_window_height, state.height), max(CONST.min_window_height, available.height()))
+        self.resize(width, height)
+        if saved_screen is not None:
+            max_x = max(available.left(), available.right() - width + 1)
+            max_y = max(available.top(), available.bottom() - height + 1)
+            self.move(
+                min(max(state.x, available.left()), max_x),
+                min(max(state.y, available.top()), max_y),
+            )
+
+    def _apply_app_settings(self) -> None:
+        if hasattr(self, "logs_page"):
+            self.logs_page.configure(
+                auto_scroll=self.app_settings.auto_scroll_logs,
+                max_entries=self.app_settings.max_log_entries,
+            )
+
+    def save_app_settings(self, settings: AppSettings) -> tuple[bool, str]:
+        try:
+            self.app_settings = self.settings_manager.update(settings)
+        except SettingsError as exc:
+            self._message("Settings", str(exc), QMessageBox.Icon.Warning)
+            return False, str(exc)
+        self._apply_app_settings()
+        current_index = self.stack.currentIndex() if hasattr(self, "stack") else -1
+        for page_name, page_index in self.page_indexes.items():
+            if page_index == current_index:
+                self.settings_manager.record_last_page(page_name)
+                break
+        if hasattr(self, "settings_page"):
+            self.settings_page.load_settings(self.app_settings)
+        self.log("Application settings saved.")
+        return True, "Settings saved and applied."
+
+    def _dialog_directory(self) -> str:
+        return self.settings_manager.dialog_directory()
+
+    def _save_dialog_path(self, default_name: str) -> str:
+        directory = self._dialog_directory()
+        return str(Path(directory) / default_name) if directory else default_name
+
+    def _remember_dialog_path(self, selected_path: str) -> None:
+        if selected_path:
+            self.settings_manager.record_last_folder(selected_path)
+
     def _message(self, title: str, text: str, icon: QMessageBox.Icon = QMessageBox.Icon.Information) -> None:
-        box = QMessageBox(self)
-        box.setWindowTitle(title)
-        box.setText(text)
-        box.setIcon(icon)
-        box.exec()
+        compact_message_box(self, title, text, icon=icon)
+
+    def _question(self, title: str, text: str) -> QMessageBox.StandardButton:
+        return compact_message_box(
+            self,
+            title,
+            text,
+            icon=QMessageBox.Icon.Question,
+            buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            default_button=QMessageBox.StandardButton.No,
+        )
 
     def log(self, message: str) -> None:
         safe = _KEY_MASK.sub(lambda match: f"{match.group(0)[:10]}…***MASKED***", str(message))
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        if self.app_settings.show_log_timestamps:
+            rendered = f"{datetime.now().strftime('%H:%M:%S')} | {safe}"
+        else:
+            rendered = safe
         if hasattr(self, "logs_page"):
-            self.logs_page.append(f"{timestamp} | {safe}")
+            self.logs_page.append(rendered)
 
     # Provider workflow -------------------------------------------------
     def install_provider(self, provider_id: str) -> None:
@@ -258,10 +331,31 @@ class MainWindow(QMainWindow):
         self.providers_page.refresh()
         self.accounts_page.refresh()
 
+    def uninstall_provider(self, provider_id: str) -> None:
+        provider = self.providers.get_installed(provider_id)
+        if provider is None:
+            self._message("Provider", "This provider is not installed.", QMessageBox.Icon.Warning)
+            return
+        answer = self._question(
+            "Uninstall Provider",
+            f"Uninstall {provider.name}? Existing accounts and tasks are kept in the current session, but this provider will no longer be available for new account or task selection until it is installed again.",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            removed = self.providers.uninstall(provider_id)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Provider uninstalled: {removed.name} v{removed.version}")
+        self.providers_page.refresh()
+        self.accounts_page.refresh()
+
     def load_provider(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Load Provider Manifest", "", "Provider Manifest (*.json);;JSON (*.json)")
+        path, _ = QFileDialog.getOpenFileName(self, "Load Provider Manifest", self._dialog_directory(), "Provider Manifest (*.json);;JSON (*.json)")
         if not path:
             return
+        self._remember_dialog_path(path)
         try:
             provider = self.providers.load_external(path)
         except ProviderManifestError as exc:
@@ -318,11 +412,13 @@ class MainWindow(QMainWindow):
         template = self.state.invoice_templates.get(template_id)
         if not template:
             return
-        answer = QMessageBox.question(self, "Delete Template", f"Delete invoice template '{template.name}'?")
-        if answer == QMessageBox.StandardButton.Yes:
-            self.state.delete_invoice_template(template_id)
-            self.log(f"Invoice template deleted: {template.name}")
-            self.invoice_page.refresh()
+        if self.app_settings.confirm_delete_template:
+            answer = self._question("Delete Template", f"Delete invoice template '{template.name}'?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        self.state.delete_invoice_template(template_id)
+        self.log(f"Invoice template deleted: {template.name}")
+        self.invoice_page.refresh()
 
     # Customer lists ---------------------------------------------------
     def new_customer_list(self) -> None:
@@ -344,11 +440,12 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Upload Customer Emails",
-            "",
+            self._dialog_directory(),
             "Customer Files (*.csv *.tsv *.xlsx *.xlsm *.txt);;All Files (*)",
         )
         if not path:
             return
+        self._remember_dialog_path(path)
         try:
             emails, warnings = import_emails(path)
             added = self.state.add_emails(list_id, emails)
@@ -364,9 +461,10 @@ class MainWindow(QMainWindow):
         item = self.state.customer_lists.get(list_id)
         if not item:
             return
-        answer = QMessageBox.question(self, "Delete Customer List", f"Delete customer list '{item.name}'?")
-        if answer != QMessageBox.StandardButton.Yes:
-            return
+        if self.app_settings.confirm_delete_customer_list:
+            answer = self._question("Delete Customer List", f"Delete customer list '{item.name}'?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         try:
             self.state.delete_customer_list(list_id)
         except StateError as exc:
@@ -448,9 +546,10 @@ class MainWindow(QMainWindow):
         if self.worker_manager.is_running(task_id):
             self._message("Task", "Stop the task before closing it.", QMessageBox.Icon.Warning)
             return
-        answer = QMessageBox.question(self, "Close Task", f"Close {task.name} and release its selected accounts?")
-        if answer != QMessageBox.StandardButton.Yes:
-            return
+        if self.app_settings.confirm_close_task:
+            answer = self._question("Close Task", f"Close {task.name} and release its selected accounts?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         self.state.close_task(task_id)
         self.log(f"{task.name} closed; reserved accounts released.")
         self.tasks_page.refresh()
@@ -479,9 +578,10 @@ class MainWindow(QMainWindow):
 
     # Reports / logs ---------------------------------------------------
     def export_report(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export Task Report", "invio_task_report.csv", "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, "Export Task Report", self._save_dialog_path("invio_task_report.csv"), "CSV (*.csv)")
         if not path:
             return
+        self._remember_dialog_path(path)
         with Path(path).open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(["Task", "Provider", "Accounts", "Customer List", "Total", "Success", "Failed", "Remaining", "Status"])
@@ -502,21 +602,32 @@ class MainWindow(QMainWindow):
         self.log(f"Report exported: {Path(path).name}")
 
     def clear_logs(self) -> None:
+        if self.app_settings.confirm_clear_logs:
+            answer = self._question("Clear Live Logs", "Clear all log entries currently shown?")
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         self.logs_page.clear()
         self.log("Log view cleared.")
 
     def export_logs(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export Logs", "invio_logs.txt", "Text (*.txt)")
+        path, _ = QFileDialog.getSaveFileName(self, "Export Logs", self._save_dialog_path("invio_logs.txt"), "Text (*.txt)")
         if not path:
             return
+        self._remember_dialog_path(path)
         Path(path).write_text(self.logs_page.viewer.toPlainText(), encoding="utf-8")
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         active = [task_id for task_id in self.state.tasks if self.worker_manager.is_running(task_id)]
         if active:
-            answer = QMessageBox.question(self, "Exit Invio", "Active task worker threads are running. Stop them and exit?")
-            if answer != QMessageBox.StandardButton.Yes:
-                event.ignore()
-                return
+            if self.app_settings.confirm_exit_active_tasks:
+                answer = self._question("Exit Invio", "Active task worker threads are running. Stop them and exit?")
+                if answer != QMessageBox.StandardButton.Yes:
+                    event.ignore()
+                    return
             self.worker_manager.stop_all()
+
+        geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
+        self.settings_manager.record_window_state(
+            WindowState(geometry.x(), geometry.y(), geometry.width(), geometry.height())
+        )
         event.accept()

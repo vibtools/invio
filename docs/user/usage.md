@@ -2,13 +2,13 @@
 
 ## 1. Providers
 
-Open **Providers** first. Stripe and Refrens are bundled as packaged providers and appear as `Available`. Select **Install** to place the validated manifest in the local provider registry. Only installed/loaded providers appear elsewhere in the application.
+Open **Providers** first. Stripe and Refrens are bundled as packaged providers and appear as `Available`. Select **Install** to place the validated manifest in the local provider registry. After installation, the same card exposes **Uninstall**. Uninstall removes only the registry manifest; bundled provider files and current in-memory account/task data are kept. Only installed/loaded providers appear in Accounts and new Task selection.
 
-The provider cards follow the official Vib Tools Plugin Page visual contract: compact dark cards, version/category-style chip, availability status, provider title/description, capability information, credential-field count, and the existing Install state/action.
+The provider cards follow the official Vib Tools Plugin Page visual contract: compact dark cards, version/category-style chip, availability status, provider title/description, capability information, credential-field count, and the Install/Uninstall state and action.
 
 ## 2. Accounts
 
-Open **Accounts** and choose **Add Account**. Select an installed provider, enter an account label, provider mode, and the provider-defined credential fields.
+Open **Accounts** and choose **Add Account**. The compact dialog is wider and shorter than the previous layout. Select an installed provider, enter an account label, provider mode, and the provider-defined credential fields. Providers with more than two credential fields automatically use a two-column credential form.
 
 For Stripe, enter the Stripe secret/restricted API key. For Refrens, enter API Base URL, URL Key, App ID, and App Secret.
 
@@ -39,3 +39,21 @@ Task cards include Start, Pause, Resume, Stop, Retry Failed, Close Task, status,
 ## 6. Reports and Logs
 
 Reports summarize current task state and can be exported to CSV. Live Logs contain application/task messages and mask Stripe-style secret-key patterns.
+
+
+## 7. Settings
+
+Open **Settings** to control existing Invio application behavior without editing configuration files. The page is divided into Startup & Window, Confirmations, Live Logs, and File Locations.
+
+- Choose a fixed start page or **Last page used**.
+- Optionally remember the window size and position.
+- Turn individual confirmation prompts on or off for active-task exit, closing tasks, deleting invoice templates, deleting customer lists, and clearing Live Logs.
+- Choose whether Live Logs show timestamps, follow new entries automatically, and retain an unlimited or limited number of lines.
+- Choose a default file folder and optionally remember the last folder used by provider loading, customer import, report export, and log export dialogs.
+
+Select **Save Changes** to validate, persist, and apply the settings. **Restore Defaults** loads the behavior-compatible default values into the page; select **Save Changes** to persist them. Settings are stored locally for the current operating-system user. Account credentials are never written to the application settings file.
+
+
+## 8. Compact dialogs
+
+Application-owned custom dialogs and Invio message/confirmation boxes use compact sizing relative to the main window. The Invoice Template dialog uses a two-column upper section and the New Task dialog uses a shorter account-list area. Native operating-system file/folder picker windows keep their platform behavior.

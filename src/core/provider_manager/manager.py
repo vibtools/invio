@@ -131,3 +131,14 @@ class ProviderManager:
         target = self.registry_dir / f"{manifest.id}.json"
         shutil.copyfile(source, target)
         return self._parse_manifest(target)
+
+    def uninstall(self, provider_id: str) -> ProviderManifest:
+        manifest = self.get_installed(provider_id)
+        if manifest is None:
+            raise ProviderManifestError(f"Provider '{provider_id}' is not installed.")
+        target = self.registry_dir / f"{manifest.id}.json"
+        try:
+            target.unlink()
+        except OSError as exc:
+            raise ProviderManifestError(f"Could not uninstall provider '{manifest.name}'.") from exc
+        return manifest

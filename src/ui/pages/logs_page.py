@@ -11,6 +11,7 @@ from ..widgets import button, card, page_header
 class LogsPage(QWidget):
     def __init__(self, on_clear: Callable[[], None], on_export: Callable[[], None]):
         super().__init__()
+        self._auto_scroll = True
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -32,8 +33,18 @@ class LogsPage(QWidget):
         host.layout().addWidget(self.viewer)
         root.addWidget(host, 1)
 
+    def configure(self, *, auto_scroll: bool, max_entries: int) -> None:
+        self._auto_scroll = bool(auto_scroll)
+        self.viewer.document().setMaximumBlockCount(max(0, int(max_entries)))
+
     def append(self, message: str) -> None:
+        scroll_bar = self.viewer.verticalScrollBar()
+        previous_value = scroll_bar.value()
         self.viewer.appendPlainText(message)
+        if self._auto_scroll:
+            scroll_bar.setValue(scroll_bar.maximum())
+        else:
+            scroll_bar.setValue(min(previous_value, scroll_bar.maximum()))
 
     def clear(self) -> None:
         self.viewer.clear()

@@ -1,6 +1,6 @@
 # Provider Guide
 
-Packaged provider manifests live under `providers/packages/<provider>/provider.json`. Installing a provider copies its validated manifest into the local registry. Loading an external provider performs the same manifest validation before registration.
+Packaged provider manifests live under `providers/packages/<provider>/provider.json`. Installing a provider copies its validated manifest into the local registry. Loading an external provider performs the same manifest validation before registration. Installed provider cards expose **Uninstall**, which removes that provider manifest from the local registry.
 
 ## Bundled providers
 
@@ -29,4 +29,4 @@ The current provider integrations validate required credential structure. Networ
 
 ## Visibility rule
 
-A packaged provider may be listed as **Available** on the Providers page, but it is not selectable in Accounts or Tasks until the user installs it. Installed manifests live under `providers/registry/`.
+A packaged provider may be listed as **Available** on the Providers page, but it is not selectable in Accounts or Tasks until the user installs it. Installed manifests live under `providers/registry/`. Uninstalling a bundled provider does not remove its package under `providers/packages/`, so it returns to the **Available** state and can be installed again. Existing in-memory accounts/tasks are not deleted by provider uninstall.
