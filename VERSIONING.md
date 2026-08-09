@@ -78,3 +78,7 @@ P09 CI/repository-contract verification correction. Runtime behavior is unchange
 ## v1.0.0.1.27 P10
 
 Completes P10 Persistent Delivery Ledger, Idempotency and Recovery. SQLite advances from schema v4 to v5 with exactly three durable ledger tables. Every execution invocation gets a distinct `run_id`, but existing provider idempotency remains based on `Task.id`. Durable write-ahead operation records, attempts, account binding, provider references and sanitized error evidence make supported Stripe continuation restart-safe and observable. P05-P09 behavior, one-task-one-QThread, dependencies, provider manifests, Refrens P11 gate, Agiled fail-close and UI architecture remain unchanged.
+
+## v1.0.0.1.28 P10 Verification Correction
+
+Verification-only P10 correctness release. Schema stays v5 and the three-table delivery-ledger contract is unchanged. Durable uncertainty now remains until the exact mutating stage + non-empty idempotency identity is later proven successful; successful reconciliation removes only that matched ambiguity. Production phase count remains 10/14.

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.27**.
+Current version: **v1.0.0.1.28**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.27.md` - current P10 release.
+- `release-notes/1.0.0.1.28.md` - current P10 verification-correction release.
+- `release-notes/1.0.0.1.27.md` - original P10 completion release.
 - `release-notes/1.0.0.1.26.md` - P09 CI verification correction.
 - `release-notes/1.0.0.1.25.md` - P09 production release.
 - `release-notes/1.0.0.1.24.md` - P08 verification-correction release.
@@ -74,3 +75,7 @@ The P09 runtime remains unchanged. This verification correction fixes the public
 ## v1.0.0.1.27 current baseline
 
 P10 advances SQLite to schema v5 and adds durable execution runs, per-run recipient outcomes, and provider-operation evidence. Supported Stripe Task operations are write-ahead recorded before transport, interrupted mutating operations recover as `Uncertain`, and restart-safe Resume Remaining / Retry Failed now use the durable ledger. P09 account binding, P08 retry/idempotency, the existing page inventory, Refrens P11 gate and Agiled fail-close remain unchanged.
+
+## v1.0.0.1.28 current baseline
+
+P10 remains complete and schema remains v5. This verification correction ensures unresolved mutating ambiguity survives across attempts/runs until exact same-stage/same-idempotency successful evidence reconciles it. Production progress remains **10/14**; P11 remains the next separately approval-gated phase.

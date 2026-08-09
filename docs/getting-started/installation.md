@@ -56,3 +56,7 @@ A normal source installation continues to include the packaged Agiled manifest i
 ## v1.0.0.1.27 schema-v5 upgrade
 
 `v1.0.0.1.27` advances operational storage from schema v4 to schema v5. Keep the existing `domain.sqlite3`, protected credentials, Settings and provider registry in place. Invio uses the same WAL-aware pre-migration backup and transactional migration path, then adds exactly three delivery-ledger tables. Existing Task snapshots and domain rows are preserved; pre-P10 non-pristine Tasks do not receive fabricated historical delivery records.
+
+## v1.0.0.1.28 compatibility note
+
+No schema migration is added after `v1.0.0.1.27`; operational storage remains schema v5. Apply the release normally over `v1.0.0.1.27`. Existing P10 ledger rows are reinterpreted using the corrected uncertainty-reconciliation rules; no ledger data is fabricated or rewritten during installation.

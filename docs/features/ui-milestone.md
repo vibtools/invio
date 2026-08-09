@@ -2,7 +2,7 @@
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Current pages in `v1.0.0.1.27` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings. P08 and its v1.0.0.1.24 verification correction add no page or layout change.
+Current pages in `v1.0.0.1.28` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings. P08 and its v1.0.0.1.24 verification correction add no page or layout change.
 
 Release history relevant to the current UI:
 
@@ -54,3 +54,7 @@ P09 adds no page, dialog, layout, control or visual redesign. Scheduling/health 
 ## v1.0.0.1.27 P10 UI boundary
 
 P10 adds no page, sidebar item, Settings control, report surface or design-token change. Existing Task controls use the durable delivery summary after restart so Resume Remaining / Retry Failed can be available when exact P10 evidence permits it. Existing Live Logs/status messaging may describe durable recovery or Uncertain outcomes; page inventory and layout remain unchanged.
+
+## v1.0.0.1.28 P10 verification UI boundary
+
+No page, widget, layout, navigation or Settings change is introduced. Existing Tasks/Live Logs status behavior consumes the corrected durable P10 summary only.

@@ -115,3 +115,7 @@ No user workflow changes from `v1.0.0.1.25`. P09 account pacing, cooldown, deter
 ## v1.0.0.1.27 P10 restart-safe delivery history
 
 Each supported Stripe Task execution now creates a durable execution Run ID separate from the Task ID. The Task ID still identifies the logical provider operation and remains the basis for existing Stripe idempotency keys. Invio records each selected recipient, primary/actual account, operation stage, attempt, provider IDs when available, timestamps and sanitized errors. If the application stops between a mutating provider request and its confirmed local outcome, the recipient is shown internally as `Uncertain` rather than guessed. Existing Tasks/Live Logs expose the resulting safe Resume Remaining or Retry Failed action; no new UI page was added.
+
+## v1.0.0.1.28 P10 uncertainty correction
+
+After restart or a retry/resume, Invio keeps a recipient `Uncertain` when an earlier mutating provider operation still lacks exact reconciliation evidence. A later successful operation resolves that ambiguity only when it uses the same stage and the same persisted non-empty idempotency key. An unrelated later failure does not make the prior ambiguity disappear. Use the existing Resume Remaining flow; no new page or action is added.

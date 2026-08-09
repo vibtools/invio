@@ -1,6 +1,6 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.27**.
+Current frozen implementation baseline: **Invio v1.0.0.1.28**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -23,7 +23,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 7. **P07 - Task State Machine and Resend Safety [COMPLETE in v1.0.0.1.19; verification-corrected in v1.0.0.1.20]**: deterministic First Run/Resume Remaining/Retry Failed semantics, centralized transitions, stop counter reconciliation, and current-session successful-recipient resend protection with fail-closed restart continuation.
 8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23; verification-corrected in v1.0.0.1.24]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
 9. **P09 - Multi-Account Scheduling, Limits and Health [COMPLETE in v1.0.0.1.25; CI verification-corrected in v1.0.0.1.26]**: deterministic primary assignment, provider-safe per-account request pacing, runtime-only health/cooldown, and eligible pre-attempt failover without cross-account replay.
-10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
+10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27; verification-corrected in v1.0.0.1.28]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
 11. **P11 - Refrens End-to-End Task Enablement**: enable normal Refrens bulk Task execution using explicit required customer data.
 12. **P12 - Reports, Logs, Privacy and Operational Observability**: recipient-level reconciliation, generalized secret redaction, safe export/retention.
 13. **P13 - Executable External Provider Adapter Contract**: make future loaded providers accurately represent executable capability; architecture approval required before implementation.
@@ -61,3 +61,7 @@ The exact `v1.0.0.1.25` P09 runtime release was re-audited after GitHub Actions 
 ## P10 Completion - v1.0.0.1.27
 
 P10 is complete. SQLite schema v5 adds exactly three durable delivery-ledger tables for runs, per-run recipients and provider operations. `run_id` is an audit/execution invocation identity while `Task.id` remains the canonical logical Stripe idempotency identity. Stripe Task requests are write-ahead recorded before transport; durable outcomes, exact attempted-account binding, attempts, idempotency evidence and provider IDs support restart reconciliation. Interrupted mutating operations are classified `Uncertain`, and Resume Remaining / Retry Failed now derive from durable records. Historical ledger rows survive Close Task. Production progress is 10/14; P11 is now the next separately approval-gated phase.
+
+## P10 Verification Correction - v1.0.0.1.28
+
+The exact `v1.0.0.1.27` P10 release was re-audited. `v1.0.0.1.28` fixes durable ambiguity reconciliation only: an earlier mutating `Started`/`Uncertain` operation remains unresolved until a later successful operation proves the same stage with the exact same non-empty idempotency key; unrelated later failures cannot overwrite that uncertainty. Historical frozen primary-account and assigned-account consistency is also validated fail-closed. Schema remains v5 with exactly three P10 tables, P10 remains complete, production progress remains 10/14, and P11 remains the next separately approval-gated phase.

@@ -230,6 +230,41 @@ class DomainStore:
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     @staticmethod
+    def _has_unresolved_mutating_uncertainty(
+        connection: sqlite3.Connection,
+        *,
+        task_id: str,
+        recipient_ordinal: int,
+    ) -> bool:
+        """Return whether durable history still contains an unresolved mutating ambiguity.
+
+        A later successful operation only reconciles an earlier Started/Uncertain
+        mutation when it has the exact same stage and non-empty idempotency key.
+        Deterministic failures do not erase prior ambiguity.
+        """
+        rows = connection.execute(
+            """SELECT r.run_number, o.attempt_number, o.stage, o.status, o.idempotency_key
+               FROM task_delivery_operations AS o
+               JOIN task_delivery_runs AS r ON r.run_id=o.run_id
+               WHERE r.task_id=? AND o.recipient_ordinal=?
+               ORDER BY r.run_number, o.attempt_number, o.rowid""",
+            (task_id, recipient_ordinal),
+        ).fetchall()
+        unresolved: set[tuple[str, str]] = set()
+        for row in rows:
+            stage = str(row["stage"])
+            if not is_mutating_delivery_stage(stage):
+                continue
+            status = str(row["status"])
+            idempotency_key = str(row["idempotency_key"])
+            identity = (stage, idempotency_key)
+            if status in {DELIVERY_OPERATION_STARTED, DELIVERY_OPERATION_UNCERTAIN}:
+                unresolved.add(identity)
+            elif status == DELIVERY_OPERATION_SUCCEEDED and idempotency_key:
+                unresolved.discard(identity)
+        return bool(unresolved)
+
+    @staticmethod
     def _delivery_summary_from_connection(
         connection: sqlite3.Connection,
         task: Task,
@@ -260,6 +295,8 @@ class DomainStore:
                 remaining=task.remaining,
             )
 
+        expected = tuple(customer.email for customer in snapshot.customers)
+        known_accounts = set(snapshot.account_ids)
         rows = connection.execute(
             """SELECT r.run_number, d.*
                FROM task_delivery_recipients AS d
@@ -269,17 +306,33 @@ class DomainStore:
             (task.id,),
         ).fetchall()
         latest: dict[int, sqlite3.Row] = {}
+        historical_bindings: dict[int, set[str]] = {}
+        history_safe = True
         for row in rows:
-            latest[int(row["recipient_ordinal"])] = row
+            ordinal = int(row["recipient_ordinal"])
+            latest[ordinal] = row
+            if ordinal < 0 or ordinal >= len(expected):
+                history_safe = False
+                continue
+            if str(row["recipient_email"]) != expected[ordinal] or str(row["provider_id"]) != task.provider_id:
+                history_safe = False
+            expected_primary = snapshot.account_ids[ordinal % len(snapshot.account_ids)]
+            if str(row["primary_account_id"]) != expected_primary:
+                history_safe = False
+            assigned = str(row["assigned_account_id"])
+            if assigned:
+                historical_bindings.setdefault(ordinal, set()).add(assigned)
+                if assigned not in known_accounts:
+                    history_safe = False
+        if any(len(values) > 1 for values in historical_bindings.values()):
+            history_safe = False
 
-        expected = tuple(customer.email for customer in snapshot.customers)
-        known_accounts = set(snapshot.account_ids)
         succeeded: list[str] = []
         failed: list[str] = []
         pending: list[str] = []
         uncertain: list[str] = []
         bindings: list[tuple[str, str]] = []
-        safe = len(latest) == len(expected)
+        safe = history_safe and len(latest) == len(expected)
 
         for ordinal, email in enumerate(expected):
             row = latest.get(ordinal)
@@ -314,6 +367,13 @@ class DomainStore:
                     for operation in operation_rows
                 ):
                     result = DELIVERY_RESULT_UNCERTAIN
+
+            if result != DELIVERY_RESULT_SUCCEEDED and DomainStore._has_unresolved_mutating_uncertainty(
+                connection,
+                task_id=task.id,
+                recipient_ordinal=ordinal,
+            ):
+                result = DELIVERY_RESULT_UNCERTAIN
 
             if result == DELIVERY_RESULT_SUCCEEDED:
                 succeeded.append(email)
@@ -820,12 +880,17 @@ class DomainStore:
     def recipient_has_uncertain_mutation(self, *, run_id: str, recipient_ordinal: int) -> bool:
         try:
             with self._connection() as connection:
-                rows = connection.execute(
-                    """SELECT stage FROM task_delivery_operations
-                       WHERE run_id=? AND recipient_ordinal=? AND status=?""",
-                    (run_id, recipient_ordinal, DELIVERY_OPERATION_UNCERTAIN),
-                ).fetchall()
-                return any(is_mutating_delivery_stage(str(row["stage"])) for row in rows)
+                run = connection.execute(
+                    "SELECT task_id FROM task_delivery_runs WHERE run_id=?",
+                    (run_id,),
+                ).fetchone()
+                if run is None:
+                    raise sqlite3.IntegrityError("Delivery run row is missing.")
+                return self._has_unresolved_mutating_uncertainty(
+                    connection,
+                    task_id=str(run["task_id"]),
+                    recipient_ordinal=recipient_ordinal,
+                )
         except sqlite3.Error as exc:
             raise DomainStoreError(f"Delivery uncertainty state could not be read safely: {exc}") from exc
 

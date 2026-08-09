@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.27`  
+**Baseline:** `v1.0.0.1.28`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -394,3 +394,7 @@ The correction does not change runtime exception handling. Repository contracts 
 P10 resolves the process-memory-only continuation gap for supported Stripe Tasks. Every Task provider request requires a committed `Started` operation row before transport. If that write fails, no request is sent. If provider execution occurs but the corresponding durable result cannot be committed, execution stops before another recipient/request; the prior `Started` evidence remains so restart recovery can classify a mutating outcome as `Uncertain` rather than guessing.
 
 At startup, unfinished `Running` ledger runs become `Interrupted`; unresolved mutating operations become `Uncertain`, while read-only lookup uncertainty remains unresolved `Pending`. Latest durable recipient outcomes drive Task counter repair and continuation. Aggregate counters that claim outcomes unsupported by ledger evidence fail closed as inconsistent storage. Durable error records contain sanitized class/code/message only and never persist API keys, Authorization headers or provider credential payloads. P12 still owns generalized log/export/retention privacy and P14 owns live provider reconciliation/certification.
+
+## 9. P10 uncertainty reconciliation correction - v1.0.0.1.28
+
+`Started`/`Uncertain` mutating operations are no longer treated as permanently ambiguous when later durable evidence proves successful execution of the exact same stage with the same non-empty idempotency key. Conversely, a later deterministic failure at a different stage/key cannot erase an earlier unresolved mutating ambiguity. Durable continuation therefore stays fail-closed until ambiguity is genuinely reconciled. This changes no P08 retry classification or Stripe request behavior.

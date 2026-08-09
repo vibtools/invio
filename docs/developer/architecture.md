@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.27` is the P10 Persistent Delivery Ledger, Idempotency and Recovery baseline on the verified P09 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.28` is the P10 verification-corrected Persistent Delivery Ledger, Idempotency and Recovery baseline on the verified P09 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -217,3 +217,7 @@ No runtime architecture changes. The repository privacy boundary is explicit: `/
 P10 adds `src/tasks/delivery_ledger.py` and advances the existing `DomainStore` schema from v4 to v5 with exactly three tables: `task_delivery_runs`, `task_delivery_recipients`, and `task_delivery_operations`. The tables intentionally retain historical delivery evidence after a live Task is closed. A unique `run_id` identifies each First Run / Resume Remaining / Retry Failed invocation, while `Task.id` remains the canonical logical Stripe idempotency identity.
 
 For supported Stripe Task traffic the flow is `ProviderRuntime -> durable Started operation transaction -> existing transport -> durable operation result -> durable recipient result`. The write-ahead commit is required before transport. Provider customer/invoice IDs, exact assigned account, P08 attempt number, existing deterministic idempotency key, timestamps and sanitized errors are persisted. On startup `DomainStore` marks unfinished runs `Interrupted`, classifies unresolved mutating operations `Uncertain`, derives latest recipient outcomes and reconciles Task aggregate counters. ProviderRuntime reads that durable summary for restart-safe Resume Remaining / Retry Failed and hydrates only a runtime cache from it. WorkerManager remains one Task = one QThread; P09 scheduling and provider business flow are unchanged.
+
+## 24. P10 durable uncertainty reconciliation - v1.0.0.1.28
+
+The schema-v5 architecture is unchanged. `DomainStore` now reconstructs uncertainty across the full Task delivery history rather than trusting only the newest per-run recipient result. Mutating ambiguity is keyed by `(stage, idempotency_key)`; only later `Succeeded` evidence for the same non-empty identity resolves it. Historical primary/assigned Account consistency is validated across runs. ProviderRuntime continues to consume the same durable summary interface, so no WorkerManager, Task-state or UI architecture changes are introduced.

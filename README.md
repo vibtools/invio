@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.27`** completes **P10 - Persistent Delivery Ledger, Idempotency and Recovery** on the verified `v1.0.0.1.26` baseline. Production progress is now **10/14**; P11 is next only after separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.28`** verification-corrects the completed **P10 - Persistent Delivery Ledger, Idempotency and Recovery** implementation from `v1.0.0.1.27`. Production progress remains **10/14**; P11 is next only after separate approval.
 
 ## Current Application Scope
 
@@ -251,3 +251,7 @@ GitHub Actions exposed a repository-contract test that directly opened files und
 P10 keeps `Task.id` as the canonical logical provider/idempotency identity and adds a separate durable execution `run_id` for every First Run, Resume Remaining and Retry Failed invocation. Supported Stripe Task operations are write-ahead recorded before transport with recipient, primary/actual account, stage, P08 attempt number, existing deterministic idempotency key and timestamps. Provider customer/invoice IDs and sanitized failure evidence are persisted when available.
 
 On restart, unfinished runs are marked interrupted and any unresolved mutating operation is classified `Uncertain`. The latest durable recipient outcomes become the authoritative source for continuation and aggregate Task reconciliation. A recipient that previously entered provider execution retains its exact P09 account binding across restart; genuinely unattempted recipients may still use the existing deterministic P09 failover policy. Historical ledger rows survive Close Task. P12 still owns recipient-level report/export/retention UX.
+
+## v1.0.0.1.28 P10 Verification Correction
+
+The exact `v1.0.0.1.27` P10 baseline was re-audited against the approved durable-ledger plan. The audit reproduced a historical uncertainty-reconciliation defect: a mutating operation recorded `Uncertain` could remain incorrectly unresolved after a later successful replay of the exact same stage and non-empty deterministic idempotency key, while an unresolved uncertainty from an earlier run could also be hidden by a later unrelated deterministic failure. `v1.0.0.1.28` corrects only that P10 ledger-reconciliation boundary. A later matching successful operation now resolves the prior ambiguity; unrelated failures cannot erase unresolved mutating uncertainty. Historical recipient/account/primary-assignment consistency is also validated fail-closed. SQLite remains schema v5 with the same three P10 tables, production progress remains **10/14**, and P11 remains unimplemented.

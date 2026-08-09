@@ -90,3 +90,7 @@ P08 preserves the existing Python 3.12, PySide6 6.7-<7, `urllib`, keyring and op
 ## v1.0.0.1.27 P10 Compatibility
 
 SQLite advances from schema v4 to schema v5 through the existing backup/transaction migration path; all pre-existing domain and P05 snapshot tables remain. P10 adds exactly three non-secret delivery-ledger tables and no dependency/provider manifest/UI page change. `Task.id`, P05 snapshot format, P07 actions/status names, P08 retry count and P09 scheduling/account-failover rules remain compatible. Pre-P10 non-pristine Tasks are preserved without fabricated ledger history and continue fail-closed where exact continuation cannot be proven.
+
+## v1.0.0.1.28 P10 Verification Compatibility
+
+No storage schema, table, provider API, dependency, page, Task action/status, WorkerManager or Stripe business-flow compatibility boundary changes from `v1.0.0.1.27`. Existing schema-v5 databases remain directly compatible. The correction only tightens how existing P10 operation history is interpreted: exact matching successful stage/idempotency evidence resolves ambiguity, while unmatched historical mutating ambiguity remains fail-closed/observable.

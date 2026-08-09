@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.28 - P10 Verification Correction
+
+- Re-audits the exact `v1.0.0.1.27` P10 durable-ledger implementation.
+- Corrects stale uncertainty classification after a later successful replay of the same mutating stage with the exact same non-empty idempotency key.
+- Preserves unresolved mutating uncertainty across later runs until that exact stage/idempotency identity is successfully reconciled; unrelated deterministic failures can no longer hide it.
+- Adds fail-closed historical recipient/provider/primary-account/assigned-account consistency checks to durable summary reconstruction.
+- SQLite remains schema v5 with exactly three P10 audit tables; no WorkerManager, Task-state, provider manifest, dependency, UI-page, Stripe business-flow, Refrens, Agiled or P11+ behavior change.
+- Production progress remains **10/14**; P11 remains next and separately approval-gated.
+
 ## v1.0.0.1.27 - P10 Persistent Delivery Ledger, Idempotency and Recovery
 
 - Advances operational SQLite storage from schema v4 to schema v5 using the existing transactional pre-migration backup path and adds exactly three durable delivery-ledger tables: runs, per-run recipients and provider operations.

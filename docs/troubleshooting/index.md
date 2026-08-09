@@ -109,3 +109,7 @@ This was a `v1.0.0.1.25` repository-contract test defect, not a missing runtime 
 ## A restarted P10 Task shows Uncertain recipients
 
 `Uncertain` means Invio had durable write-ahead evidence that a side-effecting provider operation started, but the previous process ended before a definitive local success/failure record was committed. Invio does not relabel that outcome as Failed or Succeeded. Resume Remaining uses the same Task-derived Stripe idempotency identity and exact previously assigned account when durable evidence makes replay safe; otherwise the action fails closed. Do not create a duplicate full Task merely to bypass an Uncertain state without reviewing the existing Task/Live Logs.
+
+## P10 recipient remains Uncertain after a later failure - v1.0.0.1.28+
+
+This is intentional when an earlier side-effecting provider operation still has no matching successful reconciliation record. A later failure at another stage does not prove what happened to that earlier request. Invio keeps the recipient unresolved and exposes Resume Remaining rather than incorrectly classifying it as definitively Failed. If the same stage and non-empty idempotency key later succeeds, that specific ambiguity is reconciled.

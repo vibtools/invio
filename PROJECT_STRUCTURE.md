@@ -129,3 +129,7 @@ No runtime folder/module/page structure is added, removed, renamed, or reorganiz
 ## v1.0.0.1.27 P10 Structure Note
 
 P10 adds one focused runtime model module, `src/tasks/delivery_ledger.py`, inside the existing Task package. `DomainStore`, `ProviderRuntime` and MainWindow are extended in place; SQLite schema v5 adds exactly three delivery-ledger tables. No top-level folder, UI page, WorkerManager subsystem, provider package or dependency is added or renamed.
+
+## v1.0.0.1.28 P10 Verification-Correction Structure Note
+
+No folder/module/page/schema/dependency structure is added, removed, renamed or reorganized. The P10 correction remains inside the existing `DomainStore` durable-summary/reconciliation boundary plus tests and release/documentation records. `src/tasks/delivery_ledger.py`, the three schema-v5 P10 tables, WorkerManager and UI page inventory are unchanged.

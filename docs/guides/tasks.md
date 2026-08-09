@@ -99,3 +99,7 @@ A Stopped/Failed Task can also have a safe exact continuation set with zero reci
 ## P10 durable execution history
 
 Every supported Stripe worker invocation has a durable Run ID separate from `Task.id`. Provider operation `Started` evidence is committed before transport; attempts, stages, actual assigned account, existing Task-derived Stripe idempotency key, provider IDs and sanitized errors are recorded. If the previous process ended during a side-effecting operation, restart records the outcome as `Uncertain` rather than guessing. Historical delivery rows survive Close Task, but P12—not P10—owns recipient-level report/export/retention UX.
+
+## P10 uncertainty reconciliation - v1.0.0.1.28
+
+Durable Task continuation considers the complete recipient operation history. An ambiguous mutating operation stays unresolved across runs unless later durable evidence shows `Succeeded` for the same stage and same non-empty idempotency key. This prevents a later unrelated failure from hiding duplicate-creation/send uncertainty while allowing genuine same-key reconciliation to clear stale ambiguity.

@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.27`  
+**Baseline:** `Invio v1.0.0.1.28`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -235,3 +235,7 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 **UNCHANGED:** one Task = one QThread, P05 immutable snapshot contract, P06 preflight, P07 action/state names, P08 three-attempt retry/idempotency rules, P09 rate/health/failover policy, Stripe business request sequence, Refrens P11 gate, Agiled fail-close, provider manifests, dependencies and page inventory.
 
 **Production progress:** 10/14. P11 is next and remains separately approval-gated.
+
+## P10 verification correction - v1.0.0.1.28
+
+P10 remains COMPLETE. Durable summary reconstruction now distinguishes **resolved** versus **unresolved** historical mutating ambiguity. A successful later operation clears an earlier ambiguity only when stage and non-empty idempotency key match exactly. Unrelated later failures cannot downgrade an unresolved historical ambiguity to a definitive Failed result. Historical recipient/provider/primary-account/assigned-account drift fails closed. Schema remains v5; production progress remains 10/14 and P11 remains unimplemented.

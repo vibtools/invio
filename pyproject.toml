@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "invio"
-version = "1.0.0.1.27"
+version = "1.0.0.1.28"
 description = "Vib Tools desktop application for provider-based invoice automation workflows."
 readme = "README.md"
 requires-python = ">=3.12"

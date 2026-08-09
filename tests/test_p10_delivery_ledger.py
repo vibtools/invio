@@ -20,8 +20,11 @@ from src.core.storage.schema import (
     SCHEMA_V1,
 )
 from src.tasks.delivery_ledger import (
+    DELIVERY_OPERATION_FAILED,
     DELIVERY_OPERATION_STARTED,
+    DELIVERY_OPERATION_SUCCEEDED,
     DELIVERY_OPERATION_UNCERTAIN,
+    DELIVERY_RESULT_FAILED,
     DELIVERY_RESULT_PENDING,
     DELIVERY_RESULT_UNCERTAIN,
     DELIVERY_RUN_INTERRUPTED,
@@ -442,6 +445,171 @@ class P10DeliveryLedgerTests(unittest.TestCase):
             connection.commit()
         with self.assertRaisesRegex(DomainStoreCorruptionError, "ahead of its durable delivery evidence"):
             self.store.load(self.credentials)
+
+    def test_later_same_key_success_reconciles_prior_uncertainty_before_definitive_failure(self):
+        _state, task, accounts = self.task_state(["a@example.com"])
+        run = self.store.begin_delivery_run(
+            task,
+            execution_mode=TaskExecutionMode.FIRST_RUN.value,
+            recipients=("a@example.com",),
+        )
+        invoice_key = f"invio:{task.id}:digest:invoice"
+        self.store.begin_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="invoice_create",
+            account_id=accounts[0].id,
+            account_name=accounts[0].name,
+            idempotency_key=invoice_key,
+        )
+        self.store.finish_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="invoice_create",
+            status=DELIVERY_OPERATION_UNCERTAIN,
+            error_class="ProviderRuntimeError",
+            error_code="network",
+            error_message="ambiguous response",
+        )
+        self.store.begin_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=2,
+            stage="invoice_create",
+            account_id=accounts[0].id,
+            account_name=accounts[0].name,
+            idempotency_key=invoice_key,
+        )
+        self.store.finish_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=2,
+            stage="invoice_create",
+            status=DELIVERY_OPERATION_SUCCEEDED,
+            provider_reference="in_1",
+        )
+        self.store.begin_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=2,
+            stage="invoice_send",
+            account_id=accounts[0].id,
+            account_name=accounts[0].name,
+            idempotency_key=f"invio:{task.id}:digest:send",
+        )
+        self.store.finish_delivery_operation(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            attempt_number=2,
+            stage="invoice_send",
+            status=DELIVERY_OPERATION_FAILED,
+            error_class="ProviderRuntimeError",
+            error_code="HTTP_422",
+            error_message="deterministic rejection",
+        )
+        self.store.finish_delivery_recipient(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            final_result=DELIVERY_RESULT_FAILED,
+            stage="invoice_send",
+            attempt_number=2,
+            error_class="ProviderRuntimeError",
+            error_code="HTTP_422",
+            error_message="deterministic rejection",
+        )
+        self.store.finish_delivery_run(run.run_id, status="Failed")
+
+        summary = self.store.delivery_summary(task)
+        self.assertEqual(summary.failed_recipients, ("a@example.com",))
+        self.assertEqual(summary.uncertain_recipients, ())
+        self.assertFalse(
+            self.store.recipient_has_uncertain_mutation(run_id=run.run_id, recipient_ordinal=0)
+        )
+
+    def test_unresolved_prior_run_uncertainty_survives_later_unrelated_failure(self):
+        _state, task, accounts = self.task_state(["a@example.com"])
+        invoice_key = f"invio:{task.id}:digest:invoice"
+        first = self.store.begin_delivery_run(
+            task,
+            execution_mode=TaskExecutionMode.FIRST_RUN.value,
+            recipients=("a@example.com",),
+        )
+        self.store.begin_delivery_operation(
+            run_id=first.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="invoice_create",
+            account_id=accounts[0].id,
+            account_name=accounts[0].name,
+            idempotency_key=invoice_key,
+        )
+        self.store.finish_delivery_operation(
+            run_id=first.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="invoice_create",
+            status=DELIVERY_OPERATION_UNCERTAIN,
+            error_class="ProviderRuntimeError",
+            error_code="network",
+            error_message="ambiguous response",
+        )
+        self.store.finish_delivery_recipient(
+            run_id=first.run_id,
+            recipient_ordinal=0,
+            final_result=DELIVERY_RESULT_UNCERTAIN,
+            stage="invoice_create",
+            attempt_number=1,
+            error_class="ProviderRuntimeError",
+            error_code="network",
+            error_message="ambiguous response",
+        )
+        self.store.finish_delivery_run(first.run_id, status="Failed")
+
+        second = self.store.begin_delivery_run(
+            task,
+            execution_mode=TaskExecutionMode.RESUME_REMAINING.value,
+            recipients=("a@example.com",),
+        )
+        customer_key = f"invio:{task.id}:digest:customer"
+        self.store.begin_delivery_operation(
+            run_id=second.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="customer_create",
+            account_id=accounts[0].id,
+            account_name=accounts[0].name,
+            idempotency_key=customer_key,
+        )
+        self.store.finish_delivery_operation(
+            run_id=second.run_id,
+            recipient_ordinal=0,
+            attempt_number=1,
+            stage="customer_create",
+            status=DELIVERY_OPERATION_FAILED,
+            error_class="ProviderRuntimeError",
+            error_code="HTTP_422",
+            error_message="deterministic rejection",
+        )
+        self.store.finish_delivery_recipient(
+            run_id=second.run_id,
+            recipient_ordinal=0,
+            final_result=DELIVERY_RESULT_FAILED,
+            stage="customer_create",
+            attempt_number=1,
+            error_class="ProviderRuntimeError",
+            error_code="HTTP_422",
+            error_message="deterministic rejection",
+        )
+        self.store.finish_delivery_run(second.run_id, status="Failed")
+
+        summary = self.store.delivery_summary(task)
+        self.assertEqual(summary.failed_recipients, ())
+        self.assertEqual(summary.uncertain_recipients, ("a@example.com",))
+        self.assertTrue(
+            self.store.recipient_has_uncertain_mutation(run_id=second.run_id, recipient_ordinal=0)
+        )
 
     def test_close_task_retains_historical_delivery_ledger(self):
         state, task, _accounts = self.task_state(["a@example.com"])
