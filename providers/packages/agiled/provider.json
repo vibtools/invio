@@ -1,0 +1,23 @@
+{
+  "id": "agiled",
+  "name": "Agiled",
+  "version": "1.0.0",
+  "description": "Agiled provider package with API-key credential entry and fail-closed runtime binding until the current official Agiled invoice API contract is revalidated.",
+  "credential_fields": [
+    {
+      "key": "api_key",
+      "label": "API Key",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Agiled API key"
+    }
+  ],
+  "account_modes": [
+    "Default"
+  ],
+  "capabilities": [
+    "invoice",
+    "send_invoice",
+    "api_test"
+  ]
+}

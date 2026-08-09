@@ -1,12 +1,12 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.20**.
+Current version: **v1.0.0.1.22**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
 **Provider -> Verified Account(s) -> Invoice Template -> Customer List -> Task -> Provider Runtime -> Reports/Live Logs**
 
-P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials. P04 adds backward-compatible customer records and structured import. v1.0.0.1.14 preserves the Windows-safe migration backup path. P05 makes Task execution inputs durable/immutable and v1.0.0.1.16 hardens those invariants. v1.0.0.1.17 added P06 provider capability/preflight validation; v1.0.0.1.18 verification-corrected its contracts; v1.0.0.1.19 adds P07 deterministic Task state/resend safety; v1.0.0.1.20 verification-corrects its worker-terminal/control integration without changing the P07 model.
+P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials. P04 adds backward-compatible customer records and structured import. v1.0.0.1.14 preserves the Windows-safe migration backup path. P05 makes Task execution inputs durable/immutable and v1.0.0.1.16 hardens those invariants. v1.0.0.1.17 added P06 provider capability/preflight validation; v1.0.0.1.18 verification-corrected its contracts; v1.0.0.1.19 adds P07 deterministic Task state/resend safety; v1.0.0.1.20 verification-corrects its worker-terminal/control integration; v1.0.0.1.21 adds the approved pre-P08 internal packaged-provider adapter registry and a fail-closed Agiled package without advancing the P07/P08 roadmap boundary; v1.0.0.1.22 forensic-verifies that exception without changing runtime behavior.
 
 Use these documents:
 
@@ -20,7 +20,7 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.20.md` - current release.
+- `release-notes/1.0.0.1.22.md` - current release.
 - `release-notes/1.0.0.1.15.md` - original P05 implementation.
 - `release-notes/1.0.0.1.14.md` - Windows storage hotfix.
 - `release-notes/1.0.0.1.12.md` - original P04 feature release.
@@ -39,3 +39,11 @@ P07 makes Start/Resume/Retry recipient selection deterministic. First Run is lim
 ## v1.0.0.1.20 P07 verification note
 
 P07's send-set rules are unchanged. The correction makes late worker terminal signals deterministic against accepted Pause/Stop state, disables stale Pause/Resume/Stop controls when the Task thread has already ended, and reports a proven empty continuation set as empty rather than unavailable.
+
+## v1.0.0.1.21 Provider Adapter / Agiled Boundary
+
+Packaged provider runtime contracts now resolve through one internal registry. Agiled is installable as a packaged provider but remains non-executable until its current official API contract is revalidated. See the provider guide, API manifest guide and v1.0.0.1.22 release notes. P08 remains next.
+
+## v1.0.0.1.22 current baseline
+
+`v1.0.0.1.22` is the current verification-corrected pre-P08 provider-adapter baseline. Production progress remains 7/14, Agiled remains fail-closed pending authoritative API convergence, and P08 remains the next separately approval-gated production phase.

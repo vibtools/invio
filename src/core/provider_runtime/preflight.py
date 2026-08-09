@@ -10,27 +10,14 @@ from ...accounts.models import Account
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCY_SET
 from ...tasks.models import TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
-from ..provider_manager import CredentialField, ProviderManifest
+from ..provider_manager import ProviderManifest
+from .adapters import (
+    ProviderCapabilityProfile,
+    provider_capability_profile,
+    provider_runtime_manifest_contract,
+)
 
 CANONICAL_REFRENS_BASE_URL = "https://api.refrens.com"
-
-
-@dataclass(frozen=True, slots=True)
-class ProviderCapabilityProfile:
-    provider_id: str
-    executable_capabilities: frozenset[str]
-    task_execution_enabled: bool
-    task_unavailable_message: str
-    invoice_types: frozenset[str]
-    currencies: frozenset[str] | None
-    supports_automatic_tax: bool
-    supports_line_tax: bool
-    supports_customer_reuse: bool
-    supports_memo: bool
-    supports_footer: bool
-    supports_customer_note: bool
-    supports_terms: bool
-    required_customer_fields: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,79 +51,8 @@ class PreflightResult:
         return issue.display_message if issue is not None else "Preflight passed."
 
 
-_STRIPE_PROFILE = ProviderCapabilityProfile(
-    provider_id="stripe",
-    executable_capabilities=frozenset({"invoice", "send_invoice", "api_test"}),
-    task_execution_enabled=True,
-    task_unavailable_message="",
-    invoice_types=frozenset({"INVOICE"}),
-    currencies=frozenset(SUPPORTED_INVOICE_CURRENCY_SET),
-    supports_automatic_tax=False,
-    supports_line_tax=False,
-    supports_customer_reuse=True,
-    supports_memo=True,
-    supports_footer=True,
-    supports_customer_note=True,
-    supports_terms=True,
-    required_customer_fields=("email",),
-)
-
-_REFRENS_PROFILE = ProviderCapabilityProfile(
-    provider_id="refrens",
-    # The built-in Refrens API-test adapter is executable today. The normal
-    # Task invoice/send pipeline remains deliberately disabled until P11.
-    executable_capabilities=frozenset({"api_test"}),
-    task_execution_enabled=False,
-    task_unavailable_message=(
-        "Refrens production Task sending is not enabled until P11. No invoice request was made."
-    ),
-    invoice_types=frozenset({"INVOICE", "BOS"}),
-    currencies=frozenset(SUPPORTED_INVOICE_CURRENCY_SET),
-    supports_automatic_tax=False,
-    supports_line_tax=True,
-    supports_customer_reuse=False,
-    supports_memo=True,
-    supports_footer=True,
-    supports_customer_note=True,
-    supports_terms=True,
-    required_customer_fields=("email", "name", "country"),
-)
-
-_BUILTIN_PROFILES = {
-    _STRIPE_PROFILE.provider_id: _STRIPE_PROFILE,
-    _REFRENS_PROFILE.provider_id: _REFRENS_PROFILE,
-}
-
-
-_BUILTIN_MANIFEST_RUNTIME_CONTRACTS = {
-    "stripe": ProviderManifest(
-        id="stripe",
-        name="Stripe",
-        version="runtime",
-        description="Built-in Stripe runtime contract.",
-        credential_fields=(CredentialField("secret_key", "Secret key", "password", True),),
-        account_modes=("Test", "Live"),
-        capabilities=("invoice", "send_invoice", "api_test"),
-    ),
-    "refrens": ProviderManifest(
-        id="refrens",
-        name="Refrens",
-        version="runtime",
-        description="Built-in Refrens runtime contract.",
-        credential_fields=(
-            CredentialField("base_url", "API Base URL", "text", True),
-            CredentialField("url_key", "URL Key", "text", True),
-            CredentialField("app_id", "App ID", "text", True),
-            CredentialField("app_secret", "App Secret", "password", True),
-        ),
-        account_modes=("Default",),
-        capabilities=("invoice", "send_invoice", "api_test"),
-    ),
-}
-
-
 def capability_profile(provider_id: str) -> ProviderCapabilityProfile | None:
-    return _BUILTIN_PROFILES.get(provider_id.strip().lower())
+    return provider_capability_profile(provider_id)
 
 
 def executable_capabilities(provider_id: str) -> tuple[str, ...]:
@@ -170,14 +86,14 @@ def manifest_runtime_contract_matches(installed: ProviderManifest, packaged: Pro
 
     Display-only name/version/description fields intentionally do not affect the
     executable runtime binding. For built-in provider IDs, both the packaged file
-    and the installed registry copy must match the hard-coded executable contract;
+    and the installed registry copy must match the registered executable contract;
     this prevents a modified packaged manifest from becoming its own false source
     of truth. Credential order remains part of the deterministic entry contract.
     """
 
     if not _manifest_execution_contract_matches(installed, packaged):
         return False
-    runtime_contract = _BUILTIN_MANIFEST_RUNTIME_CONTRACTS.get(installed.id)
+    runtime_contract = provider_runtime_manifest_contract(installed.id)
     if runtime_contract is None:
         return True
     return (

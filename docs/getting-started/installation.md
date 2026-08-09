@@ -44,3 +44,11 @@ Tasks created before P05 are preserved but marked `LegacyUnavailable`; their his
 ## v1.0.0.1.17 upgrade note
 
 P06 does not change Python, PySide6, openpyxl, keyring, or SQLite storage requirements. Apply the replace-ready delta over the exact v1.0.0.1.16 baseline. Existing packaged provider manifests remain unchanged; external manifests may no longer use the reserved packaged IDs `stripe` or `refrens`.
+
+## Agiled Package Availability
+
+A normal `v1.0.0.1.21` installation includes `providers/packages/agiled/provider.json`. Install it through the existing Providers workflow if you need the provider represented in Invio. Installation alone does not enable Agiled API execution; current API Test/Task execution remains fail-closed pending contract revalidation.
+
+## v1.0.0.1.22 Provider Verification
+
+A normal source installation continues to include the packaged Agiled manifest introduced in `v1.0.0.1.21`. `v1.0.0.1.22` verifies the package install/uninstall round trip without enabling network execution. No installation dependency or platform requirement changes.

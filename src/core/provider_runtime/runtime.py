@@ -19,6 +19,7 @@ from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIE
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..state import AppState
+from .adapters import provider_adapter_contract
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
 
@@ -225,30 +226,43 @@ class ProviderRuntime:
 
     @staticmethod
     def supports_api_test(provider_id: str) -> bool:
-        """Return whether Invio has an executable built-in API-test adapter."""
-        return provider_id.strip().lower() in {"stripe", "refrens"}
+        """Return whether the registered provider adapter exposes a verified API-test handler."""
+        adapter = provider_adapter_contract(provider_id)
+        return bool(adapter is not None and adapter.supports_api_test)
 
     def test_account(self, provider_id: str, credentials: dict[str, str], *, mode: str = "") -> str:
-        provider_id = provider_id.strip().lower()
-        if provider_id == "stripe":
-            key = credentials.get("secret_key", "").strip()
-            self._validate_stripe_key(key)
-            if mode.strip():
-                self._validate_stripe_mode_value(mode, key)
-            self._stripe_request("GET", "/customers", key, query={"limit": 1})
-            self._stripe_request("GET", "/invoices", key, query={"limit": 1})
-            return "Stripe API connection verified."
-        if provider_id == "refrens":
-            token, base_url, url_key = self._refrens_auth(credentials)
-            self._refrens_request(
-                "GET",
-                base_url,
-                f"/businesses/{url_key}/invoices",
-                token=token,
-                query={"$limit": 1, "$skip": 0, "$sort[createdAt]": -1},
+        adapter = provider_adapter_contract(provider_id)
+        if adapter is None or not adapter.supports_api_test or adapter.api_test_handler is None:
+            if adapter is not None and adapter.api_test_unavailable_message:
+                raise ProviderRuntimeError(adapter.api_test_unavailable_message)
+            raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
+        handler = getattr(self, adapter.api_test_handler, None)
+        if not callable(handler):
+            raise ProviderRuntimeError(
+                f"The registered API-test handler for provider '{adapter.provider_id}' is unavailable."
             )
-            return "Refrens API connection verified."
-        raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
+        return handler(credentials, mode=mode)
+
+    def _test_stripe_account(self, credentials: dict[str, str], *, mode: str = "") -> str:
+        key = credentials.get("secret_key", "").strip()
+        self._validate_stripe_key(key)
+        if mode.strip():
+            self._validate_stripe_mode_value(mode, key)
+        self._stripe_request("GET", "/customers", key, query={"limit": 1})
+        self._stripe_request("GET", "/invoices", key, query={"limit": 1})
+        return "Stripe API connection verified."
+
+    def _test_refrens_account(self, credentials: dict[str, str], *, mode: str = "") -> str:
+        del mode
+        token, base_url, url_key = self._refrens_auth(credentials)
+        self._refrens_request(
+            "GET",
+            base_url,
+            f"/businesses/{url_key}/invoices",
+            token=token,
+            query={"$limit": 1, "$skip": 0, "$sort[createdAt]": -1},
+        )
+        return "Refrens API connection verified."
 
     def delivery_summary(self, task: Task) -> TaskDeliverySummary | None:
         execution = task.execution_snapshot
@@ -313,16 +327,17 @@ class ProviderRuntime:
         if retry_failed and resume_remaining:
             raise ProviderRuntimeError("Retry Failed and Resume Remaining cannot be requested together.")
         snapshot = self._snapshot(task, state)
-        if snapshot.provider_id == "refrens":
-            # P04 stores explicit provider-neutral customer name/country data, but
-            # the approved Refrens production Task runner remains a later P11
-            # phase. Keep this fail-closed gate until that pipeline is approved.
-            raise ProviderRuntimeError(
-                "Refrens customer name/country data can be stored explicitly, but the Refrens production Task runner "
-                "is not enabled until the approved P11 pipeline is implemented. No Refrens invoice was created or sent."
-            )
-        if snapshot.provider_id != "stripe":
+        adapter = provider_adapter_contract(snapshot.provider_id)
+        if adapter is None:
             raise ProviderRuntimeError("No built-in task runner is available for this provider.")
+        if not adapter.supports_task_execution or adapter.task_batch_handler is None:
+            message = adapter.task_unavailable_message or adapter.profile.task_unavailable_message
+            raise ProviderRuntimeError(message or "No built-in task runner is available for this provider.")
+        batch_handler = getattr(self, adapter.task_batch_handler, None)
+        if not callable(batch_handler):
+            raise ProviderRuntimeError(
+                f"The registered Task handler for provider '{adapter.provider_id}' is unavailable."
+            )
 
         runtime_preflight = preflight_runtime_inputs(
             provider_id=snapshot.provider_id,
@@ -385,7 +400,7 @@ class ProviderRuntime:
                 )
                 mode = TaskExecutionMode.FIRST_RUN
 
-        return lambda context: self._run_stripe_batch(context, snapshot, recipients, execution_mode=mode)
+        return lambda context: batch_handler(context, snapshot, recipients, execution_mode=mode)
 
     @staticmethod
     def _snapshot(task: Task, state: AppState) -> TaskSnapshot:
@@ -651,7 +666,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.20 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.22 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -694,7 +709,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.20 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.22 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

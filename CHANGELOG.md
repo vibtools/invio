@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0.0.1.22 - Pre-P08 Provider Adapter Forensic Verification
+
+- Re-audits the exact `v1.0.0.1.21` Provider Adapter Foundation + Agiled release against its approved scope and `v1.0.0.1.20` parent baseline.
+- Confirms no functional defect, fake/demo execution path, scope regression, Stripe/Refrens behavior change, P08/P09+ behavior, Refrens P11 enablement, schema migration, dependency change, or WorkerManager change was introduced by `v1.0.0.1.21`.
+- Adds missing verification gates for packaged Agiled install/uninstall, registered executable handler resolution, and generic UI manifest/API-test gating.
+- Revalidates the current Agiled public contract conflict and preserves the no-network fail-closed Agiled behavior; no API key is transmitted and no Agiled invoice request is attempted.
+- Updates release metadata/documentation to `v1.0.0.1.22`; provider/invoice runtime behavior is otherwise unchanged.
+- Production progress remains **7/14** and **P08 - Worker and Network Reliability** remains next.
+
+## v1.0.0.1.21 - Pre-P08 Provider Adapter Foundation + Agiled
+
+- Introduces `src/core/provider_runtime/adapters.py` as the internal packaged-provider runtime contract registry.
+- Routes executable capability lookup, packaged manifest/runtime reconciliation, API Test dispatch and Task batch dispatch through the registry without changing existing Stripe network behavior.
+- Preserves Refrens API Test and its P11 production Task gate.
+- Adds the packaged `agiled` provider manifest with a protected `API Key` credential field.
+- Registers Agiled as fail-closed with zero executable capabilities because the current authoritative base URL/authentication/invoice-send contract could not be reconciled from the accessible official Agiled materials. No Agiled API key is transmitted and no invoice request is attempted.
+- Adds adapter/Agiled contract regression tests; current suite is 237/237 PASS before final packaging.
+- Keeps SQLite schema v4, P05 immutable snapshots, P06 preflight, P07 state/resend semantics, WorkerManager, UI workflow and dependencies unchanged.
+- Does not implement P08/P09+, enable Refrens P11, or complete the dynamic external-provider architecture planned for P13.
+
 ## v1.0.0.1.20 - P07 Forensic Verification and Resend-Safety Correction
 
 - Re-audited the exact shipped `v1.0.0.1.19` P07 implementation against its approved state-machine/resend plan.

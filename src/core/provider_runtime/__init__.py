@@ -1,8 +1,15 @@
+from .adapters import (
+    ProviderAdapterContract,
+    ProviderCapabilityProfile,
+    provider_adapter_contract,
+    provider_capability_profile,
+    provider_runtime_manifest_contract,
+    registered_provider_ids,
+)
 from .preflight import (
     CANONICAL_REFRENS_BASE_URL,
     PreflightIssue,
     PreflightResult,
-    ProviderCapabilityProfile,
     canonical_refrens_base_url,
     capability_profile,
     effective_capabilities,
@@ -20,6 +27,7 @@ __all__ = [
     "CustomerSnapshot",
     "PreflightIssue",
     "PreflightResult",
+    "ProviderAdapterContract",
     "ProviderCapabilityProfile",
     "ProviderRuntime",
     "ProviderRuntimeError",
@@ -32,5 +40,9 @@ __all__ = [
     "manifest_runtime_contract_matches",
     "preflight_candidate",
     "preflight_runtime_inputs",
+    "provider_adapter_contract",
+    "provider_capability_profile",
+    "provider_runtime_manifest_contract",
+    "registered_provider_ids",
     "preflight_task",
 ]

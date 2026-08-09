@@ -1,6 +1,6 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.20**.
+Current frozen implementation baseline: **Invio v1.0.0.1.22**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -30,3 +30,11 @@ Roadmap entries are planning records, not implementation approval. Every product
 14. **P14 - Live Integration, Recovery, Packaging and Production Certification**: real provider/environment tests and final production gate.
 
 Detailed dependency graph and acceptance criteria remain in `project/planning/PRODUCTION_ROADMAP.md`.
+
+## Pre-P08 Provider Adapter Exception - v1.0.0.1.21
+
+Owner explicitly approved an exception before P08 to remove duplicated packaged-provider runtime dispatch and add an Agiled package. The release establishes an **internal packaged-provider adapter registry only**. It does not advance the 7/14 production phase count and does not complete P13 dynamic external-provider loading. Agiled remains fail-closed pending authoritative API contract convergence. P08 remains the next production phase.
+
+## Pre-P08 Provider Adapter Verification - v1.0.0.1.22
+
+The exact `v1.0.0.1.21` exception release was re-audited and no provider/API/invoice/UI behavior defect was found. `v1.0.0.1.22` adds verification coverage and synchronized release records only; P13 remains pending and Agiled remains non-executable until an authoritative current API contract is available. Production phase count remains 7/14 and P08 remains next.

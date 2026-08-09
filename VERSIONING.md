@@ -47,3 +47,11 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 - Requires an active existing Task worker for Pause/Resume/Stop controls and backend actions.
 - Makes safe-empty Stopped/Failed continuation messaging distinct from restart/uncertain continuation unavailability.
 - Keeps SQLite schema v4, P05 immutable snapshots, P06 preflight, WorkerManager architecture, provider manifests/send semantics, dependencies and P08+ scope unchanged.
+
+## v1.0.0.1.21
+
+Pre-P08 provider-adapter foundation and packaged Agiled provider. This owner-approved exception centralizes packaged runtime bindings without advancing the production phase count. Agiled is intentionally fail-closed pending authoritative API contract revalidation; P08 remains next.
+
+## v1.0.0.1.22
+
+Pre-P08 provider-adapter forensic verification release. It preserves the `v1.0.0.1.21` runtime behavior, adds targeted Agiled/adapter integration regression gates, revalidates the Agiled fail-closed contract boundary, synchronizes release records, and keeps P08 as the next separately approved production phase.

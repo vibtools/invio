@@ -2,7 +2,7 @@
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Current pages in `v1.0.0.1.20` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
+Current pages in `v1.0.0.1.22` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
 
 Release history relevant to the current UI:
 
@@ -40,3 +40,7 @@ No new page or button inventory is introduced. The existing Task card is state-d
 ## v1.0.0.1.20 P07 control-state correction
 
 No page, button inventory, token, style or layout changes. Existing Pause/Resume/Stop controls additionally depend on an active Task worker, and safe-empty continuation tooltips/messages now say that no recipients remain rather than describing the set as unavailable.
+
+## v1.0.0.1.22 UI verification
+
+No UI/UX layout or workflow change is introduced. Source-contract verification confirms the Providers page remains manifest-driven, runtime capability display remains effective-capability based, and Add Account continues to gate persistence/Task readiness on an executable API-test adapter.

@@ -82,3 +82,11 @@ A Stop does not turn the next action into a full resend. Invio retains current-s
 Pause, Resume and Stop are now actionable only while the Task's worker thread is actually active. This prevents a stale button click after a worker has already finished. If a Stop/Pause is accepted at the same time a completion signal is arriving, the Task safely settles as **Stopped** under the existing P07 state rules.
 
 If a safe Stopped Task has no failed or pending recipients left, **Resume Remaining** stays disabled and Invio explains that no unresolved recipients remain. This is different from restart recovery, where exact identities are unavailable and continuation intentionally fails closed.
+
+## Agiled in v1.0.0.1.21
+
+Agiled appears as a packaged provider and can be installed. Its Account dialog accepts the protected `API Key` field, but **API Test is intentionally unavailable** and the account cannot become Task-ready while the current Agiled API contract remains unresolved. Invio does not transmit the API key to an unverified endpoint and does not attempt an Agiled invoice create/send request in this release. Stripe and Refrens behavior is unchanged.
+
+## Agiled verification in v1.0.0.1.22
+
+The user-facing behavior is unchanged from `v1.0.0.1.21`: install Agiled through Providers to expose its manifest-driven Account form, but API Test remains unavailable and the account cannot become Task-ready. No API key or invoice request is transmitted. This release verifies that the UI remains generic and does not contain an Agiled-specific execution bypass.

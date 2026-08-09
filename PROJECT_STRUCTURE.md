@@ -13,14 +13,14 @@
 │   ├── research/             Forensic/readiness/implementation records
 │   └── specifications/       Baseline/scope freeze records
 ├── providers/
-│   ├── packages/             Bundled Stripe/Refrens provider manifests
+│   ├── packages/             Bundled Stripe/Refrens/Agiled provider manifests
 │   └── registry/             Locally installed provider manifests (Git ignored)
 ├── scripts/test/             Repository audit entrypoint
 ├── src/
 │   ├── accounts/             Provider-account models
 │   ├── core/
 │   │   ├── provider_manager/ Provider manifest validation/install/load/uninstall
-│   │   ├── provider_runtime/ Built-in provider adapters plus P06 capability/preflight contracts
+│   │   ├── provider_runtime/ Internal packaged-provider adapter registry, API runtime and P06 preflight contracts
 │   │   ├── settings/         Persistent non-sensitive preferences
 │   │   ├── state/            Domain invariants plus P02 persistence coordination
 │   │   ├── storage/          SQLite domain store + protected credential store
@@ -29,7 +29,7 @@
 │   ├── invoices/templates/   Invoice template/currency models
 │   ├── tasks/                Task model including immutable execution snapshots
 │   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
-├── tests/                    Unit/contract tests, including P01-P06 provider/storage/snapshot/preflight regressions
+├── tests/                    Unit/contract tests, including provider-adapter, P01-P07 storage/snapshot/preflight/state regressions
 ├── main.py
 ├── requirements.txt
 └── pyproject.toml
@@ -98,3 +98,11 @@ P07 adds `src/tasks/state_machine.py` inside the existing Task package. No top-l
 ## v1.0.0.1.20 P07 verification note
 
 No folder, page, database table, worker subsystem or provider adapter is added. The correction stays inside the existing P07 `src/tasks/state_machine.py` and `MainWindow` integration surfaces plus regression tests/release documentation. WorkerManager itself and SQLite schema v4 remain unchanged.
+
+## v1.0.0.1.21 Provider Adapter Foundation
+
+`src/core/provider_runtime/adapters.py` is the only new runtime module. It registers packaged execution contracts for Stripe, Refrens and Agiled. `ProviderManager` remains in its existing module and remains manifest-only. `providers/packages/agiled/provider.json` is the only new provider package. No folder/module is renamed or reorganized.
+
+## v1.0.0.1.22 Verification Structure Note
+
+No application folder/module architecture is added, removed, renamed, or reorganized. The existing `src/core/provider_runtime/adapters.py` and `providers/packages/agiled/provider.json` from `v1.0.0.1.21` are retained unchanged. This release adds only verification/release records and test coverage plus version markers.

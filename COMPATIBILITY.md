@@ -57,3 +57,18 @@ No Python/platform/dependency/SQLite-schema/provider-manifest/WorkerManager/P05-
 - A late `Completed` signal that races with an accepted Pause/Stop is resolved to existing `Stopped`, not to a new status or an expanded transition.
 - Safe empty continuation sets remain valid current-session knowledge but expose no send action because there are no unresolved recipients.
 - No SQLite migration, provider contract, dependency, P08 network-reliability behavior or P10 durable recipient ledger is introduced.
+
+## v1.0.0.1.21 Provider Compatibility
+
+- Stripe: existing API Test and invoice create/finalize/send runtime preserved.
+- Refrens: existing API Test preserved; normal Task sending remains blocked until P11.
+- Agiled: package/credential entry supported, but API Test and Task execution intentionally unavailable until the current base URL, authentication and invoice-send contract are authoritative.
+- Existing externally loaded manifest + injected-runner compatibility is preserved. No arbitrary external Python adapter loading is introduced.
+- SQLite schema remains v4; dependencies and supported Python/Qt ranges are unchanged.
+
+## v1.0.0.1.22 Provider Verification Compatibility
+
+- No provider credential schema, packaged provider ID, API request payload, invoice-send sequence, WorkerManager interface, SQLite schema, dependency, page inventory, Task state, or external injected-runner API changes are introduced.
+- Stripe and Refrens runtime behavior remains the same as `v1.0.0.1.21` except for the release User-Agent marker.
+- Agiled remains package/install compatible but non-executable; API Test and Task execution still fail before network transport.
+- The release adds verification tests and documentation only beyond required version markers.

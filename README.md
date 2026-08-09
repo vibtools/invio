@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.20`** is the forensic verification/correction release for **P07 - Task State Machine and Resend Safety**, based on the exact verified `v1.0.0.1.19` P07 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.22`** is the forensic verification release for the approved pre-P08 provider-adapter/Agiled exception introduced in `v1.0.0.1.21`. The provider runtime behavior remains unchanged, production phase progress remains 7/14, and P08 is still next.
 
 ## Current Application Scope
 
@@ -9,7 +9,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. Built-in packaged runtime binding is now resolved through one internal adapter registry. Stripe remains executable, Refrens Task sending remains P11-gated, and packaged Agiled remains fail-closed until its current official API contract is authoritative. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; provider network sending remains outside the GUI thread.
 
@@ -141,7 +141,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.20.md`
+- Release notes: `docs/release-notes/1.0.0.1.22.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.20` is the verification-corrected P07 baseline. Production progress remains **7/14 phases complete**. The next separately approved phase is **P08 - Worker and Network Reliability**.
+`v1.0.0.1.22` is the current verification-corrected pre-P08 provider-adapter baseline. Production progress remains **7/14 phases complete** because this verification release does not complete a roadmap production phase. The next separately approved phase is still **P08 - Worker and Network Reliability**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -165,7 +165,7 @@ Before a new Task is persisted, and again before Start or Retry creates a runner
 
 For packaged providers, declared manifest capabilities are now distinguished from executable runtime capability. Stripe currently has executable API Test + invoice/send support. Refrens has executable API Test support, but its normal Task invoice/send pipeline remains deliberately disabled until P11. External loaded manifests still require the existing injected runner API; P06 does not introduce the P13 external-adapter architecture.
 
-Packaged IDs (`stripe`, `refrens`) are reserved against external-manifest collision. An already-installed packaged-ID manifest whose execution-relevant credential/mode/capability contract does not match the bundled package fails closed and is never silently rewritten.
+Packaged IDs (`stripe`, `refrens`, `agiled`) are reserved against external-manifest collision. An already-installed packaged-ID manifest whose execution-relevant credential/mode/capability contract does not match the bundled package fails closed and is never silently rewritten.
 
 The current Stripe adapter is preflighted as standard `INVOICE` only. Automatic Tax and non-zero template line tax are blocked before network execution because the current Invio customer/send contract does not supply the location/tax-rate object semantics needed to guarantee those behaviors. Customer reuse and the existing description/footer/customer-note/terms mappings remain supported.
 
@@ -200,3 +200,15 @@ The exact shipped `v1.0.0.1.19` P07 implementation was re-audited without advanc
 - a safe current-session continuation that is proven to be empty is distinguished from an unavailable continuation set, so the UI reports that nothing remains instead of falsely claiming recipient identities were lost.
 
 No recipient ledger, automatic network retry/backoff, new Task status, database migration, provider-send change or P08 behavior is introduced.
+
+## v1.0.0.1.21 Pre-P08 Provider Adapter Foundation and Agiled Package
+
+The packaged-provider runtime contract now has one internal `ProviderAdapterContract` registry for execution-relevant manifest truth, capability profiles, API-test handler binding and Task batch handler binding. `ProviderManager` remains manifest-only and existing external-manifest loading remains metadata-only unless the historical injected runner API is used. This release does not implement the dynamic external provider loading architecture planned for P13.
+
+Stripe API Test and invoice create/finalize/send continue through the same existing runtime functions. Refrens API Test remains executable and its normal Task path remains deliberately blocked until P11. Agiled is now bundled as a packaged provider with a protected `API Key` field, but its executable capabilities are intentionally empty: the accessible current Agiled product page and its linked API reference disagree on authentication/base-URL semantics, the owner-supplied candidate base URL was not independently verified, and an authoritative current invoice-send operation was not established. Agiled API Test and Task execution therefore fail before network transport, so the key is not sent to a guessed endpoint.
+
+See `project/research/AGILED_API_CONTRACT_REVALIDATION_v1.0.0.1.21.md` for the exact evidence gate.
+
+## v1.0.0.1.22 Provider Adapter Verification Correction
+
+`v1.0.0.1.22` re-audits the exact shipped `v1.0.0.1.21` provider-adapter/Agiled implementation. No functional provider, invoice-send, UI, WorkerManager, storage, or Task-state defect was found in the approved scope. The release adds explicit regression coverage for packaged Agiled install/uninstall, executable handler binding integrity, and the generic manifest-driven UI/API-test gate, and revalidates that Agiled remains fail-closed before transport while the official Agiled materials still conflict on the executable API contract. Runtime changes are limited to release-version/User-Agent markers.

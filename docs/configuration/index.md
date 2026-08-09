@@ -52,3 +52,11 @@ Refrens `API Base URL` remains an Account credential field, but P06 restricts ex
 ## v1.0.0.1.18 Refrens endpoint rule
 
 The trusted Refrens API Base URL is exactly `https://api.refrens.com` (optional trailing slash only). Explicit ports, including `:443`, are rejected before App ID/App Secret transport.
+
+## Agiled Credential Configuration
+
+The packaged Agiled manifest defines one required `API Key` password field and `Default` mode. The value is handled through the same protected Account credential store as other provider secrets. In `v1.0.0.1.21` it is not transmitted because the Agiled executable adapter is fail-closed pending API contract revalidation. There is no configurable Agiled base-URL field in this release, specifically to prevent routing a key to an unverified host.
+
+## v1.0.0.1.22 Agiled Verification
+
+The Agiled credential contract remains one protected `API Key` field with `Default` mode. No base URL is added and no key is transmitted by this release. The official Agiled materials remain internally inconsistent for the executable API contract, so configuration remains fail-closed.

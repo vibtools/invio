@@ -54,7 +54,7 @@ A manifest capability named `api_test` is declarative metadata only. In `v1.0.0.
 
 A manifest capability remains a **declaration**, not proof of executable code. P06 compares packaged-ID installed manifests with the canonical packaged manifest across execution-relevant fields: provider ID, ordered credential key/kind/required contract, account modes, and declared capabilities. Display-only name/version/description differences do not define the runtime binding.
 
-The packaged IDs `stripe` and `refrens` are reserved. `ProviderManager.load_external()` rejects external manifests using a packaged ID rather than overwriting `providers/registry/<id>.json`. Existing conflicting packaged-ID registry state is preserved on disk but Account/Test/Task operations fail closed until the owner explicitly uninstalls/reinstalls the packaged provider.
+The packaged IDs `stripe`, `refrens`, and `agiled` are reserved. `ProviderManager.load_external()` rejects external manifests using a packaged ID rather than overwriting `providers/registry/<id>.json`. Existing conflicting packaged-ID registry state is preserved on disk but Account/Test/Task operations fail closed until the owner explicitly uninstalls/reinstalls the packaged provider.
 
 Current executable capabilities are reported separately from declared capabilities. Stripe currently executes `invoice`, `send_invoice`, and `api_test`; Refrens currently executes `api_test` only because its normal Task pipeline remains P11 scope. External manifests do not gain executable capability from declaration alone; the historical injected task-runner API remains the only existing external execution boundary until P13.
 
@@ -63,3 +63,13 @@ Current executable capabilities are reported separately from declared capabiliti
 Packaged `stripe` and `refrens` manifests are now checked against an independent hard-coded executable credential/mode/capability contract as well as the installed registry copy. This prevents a modified packaged manifest from validating a matching modified registry manifest against itself. The comparison still ignores display-only name/version/description fields.
 
 Provider cards render the declaration from the actual installed registry manifest when a packaged ID is installed. Effective runtime capabilities are shown only when that installed declaration also matches the packaged and hard-coded executable contract. Existing external provider IDs and the historical injected task-runner boundary remain unchanged.
+
+## Packaged Runtime Binding in v1.0.0.1.21
+
+A `provider.json` manifest remains metadata and installation state; it is **not executable code**. For packaged built-in IDs, Invio now compares execution-relevant manifest fields against the corresponding `ProviderAdapterContract` registry entry. The registry also defines effective executable capabilities and handler bindings. A manifest may declare a capability while the runtime exposes none; UI/preflight must use the effective executable capability.
+
+Current packaged IDs are `stripe`, `refrens`, and `agiled`. Agiled declares invoice/send/API-test product intent in its package, but its adapter exposes zero executable capabilities until the current API contract is authoritative. Dynamic executable loading for arbitrary external manifests is not implemented in this release.
+
+## v1.0.0.1.22 Verification Note
+
+The packaged-manifest/runtime rules introduced in `v1.0.0.1.21` are unchanged. Verification now explicitly covers Agiled install/uninstall through `ProviderManager`, runtime handler binding integrity for executable packaged providers, and the absence of an Agiled executable handler. A declared Agiled capability still does not become executable capability.

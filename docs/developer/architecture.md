@@ -2,12 +2,12 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.20` preserves the verified P01-P06 architecture and the P07 state/action model, with a forensic correction for late worker-terminal/control races and safe-empty continuation reporting. No new UI page, worker architecture, database schema, Refrens production Task runner, external-provider architecture, or dependency is introduced.
+Invio `v1.0.0.1.22` is the forensic verification baseline for the pre-P08 internal packaged-provider adapter registry plus Agiled packaged contract introduced in `v1.0.0.1.21`. P01-P07 behavior remains preserved. No new UI page, WorkerManager architecture, database schema, Refrens production Task runner, dynamic external-provider loading architecture, P08 behavior, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
-- `src/core/provider_runtime/`: packaged-provider API verification/invoice execution plus P06 capability/preflight validation.
+- `src/core/provider_runtime/`: internal packaged-provider adapter registry, existing API verification/invoice execution, plus P06 capability/preflight validation.
 - `src/core/settings/`: non-sensitive per-user JSON preferences.
 - `src/core/state/`: domain invariants plus persistence coordination for state mutations.
 - `src/core/storage/schema.py`: SQLite schema version and DDL.
@@ -95,7 +95,7 @@ P02 recovers Task-level metadata only. `Running`, `Paused`, or `Stopping` is con
 
 ## 10. Current Extension Boundary
 
-External provider manifest loading remains metadata-only unless a runner is registered. P05 does not change that provider architecture.
+External provider manifest loading remains metadata-only unless the historical injected runner API is registered. `v1.0.0.1.21` centralizes **packaged built-in** execution contracts only; dynamic executable loading for arbitrary external providers remains P13.
 
 ## v1.0.0.1.9 P02 verification correction
 
@@ -180,3 +180,13 @@ These sets are deliberately not added to SQLite in P07. Startup recovery therefo
 The P07 status graph itself is unchanged. Qt worker terminal signals and GUI control actions are asynchronous, so MainWindow now reconciles a late queued `Completed` against an already accepted `Paused`/`Stopping`/`Stopped` control state by resolving the final state to existing `Stopped`. This keeps the state machine authoritative instead of adding `Paused/Stopping -> Completed` transitions.
 
 MainWindow also consults `WorkerManager.is_running(task.id)` for Pause/Resume/Stop policy and action guards. WorkerManager code and one-QThread-per-active-Task architecture are unchanged. ProviderRuntime failed/pending set semantics are unchanged; a safe empty set is distinguished only at the action/message boundary.
+
+## 17. v1.0.0.1.21 Internal Packaged-Provider Adapter Registry
+
+`src/core/provider_runtime/adapters.py` owns execution-relevant packaged-provider truth: manifest execution contract, capability profile, API-test handler name and Task-batch handler name. `preflight.py` consumes this registry for manifest/runtime reconciliation and capability checks, while `ProviderRuntime` resolves its existing provider functions through the same registry.
+
+This removes duplicated provider-ID dispatch without moving network implementations or changing their semantics. Stripe binds to the existing Stripe API-test and `_run_stripe_batch` methods. Refrens binds only to its existing API-test method and has no Task handler, preserving the P11 gate. Agiled has a manifest/runtime contract but no executable handlers/capabilities, so API Test and Task execution fail closed before transport. `ProviderManager` still never imports/executes provider code and dynamic external provider execution remains P13.
+
+## 18. v1.0.0.1.22 Verification Boundary
+
+The architecture is unchanged from `v1.0.0.1.21`. Verification adds explicit tests that packaged Agiled installation remains manifest-only, executable Stripe/Refrens handler names resolve to callable existing `ProviderRuntime` methods, Agiled has no executable handler, and the UI remains generic/manifest-driven rather than adding an Agiled-specific branch. No adapter discovery/runtime subsystem is added.

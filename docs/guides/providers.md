@@ -77,3 +77,13 @@ P07 does not change packaged provider manifests, P06 capability/preflight rules,
 ## v1.0.0.1.20 P07 verification boundary
 
 Provider manifests, P06 preflight, Stripe/Refrens send contracts and the injected-runner API are unchanged. The P07 correction is limited to Task terminal/control integration and continuation messaging; it does not add provider retries, cancellation, delivery ledgers or external-provider continuation capability.
+
+## v1.0.0.1.21 Packaged Adapter Registry and Agiled
+
+Packaged provider execution is now bound through one internal registry rather than independent provider-ID maps. This does not make `Load Provider` execute arbitrary code: external manifests remain metadata-only unless the existing injected runner API is supplied by application code.
+
+Agiled is bundled with one required protected credential, `API Key`. It is intentionally shown as non-executable because the accessible current Agiled materials do not provide one internally consistent authoritative base URL/authentication/invoice-send contract. API Test and Task execution therefore stop before network transport. Do not interpret package installation as live Agiled readiness.
+
+## v1.0.0.1.22 Verification Note
+
+Agiled installation continues to use the normal Providers workflow. The package remains visible/installable, but Add Account cannot become Task-ready because API Test has no executable Agiled handler. This is the intended fail-closed behavior, not a demo success path. Stripe/Refrens behavior is unchanged.

@@ -80,3 +80,11 @@ If Invio was restarted, the Task remains visible and its Account reservation is 
 In `v1.0.0.1.20`, a late accepted Pause/Stop can intentionally make an arriving `Completed` terminal signal settle as **Stopped** so the approved P07 transition table remains valid. If all recipients were already resolved, the safe continuation set is empty and **Resume Remaining** is disabled because there is nothing left to send. This does not mean recipient identity state was lost.
 
 If the application was restarted, the separate existing rule still applies: exact continuation identities are not persisted until P10, so Resume/Retry fails closed rather than guessing.
+
+## Agiled says API Test/runtime is unavailable
+
+This is expected in `v1.0.0.1.21`. Invio has the Agiled package but deliberately has no executable Agiled handler while the current authoritative base URL, authentication format and invoice-send operation remain unresolved. Do not work around this by changing the manifest or entering a guessed API base URL. Supply authoritative current Agiled API documentation or a verified request/response contract for the exact API generation, then release a separately verified adapter update.
+
+## Agiled remains unavailable in v1.0.0.1.22
+
+This is still intentional. The current Agiled product page documents Bearer API-key authentication while the linked public OpenAPI document exposes a different legacy server/query-token/Brand-header contract, and an authoritative invoice-email send API operation has not been established. Invio therefore continues to fail before transport rather than guessing.

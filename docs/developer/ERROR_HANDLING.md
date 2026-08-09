@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.20`  
+**Baseline:** `v1.0.0.1.22`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -347,3 +347,15 @@ P07 does not add automatic network retry, backoff, HTTP cancellation, rate-limit
 - Pause/Resume/Stop now fail before WorkerManager mutation when no active Task thread exists; the same active-worker fact disables those UI controls.
 - A safe empty continuation is not an error and is no longer described as missing identity state. It simply has no Resume/Retry action because there are no unresolved recipients.
 - This correction adds no network retry/error taxonomy, cancellation, durable recipient ledger or provider-side recovery; P08/P10 remain unchanged.
+
+## v1.0.0.1.21 Provider Contract Fail-Closed Handling
+
+- Unknown providers without an injected runner continue to fail with the existing runtime-unavailable path.
+- Packaged manifest/runtime execution-contract drift fails preflight rather than trusting mutable metadata.
+- Refrens Task execution continues to fail before provider-side mutation until P11.
+- Agiled API Test and Task execution fail before network transport because its current authoritative API endpoint/authentication/send contract is unresolved. The configured Agiled API key is therefore not sent to a guessed endpoint.
+- No retry/backoff/rate-limit/cancellation changes are introduced; those remain P08.
+
+## v1.0.0.1.22 Verification Result
+
+No new provider/API error-handling defect was found in the `v1.0.0.1.21` delta. Agiled still rejects API Test and Task execution before transport, and registry handler integrity is now explicitly regression-tested. P08 remains responsible for retry/backoff/rate-limit/timeout/cancellation/shutdown behavior.

@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.20`  
+**Baseline:** `Invio v1.0.0.1.22`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -11,10 +11,10 @@
 |---|---|---|
 | Vib Tools desktop shell/pages | WORKING | Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, Settings |
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
-| Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute provider code |
+| Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute arbitrary provider code; v1.0.0.1.21 adds only an internal packaged-provider adapter registry |
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
 | Refrens normal Task sending | BLOCKED | P04 can store explicit name/country, but the production Refrens Task runner remains P11 |
-| Real Add Account API Test | WORKING | P01 real Stripe/Refrens verification on a dedicated dialog `QThread` |
+| Real Add Account API Test | WORKING/PARTIAL by provider | Stripe/Refrens verification is real on a dedicated dialog `QThread`; Agiled intentionally fails closed pending contract revalidation |
 | Durable Accounts metadata | WORKING | Current SQLite schema v4 restores IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
@@ -183,3 +183,17 @@ P06 is COMPLETE and verification-corrected. Built-in packaged manifests must mat
 **WORKING:** a current-session continuation can be proven safe but empty. That condition now reports that no recipients remain instead of using the separate restart/uncertain-state message. No send action is enabled for an empty set.
 
 **UNCHANGED:** exact continuation identities remain process-local, SQLite remains schema v4, WorkerManager itself is unchanged, P08 network reliability is not implemented, and P10 still owns durable recipient recovery.
+
+## v1.0.0.1.21 Current Provider Execution Status
+
+| Provider | Manifest/package | API Test | Task invoice/send | Current status |
+|---|---|---|---|---|
+| Stripe | Working | Working | Working | Existing behavior preserved |
+| Refrens | Working | Working | Blocked | P11 gate preserved |
+| Agiled | Working | Fail-closed | Fail-closed | Authoritative API contract required |
+
+The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrary external provider adapter discovery/loading is **NOT IMPLEMENTED** and remains P13. This release does not advance production progress beyond 7/14.
+
+## v1.0.0.1.22 Verification Status
+
+**VERIFIED:** the `v1.0.0.1.21` internal packaged-provider adapter registry, Stripe binding, Refrens P11 gate, Agiled package/manifest, declared-vs-executable capability separation, and Agiled no-transport fail-close behavior remain correct. Additional tests now cover Agiled package install/uninstall, runtime handler binding resolution, and the generic UI/API-test gate. No new executable Agiled capability is claimed.
