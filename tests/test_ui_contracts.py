@@ -416,3 +416,31 @@ class P05UiContractTests(unittest.TestCase):
         source = (root / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
         self.assertIn("thread = QThread(self)", source)
         self.assertIn('thread.setObjectName(f"InvioTaskThread-{task.id}")', source)
+
+
+class P06UiContractTests(unittest.TestCase):
+    def test_p06_new_task_runs_preflight_before_state_task_creation(self):
+        source = (Path(__file__).resolve().parents[1] / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        new_task = source.split("def new_task", 1)[1].split("def _runner_for_task", 1)[0]
+        self.assertIn("preflight_candidate(", new_task)
+        self.assertIn("if not result.passed:", new_task)
+        self.assertLess(new_task.index("preflight_candidate("), new_task.index("self.state.create_task(**payload)"))
+
+    def test_p06_start_and_retry_share_preflight_gate_before_runner_creation(self):
+        source = (Path(__file__).resolve().parents[1] / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        runner = source.split("def _runner_for_task", 1)[1].split("def start_task", 1)[0]
+        self.assertIn("preflight_task(", runner)
+        self.assertIn("if not result.passed:", runner)
+        self.assertLess(runner.index("preflight_task("), runner.index("self.provider_runtime.make_task_runner"))
+        self.assertIn("retry_failed=retry_failed", runner)
+
+    def test_p06_provider_page_separates_declared_and_runtime_capabilities(self):
+        source = (Path(__file__).resolve().parents[1] / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        self.assertIn("Declared capabilities:", source)
+        self.assertIn("Runtime capabilities:", source)
+        self.assertIn("runtime_capabilities", source)
+
+    def test_p06_refrens_endpoint_is_validated_before_auth_payload(self):
+        source = (Path(__file__).resolve().parents[1] / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        auth = source.split("def _refrens_auth", 1)[1].split("def _refrens_request", 1)[0]
+        self.assertLess(auth.index("canonical_refrens_base_url"), auth.index('payload = {"strategy": "app-secret"'))

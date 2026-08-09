@@ -20,7 +20,7 @@
 │   ├── accounts/             Provider-account models
 │   ├── core/
 │   │   ├── provider_manager/ Provider manifest validation/install/load/uninstall
-│   │   ├── provider_runtime/ Built-in provider API/task execution adapters
+│   │   ├── provider_runtime/ Built-in provider adapters plus P06 capability/preflight contracts
 │   │   ├── settings/         Persistent non-sensitive preferences
 │   │   ├── state/            Domain invariants plus P02 persistence coordination
 │   │   ├── storage/          SQLite domain store + protected credential store
@@ -29,7 +29,7 @@
 │   ├── invoices/templates/   Invoice template/currency models
 │   ├── tasks/                Task model including immutable execution snapshots
 │   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
-├── tests/                    Unit/contract tests, including P01-P05 provider/storage/snapshot regressions
+├── tests/                    Unit/contract tests, including P01-P06 provider/storage/snapshot/preflight regressions
 ├── main.py
 ├── requirements.txt
 └── pyproject.toml
@@ -83,3 +83,6 @@ No new top-level folder, application page, dependency, provider adapter or worke
 
 No folder, module, page, provider adapter, dependency, worker subsystem or database table is added/renamed. The correction stays inside the existing `AppState`/`DomainStore` P05 consistency boundary plus regression tests and synchronized release documentation. SQLite remains schema v4.
 
+## v1.0.0.1.17 P06 Provider Preflight
+
+P06 adds one focused module, `src/core/provider_runtime/preflight.py`, inside the existing provider-runtime package. ProviderManager is extended in place only for packaged-manifest lookup and reserved packaged-ID protection; MainWindow and the existing Providers page integrate preflight/capability display without adding a new application page. SQLite remains schema v4 and no storage table, worker subsystem, provider manifest, dependency, or top-level folder is added.

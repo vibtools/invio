@@ -34,3 +34,6 @@ No Python, PySide6, openpyxl, keyring, provider ID, credential-field, ProviderMa
 
 No platform, Python, PySide6, openpyxl, keyring, provider ID, credential field, ProviderManager, WorkerManager, provider manifest or dependency change is introduced. SQLite remains schema v4. The release only hardens P05 snapshot creation/progress/total consistency and updates release metadata/documentation.
 
+## v1.0.0.1.17 P06 Compatibility
+
+P06 introduces no Python/platform/dependency/SQLite-schema change. Existing `ProviderManager`, `WorkerManager`, protected credential store, P05 Task snapshot storage, and external `register_task_runner(provider_id, runner)` API remain compatible. Packaged provider IDs are now reserved against external manifest replacement, and Refrens credential transport is restricted to the canonical HTTPS API origin before authentication.

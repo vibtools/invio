@@ -2,12 +2,12 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.16` preserves the verified P01-P04 architecture and completes P05 by adding durable immutable Task execution snapshots. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, Refrens production Task runner, or dependency is introduced.
+Invio `v1.0.0.1.17` preserves the verified P01-P05 architecture and completes P06 with a no-side-effect provider capability/preflight boundary. No new UI page, executable external-provider architecture, Task thread architecture, database schema, Refrens production Task runner, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
-- `src/core/provider_runtime/`: packaged-provider API verification and invoice execution.
+- `src/core/provider_runtime/`: packaged-provider API verification/invoice execution plus P06 capability/preflight validation.
 - `src/core/settings/`: non-sensitive per-user JSON preferences.
 - `src/core/state/`: domain invariants plus persistence coordination for state mutations.
 - `src/core/storage/schema.py`: SQLite schema version and DDL.
@@ -152,3 +152,10 @@ Schema-v3 Tasks migrate with snapshot state `LegacyUnavailable`. Because pre-P05
 
 The P05 architecture remains unchanged: Task creation captures immutable input, schema v4 persists it, and ProviderRuntime consumes that snapshot. The correction tightens invariants at the existing boundaries: `DomainStore.create_task_with_reservations()` rejects missing/legacy snapshots for new Tasks, captured progress must agree with processed recipients, and `DomainStore.update_task()` no longer updates the immutable `total` column after Task creation. No new table/module/page is introduced.
 
+## P06 provider capability/preflight boundary
+
+`src/core/provider_runtime/preflight.py` is a pure validation boundary between the P05 immutable Task inputs and provider runner creation. `ProviderCapabilityProfile` defines the current executable built-in contract; `PreflightResult`/`PreflightIssue` return deterministic user-correctable failures without network or domain mutation.
+
+Flow: `NewTaskDialog payload -> preflight_candidate -> AppState.create_task/P05 snapshot`, and `Task Start/Retry -> P03 installed/account gates -> preflight_task -> injected/built-in runner -> WorkerManager`. `ProviderRuntime.make_task_runner()` also rechecks built-in static template/customer inputs so direct runtime use cannot bypass Stripe BOS/tax safety.
+
+ProviderManager remains manifest-only. P06 adds packaged-manifest lookup and reserves packaged IDs against external-manifest collision, but does not load executable external adapters. Refrens endpoint trust validation is performed before authentication payload construction. SQLite remains schema v4; no preflight state is persisted.

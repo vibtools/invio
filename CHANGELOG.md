@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0.1.17 - P06 Provider Capability and Preflight Validation
+
+- Completed production phase **P06** on the verified `v1.0.0.1.16` P05 baseline without changing SQLite schema v4, WorkerManager, P05 immutable snapshots, provider manifests, dependencies, external runner API, or P07+ behavior.
+- Added a pure/no-side-effect provider preflight contract used before New Task creation and before Start/Retry runner creation. Unsupported combinations are rejected before any provider invoice/customer mutation.
+- Reconciled packaged manifest declarations with actual built-in runtime capability. Stripe exposes executable invoice/send/API-test capability; Refrens exposes executable API Test only while normal Task execution remains intentionally blocked until P11.
+- Reserved packaged provider IDs prevent an external manifest from replacing the `stripe` or `refrens` manifest/runtime contract. Existing mismatched installed packaged-runtime manifests fail closed and require explicit uninstall/reinstall rather than silent replacement.
+- Added account-health preflight for provider identity, `Verified` status, timezone-aware verification timestamp, empty verification-error state, supported account mode, required credentials, and Stripe mode/key consistency.
+- Added Stripe preflight safety gates: current Invio Stripe adapter accepts standard `INVOICE` only; Automatic Tax is blocked because the current Customer contract cannot guarantee Stripe Tax location requirements; non-zero template line-tax percentages are blocked because the Stripe runtime does not map them to Stripe TaxRate objects.
+- Pinned Refrens credential transport to canonical `https://api.refrens.com` before authentication payload construction, rejecting deceptive hosts/credentials/path/query/fragment variants before App ID/App Secret can be sent.
+- Providers UI now distinguishes **Declared capabilities** from current **Runtime capabilities** without adding a new page or changing the provider-manifest schema.
+- Revalidated current Stripe/Refrens assumptions against primary provider documentation and recorded the release evidence. Production progress is **6/14**; P07 remains separately approval-gated.
+
 ## v1.0.0.1.16 - P05 Forensic Verification & Consistency Correction
 
 - Re-audited the exact shipped `v1.0.0.1.15` P05 baseline against the approved immutable-execution plan.

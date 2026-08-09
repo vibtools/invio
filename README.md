@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.16`** is the forensic verification/correction release for **P05 - Immutable Task Execution Snapshot and Input Consistency**, built on the shipped `v1.0.0.1.15` P05 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.17`** completes **P06 - Provider Capability and Preflight Validation** on top of the verified `v1.0.0.1.16` P05 baseline.
 
 ## Current Application Scope
 
@@ -9,7 +9,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; provider network sending remains outside the GUI thread.
 
@@ -90,7 +90,7 @@ The P05 re-audit found three consistency gaps not covered by the v1.0.0.1.15 sui
 
 ### Stripe
 
-Stripe remains bundled with Test and Live modes. The built-in runtime can find/create customers by email, create draft `send_invoice` invoices, create line items, finalize invoices, request invoice email delivery, and retain current-process failed-recipient state for **Retry Failed**.
+Stripe remains bundled with Test and Live modes. The built-in runtime can find/create customers by email, create draft `send_invoice` invoices, create line items, finalize invoices, call Stripe's invoice-send endpoint, and retain current-process failed-recipient state for **Retry Failed**. Stripe documents that test-mode send requests do not emit real customer emails, so test-mode API success must not be interpreted as inbox delivery.
 
 ### Refrens
 
@@ -129,7 +129,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 migration, immutable Task snapshot persistence/restart validation, legacy-task fail-closed migration, recipient/template drift prevention, unchanged Stripe sending semantics, and the continued P11 Refrens Task gate.
+The current suite covers P01-P05 regression behavior plus P06 manifest/runtime reconciliation, packaged-ID collision protection, no-side-effect Task preflight, account-health validation, Stripe provider/template safety rules, Refrens endpoint trust enforcement, and the continued P11 Refrens Task gate.
 
 ## Documentation
 
@@ -141,7 +141,7 @@ The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 mi
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.16.md`
+- Release notes: `docs/release-notes/1.0.0.1.17.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 mi
 
 ## Production Readiness Program
 
-`v1.0.0.1.16` is the verification-corrected P05 baseline. Production progress is **5/14 phases complete**. The next separately approved phase is **P06 - Provider Capability and Preflight Validation**.
+`v1.0.0.1.17` is the verified P06 baseline. Production progress is **6/14 phases complete**. The next separately approved phase is **P07 - Task State Machine and Resend Safety**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -158,3 +158,15 @@ P02 makes operational metadata restart-durable, but it does **not** claim exact 
 MIT License. See `LICENSE`.
 
 Maintained by **Vib Tools** - https://vib.tools/
+
+## P06 Provider Capability and Preflight Validation
+
+Before a new Task is persisted, and again before Start or Retry creates a runner, Invio now performs a deterministic local preflight over the provider installation, packaged manifest/runtime binding, Account verification health, P05 immutable template/customer snapshot, and provider-specific capability rules. A failed preflight creates no Task/reservation at the New Task boundary and performs no provider-side invoice/customer mutation.
+
+For packaged providers, declared manifest capabilities are now distinguished from executable runtime capability. Stripe currently has executable API Test + invoice/send support. Refrens has executable API Test support, but its normal Task invoice/send pipeline remains deliberately disabled until P11. External loaded manifests still require the existing injected runner API; P06 does not introduce the P13 external-adapter architecture.
+
+Packaged IDs (`stripe`, `refrens`) are reserved against external-manifest collision. An already-installed packaged-ID manifest whose execution-relevant credential/mode/capability contract does not match the bundled package fails closed and is never silently rewritten.
+
+The current Stripe adapter is preflighted as standard `INVOICE` only. Automatic Tax and non-zero template line tax are blocked before network execution because the current Invio customer/send contract does not supply the location/tax-rate object semantics needed to guarantee those behaviors. Customer reuse and the existing description/footer/customer-note/terms mappings remain supported.
+
+Refrens authentication is now allowed only to the canonical `https://api.refrens.com` origin. URL trust is validated before App ID/App Secret authentication payload construction. No Refrens Task sending is enabled by P06.

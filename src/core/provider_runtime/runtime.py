@@ -18,6 +18,7 @@ from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ..state import AppState
+from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
 
 class ProviderRuntimeError(RuntimeError):
@@ -238,6 +239,14 @@ class ProviderRuntime:
             )
         if snapshot.provider_id != "stripe":
             raise ProviderRuntimeError("No built-in task runner is available for this provider.")
+
+        runtime_preflight = preflight_runtime_inputs(
+            provider_id=snapshot.provider_id,
+            template=snapshot.template,
+            customers=(CustomerRecord(customer.email, customer.name, customer.country) for customer in snapshot.customers),
+        )
+        if not runtime_preflight.passed:
+            raise ProviderRuntimeError(runtime_preflight.message)
 
         with self._state_lock:
             delivery = self._delivery_state.setdefault(task.id, _DeliveryState())
@@ -492,7 +501,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.16 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.17 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -503,12 +512,16 @@ class ProviderRuntime:
         return self._transport(method.upper(), url, headers, body, self.timeout)
 
     def _refrens_auth(self, credentials: dict[str, str]) -> tuple[str, str, str]:
-        base_url = credentials.get("base_url", "").strip().rstrip("/")
+        raw_base_url = credentials.get("base_url", "").strip()
         url_key = credentials.get("url_key", "").strip()
         app_id = credentials.get("app_id", "").strip()
         app_secret = credentials.get("app_secret", "").strip()
-        if not base_url.startswith("https://"):
-            raise ProviderRuntimeError("Refrens API Base URL must use HTTPS.")
+        try:
+            base_url = canonical_refrens_base_url(raw_base_url)
+        except ValueError as exc:
+            # Validate the destination before constructing the authentication
+            # payload so App ID/App Secret are never sent to an untrusted host.
+            raise ProviderRuntimeError(str(exc)) from exc
         if not all((url_key, app_id, app_secret)):
             raise ProviderRuntimeError("Refrens URL Key, App ID and App Secret are required.")
         payload = {"strategy": "app-secret", "appId": app_id, "appSecret": app_secret}
@@ -531,7 +544,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.16 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.17 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

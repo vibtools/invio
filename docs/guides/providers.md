@@ -53,3 +53,13 @@ Explicit country metadata is constrained to two ASCII alphabetic characters befo
 ## P05 Task snapshot provider boundary
 
 P05 stores the Task provider ID and ordered Account IDs as execution basis, but it does **not** copy provider credentials into the Task snapshot. At Start/Retry, existing P03 provider-install and Account `Verified` gates still run, and credentials are resolved from protected Account state. Provider manifests, provider IDs, credential fields and Stripe/Refrens send contracts are unchanged by P05.
+
+## P06 capability and endpoint safety
+
+The Providers page now shows **Declared capabilities** from the installed manifest and **Runtime capabilities** from Invio's current executable adapter boundary. This prevents a manifest declaration from being mistaken for runnable behavior.
+
+Packaged provider IDs are reserved against external-manifest collision. If an installed `stripe`/`refrens` manifest no longer matches the bundled execution-relevant credential/mode/capability contract, Invio fails closed and asks the user to uninstall/reinstall the packaged provider; it does not silently rewrite the registry.
+
+Before Task creation and Start/Retry, P06 checks Account provider identity, `Verified` status, recorded successful verification timestamp, empty verification error, declared mode, and required credential presence. Stripe also rechecks key-format/Test-Live consistency locally. This preflight does not perform an automatic network Re-test.
+
+Refrens API credentials are sent only to `https://api.refrens.com`; host aliases, deceptive subdomains, URL credentials, custom path/query/fragment values, or HTTP are rejected before the authentication payload is constructed. Normal Refrens Task sending remains disabled until P11.

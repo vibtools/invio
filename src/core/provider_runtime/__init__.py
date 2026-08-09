@@ -1,3 +1,35 @@
+from .preflight import (
+    CANONICAL_REFRENS_BASE_URL,
+    PreflightIssue,
+    PreflightResult,
+    ProviderCapabilityProfile,
+    canonical_refrens_base_url,
+    capability_profile,
+    effective_capabilities,
+    executable_capabilities,
+    manifest_runtime_contract_matches,
+    preflight_candidate,
+    preflight_runtime_inputs,
+    preflight_task,
+)
 from .runtime import AccountSnapshot, CustomerSnapshot, ProviderRuntime, ProviderRuntimeError, TaskSnapshot
 
-__all__ = ["AccountSnapshot", "CustomerSnapshot", "ProviderRuntime", "ProviderRuntimeError", "TaskSnapshot"]
+__all__ = [
+    "AccountSnapshot",
+    "CANONICAL_REFRENS_BASE_URL",
+    "CustomerSnapshot",
+    "PreflightIssue",
+    "PreflightResult",
+    "ProviderCapabilityProfile",
+    "ProviderRuntime",
+    "ProviderRuntimeError",
+    "TaskSnapshot",
+    "canonical_refrens_base_url",
+    "capability_profile",
+    "effective_capabilities",
+    "executable_capabilities",
+    "manifest_runtime_contract_matches",
+    "preflight_candidate",
+    "preflight_runtime_inputs",
+    "preflight_task",
+]

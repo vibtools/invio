@@ -58,3 +58,8 @@ Invio fails closed when a captured Task snapshot is missing, partial, has a prov
 
 On v1.0.0.1.16, a captured Task whose stored total/progress no longer agrees with its immutable recipient snapshot is rejected rather than silently repaired from the current Customer List or Invoice Template. Preserve the operational database for diagnosis; do not delete it as a first response. Newly persisted Tasks also cannot be created as `LegacyUnavailable`; that state is reserved for migrated pre-P05 Tasks.
 
+## P06 Preflight Failed
+
+If **Preflight Failed** appears, no provider invoice/customer mutation has started from that blocked action. Follow the displayed correction. Common cases are: provider not installed; packaged manifest/runtime contract mismatch; Account not verified or verification-health metadata incomplete; Stripe `BOS`; Stripe Automatic Tax; non-zero Stripe line tax; unsupported currency; or an untrusted Refrens API Base URL.
+
+For a packaged manifest mismatch, uninstall the provider from **Providers** and install its bundled package again. For Account health failures, use **Accounts -> Re-test**. For Refrens, use exactly `https://api.refrens.com` as the API Base URL. Refrens normal Task sending remains unavailable until P11.

@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.16`  
-**Completed production phases:** P01, P02, P03, P04, P05  
+**Baseline:** `Invio v1.0.0.1.17`  
+**Completed production phases:** P01, P02, P03, P04, P05, P06  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -59,7 +59,7 @@
 - Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
 - Customer record name/country expansion is **WORKING in P04**; no billing/shipping/payment expansion was added.
 - Immutable Task execution snapshots are **WORKING in P05**; pre-P05 Tasks migrate as fail-closed `LegacyUnavailable` records.
-- No provider capability preflight. P06.
+- Provider capability/preflight is **WORKING in P06**; P07 owns Task state/resend semantics.
 - No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
 
 
@@ -107,7 +107,7 @@ Remaining worker reliability work is P08/P09/P10.
 
 ## Current Certification Boundary
 
-P01-P05 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
+P01-P06 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
 
 
 ### v1.0.0.1.11 P03 verification correction
@@ -152,3 +152,12 @@ P01-P05 unit/contract/source audits verify the implemented local contracts. Nati
 
 **WORKING / VERIFIED:** New post-P05 Tasks cannot be persisted without a real captured immutable execution snapshot; `LegacyUnavailable` is migration-only. Captured progress is checked against the frozen recipient set during state updates and startup load, and routine Task status/progress writes no longer mutate the persisted immutable total. P05 remains complete; P06 is not implemented.
 
+## P06 actual implementation - v1.0.0.1.17
+
+**WORKING:** packaged Stripe/Refrens manifest declarations are reconciled with current built-in runtime capability before execution. Providers UI shows declared and runtime capability separately. External loaded manifests cannot use packaged IDs. Existing mismatched packaged-ID registry state fails closed without silent replacement.
+
+**WORKING:** New Task, Start, and Retry perform local no-side-effect preflight. Account provider/status/verification timestamp/error/mode/required-credential state is checked; P05 frozen provider/account/template/customer data is used for existing Tasks. Stripe is preflighted as `INVOICE` only, Automatic Tax and non-zero template line tax are blocked under the current runtime/data contract, and Refrens Task execution remains P11.
+
+**WORKING SECURITY BOUNDARY:** Refrens authentication accepts only the canonical `https://api.refrens.com` origin and rejects untrusted URL variants before the App ID/App Secret authentication payload is constructed.
+
+**NOT IMPLEMENTED BY P06:** P07 resend/state-machine rules, P08 retry/backoff/network reliability, P09 account scheduling/failover, P10 durable delivery ledger, P11 Refrens normal Task execution, P13 executable external adapter architecture, and P14 live/native production certification.

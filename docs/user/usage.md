@@ -51,3 +51,9 @@ Settings remain separate non-sensitive JSON preferences. Provider credentials ar
 ## 9. Operational Storage Startup
 
 Invio checks and, when required, migrates the per-user `domain.sqlite3` before the normal pages open. `v1.0.0.1.14` corrected the Windows-specific migration-backup handle issue. `v1.0.0.1.15` advances the domain schema to v4 for immutable Task execution snapshots while retaining the same WAL-aware, Windows-safe backup path. Supported databases migrate automatically and fail closed if storage is genuinely unavailable or unsafe.
+
+## Provider preflight in v1.0.0.1.17
+
+When you click **Create Task**, Invio checks the installed provider/runtime contract, selected verified Accounts, Invoice Template, and Customer List before saving the Task. When you later click **Start** or **Retry Failed**, Invio checks the same provider/account rules again against the Task's frozen P05 snapshot.
+
+If a combination is unsupported, Invio shows **Preflight Failed** with a correction instead of beginning provider execution. Typical corrections include reinstalling a conflicting packaged provider, re-testing an unhealthy Account, using Stripe `INVOICE` instead of `BOS`, disabling Stripe Automatic Tax, setting unsupported Stripe line tax to zero, or restoring the canonical Refrens API Base URL.

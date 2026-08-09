@@ -49,3 +49,11 @@ A manifest capability therefore describes supported intent but does not make arb
 ## Executable API-test capability
 
 A manifest capability named `api_test` is declarative metadata only. In `v1.0.0.1.6`, Add Account treats API Test as available only when `ProviderRuntime.supports_api_test(provider_id)` confirms an executable built-in adapter. A loaded manifest alone cannot turn required-field validation into a successful provider verification.
+
+## P06 manifest/runtime reconciliation
+
+A manifest capability remains a **declaration**, not proof of executable code. P06 compares packaged-ID installed manifests with the canonical packaged manifest across execution-relevant fields: provider ID, ordered credential key/kind/required contract, account modes, and declared capabilities. Display-only name/version/description differences do not define the runtime binding.
+
+The packaged IDs `stripe` and `refrens` are reserved. `ProviderManager.load_external()` rejects external manifests using a packaged ID rather than overwriting `providers/registry/<id>.json`. Existing conflicting packaged-ID registry state is preserved on disk but Account/Test/Task operations fail closed until the owner explicitly uninstalls/reinstalls the packaged provider.
+
+Current executable capabilities are reported separately from declared capabilities. Stripe currently executes `invoice`, `send_invoice`, and `api_test`; Refrens currently executes `api_test` only because its normal Task pipeline remains P11 scope. External manifests do not gain executable capability from declaration alone; the historical injected task-runner API remains the only existing external execution boundary until P13.

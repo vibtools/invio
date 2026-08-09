@@ -41,3 +41,6 @@ Tasks created before P05 are preserved but marked `LegacyUnavailable`; their his
 
 `v1.0.0.1.16` is a replace-ready P05 verification/correction release. It does not change dependencies or SQLite schema version; schema remains v4. Keep `domain.sqlite3`, protected credentials, Settings and provider registry state in place. The release hardens normal post-P05 Task snapshot creation and captured Task progress/total consistency; no manual database reset is required.
 
+## v1.0.0.1.17 upgrade note
+
+P06 does not change Python, PySide6, openpyxl, keyring, or SQLite storage requirements. Apply the replace-ready delta over the exact v1.0.0.1.16 baseline. Existing packaged provider manifests remain unchanged; external manifests may no longer use the reserved packaged IDs `stripe` or `refrens`.

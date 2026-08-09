@@ -47,3 +47,9 @@ The adapter supports invoice title, subtitle, type, currency, due date, notes, t
 ## Task snapshot behavior from v1.0.0.1.15
 
 When a new Task is created, Invio copies the complete selected Invoice Template, including ordered line items and terms, into that Task's immutable execution snapshot. Editing the reusable source Template afterward affects future Tasks only. Existing Task Start/Retry continues to use the copy captured when that Task was created. Customer identity/name/country remains in Customer Lists and is not moved into Invoice Templates.
+
+## P06 provider-template preflight
+
+Invoice Templates remain provider-neutral reusable content, but a Task can execute only when its **immutable P05 template copy** passes the selected provider's current runtime contract. For the built-in Stripe adapter, P06 allows standard `INVOICE`, rejects `BOS`, rejects Automatic Tax under the current customer-location contract, and rejects any non-zero template percentage line tax because the current Stripe sender does not translate it into Stripe TaxRate object assignments. Existing customer-reuse, memo/title/subtitle, footer/customer-note, and terms mappings remain unchanged.
+
+P06 does not remove or redesign template fields. Unsupported combinations are simply blocked before provider-side invoice creation with a correction message.

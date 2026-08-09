@@ -1,6 +1,6 @@
 # Configuration
 
-Invio `v1.0.0.1.16` separates Settings, durable operational data, provider registry state, and protected provider credentials.
+Invio `v1.0.0.1.17` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 
@@ -43,3 +43,7 @@ Bundled manifests remain under `providers/packages/`; installed manifests remain
 
 
 P03 uses SQLite schema v2 to persist Account verification timestamp and safe error summary. Provider secrets remain outside SQLite.
+
+## P06 provider endpoint configuration
+
+Refrens `API Base URL` remains an Account credential field, but P06 restricts executable authentication to the canonical `https://api.refrens.com` origin. The validation rejects HTTP, alternate/deceptive hosts, embedded URL credentials, non-root paths, queries, and fragments before App ID/App Secret authentication data is constructed. No configurable trust override is added.

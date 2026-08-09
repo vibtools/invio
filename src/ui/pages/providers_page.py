@@ -17,12 +17,14 @@ class ProvidersPage(QWidget):
         on_install: Callable[[str], None],
         on_uninstall: Callable[[str], None],
         on_load: Callable[[], None],
+        runtime_capabilities: Callable[[ProviderManifest], tuple[str, ...]] | None = None,
     ):
         super().__init__()
         self.manager = manager
         self.on_install = on_install
         self.on_uninstall = on_uninstall
         self.on_load = on_load
+        self.runtime_capabilities = runtime_capabilities
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -67,8 +69,12 @@ class ProvidersPage(QWidget):
         description.setToolTip(provider.description)
         layout.addWidget(description)
 
-        capabilities = ", ".join(provider.capabilities) if provider.capabilities else "No capabilities declared"
-        layout.addWidget(label(f"Capabilities: {capabilities}", "Caption"))
+        declared = ", ".join(provider.capabilities) if provider.capabilities else "None declared"
+        layout.addWidget(label(f"Declared capabilities: {declared}", "Caption"))
+        if self.runtime_capabilities is not None:
+            runtime_values = self.runtime_capabilities(provider)
+            runtime_text = ", ".join(runtime_values) if runtime_values else "No executable Task capability"
+            layout.addWidget(label(f"Runtime capabilities: {runtime_text}", "Caption"))
         layout.addWidget(label(f"Credential fields: {len(provider.credential_fields)}", "Caption", False))
 
         if installed:

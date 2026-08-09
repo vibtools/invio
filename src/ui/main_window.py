@@ -25,8 +25,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core.provider_manager import ProviderManager, ProviderManifestError
-from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
+from ..core.provider_manager import ProviderManager, ProviderManifest, ProviderManifestError
+from ..core.provider_runtime import (
+    ProviderRuntime,
+    ProviderRuntimeError,
+    executable_capabilities,
+    manifest_runtime_contract_matches,
+    preflight_candidate,
+    preflight_task,
+)
 from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowState
 from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
@@ -86,7 +93,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.16 started.")
+        self.log("Invio v1.0.0.1.17 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -196,7 +203,13 @@ class MainWindow(QMainWindow):
             self.retry_task,
             self.close_task,
         )
-        self.providers_page = ProvidersPage(self.providers, self.install_provider, self.uninstall_provider, self.load_provider)
+        self.providers_page = ProvidersPage(
+            self.providers,
+            self.install_provider,
+            self.uninstall_provider,
+            self.load_provider,
+            self._runtime_capabilities_for_provider,
+        )
         self.reports_page = ReportsPage(self.state, self.export_report)
         self.logs_page = LogsPage(self.clear_logs, self.export_logs)
         self.settings_page = SettingsPage(self.app_settings, self.save_app_settings)
@@ -220,7 +233,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.16")
+        self.runtime_status = QLabel("Production • v1.0.0.1.17")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -347,6 +360,26 @@ class MainWindow(QMainWindow):
             self.dashboard_page.refresh()
 
     # Provider workflow -------------------------------------------------
+    def _runtime_capabilities_for_provider(self, provider: ProviderManifest) -> tuple[str, ...]:
+        built_in = executable_capabilities(provider.id)
+        if built_in:
+            return built_in
+        if provider.id in self.task_runners:
+            return ("registered_task_runner",)
+        return ()
+
+    def _provider_manifest_contract_error(self, provider: ProviderManifest) -> str:
+        try:
+            packaged = self.providers.get_packaged(provider.id)
+        except ProviderManifestError as exc:
+            return f"Packaged provider contract could not be read: {exc}"
+        if packaged is not None and not manifest_runtime_contract_matches(provider, packaged):
+            return (
+                f"Installed {packaged.name} manifest does not match the packaged {packaged.name} runtime contract. "
+                f"Uninstall it and install the packaged {packaged.name} provider again."
+            )
+        return ""
+
     def install_provider(self, provider_id: str) -> None:
         try:
             provider = self.providers.install_packaged(provider_id)
@@ -415,9 +448,20 @@ class MainWindow(QMainWindow):
 
     # Accounts ----------------------------------------------------------
     def add_account(self) -> None:
-        providers = self.providers.list_installed()
-        if not providers:
+        installed = self.providers.list_installed()
+        if not installed:
             self._message("Accounts", "Install or load a provider from the Providers page first.", QMessageBox.Icon.Warning)
+            return
+        providers: list[ProviderManifest] = []
+        blocked_messages: list[str] = []
+        for provider in installed:
+            error = self._provider_manifest_contract_error(provider)
+            if error:
+                blocked_messages.append(error)
+            else:
+                providers.append(provider)
+        if not providers:
+            self._message("Provider Contract", blocked_messages[0], QMessageBox.Icon.Warning)
             return
         dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)
         if dialog.exec() != dialog.DialogCode.Accepted:
@@ -461,6 +505,10 @@ class MainWindow(QMainWindow):
                 QMessageBox.Icon.Warning,
             )
             return
+        contract_error = self._provider_manifest_contract_error(provider)
+        if contract_error:
+            self._message("Provider Contract", contract_error, QMessageBox.Icon.Warning)
+            return
 
         dialog = AddAccountDialog(
             [provider], self, provider_runtime=self.provider_runtime, log_callback=self.log, account=account
@@ -500,6 +548,10 @@ class MainWindow(QMainWindow):
                 "Reinstall this provider before editing or re-testing the account.",
                 QMessageBox.Icon.Warning,
             )
+            return
+        contract_error = self._provider_manifest_contract_error(provider)
+        if contract_error:
+            self._message("Provider Contract", contract_error, QMessageBox.Icon.Warning)
             return
         if not self.provider_runtime.supports_api_test(account.provider_id):
             self._message(
@@ -710,8 +762,34 @@ class MainWindow(QMainWindow):
         dialog = NewTaskDialog(self.state, providers, self)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
+        payload = dialog.payload()
         try:
-            task = self.state.create_task(**dialog.payload())
+            installed_provider = self.providers.get_installed(payload["provider_id"])
+            packaged_provider = self.providers.get_packaged(payload["provider_id"])
+        except ProviderManifestError as exc:
+            self._message("Preflight Failed", f"Provider contract could not be read: {exc}", QMessageBox.Icon.Warning)
+            return
+        accounts = [self.state.accounts[account_id] for account_id in payload["account_ids"] if account_id in self.state.accounts]
+        template = self.state.invoice_templates.get(payload["invoice_template_id"])
+        customer_list = self.state.customer_lists.get(payload["customer_list_id"])
+        if template is None or customer_list is None:
+            self._message("Preflight Failed", "The selected Task inputs are no longer available.", QMessageBox.Icon.Warning)
+            return
+        result = preflight_candidate(
+            provider_id=payload["provider_id"],
+            installed_manifest=installed_provider,
+            packaged_manifest=packaged_provider,
+            accounts=accounts,
+            template=template,
+            customers=customer_list.customers,
+            injected_runner_available=payload["provider_id"] in self.task_runners,
+        )
+        if not result.passed:
+            self.log(f"New Task preflight blocked: {result.message}")
+            self._message("Preflight Failed", result.message, QMessageBox.Icon.Warning)
+            return
+        try:
+            task = self.state.create_task(**payload)
         except StateError as exc:
             self._message("Task", str(exc), QMessageBox.Icon.Warning)
             return
@@ -732,18 +810,33 @@ class MainWindow(QMainWindow):
             return task, None, LEGACY_SNAPSHOT_MESSAGE
         try:
             installed_provider = self.providers.get_installed(task.provider_id)
+            packaged_provider = self.providers.get_packaged(task.provider_id)
         except ProviderManifestError as exc:
             return task, None, f"Provider installation state could not be read: {exc}"
         if installed_provider is None:
             return task, None, (
                 f"{task.provider_name} is not installed. Reinstall the provider before starting or retrying this task."
             )
+
+        accounts = []
         for account_id in task.account_ids:
             account = self.state.accounts.get(account_id)
             if account is None:
                 return task, None, "A provider account assigned to this task no longer exists."
             if account.status != "Verified":
                 return task, None, f"Account '{account.name}' is not verified. Run a successful API Test before starting this task."
+            accounts.append(account)
+
+        result = preflight_task(
+            task=task,
+            installed_manifest=installed_provider,
+            packaged_manifest=packaged_provider,
+            accounts=accounts,
+            injected_runner_available=task.provider_id in self.task_runners,
+        )
+        if not result.passed:
+            return task, None, result.message
+
         injected = self.task_runners.get(task.provider_id)
         if injected is not None:
             return task, injected, ""

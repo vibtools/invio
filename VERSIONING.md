@@ -26,3 +26,5 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 - `v1.0.0.1.15`: P05 immutable Task execution snapshots; schema v4 freezes ordered recipients, copied invoice-template content, provider ID and account-assignment basis at Task creation, uses `Task.id` as the canonical logical run identity, and preserves pre-P05 Tasks as non-executable `LegacyUnavailable` records rather than fabricating historical inputs.
 - `v1.0.0.1.16`: P05 forensic verification/correction; rejects post-P05 Tasks without a captured immutable snapshot, validates captured Task progress against its frozen recipient set, and prevents routine Task updates from rewriting the immutable total. Schema remains v4 and production progress remains 5/14.
 
+
+- `v1.0.0.1.17`: P06 provider capability/preflight release; adds packaged manifest/runtime reconciliation, reserved built-in provider-ID collision protection, no-side-effect New Task/Start/Retry preflight, strict account/template/customer checks, Stripe INVOICE/tax safety gates, canonical Refrens endpoint trust, and runtime-capability visibility. SQLite remains schema v4.

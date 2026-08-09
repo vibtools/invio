@@ -61,3 +61,10 @@ P05 does not change the existing Task state-machine semantics, automatic retries
 
 Normal post-P05 Task creation may persist only a real `Captured` execution snapshot. `LegacyUnavailable` is reserved for migrated pre-P05 Tasks and is never assigned as a fallback to a newly persisted Task. Captured Task progress must remain consistent with its frozen recipient count, and routine status/progress persistence cannot rewrite the immutable Task total. These are fail-closed consistency checks; Start/Retry semantics otherwise remain unchanged pending P07.
 
+## P06 no-side-effect preflight
+
+New Task creation now validates the selected provider, current Account health, template/customer requirements, and executable provider capability **before** `AppState.create_task()` persists the Task or reserves Accounts. If preflight fails, no Task/reservation is created and no provider request is made.
+
+Start and Retry run the same capability/health validation against the existing P05 immutable snapshot before any runner is returned to WorkerManager. The snapshot is not refreshed from current Customer Lists or Invoice Templates. A failed preflight leaves provider-side invoice/customer state untouched and reports the first deterministic correction message.
+
+Current packaged runtime rules include: Stripe standard `INVOICE` only; Stripe Automatic Tax and non-zero template percentage line tax are blocked under the current data/runtime contract; Refrens production Task execution remains blocked until P11. P07 still owns Task state-machine/resend policy and is not implemented by P06.

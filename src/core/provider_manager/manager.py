@@ -117,6 +117,11 @@ class ProviderManager:
         wanted = provider_id.strip().lower()
         return next((item for item in self.list_installed() if item.id == wanted), None)
 
+    def get_packaged(self, provider_id: str) -> ProviderManifest | None:
+        """Return the canonical packaged manifest for a provider ID, if present."""
+        wanted = provider_id.strip().lower()
+        return next((item for item in self.list_available() if item.id == wanted), None)
+
     def install_packaged(self, provider_id: str) -> ProviderManifest:
         manifest = next((item for item in self.list_available() if item.id == provider_id), None)
         if manifest is None or manifest.source_path is None:
@@ -128,6 +133,12 @@ class ProviderManager:
     def load_external(self, path: str | Path) -> ProviderManifest:
         source = Path(path)
         manifest = self._parse_manifest(source)
+        packaged = self.get_packaged(manifest.id)
+        if packaged is not None:
+            raise ProviderManifestError(
+                f"Provider ID '{manifest.id}' is reserved by the packaged {packaged.name} integration. "
+                f"Install the packaged provider instead."
+            )
         target = self.registry_dir / f"{manifest.id}.json"
         shutil.copyfile(source, target)
         return self._parse_manifest(target)

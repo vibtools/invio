@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.16`  
+**Baseline:** `v1.0.0.1.17`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -161,7 +161,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-004 | **RESOLVED in P03:** manual Re-test plus persisted verification state/time/safe error; failed Re-test becomes Not Verified | Known failed credentials cannot execute; no age-based/continuous health policy is claimed | COMPLETE v1.0.0.1.10 |
 | EH-005 | **RESOLVED in P04; corrected in v1.0.0.1.13:** structured customer import reports row-numbered missing/invalid email, invalid country, same-file conflicts, and existing-list metadata conflicts; malformed workbook/parser failures stay inside the caught import-error boundary | False/ambiguous customer rows/files are surfaced without silently creating data | COMPLETE v1.0.0.1.12; CORRECTED v1.0.0.1.13 |
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
-| EH-007 | Provider capability/customer/template mismatch lacks preflight error | Side effects can start before incompatibility is clear | P06 |
+| EH-007 | **RESOLVED in v1.0.0.1.17:** provider/template/customer compatibility was not validated before side effects | Unsupported invoice type/currency/tax/customer requirements could reach provider execution | COMPLETE P06: no-side-effect capability preflight |
 | EH-008 | Completed/Failed full Start resend semantics are not protected | Duplicate invoice/email risk | P07 |
 | EH-009 | No retryable/permanent provider error taxonomy | Incorrect retry behavior | P08 |
 | EH-010 | No automatic bounded retry/backoff/jitter | Transient failures become manual failures | P08 |
@@ -177,8 +177,8 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-020 | Secret masking is Stripe-pattern-specific | Other provider secrets may appear in error text | P12 |
 | EH-021 | External provider manifest may exist without executable adapter | Capability/runtime mismatch | P13 |
 | EH-022 | No live integration/recovery certification | Unknown real-environment failure modes | P14 |
-| EH-023 | External provider manifest can collide with a built-in runtime ID/credential contract | Wrong credential/runtime mapping | P06/P13 |
-| EH-024 | Refrens auth accepts any HTTPS base URL | Credentials can be sent to an unintended host | P06/P11 |
+| EH-023 | **RESOLVED for packaged runtime IDs in v1.0.0.1.17:** external/installed manifest could collide with built-in runtime identity/credential/capability contract | Manifest declarations could disagree with executable Stripe/Refrens adapter | COMPLETE P06 packaged-ID reservation + manifest/runtime reconciliation; full external executable adapter architecture remains P13 |
+| EH-024 | **RESOLVED in v1.0.0.1.17:** Refrens auth accepted any HTTPS base URL | App ID/App Secret could be sent to an owner-entered untrusted HTTPS host | COMPLETE P06: canonical `https://api.refrens.com` trust validation before auth payload construction |
 | EH-025 | Stop can leave internal retry recipients not reflected in `task.failed` | Retry button/state inconsistency | P07/P10 |
 | EH-026 | CSV export is not spreadsheet-formula-safe | Spreadsheet execution risk on opened export | P12 |
 | EH-027 | Provider API acceptance is treated as Task success without inbox-delivery confirmation | Misinterpreted delivery state | P10/P12/P14 |
@@ -315,3 +315,14 @@ Implemented in `v1.0.0.1.15`:
 
 P05 creation/progress persistence is now fail-closed at both runtime-state and durable-storage boundaries. New Tasks must carry a captured snapshot; captured `processed/success/failed` values must agree; and the persisted Task total is not updated after creation. SQLite remains schema v4.
 
+## P06 provider preflight handling
+
+Implemented in `v1.0.0.1.17`:
+
+- New Task candidate validation runs before Task persistence/account reservation; failed preflight has no provider network side effect.
+- Start/Retry validation runs before injected/built-in runner creation and uses the existing P05 immutable snapshot rather than current mutable list/template data.
+- Packaged provider-ID manifest/runtime mismatches fail closed and instruct explicit uninstall/reinstall instead of silently rewriting registry state.
+- Unverified/incomplete/error-marked Account verification health, unsupported Account mode, missing required credentials, and Stripe key/mode mismatch fail locally.
+- Stripe `BOS`, Automatic Tax under the current customer-location contract, and non-zero template percentage line tax under the current Stripe sender are rejected before invoice creation.
+- Refrens normal Task capability remains unavailable until P11. Refrens endpoint trust is validated before App ID/App Secret payload construction.
+- P06 does not classify network errors/retries or persist recipient attempt state; those remain P08/P10.
