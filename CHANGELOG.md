@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.0.1.11 - P03 Verification & Correction
+
+- Re-audited the exact shipped `v1.0.0.1.10` P03 baseline without introducing P04 functionality.
+- Fixed schema-v1 migration backup fidelity: backups now use SQLite live-backup semantics so committed data still present in WAL is included instead of copying only the main database file.
+- Fixed credential-loss recovery durability: missing/unreadable protected credentials now persist the Account `Not Verified` state and safe error summary before startup completes, so a later-restored secret cannot silently resurrect a stale durable `Verified` state.
+- Hardened Account Edit across SQLite and protected credential storage by staging a durable `Not Verified` safety state before replacing credentials. Successful edits finish as `Verified`; fully successful rollback restores the prior Account; failed compensation remains explicitly non-executable in memory and durable storage.
+- Added regression coverage for committed-WAL migration backups, durable credential-loss downgrade, final Account Edit database rollback, and fail-closed compensation failure.
+- Updated runtime/release metadata to `v1.0.0.1.11` and synchronized README, roadmap, error-handling, implementation-status, architecture, phase ledger, release notes and private forensic records.
+- P03 remains the completed production phase; progress remains **3/14** and P04 is not implemented.
+- No provider manifest, provider runtime behavior (except release User-Agent), WorkerManager, ProviderManager, Customer/Invoice/Task model, UI page/design, dependency, credential-storage technology, or SQLite schema-version change is included.
+
 ## v1.0.0.1.10 - P03 Account Lifecycle, Verification Health and Provider-Install Consistency
 
 - Added reservation-safe Account **Edit**, **Re-test**, and **Delete** workflows without adding a new page.

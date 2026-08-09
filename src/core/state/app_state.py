@@ -142,13 +142,58 @@ class AppState:
             verification_error_summary=verification_error_summary.strip(),
         )
 
+        safety_state = Account(
+            id=account.id,
+            provider_id=account.provider_id,
+            provider_name=account.provider_name,
+            name=account.name,
+            mode=account.mode,
+            status="Not Verified",
+            credentials=dict(account.credentials),
+            last_verification_at=account.last_verification_at,
+            verification_error_summary="Account update did not complete; run API Test before using this account.",
+        )
+
         old_protected: dict[str, str] | None = None
         credential_ref = CredentialStore.credential_ref(account.id)
         if self._credential_store is not None:
             try:
                 old_protected = self._credential_store.get_credentials(credential_ref)
+            except CredentialStoreError as exc:
+                raise self._persistence_error(exc) from exc
+
+        if self._domain_store is not None:
+            try:
+                # Persist a fail-closed marker before crossing the SQLite /
+                # protected-credential boundary. If the process terminates
+                # between stores, restart cannot resurrect an old Verified
+                # status beside partially changed credentials.
+                self._domain_store.update_account(safety_state)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
+
+        if self._credential_store is not None:
+            try:
                 self._credential_store.set_credentials(account.id, candidate.credentials)
             except CredentialStoreError as exc:
+                rollback_error: Exception | None = None
+                try:
+                    if old_protected is None:
+                        self._credential_store.delete_credentials(credential_ref)
+                    else:
+                        self._credential_store.set_credentials(account.id, old_protected)
+                except CredentialStoreError as rollback_exc:
+                    rollback_error = rollback_exc
+                if rollback_error is None and self._domain_store is not None:
+                    try:
+                        self._domain_store.update_account(account)
+                    except DomainStoreError as rollback_exc:
+                        rollback_error = rollback_exc
+                if rollback_error is not None:
+                    self.accounts[account.id] = safety_state
+                    raise StateError(
+                        f"{exc} Account update rollback also failed; the account remains Not Verified."
+                    ) from exc
                 raise self._persistence_error(exc) from exc
 
         if self._domain_store is not None:
@@ -164,9 +209,18 @@ class AppState:
                             self._credential_store.set_credentials(account.id, old_protected)
                     except CredentialStoreError as rollback_exc:
                         rollback_error = rollback_exc
-                if rollback_error is not None:
+                if rollback_error is None:
+                    try:
+                        self._domain_store.update_account(account)
+                    except DomainStoreError as rollback_exc:
+                        self.accounts[account.id] = safety_state
+                        raise StateError(
+                            f"{exc} Account metadata rollback also failed; the account remains Not Verified."
+                        ) from exc
+                else:
+                    self.accounts[account.id] = safety_state
                     raise StateError(
-                        f"{exc} Protected credential rollback also failed; account state was not reported as updated."
+                        f"{exc} Protected credential rollback also failed; the account remains Not Verified."
                     ) from exc
                 raise self._persistence_error(exc) from exc
 

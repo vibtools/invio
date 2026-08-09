@@ -14,7 +14,7 @@ Open **Accounts** to Add, Edit, Re-test, or Delete a provider account. Add/Edit 
 
 If a provider is uninstalled, its existing accounts remain visible under **Not Installed** and are not deleted. Edit/Re-test require reinstalling the provider; Delete remains available when the account is not Task-protected. Credentials remain in the approved OS-protected keyring and are never displayed.
 
-If protected credentials cannot be safely saved or restored, the Account is not Task-ready. A missing protected credential restores the Account as **Not Verified**.
+If protected credentials cannot be safely saved or restored, the Account is not Task-ready. A missing protected credential restores and durably records the Account as **Not Verified**; restoring the secret later does not make the Account executable until a real Re-test succeeds.
 
 ## 4. Invoice Templates
 

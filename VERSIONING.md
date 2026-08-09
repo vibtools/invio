@@ -15,5 +15,6 @@ Invio release versions are controlled by Vib Tools. Every approved update freeze
 - `v1.0.0.1.9`: P02 verification corrective release; fixes persistence-failure re-entrancy, exact reservation-state recovery validation, and stale P02 roadmap progress metadata.
 
 - `v1.0.0.1.10`: P03 production release; adds reservation-safe account lifecycle, durable verification health, SQLite schema v2, provider-uninstall preservation and Task provider-install execution gates.
+- `v1.0.0.1.11`: P03 verification/corrective release; makes schema-migration backups WAL-aware, persists credential-loss verification downgrades, and hardens cross-store Account Edit recovery to remain fail-closed.
 
 Future version changes require a new explicit scope lock. No unapproved feature or architecture change is included in a release delta.

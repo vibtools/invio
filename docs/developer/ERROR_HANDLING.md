@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.10`  
+**Baseline:** `v1.0.0.1.11`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -262,3 +262,10 @@ Implemented in `v1.0.0.1.10`:
 - Provider Uninstall is rejected while a matching Task worker is active. Otherwise provider installation state alone is removed; Accounts/Tasks/reservations/credentials remain.
 - Task Start/Retry fail closed while the Task provider is not installed.
 - Provider uninstall/reinstall does not invent verification expiry and does not silently delete/recreate accounts.
+
+
+## v1.0.0.1.11 P03 verification corrections
+
+- **Migration backup fidelity:** pre-migration backups are created with SQLite backup semantics instead of copying only the main database file, so committed WAL pages are included.
+- **Credential-loss restart safety:** missing/unreadable protected credentials are not only restored as `Not Verified` in memory; that downgrade/error summary is persisted before startup completes. If the recovery write fails, startup fails rather than silently retaining a stale durable `Verified` row.
+- **Account Edit cross-store safety:** Account Edit persists a `Not Verified` safety state before replacing protected credentials. If protected-store/SQLite compensation fails, both runtime and durable state remain non-executable instead of reporting/retaining a stale `Verified` state.

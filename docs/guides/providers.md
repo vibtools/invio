@@ -22,7 +22,7 @@ After successful API Test and account acceptance:
 
 If the database write fails after a new protected secret is written, Invio performs a compensating protected-store deletion and does not add the account to application state. There is no plaintext fallback.
 
-At restart, Account metadata is restored from SQLite and credentials are retrieved from protected storage. Missing/unavailable credentials downgrade only the runtime account state to **Not Verified** and are logged without secret values.
+At restart, Account metadata is restored from SQLite and credentials are retrieved from protected storage. Missing/unavailable credentials downgrade the Account to **Not Verified**, and that fail-closed health state is persisted before startup completes; the event is logged without secret values.
 
 ## Stripe
 
@@ -35,3 +35,8 @@ Credentials: API Base URL, URL Key, App ID, App Secret. P02 protects the credent
 ## External Providers
 
 Loading a manifest alone declares provider metadata; executable behavior still requires a corresponding built-in/injected runner. P02 does not create a new external runtime-plugin system.
+
+
+## v1.0.0.1.11 P03 persistence-safety correction
+
+Migration backups are WAL-aware, credential-loss `Not Verified` recovery is durable, and Account Edit stages a durable fail-closed state before protected credentials are replaced. Provider install/uninstall behavior and API verification contracts are otherwise unchanged.

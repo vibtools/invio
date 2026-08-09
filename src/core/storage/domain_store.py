@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -112,7 +111,7 @@ class DomainStore:
                     "Operational storage has an unversioned schema and cannot be migrated automatically."
                 )
             if backup_required and self.path.exists():
-                self._create_migration_backup(0)
+                self._create_migration_backup(0, connection)
             script = f"BEGIN IMMEDIATE;\n{SCHEMA_V1}\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
             try:
                 connection.executescript(script)
@@ -125,7 +124,7 @@ class DomainStore:
             return
 
         if backup_required and self.path.exists():
-            self._create_migration_backup(1)
+            self._create_migration_backup(1, connection)
         script = f"BEGIN IMMEDIATE;\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
             connection.executescript(script)
@@ -136,12 +135,22 @@ class DomainStore:
                 f"Operational storage migration failed; prior data was preserved: {exc}"
             ) from exc
 
-    def _create_migration_backup(self, version: int) -> None:
+    def _create_migration_backup(self, version: int, source: sqlite3.Connection) -> None:
         backup = self.path.with_name(f"{self.path.name}.pre_migration_v{version}.bak")
+        temporary = backup.with_name(f"{backup.name}.tmp")
         try:
-            shutil.copy2(self.path, backup)
-        except OSError as exc:
+            if temporary.exists():
+                temporary.unlink()
+            with sqlite3.connect(temporary) as destination:
+                source.backup(destination)
+            temporary.replace(backup)
+        except (OSError, sqlite3.Error) as exc:
             raise DomainStoreMigrationError(f"Could not create the pre-migration backup: {exc}") from exc
+        finally:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def _transaction(self, callback) -> None:
         try:
@@ -163,6 +172,8 @@ class DomainStore:
 
     def load(self, credential_store: CredentialStore) -> LoadedDomain:
         loaded = LoadedDomain()
+        verification_recovery_updates: list[tuple[str, str, str, str]] = []
+        recovery_updates: list[tuple[str, str, str]] = []
         try:
             with self._connection() as connection:
                 account_rows = connection.execute(
@@ -178,11 +189,17 @@ class DomainStore:
                     except CredentialStoreError as exc:
                         status = "Not Verified"
                         verification_error_summary = "Protected credentials are unavailable."
+                        verification_recovery_updates.append(
+                            (status, last_verification_at, verification_error_summary, str(row["id"]))
+                        )
                         loaded.warnings.append(f"Account '{row['name']}' credentials are unavailable; the account was restored as Not Verified. ({exc})")
                     else:
                         if restored is None:
                             status = "Not Verified"
                             verification_error_summary = "Protected credentials are unavailable."
+                            verification_recovery_updates.append(
+                                (status, last_verification_at, verification_error_summary, str(row["id"]))
+                            )
                             loaded.warnings.append(
                                 f"Account '{row['name']}' has no protected credential entry; the account was restored as Not Verified."
                             )
@@ -246,7 +263,6 @@ class DomainStore:
                     )
                     loaded.invoice_templates[template.id] = template
 
-                recovery_updates: list[tuple[str, str, str]] = []
                 for row in connection.execute("SELECT * FROM tasks ORDER BY rowid").fetchall():
                     task_id = str(row["id"])
                     account_rows_for_task = connection.execute(
@@ -293,8 +309,15 @@ class DomainStore:
         except (sqlite3.Error, ValueError, ArithmeticError, TypeError, KeyError) as exc:
             raise DomainStoreCorruptionError(f"Operational storage contains invalid data: {exc}") from exc
 
-        if recovery_updates:
+        if verification_recovery_updates or recovery_updates:
             def persist_recovery(connection: sqlite3.Connection) -> None:
+                if verification_recovery_updates:
+                    connection.executemany(
+                        """UPDATE accounts
+                           SET status=?, last_verification_at=?, verification_error_summary=?
+                           WHERE id=?""",
+                        verification_recovery_updates,
+                    )
                 connection.executemany(
                     "UPDATE tasks SET status=?, last_message=? WHERE id=?",
                     recovery_updates,

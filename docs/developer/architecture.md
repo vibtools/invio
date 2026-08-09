@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.10` preserves the P01/P02 runtime, storage, provider and WorkerManager architecture while completing P03 account lifecycle, verification-health persistence and provider-install execution consistency. No new UI page, provider execution engine, Task thread architecture, Customer contract, or Invoice contract is introduced.
+Invio `v1.0.0.1.11` preserves the P01/P02 runtime, storage, provider and WorkerManager architecture while retaining the P03 account lifecycle, verification-health persistence and provider-install execution consistency from v1.0.0.1.10 and correcting P03 persistence/recovery safety. No new UI page, provider execution engine, Task thread architecture, Customer contract, or Invoice contract is introduced.
 
 ## 2. Core Responsibilities
 
@@ -43,6 +43,7 @@ Corrupt/newer/unrecognized domain storage aborts startup through a user-facing c
 Examples:
 
 - Add Account: protected credential write -> SQLite account metadata transaction -> in-memory account.
+- Edit Account: durable `Not Verified` safety marker -> protected credential replacement -> verified SQLite candidate; compensation restores prior secret/metadata only when it can do so completely.
 - Customer email import: complete ordered email replacement in one transaction -> in-memory list update.
 - Invoice Template save: template + items + terms in one transaction -> in-memory template.
 - Task create: Task + ordered selected accounts + account reservations in one transaction -> in-memory Task/reservations.
@@ -108,3 +109,8 @@ The storage architecture is unchanged from P02. The corrective release only hard
 - Accounts page remains the only account UI page; it adds Edit/Re-test/Delete actions and keeps accounts visible when their provider is not installed.
 - Provider uninstall is blocked while a matching Task worker is active. Inactive Tasks/accounts/reservations remain durable. `_runner_for_task()` blocks Start/Retry while the provider is absent.
 - WorkerManager, ProviderManager, provider manifests and provider send behavior are unchanged.
+
+
+## v1.0.0.1.11 P03 verification correction
+
+The architecture remains unchanged. `DomainStore` now creates migration backups through SQLite's backup API so the backup includes committed WAL state, and credential-loss recovery persists the Account's `Not Verified` health state before startup completes. `AppState.update_account()` uses an existing-store fail-closed staging state before protected credentials are replaced, preventing a process interruption or failed compensation from leaving a durable `Verified` row paired with partially changed credentials. No P04 data contract or new service layer is introduced.

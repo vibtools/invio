@@ -322,6 +322,36 @@ class P02StorageTests(unittest.TestCase):
         self.assertIn("last_verification_at", columns)
         self.assertIn("verification_error_summary", columns)
 
+    def test_schema_v1_backup_includes_committed_wal_state(self):
+        legacy = self.root / "legacy_v1_wal.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+
+        writer = sqlite3.connect(legacy)
+        try:
+            writer.execute("PRAGMA journal_mode = WAL")
+            writer.execute("PRAGMA wal_autocheckpoint = 0")
+            writer.execute(
+                "INSERT INTO accounts (id, provider_id, provider_name, name, mode, status, credential_ref) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("acct_wal", "stripe", "Stripe", "WAL Account", "Test", "Verified", "account:acct_wal"),
+            )
+            writer.commit()
+            self.assertTrue(Path(f"{legacy}-wal").exists())
+
+            DomainStore(legacy)
+        finally:
+            writer.close()
+
+        backup = legacy.with_name("legacy_v1_wal.sqlite3.pre_migration_v1.bak")
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM accounts WHERE id='acct_wal'").fetchone()[0],
+                1,
+            )
+
     def test_verification_health_round_trip_survives_restart(self):
         state = self.state()
         account = state.add_account(
@@ -350,6 +380,31 @@ class P02StorageTests(unittest.TestCase):
         self.assertEqual(restored.last_verification_at, "2026-08-09T02:20:00+00:00")
         self.assertEqual(restored.verification_error_summary, "Protected credentials are unavailable.")
 
+    def test_missing_protected_credentials_persist_fail_closed_verification_state(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_HEALTH_RESTORE"},
+            status="Verified", last_verification_at="2026-08-09T02:21:00+00:00"
+        )
+        protected = dict(self.backend.values)
+        self.backend.values.clear()
+
+        first_load = self.store.load(self.credentials)
+        self.assertEqual(first_load.accounts[account.id].status, "Not Verified")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            row = connection.execute(
+                "SELECT status, last_verification_at, verification_error_summary FROM accounts WHERE id=?",
+                (account.id,),
+            ).fetchone()
+        self.assertEqual(row[0], "Not Verified")
+        self.assertEqual(row[1], "2026-08-09T02:21:00+00:00")
+        self.assertEqual(row[2], "Protected credentials are unavailable.")
+
+        self.backend.values.update(protected)
+        second_load = self.store.load(self.credentials)
+        self.assertEqual(second_load.accounts[account.id].status, "Not Verified")
+        self.assertEqual(second_load.accounts[account.id].credentials["secret_key"], "sk_test_HEALTH_RESTORE")
+
     def test_account_update_database_failure_restores_old_protected_credentials(self):
         state = self.state()
         account = state.add_account(
@@ -372,6 +427,78 @@ class P02StorageTests(unittest.TestCase):
             self.store.update_account = original  # type: ignore[method-assign]
         self.assertEqual(state.accounts[account.id].name, "Primary")
         self.assertEqual(self.credentials.get_credentials(f"account:{account.id}"), {"secret_key": "sk_test_OLD"})
+
+    def test_account_update_final_database_failure_restores_old_durable_state(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_OLD_FINAL"}, status="Verified"
+        )
+        original = self.store.update_account
+
+        def fail_candidate(candidate):
+            from src.core.storage import DomainStoreError
+            if candidate.name == "Changed" and candidate.status == "Verified":
+                raise DomainStoreError("forced final account update failure")
+            return original(candidate)
+
+        self.store.update_account = fail_candidate  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced final account update failure"):
+                state.update_account(
+                    account.id, name="Changed", mode="Live", credentials={"secret_key": "sk_live_NEW_FINAL"},
+                    status="Verified", last_verification_at="2026-08-09T02:31:00+00:00"
+                )
+        finally:
+            self.store.update_account = original  # type: ignore[method-assign]
+
+        self.assertEqual(state.accounts[account.id].name, "Primary")
+        self.assertEqual(state.accounts[account.id].status, "Verified")
+        self.assertEqual(self.credentials.get_credentials(f"account:{account.id}"), {"secret_key": "sk_test_OLD_FINAL"})
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            row = connection.execute("SELECT name, mode, status FROM accounts WHERE id=?", (account.id,)).fetchone()
+        self.assertEqual(tuple(row), ("Primary", "Test", "Verified"))
+
+    def test_account_update_rollback_failure_remains_fail_closed(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_OLD_ROLLBACK"}, status="Verified"
+        )
+        original_update = self.store.update_account
+        original_set = self.credentials.set_credentials
+
+        def fail_candidate(candidate):
+            from src.core.storage import DomainStoreError
+            if candidate.name == "Changed" and candidate.status == "Verified":
+                raise DomainStoreError("forced final account update failure")
+            return original_update(candidate)
+
+        set_calls = 0
+
+        def fail_credential_rollback(account_id, credentials):
+            nonlocal set_calls
+            from src.core.storage import CredentialStoreError
+            set_calls += 1
+            if set_calls == 2:
+                raise CredentialStoreError("forced protected rollback failure")
+            return original_set(account_id, credentials)
+
+        self.store.update_account = fail_candidate  # type: ignore[method-assign]
+        self.credentials.set_credentials = fail_credential_rollback  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "account remains Not Verified"):
+                state.update_account(
+                    account.id, name="Changed", mode="Live", credentials={"secret_key": "sk_live_NEW_ROLLBACK"},
+                    status="Verified", last_verification_at="2026-08-09T02:32:00+00:00"
+                )
+        finally:
+            self.store.update_account = original_update  # type: ignore[method-assign]
+            self.credentials.set_credentials = original_set  # type: ignore[method-assign]
+
+        self.assertEqual(state.accounts[account.id].status, "Not Verified")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            row = connection.execute("SELECT status, verification_error_summary FROM accounts WHERE id=?", (account.id,)).fetchone()
+        self.assertEqual(row[0], "Not Verified")
+        self.assertIn("Account update did not complete", row[1])
 
     def test_failed_retest_persistence_failure_still_fails_closed_in_memory(self):
         state = self.state()

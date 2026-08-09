@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.10`** completes **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency** on top of the verified P01/P02 production foundation.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.11`** is the P03 verification/correction baseline. P03 account lifecycle/provider-install consistency was introduced in `v1.0.0.1.10`; this corrective release hardens migration backup fidelity, durable fail-closed credential-loss recovery, and cross-store Account Edit safety without adding P04 functionality.
 
 ## Current Application Scope
 
@@ -23,7 +23,7 @@ Non-sensitive operational state now survives application restart in a per-user S
 - Tasks, account selections, status/counters/message;
 - account reservations.
 
-The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 upgrades the schema to version 2 and creates a pre-migration backup before upgrading an existing version-1 database; the existing version-0 path remains supported.
+The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 upgrades the schema to version 2 and creates a pre-migration backup before upgrading an existing version-1 database; `v1.0.0.1.11` makes that backup WAL-aware so committed state is preserved even when it is still present in SQLite WAL. The existing version-0 path remains supported.
 
 Typical operational database paths use the same per-user Invio directory as Settings:
 
@@ -92,7 +92,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The P03 suite adds schema-v1-to-v2 migration, account edit/delete/re-test, protected-secret compensation, verification-health persistence, provider-uninstall consistency, and Task execution-gate contracts while retaining the P01/P02 regression suite.
+The P03 suite covers schema-v1-to-v2 migration, Account edit/delete/re-test, protected-secret compensation, verification-health persistence, provider-uninstall consistency, Task execution gates, WAL-aware migration-backup fidelity, durable credential-loss downgrade, and fail-closed cross-store Account Edit recovery while retaining the P01/P02 regression suite.
 
 ## Documentation
 
@@ -104,7 +104,7 @@ The P03 suite adds schema-v1-to-v2 migration, account edit/delete/re-test, prote
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.10.md`
+- Release notes: `docs/release-notes/1.0.0.1.11.md`
 
 ## Private Project Material
 
@@ -112,7 +112,7 @@ The P03 suite adds schema-v1-to-v2 migration, account edit/delete/re-test, prote
 
 ## Production Readiness Program
 
-`v1.0.0.1.10` completes **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency**. Production progress is now **3/14 phases complete**. The next separately approved phase is **P04 - Customer Data Contract and Import Upgrade**.
+`v1.0.0.1.11` is the verified P03 corrective baseline. Production progress remains **3/14 phases complete**. The next separately approved phase is **P04 - Customer Data Contract and Import Upgrade**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 

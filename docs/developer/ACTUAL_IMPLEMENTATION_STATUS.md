@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.10`  
+**Baseline:** `Invio v1.0.0.1.11`  
 **Completed production phases:** P01, P02, P03  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -107,3 +107,10 @@ Remaining worker reliability work is P08/P09/P10.
 ## Current Certification Boundary
 
 P01/P02/P03 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
+
+
+### v1.0.0.1.11 P03 verification correction
+
+**WORKING:** migration backups now include committed WAL state; startup credential-loss recovery durably keeps the Account `Not Verified` even if the protected secret later becomes readable again; Account Edit stages a durable fail-closed state before changing protected credentials and keeps runtime/durable state non-executable when compensation cannot restore the prior secret/metadata.
+
+**UNCHANGED:** P03 remains 3/14 production phases complete; P04-P14 remain pending.

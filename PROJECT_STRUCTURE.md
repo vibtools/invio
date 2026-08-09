@@ -57,3 +57,8 @@ No directory or module is renamed/reorganized. The corrective release changes on
 ## v1.0.0.1.10 P03 Account Lifecycle
 
 P03 extends the existing `Account` model and SQLite `accounts` table with verification-health metadata, adds lifecycle operations in `AppState`/`DomainStore`, and adds Edit/Re-test/Delete controls to the existing Accounts page. No new UI page or dependency is introduced.
+
+
+## v1.0.0.1.11 P03 Verification Correction
+
+No production folder/module/page/dependency structure changes are introduced. The corrective delta only hardens existing `AppState` Account Edit persistence and `DomainStore` migration/startup recovery behavior, adds regression tests, and synchronizes release/audit documentation.
