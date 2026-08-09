@@ -49,3 +49,7 @@ Provider manifests and credential fields are unchanged. Customer Lists can carry
 ## v1.0.0.1.13 P04 verification correction
 
 Explicit country metadata is constrained to two ASCII alphabetic characters before it can satisfy the provider-neutral customer contract or Refrens payload helper. This does not enable Refrens Task sending; the P11 gate remains unchanged.
+
+## P05 Task snapshot provider boundary
+
+P05 stores the Task provider ID and ordered Account IDs as execution basis, but it does **not** copy provider credentials into the Task snapshot. At Start/Retry, existing P03 provider-install and Account `Verified` gates still run, and credentials are resolved from protected Account state. Provider manifests, provider IDs, credential fields and Stripe/Refrens send contracts are unchanged by P05.

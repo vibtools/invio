@@ -30,7 +30,15 @@ CSV/TSV/XLSX/XLSM files with a first usable header row containing `email` use st
 
 Choose Provider, Verified Account(s), Invoice Template, and Customer List. Tasks and account reservations survive restart. A Task that was actively Running/Paused/Stopping when the app ended is recovered as **Stopped** and is never auto-resumed.
 
-Existing Start/Pause/Resume/Stop/Retry Failed/Close behavior otherwise remains unchanged.
+Existing Start/Pause/Resume/Stop/Retry Failed/Close state-machine behavior otherwise remains unchanged. P05 changes only which execution inputs an existing Task is allowed to use.
+
+### P05 immutable Task inputs
+
+For a new Task, Invio freezes the selected customer records, a complete copy of the selected Invoice Template, the provider ID, and the ordered selected Account basis at the moment the Task is created. `Task.total` comes from that frozen recipient count.
+
+After the Task exists, later Customer List imports/enrichment or Invoice Template edits do **not** change that Task. Start and Retry Failed reuse the same frozen inputs. To run different data/configuration, create a new Task. The new Task receives a new Task ID; the existing `Task.id` is the canonical identity for the existing logical run.
+
+Tasks created before P05 cannot be given a trustworthy historical snapshot because older releases did not save one. After migration, those Tasks remain visible and can be closed, but Start/Retry are disabled and backend-blocked. Create a new Task for current data.
 
 ## 7. Reports and Live Logs
 
@@ -42,4 +50,4 @@ Settings remain separate non-sensitive JSON preferences. Provider credentials ar
 
 ## 9. Operational Storage Startup
 
-Invio checks and, when required, migrates the per-user `domain.sqlite3` before the normal pages open. `v1.0.0.1.14` corrects a Windows-specific migration-backup handle issue that could raise `WinError 32` while renaming `pre_migration_*.bak.tmp` to `.bak`. No user data migration step or UI workflow changed; supported databases continue to migrate automatically and fail closed if storage is genuinely unavailable or unsafe.
+Invio checks and, when required, migrates the per-user `domain.sqlite3` before the normal pages open. `v1.0.0.1.14` corrected the Windows-specific migration-backup handle issue. `v1.0.0.1.15` advances the domain schema to v4 for immutable Task execution snapshots while retaining the same WAL-aware, Windows-safe backup path. Supported databases migrate automatically and fail closed if storage is genuinely unavailable or unsafe.

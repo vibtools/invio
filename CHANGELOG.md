@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0.1.15 - P05 Immutable Task Execution Snapshot and Input Consistency
+
+- Completed production phase **P05** without changing WorkerManager, ProviderManager, provider manifests, provider-send semantics, dependencies, or unrelated UI.
+- Added frozen Task execution-snapshot contracts for ordered customer records, copied invoice-template data/items/terms, provider ID, ordered Account basis, and the existing `recipient_ordinal_round_robin_v1` assignment strategy.
+- `AppState.create_task()` now captures the snapshot at Task creation and derives `Task.total` from the frozen recipient set.
+- Upgraded durable SQLite storage from schema v3 to **schema v4** with dedicated Task snapshot tables and transactional Task + account reservation + snapshot creation.
+- ProviderRuntime Start/Retry now reads the Task's durable immutable snapshot instead of the live Customer List or live Invoice Template. Later list/template edits cannot change an existing Task run or retry.
+- Defined **`Task.id` as the canonical logical run identity**. A different recipient/template/provider/account-basis execution requires a new Task and therefore a new Task ID.
+- Preserved pre-P05 Tasks during v3-to-v4 migration as `LegacyUnavailable` without fabricating historical recipients/template data from current state. Legacy Tasks remain visible/closable but Start and Retry fail closed.
+- Added corruption-safe validation for provider, account order, snapshot state, template presence, invoice items, and Task-total/recipient-count agreement.
+- Added P05 state/storage/runtime/UI/repository regression tests while preserving prior tests and release compatibility aliases.
+- Production progress advances to **5/14**; P06 remains separately approval-gated.
+
 ## v1.0.0.1.14 - Windows Operational Storage Runtime Hotfix
 
 - Reproduced the reported Windows startup failure in the SQLite pre-migration backup path: the temporary backup database remained open when `Path.replace()` attempted `.bak.tmp -> .bak`, producing `WinError 32`.

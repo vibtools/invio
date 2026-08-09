@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QProgressBar, QScrollArea, QVBoxLayout, QWidget
 
 from ...core.state import AppState
-from ...tasks.models import Task
+from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
 from ..widgets import button, card, divider, label, metric_card, page_header, status_badge
 
 
@@ -115,12 +115,16 @@ class TaskCard(QWidget):
         self.message.setText(task.last_message)
         running = task.status in {"Running", "Stopping"}
         paused = task.status == "Paused"
-        self.start_btn.setEnabled(task.status in {"Ready", "Stopped", "Failed", "Completed"})
+        snapshot_ready = task.has_immutable_execution_snapshot
+        self.start_btn.setEnabled(snapshot_ready and task.status in {"Ready", "Stopped", "Failed", "Completed"})
         self.pause_btn.setEnabled(running)
         self.resume_btn.setEnabled(paused)
         self.stop_btn.setEnabled(running or paused)
-        self.retry_btn.setEnabled(task.failed > 0 and task.status not in {"Running", "Stopping"})
+        self.retry_btn.setEnabled(snapshot_ready and task.failed > 0 and task.status not in {"Running", "Stopping"})
         self.close_btn.setEnabled(task.status not in {"Running", "Stopping"})
+        snapshot_tooltip = "" if snapshot_ready else LEGACY_SNAPSHOT_MESSAGE
+        self.start_btn.setToolTip(snapshot_tooltip)
+        self.retry_btn.setToolTip(snapshot_tooltip)
 
 
 class TasksPage(QWidget):

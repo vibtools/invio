@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.14`  
-**Completed production phases:** P01, P02, P03, P04  
+**Baseline:** `Invio v1.0.0.1.15`  
+**Completed production phases:** P01, P02, P03, P04, P05  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -15,12 +15,13 @@
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
 | Refrens normal Task sending | BLOCKED | P04 can store explicit name/country, but the production Refrens Task runner remains P11 |
 | Real Add Account API Test | WORKING | P01 real Stripe/Refrens verification on a dedicated dialog `QThread` |
-| Durable Accounts metadata | WORKING | Current SQLite schema v3 restores IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
+| Durable Accounts metadata | WORKING | Current SQLite schema v4 restores IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
-| Durable Tasks/reservations | WORKING | Task metadata, ordered accounts, counters/message and reservations restore |
+| Durable Tasks/reservations | WORKING | Task metadata, ordered accounts, counters/message, reservations and P05 immutable execution snapshots restore |
 | Active-task restart recovery | WORKING | Running/Paused/Stopping recover as existing `Stopped`; no auto-resume/send |
+| Immutable Task execution inputs | WORKING | P05 freezes ordered recipients, copied template, provider ID and account-assignment basis at Task creation; Start/Retry reuse it |
 | Dedicated worker thread per active Task | WORKING | Existing one-`QThread`-per-Task WorkerManager unchanged |
 | Retry Failed after app restart | NOT IMPLEMENTED | ProviderRuntime failed-recipient set is still process memory; P10 |
 | Recipient delivery ledger/provider IDs | NOT IMPLEMENTED | P10 |
@@ -47,7 +48,7 @@
 - Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
 - Template parent/items/terms and customer email replacement are committed transactionally.
 - Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
-- Existing empty schema-v0 databases are backed up before migration through schema v1/v2 to current schema v3; existing schema-v1/v2 databases receive dedicated WAL-aware pre-migration backups before upgrade.
+- Existing empty schema-v0 databases are backed up before migration through schema v1/v2/v3 to current schema v4; existing supported databases receive dedicated WAL-aware pre-migration backups before upgrade.
 - Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
 - Previously active Tasks are not automatically resumed after process restart.
 - Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
@@ -57,7 +58,7 @@
 - No per-recipient delivery ledger, remote provider reconciliation, persisted provider customer/invoice IDs or persistent Retry Failed recipient set. These remain P10.
 - Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
 - Customer record name/country expansion is **WORKING in P04**; no billing/shipping/payment expansion was added.
-- No immutable Task execution snapshot. P05.
+- Immutable Task execution snapshots are **WORKING in P05**; pre-P05 Tasks migrate as fail-closed `LegacyUnavailable` records.
 - No provider capability preflight. P06.
 - No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
 
@@ -93,8 +94,8 @@
 
 ### REMAINING
 
-- Customer Lists now carry email + optional explicit name/country. They remain live-mutable after Task creation; immutable execution inputs remain P05.
-- Bound Invoice Templates remain editable and runtime uses current template at Start/Retry. P05.
+- Customer Lists remain editable/importable, but P05 freezes each new Task's creation-time customer records so later changes do not affect that Task.
+- Bound Invoice Templates remain editable, but P05 Start/Retry use the Task's frozen template copy rather than the current template.
 - Completed/Failed full-Start resend semantics remain unchanged. P07.
 - Retry Failed remains process-memory only. P10.
 
@@ -106,7 +107,7 @@ Remaining worker reliability work is P08/P09/P10.
 
 ## Current Certification Boundary
 
-P01/P02/P03 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
+P01-P05 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
 
 
 ### v1.0.0.1.11 P03 verification correction
@@ -135,3 +136,15 @@ P01/P02/P03 unit/contract/source audits verify the implemented local contracts. 
 
 **UNCHANGED:** schema v3, protected credentials, startup recovery semantics, ProviderRuntime send/API-test logic, WorkerManager, Customer/Invoice/Task/Account contracts and the 4/14 production-phase status. P05 is not implemented by this hotfix.
 
+
+## v1.0.0.1.15 P05 Immutable Task Execution Snapshot
+
+**WORKING:** every new Task captures a frozen provider ID, ordered Account basis, `recipient_ordinal_round_robin_v1` assignment strategy, ordered customer records and complete invoice-template copy at Task creation. `Task.total` is derived from the frozen recipient count. SQLite schema v4 persists snapshot metadata/customers/template/items/terms in the same transaction as Task/account reservations, and restart validates snapshot completeness/provider/account/total invariants before restoring operational state.
+
+**WORKING:** ProviderRuntime Start/Retry converts only the Task's frozen snapshot into the existing runtime `TaskSnapshot`; it no longer reads live Customer List or Invoice Template content for an existing Task. `Task.id` is the canonical logical run identity; a different execution requires a new Task.
+
+**MIGRATION:** pre-P05 schema-v3 Tasks remain present with status/counters/references/reservations but are marked `LegacyUnavailable`; original creation-time data is not fabricated from current list/template state. Their Start/Retry paths are disabled/gated while Close remains available.
+
+**STILL NOT IMPLEMENTED:** P06 provider preflight, P07 state-machine/resend hardening, P08/P09 network/scheduling hardening, P10 durable recipient delivery ledger/retry recovery, P11 Refrens Task enablement, P12 observability/privacy completion, P13 executable external adapters, P14 native/live production certification.
+
+**Production progress:** 5/14 phases complete. Next separately approved phase: P06.

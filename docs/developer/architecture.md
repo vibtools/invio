@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.14` preserves the verified P01-P04 architecture and applies only the scoped operational-storage/runtime correction described in this release. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, or Refrens production Task runner is introduced.
+Invio `v1.0.0.1.15` preserves the verified P01-P04 architecture and completes P05 by adding durable immutable Task execution snapshots. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, Refrens production Task runner, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
@@ -29,6 +29,7 @@ QApplication
        -> Customer Lists/customer records
        -> Invoice Templates/items/terms
        -> Tasks/account selections/reservations
+       -> immutable Task execution snapshots
        -> active-state recovery to Stopped
   -> AppState(restored domain)
   -> existing MainWindow pages
@@ -46,7 +47,7 @@ Examples:
 - Edit Account: durable `Not Verified` safety marker -> protected credential replacement -> verified SQLite candidate; compensation restores prior secret/metadata only when it can do so completely.
 - Customer import: complete ordered customer-record replacement in one transaction -> in-memory list update.
 - Invoice Template save: template + items + terms in one transaction -> in-memory template.
-- Task create: Task + ordered selected accounts + account reservations in one transaction -> in-memory Task/reservations.
+- Task create: Task + ordered selected accounts + account reservations + immutable execution snapshot in one transaction -> in-memory Task/reservations.
 - Task close: reservation release + Task deletion in one transaction -> in-memory removal.
 - Worker status/progress: Task metadata update transaction; a storage failure requests Task stop instead of silently continuing without durable state.
 
@@ -58,7 +59,7 @@ Production backend acceptance is fail-closed: only the approved core OS-protecte
 
 ## 6. Schema / Migration
 
-Current schema version: **3**, tracked by `PRAGMA user_version`. Schema v2 added Account verification-health metadata. P04 schema v3 adds optional `name` and `country` columns to the existing `customer_emails` table; existing schema-v2 rows migrate losslessly with blank metadata. All supported migrations use WAL-aware pre-migration backup semantics.
+Current schema version: **4**, tracked by `PRAGMA user_version`. Schema v2 added Account verification-health metadata. P04 schema v3 adds optional `name` and `country` columns to `customer_emails`. P05 schema v4 adds durable Task execution-snapshot tables. All supported migrations use WAL-aware pre-migration backup semantics and retain the v1.0.0.1.14 Windows close-before-replace fix.
 
 Core tables:
 
@@ -67,6 +68,8 @@ Core tables:
 - `invoice_templates`, `invoice_template_items`, `invoice_template_terms`
 - `tasks`, `task_accounts`
 - `account_reservations`
+- `task_execution_snapshots`, `task_snapshot_customers`
+- `task_snapshot_template`, `task_snapshot_template_items`, `task_snapshot_template_terms`
 
 Foreign keys are enabled. Connections use `synchronous=FULL`; initialized storage uses WAL. Existing version-0 storage is backed up before migration. Future schema versions are rejected rather than downgraded.
 
@@ -74,7 +77,7 @@ Foreign keys are enabled. Connections use `synchronous=FULL`; initialized storag
 
 P02 recovers Task-level metadata only. `Running`, `Paused`, or `Stopping` is converted to existing status `Stopped` with a recovery message. P02 intentionally does not auto-resume external side effects.
 
-Per-recipient attempts, provider customer/invoice IDs, durable idempotency evidence, failed-recipient retry records, and exact uncertain-side-effect reconciliation remain **P10**.
+`Task.id` is now the canonical logical run identity and P05 preserves immutable creation-time inputs, but per-recipient attempts, provider customer/invoice IDs, durable idempotency evidence, failed-recipient retry records, and exact uncertain-side-effect reconciliation remain **P10**.
 
 ## 8. Threading
 
@@ -92,7 +95,7 @@ Per-recipient attempts, provider customer/invoice IDs, durable idempotency evide
 
 ## 10. Current Extension Boundary
 
-External provider manifest loading remains metadata-only unless a runner is registered. P04 does not change that provider architecture.
+External provider manifest loading remains metadata-only unless a runner is registered. P05 does not change that provider architecture.
 
 ## v1.0.0.1.9 P02 verification correction
 
@@ -123,7 +126,7 @@ The architecture remains unchanged. `DomainStore` now creates migration backups 
 - `AppState.add_customers()` performs deterministic merge/enrichment and commits through `DomainStore.replace_customer_records()` before mutating the live list. `add_emails()` remains a compatibility wrapper.
 - Structured CSV/TSV/XLSX/XLSM import is selected only when the first usable row contains an `email` header. TXT and files without that header retain legacy email extraction.
 - SQLite schema v3 preserves the existing `customer_emails` table name/order and adds `name`/`country` metadata.
-- `TaskSnapshot` now carries immutable-in-run `CustomerSnapshot` records plus a backward-compatible `customer_emails` property. This is still a start-time snapshot only; P05 will define/persist the Task-creation execution snapshot.
+- P04 runtime `TaskSnapshot` still carries provider-runtime customer records and the backward-compatible email view. P05 now feeds it from the durable creation-time Task snapshot instead of live Customer List/Template state.
 - Stripe batch logic remains email-based and unchanged in customer creation/reuse semantics. Refrens data can be supplied explicitly but its Task runner remains disabled until P11.
 
 ## 13. v1.0.0.1.13 P04 Verification Correction
@@ -133,3 +136,15 @@ No new architectural layer is introduced. `CustomerImportResult` carries source-
 
 No architectural layer or schema change is introduced. `DomainStore._create_migration_backup()` continues to use SQLite's live backup API so committed WAL pages are included, but it now explicitly closes the temporary destination connection before `Path.replace()` performs the atomic `.bak.tmp -> .bak` replacement. This is required on Windows because the SQLite connection context manager does not close the underlying file handle on `with` exit. The startup flow, schema v3, AppState/DomainStore/CredentialStore boundaries, ProviderRuntime, and one-QThread-per-active-Task WorkerManager remain unchanged.
 
+
+## 15. P05 Immutable Task Execution Snapshot
+
+`TaskExecutionSnapshot` is captured by `AppState.create_task()` before the Task is persisted. Its frozen model contains provider ID, ordered Account IDs, assignment strategy, ordered `CustomerRecord` recipients, and a frozen invoice-template copy with frozen item/term data. The `Task` object stores this snapshot; `Task.total` is set from its recipient count.
+
+`DomainStore.create_task_with_reservations()` persists the Task, account bindings, reservations, snapshot metadata, recipients and template copy in the same SQLite transaction. Snapshot rows have no normal update path and are deleted with the Task. `ProviderRuntime._snapshot()` no longer reads live Customer List or Invoice Template content; it validates and converts the durable Task snapshot into the existing runtime `TaskSnapshot`.
+
+The ordered `task_accounts` rows remain the durable account-assignment basis, and the snapshot records the assignment strategy `recipient_ordinal_round_robin_v1`. Provider credentials are not copied into SQLite snapshot tables; execution still resolves credentials from the protected Account state after existing P03 verification/provider-install gates.
+
+Schema-v3 Tasks migrate with snapshot state `LegacyUnavailable`. Because pre-P05 releases never persisted creation-time recipients/template copies, migration does not fabricate them from current state. Legacy Tasks keep metadata/counters/reservations and can be closed, but Start/Retry fail closed in both UI and backend.
+
+`Task.id` is the canonical logical run identity. Starting, pausing, stopping or retrying the same Task does not create another run identity. A materially different execution requires a new Task and therefore a new Task ID/snapshot. P05 does not implement P07 resend-state policy or P10 delivery-ledger recovery.

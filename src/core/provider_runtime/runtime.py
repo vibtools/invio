@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 from ...accounts.models import Account
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
-from ...tasks.models import Task
+from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ..state import AppState
 
 
@@ -253,20 +253,31 @@ class ProviderRuntime:
 
     @staticmethod
     def _snapshot(task: Task, state: AppState) -> TaskSnapshot:
-        template = state.invoice_templates.get(task.invoice_template_id)
-        if template is None:
-            raise ProviderRuntimeError("The invoice template assigned to this task no longer exists.")
-        customer_list = state.customer_lists.get(task.customer_list_id)
-        if customer_list is None or not customer_list.customers:
-            raise ProviderRuntimeError("The customer list assigned to this task has no customers.")
+        execution = task.execution_snapshot
+        if execution is None or execution.state != TASK_SNAPSHOT_CAPTURED:
+            raise ProviderRuntimeError(LEGACY_SNAPSHOT_MESSAGE)
+        if execution.provider_id != task.provider_id:
+            raise ProviderRuntimeError("The immutable task snapshot provider no longer matches the task provider.")
+        if execution.assignment_strategy != TASK_ASSIGNMENT_STRATEGY:
+            raise ProviderRuntimeError("The immutable task snapshot uses an unsupported account-assignment strategy.")
+        if execution.account_ids != tuple(task.account_ids):
+            raise ProviderRuntimeError("The immutable task snapshot account order no longer matches the task account binding.")
+        if execution.template is None:
+            raise ProviderRuntimeError("The immutable task snapshot has no invoice template.")
+        if execution.template.id != task.invoice_template_id:
+            raise ProviderRuntimeError("The immutable task snapshot template no longer matches the task template binding.")
+        if task.total != len(execution.customers):
+            raise ProviderRuntimeError("The task total no longer matches its immutable recipient snapshot.")
+        if not execution.customers:
+            raise ProviderRuntimeError("The immutable task snapshot has no recipients.")
 
         accounts: list[AccountSnapshot] = []
-        for account_id in task.account_ids:
+        for account_id in execution.account_ids:
             account: Account | None = state.accounts.get(account_id)
             if account is None:
                 raise ProviderRuntimeError("A provider account assigned to this task no longer exists.")
-            if account.provider_id != task.provider_id:
-                raise ProviderRuntimeError("A task account no longer matches the task provider.")
+            if account.provider_id != execution.provider_id:
+                raise ProviderRuntimeError("A task account no longer matches the immutable task provider.")
             accounts.append(AccountSnapshot(account.id, account.name, account.mode, dict(account.credentials)))
         if not accounts:
             raise ProviderRuntimeError("The task has no provider account assigned.")
@@ -274,11 +285,11 @@ class ProviderRuntime:
         return TaskSnapshot(
             task_id=task.id,
             task_name=task.name,
-            provider_id=task.provider_id,
+            provider_id=execution.provider_id,
             accounts=tuple(accounts),
             customer_emails=None,
-            template=copy.deepcopy(template),
-            customers=tuple(CustomerSnapshot.from_record(customer) for customer in customer_list.customers),
+            template=execution.template.to_template(),
+            customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
         )
 
     def _run_stripe_batch(
@@ -481,7 +492,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.14 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.15 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -520,7 +531,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.14 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.15 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

@@ -32,6 +32,7 @@ from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_customers
+from ..tasks.models import LEGACY_SNAPSHOT_MESSAGE
 from .dialogs import AccountRetestDialog, AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
 from .pages import (
     AccountsPage,
@@ -85,7 +86,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.14 started.")
+        self.log("Invio v1.0.0.1.15 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -219,7 +220,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.14")
+        self.runtime_status = QLabel("Production • v1.0.0.1.15")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -727,6 +728,8 @@ class MainWindow(QMainWindow):
         task = self.state.tasks.get(task_id)
         if not task:
             return None, None, "Task was not found."
+        if not task.has_immutable_execution_snapshot:
+            return task, None, LEGACY_SNAPSHOT_MESSAGE
         try:
             installed_provider = self.providers.get_installed(task.provider_id)
         except ProviderManifestError as exc:
@@ -756,15 +759,17 @@ class MainWindow(QMainWindow):
             return
         if runner is None:
             message = error or "No task runner is available for this provider."
-            try:
-                self.state.set_task_status(task_id, "Ready", message)
-            except StateError as exc:
-                self._message("Operational Storage", str(exc), QMessageBox.Icon.Warning)
-                self.log(f"{task.name}: start block status could not be saved: {exc}")
-                return
+            if task.has_immutable_execution_snapshot:
+                try:
+                    self.state.set_task_status(task_id, "Ready", message)
+                except StateError as exc:
+                    self._message("Operational Storage", str(exc), QMessageBox.Icon.Warning)
+                    self.log(f"{task.name}: start block status could not be saved: {exc}")
+                    return
             self.tasks_page.refresh_task(task_id)
             self.log(f"{task.name}: start blocked: {message}")
-            self._message("Provider Unavailable", f"{message} No invoice was sent.", QMessageBox.Icon.Warning)
+            title = "Provider Unavailable" if task.has_immutable_execution_snapshot else "Task Snapshot Unavailable"
+            self._message(title, f"{message} No invoice was sent.", QMessageBox.Icon.Warning)
             self._refresh_dashboard()
             return
         self.worker_manager.start(task, runner)

@@ -45,3 +45,12 @@ The editor remains compact and internally scrollable; P02 does not change its UI
 ## Customer import says the workbook cannot be read
 
 The selected XLSX/XLSM file is malformed, damaged, mislabeled, or not a valid workbook. Invio reports this as a Customer Import error and does not modify the existing Customer List. Re-export the file as a valid supported workbook and retry.
+
+
+## A restored Task says it predates immutable execution snapshots
+
+Expected for a Task created before P05/schema v4. Invio cannot reconstruct the exact historical recipient set or Invoice Template copy from mutable current source records without guessing. The Task is therefore preserved for visibility/reporting and reservation safety, but **Start** and **Retry Failed** are disabled. Close the legacy Task to release its Accounts, then create a new Task to capture a trustworthy immutable snapshot.
+
+## Invio reports an invalid or incomplete Task execution snapshot
+
+Invio fails closed when a captured Task snapshot is missing, partial, has a provider/account-order mismatch, or disagrees with the persisted Task total. Do not edit the SQLite tables manually or replace the snapshot with current Customer List/Template data. Preserve `domain.sqlite3` and use the normal backup/recovery path or forensic support.

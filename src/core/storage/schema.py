@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DOMAIN_SCHEMA_VERSION = 3
+DOMAIN_SCHEMA_VERSION = 4
 
 SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -100,6 +100,62 @@ ALTER TABLE customer_emails ADD COLUMN name TEXT NOT NULL DEFAULT '';
 ALTER TABLE customer_emails ADD COLUMN country TEXT NOT NULL DEFAULT '';
 """
 
+MIGRATION_V3_TO_V4 = """
+CREATE TABLE task_execution_snapshots (
+    task_id TEXT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    snapshot_state TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    assignment_strategy TEXT NOT NULL
+);
+
+CREATE TABLE task_snapshot_customers (
+    task_id TEXT NOT NULL REFERENCES task_execution_snapshots(task_id) ON DELETE CASCADE,
+    ordinal INTEGER NOT NULL,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    country TEXT NOT NULL,
+    PRIMARY KEY (task_id, ordinal),
+    UNIQUE (task_id, email)
+);
+
+CREATE TABLE task_snapshot_template (
+    task_id TEXT PRIMARY KEY REFERENCES task_execution_snapshots(task_id) ON DELETE CASCADE,
+    template_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    days_until_due INTEGER NOT NULL,
+    memo TEXT NOT NULL,
+    footer TEXT NOT NULL,
+    automatic_tax INTEGER NOT NULL,
+    reuse_customer INTEGER NOT NULL,
+    invoice_title TEXT NOT NULL,
+    invoice_subtitle TEXT NOT NULL,
+    invoice_type TEXT NOT NULL,
+    customer_note TEXT NOT NULL
+);
+
+CREATE TABLE task_snapshot_template_items (
+    task_id TEXT NOT NULL REFERENCES task_execution_snapshots(task_id) ON DELETE CASCADE,
+    ordinal INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    unit_amount TEXT NOT NULL,
+    tax_rate TEXT NOT NULL,
+    PRIMARY KEY (task_id, ordinal)
+);
+
+CREATE TABLE task_snapshot_template_terms (
+    task_id TEXT NOT NULL REFERENCES task_execution_snapshots(task_id) ON DELETE CASCADE,
+    ordinal INTEGER NOT NULL,
+    term TEXT NOT NULL,
+    PRIMARY KEY (task_id, ordinal)
+);
+
+INSERT INTO task_execution_snapshots (task_id, snapshot_state, provider_id, assignment_strategy)
+SELECT id, 'LegacyUnavailable', provider_id, 'recipient_ordinal_round_robin_v1'
+FROM tasks;
+"""
+
 APPLICATION_TABLES = {
     "accounts",
     "customer_lists",
@@ -110,4 +166,9 @@ APPLICATION_TABLES = {
     "tasks",
     "task_accounts",
     "account_reservations",
+    "task_execution_snapshots",
+    "task_snapshot_customers",
+    "task_snapshot_template",
+    "task_snapshot_template_items",
+    "task_snapshot_template_terms",
 }

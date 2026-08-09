@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
 from src.core.provider_runtime import ProviderRuntime, ProviderRuntimeError
+from src.core.provider_runtime.runtime import _idempotency_key
 from src.customers.models import CustomerRecord
 from src.core.state import AppState
+from src.tasks.models import TaskExecutionSnapshot
 
 
 @dataclass
@@ -281,8 +283,22 @@ class ProviderRuntimeTests(unittest.TestCase):
         )
         snapshot = ProviderRuntime._snapshot(task, state)
         self.assertEqual(snapshot.customer_emails, ("customer@example.com",))
-        self.assertEqual(snapshot.customers[0].name, "Explicit Name")
-        self.assertEqual(snapshot.customers[0].country, "US")
+        # P05 freezes customer data at Task creation. Later Customer List
+        # enrichment must not silently alter this Task's approved run.
+        self.assertEqual(snapshot.customers[0].name, "")
+        self.assertEqual(snapshot.customers[0].country, "")
+
+        state.close_task(task.id)
+        new_task = state.create_task(
+            "stripe",
+            "Stripe",
+            [next(iter(state.accounts))],
+            customer_list.id,
+            next(iter(state.invoice_templates)),
+        )
+        new_snapshot = ProviderRuntime._snapshot(new_task, state)
+        self.assertEqual(new_snapshot.customers[0].name, "Explicit Name")
+        self.assertEqual(new_snapshot.customers[0].country, "US")
 
     def test_refrens_task_runner_remains_disabled_even_when_explicit_customer_data_exists(self):
         called = []
@@ -338,3 +354,87 @@ class ProviderRuntimeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class P05ProviderRuntimeSnapshotTests(unittest.TestCase):
+    def _stripe_state(self):
+        state = AppState()
+        first = state.add_account(
+            "stripe", "Stripe", "First", "Test", {"secret_key": "sk_test_P05_FIRST"}, status="Verified"
+        )
+        second = state.add_account(
+            "stripe", "Stripe", "Second", "Test", {"secret_key": "sk_test_P05_SECOND"}, status="Verified"
+        )
+        customer_list = state.create_customer_list("Customers")
+        state.add_customers(
+            customer_list.id,
+            [
+                CustomerRecord("one@example.com", "One", "US"),
+                CustomerRecord("two@example.com", "Two", "BD"),
+            ],
+        )
+        template = state.save_invoice_template(
+            template_id=None,
+            name="Original",
+            currency="USD",
+            days_until_due=30,
+            memo="Original memo",
+            footer="",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Original item", "1", "10", "0")],
+            terms=["Original term"],
+        )
+        task = state.create_task("stripe", "Stripe", [second.id, first.id], customer_list.id, template.id)
+        return state, task, customer_list, template, first, second
+
+    def test_runtime_snapshot_uses_creation_time_customers_template_and_account_order(self):
+        state, task, customer_list, template, first, second = self._stripe_state()
+        state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])
+        state.save_invoice_template(
+            template_id=template.id,
+            name=template.name,
+            currency="EUR",
+            days_until_due=14,
+            memo="Edited memo",
+            footer="",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Edited item", "1", "20", "0")],
+            terms=["Edited term"],
+        )
+        snapshot = ProviderRuntime._snapshot(task, state)
+        self.assertEqual(snapshot.customer_emails, ("one@example.com", "two@example.com"))
+        self.assertEqual(snapshot.template.currency, "USD")
+        self.assertEqual(snapshot.template.memo, "Original memo")
+        self.assertEqual(snapshot.template.items[0].description, "Original item")
+        self.assertEqual(snapshot.template.terms, ["Original term"])
+        self.assertEqual([account.id for account in snapshot.accounts], [second.id, first.id])
+
+    def test_legacy_task_without_trustworthy_snapshot_is_blocked(self):
+        state, task, _customer_list, _template, _first, _second = self._stripe_state()
+        task.execution_snapshot = TaskExecutionSnapshot.legacy_unavailable(
+            provider_id=task.provider_id,
+            account_ids=task.account_ids,
+        )
+        runtime = ProviderRuntime(transport=lambda *_args: {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "predates immutable execution snapshots"):
+            runtime.make_task_runner(task, state)
+
+    def test_task_id_remains_canonical_stripe_idempotency_run_identity(self):
+        state, task, _customer_list, _template, _first, _second = self._stripe_state()
+        key = _idempotency_key(task.id, task.execution_snapshot.customers[0].email, "send")
+        self.assertTrue(key.startswith(f"invio:{task.id}:"))
+        self.assertTrue(task.has_immutable_execution_snapshot)
+
+    def test_runtime_blocks_snapshot_account_order_drift(self):
+        state, task, _customer_list, _template, _first, _second = self._stripe_state()
+        task.account_ids.reverse()
+        with self.assertRaisesRegex(ProviderRuntimeError, "snapshot account order"):
+            ProviderRuntime._snapshot(task, state)
+
+    def test_runtime_blocks_task_total_drift_from_snapshot(self):
+        state, task, _customer_list, _template, _first, _second = self._stripe_state()
+        task.total += 1
+        with self.assertRaisesRegex(ProviderRuntimeError, "task total"):
+            ProviderRuntime._snapshot(task, state)

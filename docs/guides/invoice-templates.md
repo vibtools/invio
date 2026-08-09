@@ -42,3 +42,8 @@ Provider/account country rules can further restrict which currencies a specific 
 ### Refrens
 
 The adapter supports invoice title, subtitle, type, currency, due date, notes, terms, line quantity/rate, and line tax rate. Refrens also requires customer billing identity/country. P04 Customer Lists can now supply explicit customer name/country data, while keeping that data outside Invoice Templates. Refrens Task execution remains blocked until the separately approved P11 production runner is implemented.
+
+
+## Task snapshot behavior from v1.0.0.1.15
+
+When a new Task is created, Invio copies the complete selected Invoice Template, including ordered line items and terms, into that Task's immutable execution snapshot. Editing the reusable source Template afterward affects future Tasks only. Existing Task Start/Retry continues to use the copy captured when that Task was created. Customer identity/name/country remains in Customer Lists and is not moved into Invoice Templates.

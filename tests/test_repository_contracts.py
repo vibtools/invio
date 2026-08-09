@@ -36,17 +36,21 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "src" / "core" / "settings" / "manager.py").is_file())
         self.assertTrue((ROOT / "src" / "core" / "settings" / "__init__.py").is_file())
 
-    def test_release_metadata_is_v100114(self):
+    def test_release_metadata_is_v100115(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.14"', pyproject)
-        self.assertIn('"version": "1.0.0.1.14"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.14"', project_meta)
+        self.assertIn('version = "1.0.0.1.15"', pyproject)
+        self.assertIn('"version": "1.0.0.1.15"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.15"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.14', main_window)
-        self.assertIn('Invio/1.0.0.1.14', runtime)
+        self.assertIn('Production • v1.0.0.1.15', main_window)
+        self.assertIn('Invio/1.0.0.1.15', runtime)
+
+    def test_release_metadata_is_v100114(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100115()
 
     def test_release_metadata_is_v100113(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -106,6 +110,17 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertNotIn("-ui", manifest["version"])
             actual_keys = {field["key"] for field in manifest.get("credential_fields", [])}
             self.assertEqual(actual_keys, credential_keys)
+
+    def test_p05_schema_v4_and_task_snapshot_contract_exist(self):
+        schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
+        task_model = (ROOT / "src" / "tasks" / "models" / "task.py").read_text(encoding="utf-8")
+        self.assertIn("DOMAIN_SCHEMA_VERSION = 4", schema)
+        self.assertIn("CREATE TABLE task_execution_snapshots", schema)
+        self.assertIn("CREATE TABLE task_snapshot_customers", schema)
+        self.assertIn("CREATE TABLE task_snapshot_template", schema)
+        self.assertIn("class TaskExecutionSnapshot", task_model)
+        self.assertIn('TASK_ASSIGNMENT_STRATEGY = "recipient_ordinal_round_robin_v1"', task_model)
+
 
 
 if __name__ == "__main__":

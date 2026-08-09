@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.14`  
+**Baseline:** `v1.0.0.1.15`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -184,6 +184,9 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-027 | Provider API acceptance is treated as Task success without inbox-delivery confirmation | Misinterpreted delivery state | P10/P12/P14 |
 | EH-028 | File import boundary still does not classify every malformed workbook/parser exception | Some malformed files may escape the intended user warning taxonomy | P12 |
 | EH-029 | **RESOLVED in v1.0.0.1.14:** migration-backup destination connection remained open across atomic rename on Windows | `WinError 32` could block application startup during supported schema migration | COMPLETE v1.0.0.1.14 |
+| EH-030 | **RESOLVED in v1.0.0.1.15:** existing Task execution re-read live Customer List/Invoice Template at Start/Retry | Recipient/template drift could silently change an approved run and disagree with `Task.total` | COMPLETE P05 |
+| EH-031 | **RESOLVED in v1.0.0.1.15:** pre-P05 Tasks have no trustworthy historical execution snapshot | Migration could fabricate false historical inputs if current list/template were copied | COMPLETE P05: preserve as `LegacyUnavailable`, block Start/Retry |
+| EH-032 | **RESOLVED in v1.0.0.1.15:** persisted Task/snapshot provider/account/recipient/template invariants could be inconsistent | Unsafe execution or incorrect progress basis | COMPLETE P05: schema-v4 validation fails closed |
 
 ## 3. Required Production Error Taxonomy
 
@@ -294,3 +297,14 @@ The P04 verification pass found that conflicts against already-stored customer m
 
 The Windows migration-backup failure was traced to SQLite connection lifecycle rather than database corruption. `with sqlite3.connect(temp_backup)` did not close the destination connection before `Path.replace()`; Windows therefore rejected the rename because Invio itself still held the file. The destination is now explicitly closed in a `finally` block before replacement. A regression test enforces the close-before-replace ordering. No schema, provider, worker, task-state or future-roadmap behavior is added.
 
+
+## P05 immutable execution-input handling
+
+Implemented in `v1.0.0.1.15`:
+
+- Task creation captures ordered recipients, copied invoice-template data, provider ID and ordered Account basis before the Task is committed. Task/reservations/snapshot rows share one transaction; a snapshot write failure rolls the whole Task creation back.
+- `Task.total` is derived from the immutable recipient count. Runtime refuses execution when the stored total, provider, account order, assignment strategy or captured template/recipient state is inconsistent.
+- Start/Retry use the stored Task snapshot and do not read current Customer List/Invoice Template content for that Task.
+- Schema-v3 Tasks are migrated as `LegacyUnavailable` with no fabricated customer/template rows. Their Start/Retry actions are disabled and backend-gated; Close remains available so reservations can be released intentionally.
+- Snapshot state contains no provider credential values. Existing protected Account credentials are resolved only through the normal P03-gated execution path.
+- P05 does not claim P07 resend-state safety or P10 per-recipient delivery/restart reconciliation.

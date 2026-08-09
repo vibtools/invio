@@ -7,7 +7,7 @@ from decimal import Decimal
 from ...accounts.models import Account
 from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
-from ...tasks.models import Task
+from ...tasks.models import Task, TaskExecutionSnapshot
 from ..storage import CredentialStore, CredentialStoreError, DomainStore, DomainStoreError, LoadedDomain
 
 
@@ -556,6 +556,12 @@ class AppState:
                 raise StateError(f"Account '{account.name}' is already assigned to {task_name}.")
             accounts.append(account)
 
+        execution_snapshot = TaskExecutionSnapshot.capture(
+            provider_id=provider_id,
+            account_ids=account_ids,
+            customers=customer_list.customers,
+            template=invoice_template,
+        )
         number = len(self.tasks) + 1
         task = Task(
             id=self._id("task"),
@@ -568,7 +574,8 @@ class AppState:
             customer_list_name=customer_list.name,
             invoice_template_id=invoice_template.id,
             invoice_template_name=invoice_template.name,
-            total=customer_list.count,
+            total=len(execution_snapshot.customers),
+            execution_snapshot=execution_snapshot,
         )
         if self._domain_store is not None:
             try:

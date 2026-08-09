@@ -27,9 +27,9 @@
 │   │   └── worker_manager/   One QThread per active task
 │   ├── customers/            Customer-list model and email importers
 │   ├── invoices/templates/   Invoice template/currency models
-│   ├── tasks/                Task model including template binding
+│   ├── tasks/                Task model including immutable execution snapshots
 │   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
-├── tests/                    Unit/contract tests, including P01-P03 provider/storage/account-lifecycle regressions
+├── tests/                    Unit/contract tests, including P01-P05 provider/storage/snapshot regressions
 ├── main.py
 ├── requirements.txt
 └── pyproject.toml
@@ -75,3 +75,7 @@ No folder/module architecture is added or renamed. The correction stays inside t
 
 No folder or module is renamed/reorganized. The hotfix changes only the existing `DomainStore` migration-backup handle lifecycle, regression/release tests, version metadata and synchronized documentation/private forensic records. No new runtime package, page, provider adapter, dependency or database table is introduced.
 
+
+## v1.0.0.1.15 P05 Immutable Task Snapshot
+
+No new top-level folder, application page, dependency, provider adapter or worker subsystem is introduced. The existing `src/tasks/models/task.py`, `AppState`, `DomainStore`, `ProviderRuntime`, Tasks page and tests are extended in place. SQLite schema v4 adds Task execution-snapshot tables; the existing Task/account/customer/template tables remain.

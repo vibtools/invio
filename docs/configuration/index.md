@@ -1,6 +1,6 @@
 # Configuration
 
-Invio `v1.0.0.1.14` separates Settings, durable operational data, provider registry state, and protected provider credentials.
+Invio `v1.0.0.1.15` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 
@@ -22,13 +22,14 @@ P02 uses SQLite for non-sensitive operational state:
 - Customer Lists and ordered customer records (email, optional name/country);
 - Invoice Templates/items/terms;
 - Tasks, account selection, counters/status/message;
-- account reservations.
+- account reservations;
+- P05 immutable Task execution snapshots (ordered recipients, copied template/items/terms, provider ID and assignment strategy).
 
 Typical database filename: `domain.sqlite3` in the same per-user Invio directory as `settings.json`.
 
-The database uses schema version `3`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Schema v3 adds optional customer `name` and `country` to the existing ordered customer table while preserving legacy email-only rows. Corrupt, newer, or unrecognized storage is not silently replaced.
+The database uses schema version `4`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Schema v3 added optional customer `name` and `country`; schema v4 adds immutable Task execution-snapshot tables. Corrupt, newer, partial, or unrecognized storage is not silently replaced.
 
-Migration backups use SQLite live-backup semantics. In `v1.0.0.1.14`, the temporary backup connection is explicitly closed before the `.bak.tmp` file is atomically replaced, preventing Windows from self-locking the migration backup file during startup.
+Migration backups use SQLite live-backup semantics. The `v1.0.0.1.14` close-before-replace correction remains active for the v3-to-v4 P05 migration, preventing Windows from self-locking the temporary backup file during startup.
 
 ## Protected Credentials
 

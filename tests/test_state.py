@@ -220,3 +220,112 @@ class AppStateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class P05TaskSnapshotStateTests(unittest.TestCase):
+    def _state_with_task(self):
+        state = AppState()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_snapshot"}, status="Verified"
+        )
+        customer_list = state.create_customer_list("Customers")
+        state.add_customers(
+            customer_list.id,
+            [
+                CustomerRecord("one@example.com", "One", "US"),
+                CustomerRecord("two@example.com", "Two", "BD"),
+            ],
+        )
+        template = state.save_invoice_template(
+            template_id=None,
+            name="Frozen Template",
+            currency="USD",
+            days_until_due=30,
+            memo="Original memo",
+            footer="Original footer",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Service", "2.50", "10.25", "7.5")],
+            invoice_title="Original title",
+            invoice_subtitle="Original subtitle",
+            invoice_type="INVOICE",
+            customer_note="Original note",
+            terms=["Original term"],
+        )
+        task = state.create_task("stripe", "Stripe", [account.id], customer_list.id, template.id)
+        return state, account, customer_list, template, task
+
+    def test_task_creation_captures_immutable_customer_template_provider_and_account_basis(self):
+        state, account, customer_list, template, task = self._state_with_task()
+        snapshot = task.execution_snapshot
+        self.assertIsNotNone(snapshot)
+        self.assertTrue(task.has_immutable_execution_snapshot)
+        self.assertEqual(snapshot.provider_id, "stripe")
+        self.assertEqual(snapshot.account_ids, (account.id,))
+        self.assertEqual(snapshot.assignment_strategy, "recipient_ordinal_round_robin_v1")
+        self.assertEqual(
+            [(item.email, item.name, item.country) for item in snapshot.customers],
+            [("one@example.com", "One", "US"), ("two@example.com", "Two", "BD")],
+        )
+        self.assertEqual(task.total, len(snapshot.customers))
+        self.assertEqual(snapshot.template.id, template.id)
+        self.assertEqual(snapshot.template.memo, "Original memo")
+        self.assertEqual(str(snapshot.template.items[0].quantity), "2.50")
+        self.assertEqual(tuple(snapshot.template.terms), ("Original term",))
+
+    def test_customer_and_template_changes_after_task_creation_do_not_change_existing_snapshot(self):
+        state, _account, customer_list, template, task = self._state_with_task()
+        original_snapshot = task.execution_snapshot
+        state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])
+        state.save_invoice_template(
+            template_id=template.id,
+            name=template.name,
+            currency="EUR",
+            days_until_due=14,
+            memo="Edited memo",
+            footer="Edited footer",
+            automatic_tax=True,
+            reuse_customer=False,
+            items=[("Changed service", "1", "99.00", "0")],
+            invoice_title="Edited title",
+            invoice_subtitle="Edited subtitle",
+            invoice_type="BOS",
+            customer_note="Edited note",
+            terms=["Edited term"],
+        )
+        self.assertIs(task.execution_snapshot, original_snapshot)
+        self.assertEqual([item.email for item in task.execution_snapshot.customers], ["one@example.com", "two@example.com"])
+        self.assertEqual(task.total, 2)
+        self.assertEqual(task.execution_snapshot.template.currency, "USD")
+        self.assertEqual(task.execution_snapshot.template.memo, "Original memo")
+        self.assertEqual(task.execution_snapshot.template.items[0].description, "Service")
+        self.assertEqual(task.execution_snapshot.template.terms, ("Original term",))
+
+    def test_progress_remains_clamped_to_immutable_snapshot_total_after_source_list_expands(self):
+        state, _account, customer_list, _template, task = self._state_with_task()
+        state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])
+        state.set_task_progress(task.id, processed=99, success=2, failed=0)
+        self.assertEqual(task.total, 2)
+        self.assertEqual(task.processed, 2)
+        self.assertEqual(len(task.execution_snapshot.customers), 2)
+
+    def test_new_logical_execution_requires_new_task_identity_and_captures_current_inputs(self):
+        state, account, customer_list, template, first = self._state_with_task()
+        state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])
+        state.save_invoice_template(
+            template_id=template.id,
+            name=template.name,
+            currency="EUR",
+            days_until_due=14,
+            memo="Edited memo",
+            footer="",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Changed", "1", "20", "0")],
+        )
+        state.close_task(first.id)
+        second = state.create_task("stripe", "Stripe", [account.id], customer_list.id, template.id)
+        self.assertNotEqual(first.id, second.id)
+        self.assertEqual(second.total, 3)
+        self.assertEqual(second.execution_snapshot.template.currency, "EUR")
+        self.assertEqual(second.execution_snapshot.template.memo, "Edited memo")

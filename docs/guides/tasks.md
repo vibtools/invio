@@ -11,7 +11,7 @@ Select:
 3. Invoice Template;
 4. Customer List with at least one customer record (email is mandatory).
 
-P01 verification gates remain unchanged. P02 persists the created Task, ordered selected accounts, counters/status/message, and account reservations transactionally.
+P01 verification gates remain unchanged. P02 persists the created Task, ordered selected accounts, counters/status/message, and account reservations transactionally. P05 extends the same Task-creation transaction with an immutable execution snapshot.
 
 ## Restart Recovery
 
@@ -27,7 +27,7 @@ Re-testing a reserved Account is permitted only when its Task worker is inactive
 
 ## P02 Boundary
 
-P02 persists Task-level execution metadata, not the future P10 recipient delivery ledger. Failed-recipient retry memory, provider customer/invoice IDs, per-attempt records, run identities, and exact crash-to-provider reconciliation remain later scope.
+P02 persists Task-level execution metadata, not the future P10 recipient delivery ledger. P05 defines `Task.id` as the canonical logical run identity, but failed-recipient retry memory, provider customer/invoice IDs, per-attempt delivery records, durable idempotency evidence, and exact crash-to-provider reconciliation remain P10 scope.
 
 
 ## P04 Customer execution data
@@ -37,3 +37,23 @@ Task runtime snapshots now carry provider-neutral customer records (`email`, opt
 ## v1.0.0.1.13 P04 verification correction
 
 The customer-aware Task snapshot and Stripe email-only execution semantics are unchanged. The historical mutable `CustomerList.emails` behavior is restored for compatibility, but P05 remains responsible for freezing Task inputs against later Customer List changes.
+
+## P05 Immutable execution snapshot
+
+For every **new Task**, Invio captures the approved inputs at Task creation time and persists them atomically with the Task and its Account reservations. The frozen snapshot contains:
+
+- ordered customer records (email, optional name, optional country);
+- a complete copy of the selected Invoice Template, all items, Decimal values, and terms;
+- provider ID;
+- ordered selected Account IDs;
+- assignment strategy `recipient_ordinal_round_robin_v1`.
+
+`Task.total` is derived from the frozen recipient count. Start and Retry use this same snapshot; they do not re-read current Customer List or Invoice Template content. Therefore, later customer imports/enrichment or template edits affect only future Tasks, not an existing Task.
+
+`Task.id` is the canonical logical run identity. Pause/Resume/Stop/Retry remain actions on that same run. To execute a different recipient/template/provider/account basis, close the old Task as required by the existing reservation rules and create a new Task, which receives a new ID and a new snapshot.
+
+### Pre-P05 Tasks after upgrade
+
+Schema-v3 Tasks are preserved during the v3-to-v4 migration, including status/counters/references/reservations, but their original creation-time recipient/template data never existed on disk. Invio therefore marks them `LegacyUnavailable` rather than copying current list/template data and pretending it is historical. Legacy Tasks remain visible and closable, but **Start** and **Retry Failed** are disabled and backend-gated. Create a new Task to execute current inputs.
+
+P05 does not change the existing Task state-machine semantics, automatic retries, rate limiting, provider failover, or delivery-ledger/restart reconciliation.

@@ -13,12 +13,13 @@ from src.core.storage import (
     CredentialStore,
     CredentialStoreError,
     DomainStore,
+    DomainStoreError,
     DomainStoreCorruptionError,
     DomainStoreMigrationError,
 )
 from src.customers.models import CustomerList, CustomerRecord
-from src.tasks.models import Task
-from src.core.storage.schema import MIGRATION_V1_TO_V2, SCHEMA_V1
+from src.tasks.models import TASK_SNAPSHOT_LEGACY_UNAVAILABLE, Task, TaskExecutionSnapshot
+from src.core.storage.schema import MIGRATION_V1_TO_V2, MIGRATION_V2_TO_V3, SCHEMA_V1
 
 
 class FakeKeyring:
@@ -94,7 +95,7 @@ class P02StorageTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        self.assertEqual(version, 3)
+        self.assertEqual(version, 4)
         self.assertIn("accounts", tables)
         self.assertIn("tasks", tables)
         self.assertIn("account_reservations", tables)
@@ -318,7 +319,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v1.sqlite3.pre_migration_v1.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
             columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
         self.assertIn("last_verification_at", columns)
         self.assertIn("verification_error_summary", columns)
@@ -675,7 +676,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy.sqlite3.pre_migration_v0.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
 
     def test_unversioned_unknown_schema_is_rejected_without_replacement(self):
         legacy = self.root / "unknown.sqlite3"
@@ -707,6 +708,10 @@ class P02StorageTests(unittest.TestCase):
             connection.execute(
                 "INSERT INTO task_accounts (task_id, ordinal, account_id, account_name) VALUES (?, ?, ?, ?)",
                 ("task_conflict", 0, account_id, "Primary"),
+            )
+            connection.execute(
+                "INSERT INTO task_execution_snapshots (task_id, snapshot_state, provider_id, assignment_strategy) VALUES (?, ?, ?, ?)",
+                ("task_conflict", "LegacyUnavailable", "stripe", "recipient_ordinal_round_robin_v1"),
             )
             connection.commit()
         with self.assertRaisesRegex(DomainStoreCorruptionError, "more than one persisted task"):
@@ -759,7 +764,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v2.sqlite3.pre_migration_v2.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
             row = connection.execute(
                 "SELECT email, name, country FROM customer_emails WHERE list_id='list_old'"
             ).fetchone()
@@ -824,3 +829,273 @@ class P02StorageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class P05SnapshotStorageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.db_path = self.root / "domain.sqlite3"
+        self.backend = FakeKeyring()
+        self.credentials = CredentialStore(self.backend)
+        self.store = DomainStore(self.db_path)
+
+    def state(self) -> AppState:
+        loaded = self.store.load(self.credentials)
+        return AppState(domain_store=self.store, credential_store=self.credentials, loaded=loaded)
+
+    def populate(self, *, two_accounts: bool = False):
+        state = self.state()
+        first = state.add_account(
+            "stripe", "Stripe", "First", "Test", {"secret_key": "sk_test_P05_FIRST"}, status="Verified"
+        )
+        accounts = [first]
+        if two_accounts:
+            accounts.append(
+                state.add_account(
+                    "stripe", "Stripe", "Second", "Test", {"secret_key": "sk_test_P05_SECOND"}, status="Verified"
+                )
+            )
+        customer_list = state.create_customer_list("P05 Customers")
+        state.add_customers(
+            customer_list.id,
+            [
+                CustomerRecord("one@example.com", "One", "US"),
+                CustomerRecord("two@example.com", "Two", "BD"),
+            ],
+        )
+        template = state.save_invoice_template(
+            template_id=None,
+            name="P05 Template",
+            currency="USD",
+            days_until_due=30,
+            memo="Original memo",
+            footer="Original footer",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Service", "2.50", "10.25", "7.5")],
+            invoice_title="Original title",
+            invoice_subtitle="Original subtitle",
+            invoice_type="INVOICE",
+            customer_note="Original note",
+            terms=["Original term", "Second term"],
+        )
+        task = state.create_task(
+            "stripe", "Stripe", [account.id for account in reversed(accounts)], customer_list.id, template.id
+        )
+        return state, accounts, customer_list, template, task
+
+    def test_schema_v4_snapshot_tables_exist(self):
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
+            tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertTrue(
+            {
+                "task_execution_snapshots",
+                "task_snapshot_customers",
+                "task_snapshot_template",
+                "task_snapshot_template_items",
+                "task_snapshot_template_terms",
+            }.issubset(tables)
+        )
+
+    def test_captured_snapshot_round_trip_preserves_recipients_template_decimals_and_account_order(self):
+        _state, accounts, _customer_list, _template, task = self.populate(two_accounts=True)
+        loaded = self.store.load(self.credentials)
+        restored = loaded.tasks[task.id]
+        snapshot = restored.execution_snapshot
+        self.assertTrue(restored.has_immutable_execution_snapshot)
+        self.assertEqual(snapshot.account_ids, tuple(account.id for account in reversed(accounts)))
+        self.assertEqual(
+            [(record.email, record.name, record.country) for record in snapshot.customers],
+            [("one@example.com", "One", "US"), ("two@example.com", "Two", "BD")],
+        )
+        self.assertEqual(restored.total, 2)
+        self.assertEqual(snapshot.template.name, "P05 Template")
+        self.assertEqual(snapshot.template.memo, "Original memo")
+        self.assertEqual(str(snapshot.template.items[0].quantity), "2.50")
+        self.assertEqual(str(snapshot.template.items[0].unit_amount), "10.25")
+        self.assertEqual(str(snapshot.template.items[0].tax_rate), "7.5")
+        self.assertEqual(snapshot.template.terms, ("Original term", "Second term"))
+
+    def test_restart_uses_original_snapshot_after_source_list_and_template_change(self):
+        state, _accounts, customer_list, template, task = self.populate()
+        state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])
+        state.save_invoice_template(
+            template_id=template.id,
+            name=template.name,
+            currency="EUR",
+            days_until_due=14,
+            memo="Edited memo",
+            footer="Edited footer",
+            automatic_tax=True,
+            reuse_customer=False,
+            items=[("Edited", "1", "99.00", "0")],
+            invoice_title="Edited title",
+            invoice_subtitle="Edited subtitle",
+            invoice_type="BOS",
+            customer_note="Edited note",
+            terms=["Edited term"],
+        )
+        restored = self.store.load(self.credentials).tasks[task.id]
+        snapshot = restored.execution_snapshot
+        self.assertEqual(restored.total, 2)
+        self.assertEqual([record.email for record in snapshot.customers], ["one@example.com", "two@example.com"])
+        self.assertEqual(snapshot.template.currency, "USD")
+        self.assertEqual(snapshot.template.memo, "Original memo")
+        self.assertEqual(snapshot.template.items[0].description, "Service")
+        self.assertEqual(snapshot.template.terms, ("Original term", "Second term"))
+
+    def test_task_close_deletes_snapshot_rows_atomically(self):
+        state, _accounts, _customer_list, _template, task = self.populate()
+        state.close_task(task.id)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            for table in (
+                "task_execution_snapshots",
+                "task_snapshot_customers",
+                "task_snapshot_template",
+                "task_snapshot_template_items",
+                "task_snapshot_template_terms",
+            ):
+                count = connection.execute(f"SELECT COUNT(*) FROM {table} WHERE task_id=?", (task.id,)).fetchone()[0]
+                self.assertEqual(count, 0, table)
+
+    def test_snapshot_total_mismatch_is_rejected_fail_closed(self):
+        _state, _accounts, _customer_list, _template, task = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE tasks SET total=999 WHERE id=?", (task.id,))
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "total does not match"):
+            self.store.load(self.credentials)
+
+    def test_snapshot_provider_mismatch_is_rejected_fail_closed(self):
+        _state, _accounts, _customer_list, _template, task = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE task_execution_snapshots SET provider_id='refrens' WHERE task_id=?", (task.id,))
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "provider does not match"):
+            self.store.load(self.credentials)
+
+    def test_partial_captured_snapshot_missing_template_is_rejected_fail_closed(self):
+        _state, _accounts, _customer_list, _template, task = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("DELETE FROM task_snapshot_template WHERE task_id=?", (task.id,))
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "exactly one invoice template"):
+            self.store.load(self.credentials)
+
+    def test_task_creation_snapshot_failure_rolls_back_task_accounts_and_reservations(self):
+        state, accounts, customer_list, template, existing = self.populate()
+        state.close_task(existing.id)
+        bad_snapshot = TaskExecutionSnapshot.capture(
+            provider_id="refrens",
+            account_ids=[accounts[0].id],
+            customers=customer_list.customers,
+            template=template,
+        )
+        bad_task = Task(
+            id="task_bad_snapshot",
+            name="Bad Snapshot",
+            provider_id="stripe",
+            provider_name="Stripe",
+            account_ids=[accounts[0].id],
+            account_names=[accounts[0].name],
+            customer_list_id=customer_list.id,
+            customer_list_name=customer_list.name,
+            invoice_template_id=template.id,
+            invoice_template_name=template.name,
+            total=len(customer_list.customers),
+            execution_snapshot=bad_snapshot,
+        )
+        with self.assertRaisesRegex(DomainStoreError, "snapshot provider"):
+            self.store.create_task_with_reservations(bad_task)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM tasks WHERE id=?", (bad_task.id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM task_accounts WHERE task_id=?", (bad_task.id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM account_reservations WHERE task_id=?", (bad_task.id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM task_execution_snapshots WHERE task_id=?", (bad_task.id,)).fetchone()[0], 0)
+
+    def _create_v3_database_with_task(self, path: Path) -> tuple[str, str]:
+        account_id = "acct_legacy_p05"
+        task_id = "task_legacy_p05"
+        credential_ref = self.credentials.set_credentials(account_id, {"secret_key": "sk_test_LEGACY_P05"})
+        with closing(sqlite3.connect(path)) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.executescript(SCHEMA_V1)
+            connection.executescript(MIGRATION_V1_TO_V2)
+            connection.executescript(MIGRATION_V2_TO_V3)
+            connection.execute(
+                """INSERT INTO accounts (
+                       id, provider_id, provider_name, name, mode, status, credential_ref,
+                       last_verification_at, verification_error_summary
+                   ) VALUES (?, 'stripe', 'Stripe', 'Legacy Account', 'Test', 'Verified', ?, '', '')""",
+                (account_id, credential_ref),
+            )
+            connection.execute("INSERT INTO customer_lists (id, name) VALUES ('list_legacy_p05', 'Legacy List')")
+            connection.execute(
+                "INSERT INTO customer_emails (list_id, ordinal, email, name, country) VALUES ('list_legacy_p05', 0, 'legacy@example.com', 'Legacy', 'US')"
+            )
+            connection.execute(
+                """INSERT INTO invoice_templates (
+                       id, name, currency, days_until_due, memo, footer, automatic_tax, reuse_customer,
+                       invoice_title, invoice_subtitle, invoice_type, customer_note
+                   ) VALUES ('tpl_legacy_p05', 'Legacy Template', 'USD', 30, 'Memo', 'Footer', 0, 1, 'Invoice', '', 'INVOICE', '')"""
+            )
+            connection.execute(
+                "INSERT INTO invoice_template_items (template_id, ordinal, description, quantity, unit_amount, tax_rate) VALUES ('tpl_legacy_p05', 0, 'Service', '1', '10', '0')"
+            )
+            connection.execute(
+                """INSERT INTO tasks (
+                       id, name, provider_id, provider_name, customer_list_id, customer_list_name,
+                       invoice_template_id, invoice_template_name, status, total, success, failed, processed, last_message
+                   ) VALUES (?, 'Legacy Task', 'stripe', 'Stripe', 'list_legacy_p05', 'Legacy List',
+                             'tpl_legacy_p05', 'Legacy Template', 'Ready', 1, 0, 0, 0, 'Ready')""",
+                (task_id,),
+            )
+            connection.execute(
+                "INSERT INTO task_accounts (task_id, ordinal, account_id, account_name) VALUES (?, 0, ?, 'Legacy Account')",
+                (task_id, account_id),
+            )
+            connection.execute(
+                "INSERT INTO account_reservations (account_id, task_id) VALUES (?, ?)",
+                (account_id, task_id),
+            )
+            connection.execute("PRAGMA user_version = 3")
+            connection.commit()
+        return account_id, task_id
+
+    def test_schema_v3_migration_preserves_task_as_legacy_without_fabricating_snapshot(self):
+        legacy = self.root / "legacy_v3.sqlite3"
+        account_id, task_id = self._create_v3_database_with_task(legacy)
+        migrated = DomainStore(legacy)
+        loaded = migrated.load(self.credentials)
+        task = loaded.tasks[task_id]
+        self.assertEqual(task.execution_snapshot.state, TASK_SNAPSHOT_LEGACY_UNAVAILABLE)
+        self.assertFalse(task.has_immutable_execution_snapshot)
+        self.assertEqual(task.execution_snapshot.customers, ())
+        self.assertIsNone(task.execution_snapshot.template)
+        self.assertEqual(loaded.account_reservations[account_id], task_id)
+        with closing(sqlite3.connect(legacy)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 4)
+            row = connection.execute(
+                "SELECT snapshot_state, provider_id, assignment_strategy FROM task_execution_snapshots WHERE task_id=?",
+                (task_id,),
+            ).fetchone()
+            customer_count = connection.execute(
+                "SELECT COUNT(*) FROM task_snapshot_customers WHERE task_id=?", (task_id,)
+            ).fetchone()[0]
+            template_count = connection.execute(
+                "SELECT COUNT(*) FROM task_snapshot_template WHERE task_id=?", (task_id,)
+            ).fetchone()[0]
+        self.assertEqual(row, ("LegacyUnavailable", "stripe", "recipient_ordinal_round_robin_v1"))
+        self.assertEqual(customer_count, 0)
+        self.assertEqual(template_count, 0)
+
+        backup = legacy.with_name("legacy_v3.sqlite3.pre_migration_v3.bak")
+        self.assertTrue(backup.exists())
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertNotIn("task_execution_snapshots", tables)

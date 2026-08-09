@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.14`** is a scoped Windows operational-storage/runtime hotfix on top of the verified `v1.0.0.1.13` P04 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.15`** completes **P05 - Immutable Task Execution Snapshot and Input Consistency** on top of the verified `v1.0.0.1.14` runtime/storage-hotfix baseline.
 
 ## Current Application Scope
 
@@ -23,7 +23,7 @@ Non-sensitive operational state now survives application restart in a per-user S
 - Tasks, account selections, status/counters/message;
 - account reservations.
 
-The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 introduced schema v2 verification-health metadata and WAL-aware migration backups. P04 upgrades to **schema v3**, adding optional `name` and `country` columns to the existing ordered `customer_emails` table so legacy email-only rows migrate losslessly with blank metadata.
+The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 introduced schema v2 verification-health metadata and WAL-aware migration backups. P04 upgrades to schema v3 for customer metadata. P05 upgrades to **schema v4**, adding durable immutable Task execution-snapshot tables for recipients, copied invoice-template content, provider identity, and the ordered account-assignment basis while preserving existing Task/customer/template tables.
 
 Typical operational database paths use the same per-user Invio directory as Settings:
 
@@ -66,6 +66,21 @@ No P05 immutable Task behavior, Refrens Task enablement, provider/worker archite
 A Windows startup failure was reproduced in the schema-migration backup path. `DomainStore` created the WAL-aware SQLite backup into a temporary `.bak.tmp` database using the SQLite connection context manager and then immediately attempted to atomically replace the final `.bak` file. Python's `sqlite3.Connection` context manager commits or rolls back but does **not** close the connection, so Windows could keep the temporary backup file locked and raise `WinError 32` during `Path.replace()`.
 
 `v1.0.0.1.14` explicitly closes the temporary backup destination connection before the atomic replacement. The migration sequence, WAL-aware live-backup semantics, schema version **3**, corruption/future-schema fail-closed rules, protected credentials, provider runtime, Task workers, UI and production roadmap are otherwise unchanged. A platform-neutral regression test now verifies that the destination handle is closed before replacement.
+
+
+## P05 Immutable Task Execution Snapshots
+
+Every newly created Task now captures and durably stores the exact execution inputs approved at Task creation time:
+
+- ordered customer records (`email`, optional `name`, optional `country`);
+- a complete immutable copy of the selected Invoice Template, its items and terms;
+- provider ID;
+- ordered selected Account IDs and the existing round-robin assignment strategy;
+- `Task.id` as the canonical logical run identity.
+
+`Task.total` is derived from the frozen recipient set. Start and Retry reconstruct provider-runtime input from the same durable snapshot rather than reading the current Customer List or current Invoice Template. Later customer imports/enrichment or template edits therefore do not silently change an existing Task. A different logical execution requires creating a new Task, which receives a new Task ID and a new snapshot.
+
+Existing pre-P05 Tasks are preserved during schema-v3-to-v4 migration but are marked **LegacyUnavailable** because their historical creation-time recipients/template were never stored. Invio does not invent those missing inputs from current data. Such Tasks remain visible and closable, but Start/Retry fail closed; create a new Task to execute current inputs. Provider credentials are never copied into snapshot storage.
 
 ## Packaged Providers
 
@@ -110,7 +125,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The current suite covers P01-P03 regression behavior plus P04 schema-v2-to-v3 migration, customer-record round trips, structured/legacy imports, row validation, duplicate/enrichment rules, customer-aware execution snapshots, unchanged Stripe email-only sending semantics, and the continued P11 Refrens Task gate.
+The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 migration, immutable Task snapshot persistence/restart validation, legacy-task fail-closed migration, recipient/template drift prevention, unchanged Stripe sending semantics, and the continued P11 Refrens Task gate.
 
 ## Documentation
 
@@ -122,7 +137,7 @@ The current suite covers P01-P03 regression behavior plus P04 schema-v2-to-v3 mi
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.14.md`
+- Release notes: `docs/release-notes/1.0.0.1.15.md`
 
 ## Private Project Material
 
@@ -130,7 +145,7 @@ The current suite covers P01-P03 regression behavior plus P04 schema-v2-to-v3 mi
 
 ## Production Readiness Program
 
-`v1.0.0.1.14` is the verified runtime/storage-hotfix baseline. Production progress remains **4/14 phases complete**. The next separately approved phase is **P05 - Immutable Task Execution Snapshot and Input Consistency**.
+`v1.0.0.1.15` is the verified P05 baseline. Production progress is **5/14 phases complete**. The next separately approved phase is **P06 - Provider Capability and Preflight Validation**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 

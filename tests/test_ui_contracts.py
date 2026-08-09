@@ -383,3 +383,36 @@ class UiContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class P05UiContractTests(unittest.TestCase):
+    def test_p05_legacy_tasks_are_blocked_in_ui_and_backend_gate(self):
+        root = Path(__file__).resolve().parents[1]
+        task_page = (root / "src" / "ui" / "pages" / "tasks_page.py").read_text(encoding="utf-8")
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertIn("snapshot_ready = task.has_immutable_execution_snapshot", task_page)
+        self.assertIn("self.start_btn.setEnabled(snapshot_ready", task_page)
+        self.assertIn("self.retry_btn.setEnabled(snapshot_ready", task_page)
+        self.assertIn("LEGACY_SNAPSHOT_MESSAGE", task_page)
+        runner = window.split("def _runner_for_task", 1)[1].split("def start_task", 1)[0]
+        self.assertIn("if not task.has_immutable_execution_snapshot", runner)
+        self.assertIn("LEGACY_SNAPSHOT_MESSAGE", runner)
+        start = window.split("def start_task", 1)[1].split("def pause_task", 1)[0]
+        self.assertIn("if task.has_immutable_execution_snapshot", start)
+        self.assertIn("Task Snapshot Unavailable", start)
+
+    def test_p05_runtime_reads_durable_snapshot_not_live_customer_or_template_content(self):
+        root = Path(__file__).resolve().parents[1]
+        runtime = (root / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        snapshot_method = runtime.split("def _snapshot", 1)[1].split("def _run_stripe_batch", 1)[0]
+        self.assertIn("execution = task.execution_snapshot", snapshot_method)
+        self.assertIn("execution.template.to_template()", snapshot_method)
+        self.assertIn("execution.customers", snapshot_method)
+        self.assertNotIn("state.customer_lists.get", snapshot_method)
+        self.assertNotIn("state.invoice_templates.get", snapshot_method)
+
+    def test_p05_does_not_change_worker_manager_thread_architecture(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
+        self.assertIn("thread = QThread(self)", source)
+        self.assertIn('thread.setObjectName(f"InvioTaskThread-{task.id}")', source)
