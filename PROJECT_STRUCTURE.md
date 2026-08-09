@@ -115,3 +115,8 @@ P08 changes no folder architecture and adds no runtime package. Reliability logi
 ## v1.0.0.1.24 P08 Verification-Correction Structure Note
 
 No folder, runtime package, UI page, schema module, dependency or architecture boundary is added/removed/renamed. The transport correction remains in `src/core/provider_runtime/runtime.py`; regression coverage extends `tests/test_p08_reliability.py` and repository consistency checks. New files are documentation/release/forensic records only.
+
+
+## v1.0.0.1.25 P09 Structure Note
+
+P09 adds no runtime package, page, schema package, worker subsystem or dependency. Provider scheduling policy remains in `src/core/provider_runtime/adapters.py`; rate/health/failover behavior remains in `src/core/provider_runtime/runtime.py`; successful account re-verification clears runtime-only health through the existing `src/ui/main_window.py` account lifecycle. `tests/test_p09_scheduling.py` adds P09 regression coverage.

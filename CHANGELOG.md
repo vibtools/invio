@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0.1.25 - P09 Multi-Account Scheduling, Limits and Health
+
+- Preserves the frozen `recipient_ordinal_round_robin_v1` primary assignment and P05 account ordering.
+- Adds the internal Stripe scheduling policy: 20 API requests/second/account, burst capacity 1, with cooperative rate waits.
+- Adds runtime-only account/provider health with bounded 5/10/20/40/60-second cooldown progression and `Retry-After` extension.
+- Uses deterministic circular fallback only for not-yet-attempted recipients whose primary account is cooling after a recognized account-scoped Stripe rate-limit condition.
+- Adds current-session attempted-recipient account binding so a recipient that has already entered provider execution is never replayed on another account during Resume/Retry.
+- Applies provider-wide cooldown without account hopping for timeout/disconnect/HTTP 408/5xx failures.
+- Blocks repeated network use after HTTP 401/403 account authentication/permission failures until successful account re-verification clears runtime health.
+- Keeps deterministic customer/template/operation errors non-failover and preserves P08 retry/idempotency behavior.
+- Preserves one Task = one QThread with intra-Task concurrency fixed at 1; no P10 ledger, schema, dependency, provider-send, Refrens, Agiled, plugin, Settings, page or layout change.
+- Production progress advances to **9/14**; **P10 - Persistent Delivery Ledger, Idempotency and Recovery** is next.
+
 ## v1.0.0.1.24 - P08 Forensic Verification Correction
 
 - Re-audits the exact shipped `v1.0.0.1.23` P08 Worker and Network Reliability implementation.

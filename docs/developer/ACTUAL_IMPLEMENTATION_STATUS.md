@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.24`  
+**Baseline:** `Invio v1.0.0.1.25`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -210,4 +210,11 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 
 **UNCHANGED:** three-total-attempt limit, backoff/jitter, one-task-one-QThread, account assignment, Stripe idempotency keys/business sequence, safe shutdown, P05-P07, schema v4, dependencies, Refrens P11 gate, Agiled fail-close and P09+ scope.
 
-**Production progress:** remains 8/14; P09 is next only after separate approval.
+**Production progress:** 9/14; P10 is next only after separate approval.
+
+
+## P09 status - v1.0.0.1.25
+
+**WORKING.** The primary recipient/account mapping remains `recipient_ordinal_round_robin_v1`. Stripe Task requests use the internal 20 requests/second/account, burst-1 policy. Runtime-only account/provider health tracks bounded cooldowns; only unattempted recipients can use deterministic circular fallback for recognized account-scoped rate-limit cooldown. Attempted recipients never cross accounts, provider/network failures never account-hop, deterministic validation/customer/template failures never fail over, and HTTP 401/403 suppresses further network use until successful account re-verification. Intra-Task concurrency remains 1 and P10 persistence is not implemented.
+
+**Production progress:** 9/14; P10 is next.

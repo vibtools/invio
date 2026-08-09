@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.24`** is the forensic verification correction for **P08 - Worker and Network Reliability** on the `v1.0.0.1.23` baseline. It closes transient truncated-response/TLS-close retry-classification gaps and synchronizes P08 completion records. Production progress remains 8/14; P09 is next and requires separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.25`** completes **P09 - Multi-Account Scheduling, Limits and Health** on the verified `v1.0.0.1.24` baseline. Production progress is now 9/14; P10 is next and requires separate approval.
 
 ## Current Application Scope
 
@@ -129,7 +129,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The current suite covers P01-P07 regressions plus P08 retry classification/backoff/Retry-After/Stop/shutdown/progress contracts, including truncated HTTP response and TLS EOF/clean-close transient-disconnect classification. P06 provider preflight, Refrens P11 blocking, Agiled fail-close, schema v4, and the one-task-one-QThread boundary remain regression-locked.
+The current suite covers P01-P08 regressions plus P09 deterministic assignment, per-account rate pacing, account/provider health, bounded cooldown, eligible pre-attempt failover, attempted-recipient exact-account binding protection, auth-failure suppression, Refrens P11 blocking, Agiled fail-close, schema v4, and the one-task-one-QThread boundary.
 
 ## Documentation
 
@@ -141,7 +141,7 @@ The current suite covers P01-P07 regressions plus P08 retry classification/backo
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.24.md`
+- Release notes: `docs/release-notes/1.0.0.1.25.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P07 regressions plus P08 retry classification/backo
 
 ## Production Readiness Program
 
-`v1.0.0.1.24` is the current P08 verification-corrected baseline. Production progress remains **8/14 phases complete**. The next separately approved phase is **P09 - Multi-Account Scheduling, Limits and Health**.
+`v1.0.0.1.25` is the current P09-complete baseline. Production progress is **9/14 phases complete**. The next separately approved phase is **P10 - Persistent Delivery Ledger, Idempotency and Recovery**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -231,3 +231,10 @@ The exact shipped `v1.0.0.1.23` P08 implementation was re-audited against its ap
 - if an HTTP error response body is itself truncated, the known HTTP status and `Retry-After` header still drive the existing P08 classification instead of losing the status boundary.
 
 The re-audit also corrected stale private P08 completion summaries/error-handling inventory that still described P08 as pending. P08 remains **COMPLETE**, production progress remains **8/14**, and P09 remains separately approval-gated.
+
+
+## v1.0.0.1.25 P09 Multi-Account Scheduling, Limits and Health
+
+P09 keeps the immutable round-robin primary assignment but adds a conservative runtime scheduler around the existing Stripe Task runner. Stripe Task requests are paced to 20 API requests/second/account with burst capacity 1. Recognized account-scoped Stripe rate-limit failures create runtime-only account cooldowns; timeout/disconnect/408/5xx failures create provider-wide cooldowns and never trigger account hopping.
+
+Only recipients that have not yet entered provider execution may route deterministically to the next healthy frozen account when their primary account is temporarily cooling. Once any provider request has started for a recipient, the recipient remains bound to its original/selected account for P08 retry and future current-session Resume/Retry safety. HTTP 401/403 blocks further network use of that account until successful re-verification clears the runtime-only health state. No persistent attempt ledger, schema migration, intra-Task concurrency, provider-send semantic change, Refrens enablement, Agiled execution, plugin change, Settings control or new UI page is included.

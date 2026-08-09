@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.24`  
+**Baseline:** `v1.0.0.1.25`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -372,3 +372,12 @@ Automatic retry is recipient-scoped and bounded to three total attempts. Exponen
 The P08 re-audit reproduced two transport-classification gaps. `http.client.IncompleteRead` from a successful-status response body previously escaped `_stdlib_transport()` and bypassed automatic retry, and TLS EOF/clean-close exceptions were grouped with permanent TLS failures. The correction classifies those disconnect forms as retryable transient network failures while keeping certificate verification permanent. If an HTTP error body is truncated, the already-known HTTP status and Retry-After header remain authoritative.
 
 No retry count, backoff, provider payload, Task state, WorkerManager, schema, dependency or P09+ handling is changed.
+
+
+## 6. v1.0.0.1.25 P09 Scheduling/Health Error Policy
+
+- Recognized Stripe `429` limiter reasons are account-scoped health incidents after P08 retry exhaustion; the account receives bounded runtime cooldown and only future unattempted recipients may use deterministic fallback.
+- Timeout/disconnect/HTTP 408/5xx are provider/network incidents; the provider receives bounded runtime cooldown and account hopping is prohibited.
+- HTTP 401/403 blocks additional network use of that runtime account until a successful account re-verification clears the runtime health.
+- Deterministic 400/404/409/422/customer/template/operation failures do not cool, fail over or change account health.
+- Rate/cooldown waits use the existing Pause/Stop-aware cooperative worker wait; no GUI-thread blocking or forced worker termination is introduced.

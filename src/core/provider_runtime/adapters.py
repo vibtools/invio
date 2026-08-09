@@ -27,6 +27,19 @@ class ProviderCapabilityProfile:
 
 
 @dataclass(frozen=True, slots=True)
+class ProviderSchedulingPolicy:
+    """Internal P09 scheduling limits for an executable packaged provider."""
+
+    requests_per_second_per_account: float
+    burst_capacity: int
+    account_cooldown_base_seconds: float
+    account_cooldown_cap_seconds: float
+    provider_cooldown_base_seconds: float
+    provider_cooldown_cap_seconds: float
+    account_rate_limit_reasons: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderAdapterContract:
     """Static binding between a packaged provider manifest and executable runtime handlers.
 
@@ -43,6 +56,7 @@ class ProviderAdapterContract:
     task_batch_handler: str | None = None
     api_test_unavailable_message: str = ""
     task_unavailable_message: str = ""
+    scheduling_policy: ProviderSchedulingPolicy | None = None
 
     @property
     def supports_api_test(self) -> bool:
@@ -122,6 +136,25 @@ _AGILED_PROFILE = ProviderCapabilityProfile(
 )
 
 
+_STRIPE_SCHEDULING_POLICY = ProviderSchedulingPolicy(
+    requests_per_second_per_account=20.0,
+    burst_capacity=1,
+    account_cooldown_base_seconds=5.0,
+    account_cooldown_cap_seconds=60.0,
+    provider_cooldown_base_seconds=5.0,
+    provider_cooldown_cap_seconds=60.0,
+    account_rate_limit_reasons=frozenset(
+        {
+            "global-rate",
+            "global-concurrency",
+            "endpoint-rate",
+            "endpoint-concurrency",
+            "resource-specific",
+        }
+    ),
+)
+
+
 _STRIPE_MANIFEST_CONTRACT = ProviderManifest(
     id="stripe",
     name="Stripe",
@@ -165,6 +198,7 @@ _BUILTIN_ADAPTERS = {
         profile=_STRIPE_PROFILE,
         api_test_handler="_test_stripe_account",
         task_batch_handler="_run_stripe_batch",
+        scheduling_policy=_STRIPE_SCHEDULING_POLICY,
     ),
     "refrens": ProviderAdapterContract(
         provider_id="refrens",

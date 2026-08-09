@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.24**.
+Current version: **v1.0.0.1.25**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.24.md` - current release.
+- `release-notes/1.0.0.1.25.md` - current release.
+- `release-notes/1.0.0.1.24.md` - P08 verification-correction release.
 - `release-notes/1.0.0.1.23.md` - original P08 implementation release.
 - `release-notes/1.0.0.1.15.md` - original P05 implementation.
 - `release-notes/1.0.0.1.14.md` - Windows storage hotfix.
@@ -31,7 +32,7 @@ Detailed forensic reports, phase roadmap, phase completion ledger and update pro
 
 ## Current production phase
 
-P08 is complete and verification-corrected in `v1.0.0.1.24`. Production progress remains **8/14** and the next separately approval-gated phase is **P09 - Multi-Account Scheduling, Limits and Health**.
+P09 is complete in `v1.0.0.1.25`. Production progress is **9/14** and the next separately approval-gated phase is **P10 - Persistent Delivery Ledger, Idempotency and Recovery**.
 
 ## P07 Task execution safety
 
@@ -54,6 +55,11 @@ Packaged provider runtime contracts now resolve through one internal registry. A
 P08 Worker and Network Reliability is complete. Invio now classifies transient/permanent provider failures, retries bounded transient recipient failures with cooperative backoff and Retry-After handling, uses an explicit 30-second urllib timeout policy, isolates unexpected recipient failures, and closes only after active task QThreads finish. Production progress is 8/14; P09 is next.
 
 
-## v1.0.0.1.24 current baseline
+## v1.0.0.1.24 historical P08 verification baseline
 
 P08 remains complete. The forensic correction extends the transient-disconnect classifier to truncated HTTP response bodies and TLS EOF/clean-close interruptions, while retaining known HTTP status and Retry-After semantics when an error body is incomplete. Retry count/backoff, provider operations, shutdown architecture and all P09+ behavior remain unchanged. Production progress remains 8/14; P09 is next.
+
+
+## v1.0.0.1.25 current baseline
+
+P09 adds conservative multi-account scheduling without changing the frozen round-robin primary mapping. Stripe Task traffic is paced per account, temporary account/provider health is runtime-only, eligible failover is restricted to unattempted recipients, and attempted recipients are protected from cross-account replay. P10 persistence/recovery remains unimplemented.

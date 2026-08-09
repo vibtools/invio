@@ -25,7 +25,7 @@ from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIE
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..state import AppState
-from .adapters import provider_adapter_contract
+from .adapters import ProviderSchedulingPolicy, provider_adapter_contract
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
 
@@ -50,12 +50,14 @@ class ProviderRuntimeError(RuntimeError):
         retryable: bool = False,
         http_status: int | None = None,
         retry_after_seconds: float | None = None,
+        rate_limit_reason: str | None = None,
     ) -> None:
         super().__init__(message)
         self.category = category
         self.retryable = bool(retryable)
         self.http_status = http_status
         self.retry_after_seconds = retry_after_seconds
+        self.rate_limit_reason = str(rate_limit_reason or "").strip().lower() or None
 
 
 Transport = Callable[[str, str, dict[str, str], bytes | None, float], dict[str, Any]]
@@ -141,8 +143,18 @@ class TaskDeliverySummary:
 class _DeliveryState:
     failed_recipients: set[str] = field(default_factory=set)
     pending_recipients: set[str] = field(default_factory=set)
+    attempted_recipients: set[str] = field(default_factory=set)
+    attempted_account_ids: dict[str, str] = field(default_factory=dict)
     continuation_safe: bool = False
     execution_mode: str = ""
+
+
+@dataclass(slots=True)
+class _SchedulerHealthState:
+    consecutive_incidents: int = 0
+    cooldown_until: float = 0.0
+    blocked_reason: str = ""
+    last_reason: str = ""
 
 
 def _extract_api_error(data: Any) -> str:
@@ -250,6 +262,7 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
             retryable=retryable,
             http_status=status,
             retry_after_seconds=_parse_retry_after(response_headers.get("Retry-After")) if retryable else None,
+            rate_limit_reason=response_headers.get("Stripe-Rate-Limited-Reason") if status == 429 else None,
         ) from exc
     except (URLError, TimeoutError, OSError, IncompleteRead) as exc:
         raise _network_runtime_error(exc) from exc
@@ -358,10 +371,28 @@ class ProviderRuntime:
         self._retry_jitter_source = retry_jitter_source or random.random
         self._state_lock = threading.Lock()
         self._delivery_state: dict[str, _DeliveryState] = {}
+        self._scheduler_lock = threading.Lock()
+        self._account_health: dict[tuple[str, str], _SchedulerHealthState] = {}
+        self._provider_health: dict[str, _SchedulerHealthState] = {}
+        self._account_next_request_at: dict[tuple[str, str], float] = {}
 
     def clear_task(self, task_id: str) -> None:
         with self._state_lock:
             self._delivery_state.pop(task_id, None)
+
+    def reset_account_health(self, account_id: str, *, provider_id: str | None = None) -> None:
+        """Clear P09 runtime-only health after a successful account re-verification."""
+        wanted_provider = provider_id.strip().lower() if provider_id else None
+        with self._scheduler_lock:
+            known_keys = set(self._account_health) | set(self._account_next_request_at)
+            keys = [
+                key
+                for key in known_keys
+                if key[1] == account_id and (wanted_provider is None or key[0] == wanted_provider)
+            ]
+            for key in keys:
+                self._account_health.pop(key, None)
+                self._account_next_request_at.pop(key, None)
 
     @staticmethod
     def supports_api_test(provider_id: str) -> bool:
@@ -582,6 +613,284 @@ class ProviderRuntime:
             customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
         )
 
+    @staticmethod
+    def _provider_scheduling_policy(provider_id: str) -> ProviderSchedulingPolicy | None:
+        adapter = provider_adapter_contract(provider_id)
+        return adapter.scheduling_policy if adapter is not None else None
+
+    @staticmethod
+    def _cooldown_delay(
+        *,
+        incident_count: int,
+        base_seconds: float,
+        cap_seconds: float,
+        retry_after_seconds: float | None = None,
+    ) -> float:
+        exponent = max(0, int(incident_count) - 1)
+        delay = min(float(cap_seconds), float(base_seconds) * (2**exponent))
+        if retry_after_seconds is not None:
+            delay = max(delay, max(0.0, float(retry_after_seconds)))
+        return delay
+
+    def _account_health_status(self, provider_id: str, account_id: str) -> tuple[str, float]:
+        key = (provider_id.strip().lower(), account_id)
+        now = time.monotonic()
+        with self._scheduler_lock:
+            state = self._account_health.get(key)
+            if state is None:
+                return "", 0.0
+            remaining = max(0.0, state.cooldown_until - now)
+            if remaining <= 0:
+                state.cooldown_until = 0.0
+            return state.blocked_reason, remaining
+
+    def _provider_cooldown_remaining(self, provider_id: str) -> float:
+        normalized = provider_id.strip().lower()
+        now = time.monotonic()
+        with self._scheduler_lock:
+            state = self._provider_health.get(normalized)
+            if state is None:
+                return 0.0
+            remaining = max(0.0, state.cooldown_until - now)
+            if remaining <= 0:
+                state.cooldown_until = 0.0
+            return remaining
+
+    def _wait_for_provider_health(self, context: Any, provider_id: str, *, email: str = "") -> bool:
+        while True:
+            remaining = self._provider_cooldown_remaining(provider_id)
+            if remaining <= 0:
+                return not context.stop_flag.is_set() and _wait_for_resume(context)
+            suffix = f" before {email}" if email else ""
+            context.log(
+                f"{provider_id.title()} provider cooldown active; waiting {remaining:.2f}s{suffix}."
+            )
+            if not _cooperative_retry_wait(context, remaining):
+                return False
+
+    def _wait_for_account_health(
+        self,
+        context: Any,
+        provider_id: str,
+        account: AccountSnapshot,
+        *,
+        email: str,
+    ) -> bool:
+        while True:
+            blocked_reason, remaining = self._account_health_status(provider_id, account.id)
+            if blocked_reason:
+                raise ProviderRuntimeError(
+                    f"{provider_id.title()} account '{account.name}' is blocked for this runtime after an "
+                    f"authentication/permission failure: {blocked_reason} Re-test the account before retrying.",
+                    category="account-blocked",
+                    retryable=False,
+                )
+            if remaining <= 0:
+                return not context.stop_flag.is_set() and _wait_for_resume(context)
+            context.log(
+                f"{provider_id.title()} account '{account.name}' is cooling down; "
+                f"waiting {remaining:.2f}s before {email}."
+            )
+            if not _cooperative_retry_wait(context, remaining):
+                return False
+
+    def _select_stripe_account(
+        self,
+        context: Any,
+        snapshot: TaskSnapshot,
+        email: str,
+        primary_index: int,
+        *,
+        allow_failover: bool,
+    ) -> AccountSnapshot:
+        if not self._wait_for_provider_health(context, snapshot.provider_id, email=email):
+            raise ProviderRuntimeError(
+                "Stripe recipient scheduling stopped by user request.",
+                category="stopped",
+                retryable=False,
+            )
+
+        accounts = snapshot.accounts
+        primary = accounts[primary_index]
+        while True:
+            blocked_reason, primary_remaining = self._account_health_status(snapshot.provider_id, primary.id)
+            if blocked_reason:
+                raise ProviderRuntimeError(
+                    f"Stripe account '{primary.name}' is blocked for this runtime after an authentication/permission "
+                    f"failure: {blocked_reason} Re-test the account before retrying.",
+                    category="account-blocked",
+                    retryable=False,
+                )
+            if primary_remaining <= 0:
+                return primary
+
+            if not allow_failover:
+                if not self._wait_for_account_health(
+                    context, snapshot.provider_id, primary, email=email
+                ):
+                    raise ProviderRuntimeError(
+                        "Stripe recipient scheduling stopped by user request.",
+                        category="stopped",
+                        retryable=False,
+                    )
+                return primary
+
+            cooling_waits = [primary_remaining]
+            for offset in range(1, len(accounts)):
+                candidate = accounts[(primary_index + offset) % len(accounts)]
+                candidate_blocked, candidate_remaining = self._account_health_status(
+                    snapshot.provider_id, candidate.id
+                )
+                if candidate_blocked:
+                    continue
+                if candidate_remaining <= 0:
+                    context.log(
+                        f"Stripe primary account '{primary.name}' is temporarily unavailable; "
+                        f"routing unattempted recipient {email} to account '{candidate.name}'."
+                    )
+                    return candidate
+                cooling_waits.append(candidate_remaining)
+
+            wait_seconds = min(cooling_waits)
+            context.log(
+                f"All eligible Stripe accounts are cooling down; waiting {wait_seconds:.2f}s before {email}."
+            )
+            if not _cooperative_retry_wait(context, wait_seconds):
+                raise ProviderRuntimeError(
+                    "Stripe recipient scheduling stopped by user request.",
+                    category="stopped",
+                    retryable=False,
+                )
+
+    def _await_account_rate_slot(
+        self,
+        context: Any,
+        provider_id: str,
+        account: AccountSnapshot,
+    ) -> bool:
+        policy = self._provider_scheduling_policy(provider_id)
+        if policy is None or policy.requests_per_second_per_account <= 0:
+            return not context.stop_flag.is_set() and _wait_for_resume(context)
+        if policy.burst_capacity != 1:
+            raise ProviderRuntimeError(
+                f"Unsupported {provider_id.title()} scheduling burst capacity; expected 1.",
+                category="scheduler",
+                retryable=False,
+            )
+        interval = 1.0 / float(policy.requests_per_second_per_account)
+        key = (provider_id.strip().lower(), account.id)
+        while True:
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                return False
+            with self._scheduler_lock:
+                now = time.monotonic()
+                next_allowed = self._account_next_request_at.get(key, 0.0)
+                if now >= next_allowed:
+                    self._account_next_request_at[key] = now + interval
+                    return True
+                delay = next_allowed - now
+            if not _cooperative_retry_wait(context, delay):
+                return False
+
+    def _mark_recipient_attempted(self, task_id: str, email: str, account_id: str) -> None:
+        with self._state_lock:
+            delivery = self._delivery_state.get(task_id)
+            if delivery is None or not delivery.continuation_safe:
+                raise ProviderRuntimeError(
+                    "The Task continuation state became unavailable before provider execution."
+                )
+            existing_account_id = delivery.attempted_account_ids.get(email)
+            if existing_account_id is not None and existing_account_id != account_id:
+                delivery.continuation_safe = False
+                raise ProviderRuntimeError(
+                    "The current-session recipient/account binding changed after provider execution began; "
+                    "continuation is blocked to prevent cross-account replay."
+                )
+            delivery.attempted_recipients.add(email)
+            delivery.attempted_account_ids[email] = account_id
+
+    def _record_scheduler_failure(
+        self,
+        provider_id: str,
+        account: AccountSnapshot,
+        exc: ProviderRuntimeError,
+    ) -> tuple[str, ...]:
+        policy = self._provider_scheduling_policy(provider_id)
+        if policy is None:
+            return ()
+        normalized = provider_id.strip().lower()
+        account_key = (normalized, account.id)
+        now = time.monotonic()
+        messages: list[str] = []
+
+        if exc.http_status in {401, 403}:
+            with self._scheduler_lock:
+                state = self._account_health.setdefault(account_key, _SchedulerHealthState())
+                state.blocked_reason = str(exc)
+                state.cooldown_until = 0.0
+                state.last_reason = f"HTTP {exc.http_status}"
+            messages.append(
+                f"{provider_id.title()} account '{account.name}' is blocked for this runtime after HTTP "
+                f"{exc.http_status}; re-test the account before retrying."
+            )
+            return tuple(messages)
+
+        if (
+            exc.http_status == 429
+            and exc.rate_limit_reason is not None
+            and exc.rate_limit_reason in policy.account_rate_limit_reasons
+        ):
+            with self._scheduler_lock:
+                state = self._account_health.setdefault(account_key, _SchedulerHealthState())
+                state.consecutive_incidents += 1
+                delay = self._cooldown_delay(
+                    incident_count=state.consecutive_incidents,
+                    base_seconds=policy.account_cooldown_base_seconds,
+                    cap_seconds=policy.account_cooldown_cap_seconds,
+                    retry_after_seconds=exc.retry_after_seconds,
+                )
+                state.cooldown_until = max(state.cooldown_until, now + delay)
+                state.last_reason = exc.rate_limit_reason
+            messages.append(
+                f"{provider_id.title()} account '{account.name}' entered a {delay:.2f}s cooldown after "
+                f"rate-limit reason '{exc.rate_limit_reason}'."
+            )
+            return tuple(messages)
+
+        provider_transient = exc.category in {"timeout", "network"} or exc.http_status in {408, 500, 502, 503, 504}
+        if provider_transient:
+            with self._scheduler_lock:
+                state = self._provider_health.setdefault(normalized, _SchedulerHealthState())
+                state.consecutive_incidents += 1
+                delay = self._cooldown_delay(
+                    incident_count=state.consecutive_incidents,
+                    base_seconds=policy.provider_cooldown_base_seconds,
+                    cap_seconds=policy.provider_cooldown_cap_seconds,
+                    retry_after_seconds=exc.retry_after_seconds,
+                )
+                state.cooldown_until = max(state.cooldown_until, now + delay)
+                state.last_reason = exc.category if exc.http_status is None else f"HTTP {exc.http_status}"
+            messages.append(
+                f"{provider_id.title()} provider entered a {delay:.2f}s cooldown after "
+                f"{state.last_reason}; account hopping is disabled for provider/network failures."
+            )
+        return tuple(messages)
+
+    def _record_scheduler_success(self, provider_id: str, account: AccountSnapshot) -> None:
+        normalized = provider_id.strip().lower()
+        account_key = (normalized, account.id)
+        with self._scheduler_lock:
+            account_state = self._account_health.get(account_key)
+            if account_state is not None and not account_state.blocked_reason:
+                account_state.consecutive_incidents = 0
+                account_state.cooldown_until = 0.0
+                account_state.last_reason = ""
+            provider_state = self._provider_health.get(normalized)
+            if provider_state is not None:
+                provider_state.consecutive_incidents = 0
+                provider_state.cooldown_until = 0.0
+                provider_state.last_reason = ""
+
     def _retry_delay_seconds(self, retry_number: int, exc: ProviderRuntimeError) -> float:
         exponent = max(0, retry_number - 1)
         base = min(RETRY_BACKOFF_CAP_SECONDS, RETRY_BASE_DELAY_SECONDS * (2**exponent))
@@ -603,7 +912,7 @@ class ProviderRuntime:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 raise ProviderRuntimeError("Stripe recipient execution stopped before the next attempt.", category="stopped")
             try:
-                return self._send_stripe_invoice(snapshot, account, email)
+                return self._send_stripe_invoice(snapshot, account, email, context=context)
             except ProviderRuntimeError as exc:
                 if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
                     raise
@@ -631,6 +940,13 @@ class ProviderRuntime:
         execution_mode: TaskExecutionMode,
     ) -> None:
         full_index = {email: index for index, email in enumerate(snapshot.customer_emails)}
+        with self._state_lock:
+            delivery = self._delivery_state.get(snapshot.task_id)
+            if delivery is None or not delivery.continuation_safe:
+                raise ProviderRuntimeError("The Task continuation state is unavailable before Stripe execution.")
+            attempted_before_execution = set(delivery.attempted_recipients)
+            attempted_account_ids = dict(delivery.attempted_account_ids)
+
         attempted = 0
         label = {
             TaskExecutionMode.FIRST_RUN: "Stripe batch",
@@ -644,12 +960,42 @@ class ProviderRuntime:
         for email in recipients:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
-            account = snapshot.accounts[full_index[email] % len(snapshot.accounts)]
+            primary_index = full_index[email] % len(snapshot.accounts)
+            bound_account_id = attempted_account_ids.get(email)
+            if email in attempted_before_execution and not bound_account_id:
+                raise ProviderRuntimeError(
+                    "The current-session attempted recipient has no exact account binding; "
+                    "continuation is blocked to prevent cross-account replay."
+                )
+            if bound_account_id:
+                bound_index = next(
+                    (index for index, item in enumerate(snapshot.accounts) if item.id == bound_account_id),
+                    None,
+                )
+                if bound_index is None:
+                    raise ProviderRuntimeError(
+                        "The current-session attempted recipient account is no longer present in the frozen Task account set."
+                    )
+                scheduling_index = bound_index
+                allow_failover = False
+            else:
+                scheduling_index = primary_index
+                allow_failover = True
+            account = snapshot.accounts[scheduling_index]
             try:
+                account = self._select_stripe_account(
+                    context,
+                    snapshot,
+                    email,
+                    scheduling_index,
+                    allow_failover=allow_failover,
+                )
                 self._send_stripe_invoice_with_retry(context, snapshot, account, email)
             except ProviderRuntimeError as exc:
                 if exc.category == "stopped" and context.stop_flag.is_set():
                     break
+                for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
+                    context.log(message)
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -673,6 +1019,7 @@ class ProviderRuntime:
                     f"{type(exc).__name__}: {exc}"
                 )
             else:
+                self._record_scheduler_success(snapshot.provider_id, account)
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -732,16 +1079,29 @@ class ProviderRuntime:
     def _validate_stripe_mode(account: AccountSnapshot, secret_key: str) -> None:
         ProviderRuntime._validate_stripe_mode_value(account.mode, secret_key)
 
-    def _send_stripe_invoice(self, snapshot: TaskSnapshot, account: AccountSnapshot, email: str) -> dict[str, Any]:
+    def _send_stripe_invoice(
+        self,
+        snapshot: TaskSnapshot,
+        account: AccountSnapshot,
+        email: str,
+        *,
+        context: Any | None = None,
+    ) -> dict[str, Any]:
         key = account.credentials.get("secret_key", "").strip()
         self._validate_stripe_key(key)
         self._validate_stripe_mode(account, key)
         template = snapshot.template
         currency = template.currency.upper()
+        scheduling_kwargs = {
+            "context": context,
+            "account": account,
+            "task_id": snapshot.task_id,
+            "recipient_email": email,
+        }
 
         customer_id = ""
         if template.reuse_customer:
-            found = self._stripe_request("GET", "/customers", key, query={"email": email, "limit": 1})
+            found = self._stripe_request("GET", "/customers", key, query={"email": email, "limit": 1}, **scheduling_kwargs)
             data = found.get("data")
             if isinstance(data, list) and data and isinstance(data[0], dict):
                 customer_id = str(data[0].get("id", "")).strip()
@@ -752,6 +1112,7 @@ class ProviderRuntime:
                 key,
                 form={"email": email},
                 idempotency=_idempotency_key(snapshot.task_id, email, "customer"),
+                **scheduling_kwargs,
             )
             customer_id = str(created_customer.get("id", "")).strip()
         if not customer_id:
@@ -789,6 +1150,7 @@ class ProviderRuntime:
             key,
             form=invoice_form,
             idempotency=_idempotency_key(snapshot.task_id, email, "invoice"),
+            **scheduling_kwargs,
         )
         invoice_id = str(invoice.get("id", "")).strip()
         if not invoice_id:
@@ -818,6 +1180,7 @@ class ProviderRuntime:
                 key,
                 form=item_form,
                 idempotency=_idempotency_key(snapshot.task_id, email, f"item-{index}"),
+                **scheduling_kwargs,
             )
 
         finalized = self._stripe_request(
@@ -826,6 +1189,7 @@ class ProviderRuntime:
             key,
             form={"auto_advance": False},
             idempotency=_idempotency_key(snapshot.task_id, email, "finalize"),
+            **scheduling_kwargs,
         )
         finalized_id = str(finalized.get("id", invoice_id)).strip() or invoice_id
         sent = self._stripe_request(
@@ -834,6 +1198,7 @@ class ProviderRuntime:
             key,
             form={},
             idempotency=_idempotency_key(snapshot.task_id, email, "send"),
+            **scheduling_kwargs,
         )
         return sent
 
@@ -846,6 +1211,10 @@ class ProviderRuntime:
         form: dict[str, Any] | None = None,
         query: dict[str, Any] | None = None,
         idempotency: str | None = None,
+        context: Any | None = None,
+        account: AccountSnapshot | None = None,
+        task_id: str = "",
+        recipient_email: str = "",
     ) -> dict[str, Any]:
         url = f"{self.STRIPE_BASE_URL}{path}"
         if query:
@@ -854,7 +1223,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.24 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.25 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -862,6 +1231,21 @@ class ProviderRuntime:
             body = _form_body(form or {})
         if idempotency:
             headers["Idempotency-Key"] = idempotency
+        if context is not None and account is not None:
+            if not self._wait_for_provider_health(context, "stripe", email=recipient_email):
+                raise ProviderRuntimeError(
+                    "Stripe recipient execution stopped during provider cooldown.",
+                    category="stopped",
+                    retryable=False,
+                )
+            if not self._await_account_rate_slot(context, "stripe", account):
+                raise ProviderRuntimeError(
+                    "Stripe recipient execution stopped during account rate wait.",
+                    category="stopped",
+                    retryable=False,
+                )
+            if task_id and recipient_email:
+                self._mark_recipient_attempted(task_id, recipient_email, account.id)
         return self._transport(method.upper(), url, headers, body, self.timeout)
 
     def _refrens_auth(self, credentials: dict[str, str]) -> tuple[str, str, str]:
@@ -897,7 +1281,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.24 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.25 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

@@ -8,27 +8,27 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v100124(self):
+    def test_release_metadata_is_v100125(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.24"', pyproject)
-        self.assertIn('"version": "1.0.0.1.24"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.24"', project_meta)
-        self.assertIn('"current": "1.0.0.1.24"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.24"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.24', main_window)
-        self.assertIn('Invio/1.0.0.1.24', runtime)
+        self.assertIn('version = "1.0.0.1.25"', pyproject)
+        self.assertIn('"version": "1.0.0.1.25"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.25"', project_meta)
+        self.assertIn('"current": "1.0.0.1.25"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.25"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.25', main_window)
+        self.assertIn('Invio/1.0.0.1.25', runtime)
 
     def test_release_metadata_is_v100123(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100124()
+        self.test_release_metadata_is_v100125()
 
     def test_release_metadata_is_v100121(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100124()
+        self.test_release_metadata_is_v100125()
 
     def test_project_folder_is_git_ignored(self):
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
@@ -63,12 +63,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.24"', pyproject)
-        self.assertIn('"version": "1.0.0.1.24"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.24"', project_meta)
+        self.assertIn('version = "1.0.0.1.25"', pyproject)
+        self.assertIn('"version": "1.0.0.1.25"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.25"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.24', main_window)
-        self.assertIn('Invio/1.0.0.1.24', runtime)
+        self.assertIn('Production • v1.0.0.1.25', main_window)
+        self.assertIn('Invio/1.0.0.1.25', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -145,17 +145,17 @@ class RepositoryContractTests(unittest.TestCase):
             actual_keys = {field["key"] for field in manifest.get("credential_fields", [])}
             self.assertEqual(actual_keys, credential_keys)
 
-    def test_p08_completion_records_are_synchronized(self):
+    def test_p09_completion_records_are_synchronized(self):
         phase_log = (ROOT / "project" / "planning" / "PHASE_COMPLETION_LOG.md").read_text(encoding="utf-8")
         roadmap = (ROOT / "project" / "planning" / "PRODUCTION_ROADMAP.md").read_text(encoding="utf-8")
         project_readme = (ROOT / "project" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Production implementation phases complete: **8 / 14**", phase_log)
-        self.assertIn("Production implementation phases remaining: **6 / 14**", phase_log)
-        self.assertIn("Next implementation phase: **P09 - Multi-Account Scheduling, Limits and Health**", phase_log)
-        self.assertIn("Production implementation phases complete: **8 / 14**", roadmap)
-        self.assertIn("Production implementation phases remaining: **6 / 14**", roadmap)
-        self.assertIn("Next phase: **P09 - Multi-Account Scheduling, Limits and Health**", roadmap)
-        self.assertIn("- P08: COMPLETE", project_readme)
+        self.assertIn("Production implementation phases complete: **9 / 14**", phase_log)
+        self.assertIn("Production implementation phases remaining: **5 / 14**", phase_log)
+        self.assertIn("Next implementation phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", phase_log)
+        self.assertIn("Production implementation phases complete: **9 / 14**", roadmap)
+        self.assertIn("Production implementation phases remaining: **5 / 14**", roadmap)
+        self.assertIn("Next phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", roadmap)
+        self.assertIn("- P09: COMPLETE", project_readme)
 
     def test_p05_schema_v4_and_task_snapshot_contract_exist(self):
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")

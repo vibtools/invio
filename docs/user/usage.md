@@ -101,3 +101,8 @@ Pause also pauses retry waiting. Stop cancels future retries/recipients after an
 ## P08 verification correction in v1.0.0.1.24
 
 The automatic transient retry behavior also covers a provider connection that ends before the complete HTTP response body arrives, including TLS EOF/clean-close disconnect forms. These cases use the same existing maximum-three-attempt policy and do not change Task progress/account assignment/idempotency rules. Certificate verification failures remain permanent and are not automatically retried.
+
+
+## P09 multi-account scheduling in v1.0.0.1.25
+
+Tasks keep their original round-robin primary account assignment. Invio now paces Stripe Task requests per account and may route a recipient to the next healthy frozen account only if that recipient has not yet entered provider execution and its primary account is temporarily cooling from a recognized Stripe account rate-limit condition. If any provider request has already started for that recipient, Invio will not move it to another account. Provider/network outages wait on a provider-wide cooldown, and an account that returns HTTP 401/403 is not used again in the current runtime until it is successfully re-tested.

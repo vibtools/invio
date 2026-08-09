@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.24` is the verification-corrected P08 Worker and Network Reliability baseline on the verified provider-adapter baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.25` is the P09 Multi-Account Scheduling, Limits and Health baseline on the verification-corrected P08 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -201,3 +201,8 @@ The task concurrency boundary is unchanged: `MainWindow -> WorkerManager -> one 
 ## 20. P08 Verification Correction Boundary - v1.0.0.1.24
 
 No architecture boundary changes. `_stdlib_transport()` now contains the complete approved transient-disconnect boundary for `IncompleteRead` and TLS EOF/clean-close cases, and preserves known HTTP status/Retry-After data when an HTTP-error body is truncated. `ProviderRuntime -> WorkerManager -> one task-owned QThread -> MainWindow` remains unchanged; no P09 scheduler/failover, P10 ledger, provider adapter, schema, dependency, or UI architecture is introduced.
+
+
+## 21. P09 Scheduling Boundary - v1.0.0.1.25
+
+The immutable Task snapshot still owns the frozen account order and `recipient_ordinal_round_robin_v1` primary mapping. `ProviderAdapterContract` now exposes an internal optional scheduling policy; Stripe declares 20 requests/second/account with burst 1 and bounded runtime health cooldown settings. `ProviderRuntime` owns monotonic per-account request slots plus runtime-only account/provider health. Failover is a deterministic circular choice only before a recipient's first provider request and only when its primary account is cooling from a recognized account-scoped limiter condition. Attempted recipients, provider/network failures, deterministic operation failures and permanent account-auth failures never cross accounts. The existing one-Task-one-QThread WorkerManager boundary remains unchanged.

@@ -1,6 +1,7 @@
 from .adapters import (
     ProviderAdapterContract,
     ProviderCapabilityProfile,
+    ProviderSchedulingPolicy,
     provider_adapter_contract,
     provider_capability_profile,
     provider_runtime_manifest_contract,
@@ -29,6 +30,7 @@ __all__ = [
     "PreflightResult",
     "ProviderAdapterContract",
     "ProviderCapabilityProfile",
+    "ProviderSchedulingPolicy",
     "ProviderRuntime",
     "ProviderRuntimeError",
     "TaskDeliverySummary",

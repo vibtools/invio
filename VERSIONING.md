@@ -64,3 +64,8 @@ Completes P08 Worker and Network Reliability. Adds structured transient/permanen
 ## v1.0.0.1.24
 
 P08 forensic verification correction. Reclassifies truncated HTTP response bodies and TLS EOF/clean-close interruptions as transient retryable disconnects where appropriate, preserves HTTP status/Retry-After when an error body is truncated, and synchronizes stale P08 completion/error-handling records. No retry-count/backoff, provider-send, WorkerManager, UI, schema, dependency, Refrens, Agiled, plugin, or P09+ behavior is changed.
+
+
+## v1.0.0.1.25
+
+P09 production release. Adds deterministic multi-account scheduling safety, Stripe per-account request pacing, runtime-only account/provider health and bounded cooldown, eligible pre-attempt deterministic failover, permanent account-auth suppression, and current-session attempted-recipient cross-account protection. No schema/dependency/UI architecture/P10 behavior change.

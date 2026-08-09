@@ -1,15 +1,15 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.24**.
+Current frozen implementation baseline: **Invio v1.0.0.1.25**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Production implementation phases: **8 / 14 complete**.
-- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**.
-- Next planned phase: **P09 - Multi-Account Scheduling, Limits and Health**.
+- Production implementation phases: **9 / 14 complete**.
+- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**, **P09**.
+- Next planned phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**.
 - Current status: **not production-certified**.
 
 ## Ordered Production Phases
@@ -22,7 +22,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 6. **P06 - Provider Capability and Preflight Validation [COMPLETE in v1.0.0.1.17; verification-corrected in v1.0.0.1.18]**: reconcile declared/executable capabilities, protect packaged runtime IDs, validate provider/account/template/customer/endpoint contracts before side effects, and show precise correction messages.
 7. **P07 - Task State Machine and Resend Safety [COMPLETE in v1.0.0.1.19; verification-corrected in v1.0.0.1.20]**: deterministic First Run/Resume Remaining/Retry Failed semantics, centralized transitions, stop counter reconciliation, and current-session successful-recipient resend protection with fail-closed restart continuation.
 8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23; verification-corrected in v1.0.0.1.24]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
-9. **P09 - Multi-Account Scheduling, Limits and Health**: production-safe account distribution, limits and eligible failover.
+9. **P09 - Multi-Account Scheduling, Limits and Health [COMPLETE in v1.0.0.1.25]**: deterministic primary assignment, provider-safe per-account request pacing, runtime-only health/cooldown, and eligible pre-attempt failover without cross-account replay.
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
 11. **P11 - Refrens End-to-End Task Enablement**: enable normal Refrens bulk Task execution using explicit required customer data.
 12. **P12 - Reports, Logs, Privacy and Operational Observability**: recipient-level reconciliation, generalized secret redaction, safe export/retention.
@@ -47,3 +47,8 @@ P08 is complete. The one-task-one-QThread boundary is preserved. Retry is bounde
 ## P08 Verification Correction - v1.0.0.1.24
 
 The exact `v1.0.0.1.23` P08 release was re-audited. `v1.0.0.1.24` closes truncated-response and TLS EOF/clean-close transient-disconnect classification gaps while preserving the approved retry/backoff/Retry-After, timeout, Stop/shutdown, progress and one-task-one-QThread contracts. It also synchronizes stale private phase/error-handling records. P08 remains complete; production progress remains 8/14 and P09 remains next.
+
+
+## P09 Completion - v1.0.0.1.25
+
+P09 is complete. The frozen round-robin primary assignment remains authoritative. Stripe Task requests are paced at the approved 20 requests/second/account with burst 1; temporary account/provider health is runtime-only; recognized account-scoped rate limiting can route only a not-yet-attempted recipient to the next healthy frozen account. Already-attempted recipients never cross accounts. Provider/network failures use provider-wide cooldown without account hopping, and deterministic customer/template/operation failures never fail over. Intra-Task concurrency remains 1. Production progress is 9/14; P10 is next.

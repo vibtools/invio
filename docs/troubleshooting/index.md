@@ -97,3 +97,8 @@ Timeouts, transient disconnects, HTTP 408/429 and selected 5xx responses can be 
 ## A response disconnects while Invio is reading the body
 
 `v1.0.0.1.24` corrects the P08 transport boundary for truncated HTTP bodies and TLS EOF/clean-close interruptions. When these are transient disconnects, Invio applies the existing bounded retry policy. Certificate verification failures remain permanent. If repeated transient attempts exhaust all three total attempts, the recipient follows the normal Failed/Retry Failed workflow.
+
+
+## P09 account/provider cooldown
+
+If Live Logs report an account cooldown, Invio is temporarily pacing that account after a recognized Stripe rate-limit condition. Only not-yet-attempted recipients can use deterministic fallback. If Live Logs report a provider cooldown, Invio waits instead of hopping accounts. If an account is blocked after HTTP 401/403, use the existing account API Re-test/Edit verification workflow; a successful verification clears the runtime-only block.
