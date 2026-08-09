@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.23`** completes **P08 - Worker and Network Reliability** on the verified `v1.0.0.1.22` baseline. Production progress is now 8/14; P09 is next and requires separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.24`** is the forensic verification correction for **P08 - Worker and Network Reliability** on the `v1.0.0.1.23` baseline. It closes transient truncated-response/TLS-close retry-classification gaps and synchronizes P08 completion records. Production progress remains 8/14; P09 is next and requires separate approval.
 
 ## Current Application Scope
 
@@ -129,7 +129,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The current suite covers P01-P05 regression behavior plus P06 manifest/runtime reconciliation, packaged-ID collision protection, no-side-effect Task preflight, account-health validation, Stripe provider/template safety rules, Refrens endpoint trust enforcement, and the continued P11 Refrens Task gate.
+The current suite covers P01-P07 regressions plus P08 retry classification/backoff/Retry-After/Stop/shutdown/progress contracts, including truncated HTTP response and TLS EOF/clean-close transient-disconnect classification. P06 provider preflight, Refrens P11 blocking, Agiled fail-close, schema v4, and the one-task-one-QThread boundary remain regression-locked.
 
 ## Documentation
 
@@ -141,7 +141,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.23.md`
+- Release notes: `docs/release-notes/1.0.0.1.24.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.23` is the current P08-complete baseline. Production progress is **8/14 phases complete**. The next separately approved phase is **P09 - Multi-Account Scheduling, Limits and Health**.
+`v1.0.0.1.24` is the current P08 verification-corrected baseline. Production progress remains **8/14 phases complete**. The next separately approved phase is **P09 - Multi-Account Scheduling, Limits and Health**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -220,3 +220,14 @@ P08 adds structured provider/network failure metadata, bounded automatic retry w
 Retry waits are cooperative with existing Pause/Stop events. Stop never starts a new retry or recipient after cancellation is observed. Application shutdown is now asynchronous: active task workers receive Stop, the initial close event is ignored, and the window closes only after all task-owned `QThread`s have actually finished. Unexpected per-recipient exceptions are isolated and counted once without corrupting aggregate progress.
 
 P08 does not add account failover, intra-task concurrency, rate-per-second scheduling, persistent attempt ledgers, Refrens Task sending, Agiled execution, external plugin loading, schema changes, dependency changes, or new UI pages.
+
+
+## v1.0.0.1.24 P08 Verification Correction
+
+The exact shipped `v1.0.0.1.23` P08 implementation was re-audited against its approved transient/permanent failure contract. Two transport-classification gaps were reproduced and corrected without changing retry count, backoff policy, provider business semantics, Task state, WorkerManager architecture, schema, dependencies, or UI workflow:
+
+- a successful-status response whose body terminates with `http.client.IncompleteRead` is now classified as a retryable transient network disconnect instead of escaping as an unexpected per-recipient exception;
+- TLS EOF/clean-close transport interruptions (`SSLEOFError` / `SSLZeroReturnError`) are treated as retryable disconnects while certificate verification and other non-transient TLS failures remain permanent;
+- if an HTTP error response body is itself truncated, the known HTTP status and `Retry-After` header still drive the existing P08 classification instead of losing the status boundary.
+
+The re-audit also corrected stale private P08 completion summaries/error-handling inventory that still described P08 as pending. P08 remains **COMPLETE**, production progress remains **8/14**, and P09 remains separately approval-gated.

@@ -59,3 +59,8 @@ Pre-P08 provider-adapter forensic verification release. It preserves the `v1.0.0
 ## v1.0.0.1.23
 
 Completes P08 Worker and Network Reliability. Adds structured transient/permanent failure metadata, bounded three-attempt recipient retry with exponential backoff/jitter and Retry-After support, explicit 30-second shared urllib connect/read socket timeout policy, cooperative Pause/Stop-aware waits, safe asynchronous application shutdown, and per-recipient unexpected-exception isolation. Preserves one task-owned QThread, Stripe idempotency/account assignment, schema v4, dependencies, Refrens P11 gate, Agiled fail-close and all P09+ behavior.
+
+
+## v1.0.0.1.24
+
+P08 forensic verification correction. Reclassifies truncated HTTP response bodies and TLS EOF/clean-close interruptions as transient retryable disconnects where appropriate, preserves HTTP status/Retry-After when an error body is truncated, and synchronizes stale P08 completion/error-handling records. No retry-count/backoff, provider-send, WorkerManager, UI, schema, dependency, Refrens, Agiled, plugin, or P09+ behavior is changed.

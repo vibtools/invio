@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.23` completes P08 Worker and Network Reliability on the verified provider-adapter baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.24` is the verification-corrected P08 Worker and Network Reliability baseline on the verified provider-adapter baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -196,3 +196,8 @@ The architecture is unchanged from `v1.0.0.1.21`. Verification adds explicit tes
 The task concurrency boundary is unchanged: `MainWindow -> WorkerManager -> one QThread -> ProviderRuntime runner`. ProviderRuntime classifies transport failures and performs recipient-level bounded retry. The retry helper receives the same immutable Task snapshot and already selected AccountSnapshot, so account assignment and `Task.id`-based Stripe idempotency keys remain stable.
 
 `WorkerManager.stop_all()` is now non-blocking and cooperative. It emits `all_stopped` only after the final task-owned thread finishes. `MainWindow.closeEvent()` ignores the first accepted shutdown request while workers are active, requests Stop, remains responsive, and performs the final close after `all_stopped`. No forced QThread termination is used.
+
+
+## 20. P08 Verification Correction Boundary - v1.0.0.1.24
+
+No architecture boundary changes. `_stdlib_transport()` now contains the complete approved transient-disconnect boundary for `IncompleteRead` and TLS EOF/clean-close cases, and preserves known HTTP status/Retry-After data when an HTTP-error body is truncated. `ProviderRuntime -> WorkerManager -> one task-owned QThread -> MainWindow` remains unchanged; no P09 scheduler/failover, P10 ledger, provider adapter, schema, dependency, or UI architecture is introduced.

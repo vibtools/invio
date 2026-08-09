@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.23`  
-**Completed production phases:** P01, P02, P03, P04, P05, P06, P07  
+**Baseline:** `Invio v1.0.0.1.24`  
+**Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -23,6 +23,7 @@
 | Active-task restart recovery | WORKING | Running/Paused/Stopping recover as existing `Stopped`; no auto-resume/send |
 | Immutable Task execution inputs | WORKING | P05 freezes ordered recipients, copied template, provider ID and account-assignment basis at Task creation; Start/Retry reuse it |
 | Dedicated worker thread per active Task | WORKING | Existing one-`QThread`-per-Task WorkerManager unchanged |
+| Worker/network reliability | WORKING | P08 structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy and safe asynchronous shutdown; v1.0.0.1.24 corrects truncated-body/TLS-close transient classification |
 | Retry Failed / Resume Remaining in current session | WORKING | P07 uses exact ProviderRuntime failed/pending sets and immutable P05 ordering |
 | Retry Failed / Resume Remaining after app restart | NOT IMPLEMENTED | Exact recipient identities are deliberately not guessed; P10 durable ledger/recovery |
 | Recipient delivery ledger/provider IDs | NOT IMPLEMENTED | P10 |
@@ -102,13 +103,11 @@
 
 ## Threading / Worker
 
-The existing WorkerManager is unchanged: one active Task owns one `QThread`; provider work stays out of the GUI thread. P02 adds local persistence calls around existing UI/state events but does not introduce a new sending worker model.
-
-Remaining worker reliability work is P08/P09/P10.
+The existing WorkerManager remains one active Task per `QThread`; provider work stays out of the GUI thread. P08 adds bounded recipient retry, transport failure classification and safe asynchronous shutdown inside that same boundary. P09 still owns account scheduling/health/failover policy and P10 owns durable recipient-attempt/recovery state.
 
 ## Current Certification Boundary
 
-P01-P06 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
+P01-P08 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
 
 
 ### v1.0.0.1.11 P03 verification correction
@@ -198,8 +197,17 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 
 **VERIFIED:** the `v1.0.0.1.21` internal packaged-provider adapter registry, Stripe binding, Refrens P11 gate, Agiled package/manifest, declared-vs-executable capability separation, and Agiled no-transport fail-close behavior remain correct. Additional tests now cover Agiled package install/uninstall, runtime handler binding resolution, and the generic UI/API-test gate. No new executable Agiled capability is claimed.
 
-## P08 status - v1.0.0.1.23
+## P08 status - v1.0.0.1.23; verification-corrected in v1.0.0.1.24
 
 **WORKING:** structured network/provider retry classification, maximum three total recipient attempts, exponential backoff/jitter, Retry-After parsing, explicit 30-second shared urllib socket timeout, cooperative Pause/Stop-aware retry waits, per-recipient unexpected-exception isolation, and non-blocking application shutdown coordination that waits for task QThread completion.
 
 **UNCHANGED / OUT OF SCOPE:** account failover and per-account rate scheduling (P09), persistent attempt/delivery ledger (P10), Refrens Task sending (P11), Agiled execution, external executable plugin loading (P13), SQLite schema v4 and dependencies.
+
+
+### v1.0.0.1.24 P08 verification correction
+
+**WORKING / CORRECTED:** truncated HTTP response bodies (`IncompleteRead`) and TLS EOF/clean-close interruptions now enter the same bounded transient retry path as other approved disconnects. HTTP error status/Retry-After metadata remains available even when its body is incomplete. Certificate-verification failures remain permanent.
+
+**UNCHANGED:** three-total-attempt limit, backoff/jitter, one-task-one-QThread, account assignment, Stripe idempotency keys/business sequence, safe shutdown, P05-P07, schema v4, dependencies, Refrens P11 gate, Agiled fail-close and P09+ scope.
+
+**Production progress:** remains 8/14; P09 is next only after separate approval.

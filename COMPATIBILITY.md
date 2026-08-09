@@ -76,3 +76,8 @@ No Python/platform/dependency/SQLite-schema/provider-manifest/WorkerManager/P05-
 ## v1.0.0.1.23 P08 Compatibility
 
 P08 preserves the existing Python 3.12, PySide6 6.7-<7, `urllib`, keyring and openpyxl technology set. No dependency or SQLite schema change is introduced. One task-owned QThread remains the concurrency boundary. Existing Stripe/Refrens/Agiled provider contracts are unchanged; Agiled remains fail-closed and Refrens normal Task sending remains P11-gated.
+
+
+## v1.0.0.1.24 P08 Verification-Correction Compatibility
+
+`v1.0.0.1.24` preserves the `v1.0.0.1.23` Python 3.12+, PySide6 6.7-<7, standard-library `urllib`, keyring and openpyxl technology set. The correction only extends P08 transient-disconnect classification for incomplete HTTP bodies and TLS EOF/clean-close conditions and preserves HTTP status/Retry-After when an error body is truncated. No API/provider payload, schema, dependency, page, QThread boundary, account assignment, idempotency, or P09+ compatibility contract changes.

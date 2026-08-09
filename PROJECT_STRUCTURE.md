@@ -110,3 +110,8 @@ No application folder/module architecture is added, removed, renamed, or reorgan
 ## v1.0.0.1.23 P08 Structure Note
 
 P08 changes no folder architecture and adds no runtime package. Reliability logic remains in `src/core/provider_runtime/runtime.py`, task-thread lifecycle remains in `src/core/worker_manager/manager.py`, and shutdown coordination remains in `src/ui/main_window.py`. `tests/test_p08_reliability.py` adds P08 regression coverage. No UI page, schema package or dependency is added.
+
+
+## v1.0.0.1.24 P08 Verification-Correction Structure Note
+
+No folder, runtime package, UI page, schema module, dependency or architecture boundary is added/removed/renamed. The transport correction remains in `src/core/provider_runtime/runtime.py`; regression coverage extends `tests/test_p08_reliability.py` and repository consistency checks. New files are documentation/release/forensic records only.

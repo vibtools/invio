@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.23`  
+**Baseline:** `v1.0.0.1.24`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -163,12 +163,12 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
 | EH-007 | **RESOLVED in v1.0.0.1.17:** provider/template/customer compatibility was not validated before side effects | Unsupported invoice type/currency/tax/customer requirements could reach provider execution | COMPLETE P06: no-side-effect capability preflight |
 | EH-008 | Completed/Failed full Start resend semantics were ambiguous | RESOLVED in P07: Completed full resend and Failed normal Start are blocked; new full execution requires a new Task | P07 COMPLETE |
-| EH-009 | No retryable/permanent provider error taxonomy | Incorrect retry behavior | P08 |
-| EH-010 | No automatic bounded retry/backoff/jitter | Transient failures become manual failures | P08 |
-| EH-011 | No explicit 429/Retry-After handling | Rate-limit amplification | P08/P09 |
-| EH-012 | Stop cannot interrupt in-flight blocking request | Slow stop/close | P08 |
-| EH-013 | `stop_all(1500)` can finish waiting before 30 s HTTP timeout | Unsafe shutdown possibility | P08 |
-| EH-014 | Unexpected exception inside a recipient stage is not reconciled at recipient level | Partial/uncertain run | P08/P10 |
+| EH-009 | **RESOLVED in P08; verification-corrected in v1.0.0.1.24:** provider/network failures carry retryability/category/HTTP metadata; truncated response bodies and TLS EOF/clean-close are correctly classified as transient where applicable | Structured bounded retry now receives the intended transport failures | COMPLETE P08 |
+| EH-010 | **RESOLVED in P08:** maximum three total recipient attempts with exponential backoff and bounded jitter | Transient provider/network failures receive bounded automatic retry | COMPLETE P08 |
+| EH-011 | **RESOLVED for reactive provider handling in P08:** 429/Retry-After is honored inside bounded retry; proactive per-account/provider scheduling limits remain P09 | Rate-limit responses no longer immediately amplify retry; proactive throttling still pending | P08 COMPLETE / P09 scheduling pending |
+| EH-012 | **RESOLVED for safe cancellation in P08:** Stop prevents later retry/recipient work and waits cooperatively for the current bounded urllib request to return/timeout; no unsafe force-kill is attempted | Stop may wait for the bounded in-flight request by design, but shutdown remains safe | COMPLETE P08 |
+| EH-013 | **RESOLVED in P08:** fixed 1500 ms blocking wait removed; MainWindow closes only after all task-owned QThreads actually finish | Application no longer accepts close while a task worker is still running | COMPLETE P08 |
+| EH-014 | **RESOLVED for current-session aggregate reconciliation in P08:** unexpected per-recipient exceptions are isolated and counted once; durable attempt/provider-side evidence remains P10 | Aggregate progress stays consistent; crash/restart reconciliation remains pending | P08 COMPLETE / P10 durability pending |
 | EH-015 | No account-health/failover error rules | Repeated failures on unhealthy account | P09 |
 | EH-016 | Retry/idempotency/delivery state is not durable | Duplicate/unknown results after restart | P10 |
 | EH-017 | Refrens Task runner remains disabled even though P04 can now store explicit required customer data | Provider unavailable for normal bulk task | P11 |
@@ -365,3 +365,10 @@ No new provider/API error-handling defect was found in the `v1.0.0.1.21` delta. 
 `ProviderRuntimeError` now carries `category`, `retryable`, optional `http_status`, and optional `retry_after_seconds` while remaining backward-compatible with existing message-only raises. Retryable transport failures are timeout/transient disconnect plus HTTP 408/429/500/502/503/504. Deterministic 4xx, invalid response shape/JSON and TLS certificate verification failures are permanent.
 
 Automatic retry is recipient-scoped and bounded to three total attempts. Exponential delays are 0.5s then 1.0s before 0-25% jitter; Retry-After can extend the delay. Stop/Pause use cooperative Events rather than forced thread interruption. Unexpected recipient exceptions are recorded as one failed recipient and execution continues to the next recipient, preserving `processed = success + failed` for resolved recipients.
+
+
+## 5. v1.0.0.1.24 P08 Verification Correction
+
+The P08 re-audit reproduced two transport-classification gaps. `http.client.IncompleteRead` from a successful-status response body previously escaped `_stdlib_transport()` and bypassed automatic retry, and TLS EOF/clean-close exceptions were grouped with permanent TLS failures. The correction classifies those disconnect forms as retryable transient network failures while keeping certificate verification permanent. If an HTTP error body is truncated, the already-known HTTP status and Retry-After header remain authoritative.
+
+No retry count, backoff, provider payload, Task state, WorkerManager, schema, dependency or P09+ handling is changed.

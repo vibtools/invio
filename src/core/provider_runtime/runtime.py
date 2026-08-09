@@ -11,8 +11,9 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
 from decimal import Decimal
+from email.utils import parsedate_to_datetime
+from http.client import IncompleteRead
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -188,6 +189,12 @@ def _network_runtime_error(exc: BaseException) -> ProviderRuntimeError:
             category="tls",
             retryable=False,
         )
+    if isinstance(reason, (ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+        return ProviderRuntimeError(
+            f"Provider TLS connection ended before the request completed: {reason}",
+            category="network",
+            retryable=True,
+        )
     if isinstance(reason, ssl.SSLError):
         return ProviderRuntimeError(
             f"Provider TLS connection failed: {reason}",
@@ -198,6 +205,12 @@ def _network_runtime_error(exc: BaseException) -> ProviderRuntimeError:
         return ProviderRuntimeError(
             f"Provider network request timed out: {reason}",
             category="timeout",
+            retryable=True,
+        )
+    if isinstance(reason, IncompleteRead):
+        return ProviderRuntimeError(
+            "Provider network response ended before the complete response body was received.",
+            category="network",
             retryable=True,
         )
     retryable_disconnect = isinstance(
@@ -219,7 +232,10 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
         with urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed HTTPS provider endpoints / trusted Refrens endpoint
             raw = response.read()
     except HTTPError as exc:
-        raw = exc.read()
+        try:
+            raw = exc.read()
+        except IncompleteRead as read_exc:
+            raw = bytes(read_exc.partial or b"")
         try:
             data = json.loads(raw.decode("utf-8")) if raw else {}
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -227,14 +243,15 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
         status = int(exc.code)
         message = _extract_api_error(data) or f"Provider API returned HTTP {status}."
         retryable = status in RETRYABLE_HTTP_STATUSES
+        response_headers = exc.headers or {}
         raise ProviderRuntimeError(
             message,
             category="rate-limit" if status == 429 else "http",
             retryable=retryable,
             http_status=status,
-            retry_after_seconds=_parse_retry_after(exc.headers.get("Retry-After")) if retryable else None,
+            retry_after_seconds=_parse_retry_after(response_headers.get("Retry-After")) if retryable else None,
         ) from exc
-    except (URLError, TimeoutError, OSError) as exc:
+    except (URLError, TimeoutError, OSError, IncompleteRead) as exc:
         raise _network_runtime_error(exc) from exc
 
     if not raw:
@@ -837,7 +854,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.23 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.24 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -880,7 +897,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.23 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.24 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

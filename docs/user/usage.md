@@ -96,3 +96,8 @@ The user-facing behavior is unchanged from `v1.0.0.1.21`: install Agiled through
 When Stripe encounters a transient timeout, disconnect, HTTP 408/429 or selected 5xx response, Invio can retry that recipient automatically up to a maximum of three total attempts. Live Logs show the transient failure and retry delay. A recipient is counted only once in Task progress, regardless of automatic attempts.
 
 Pause also pauses retry waiting. Stop cancels future retries/recipients after any currently blocking request returns or reaches the 30-second timeout. If you exit while a Task is active, the existing exit confirmation is used; after confirmation Invio remains open until the active task thread has stopped safely, then closes automatically.
+
+
+## P08 verification correction in v1.0.0.1.24
+
+The automatic transient retry behavior also covers a provider connection that ends before the complete HTTP response body arrives, including TLS EOF/clean-close disconnect forms. These cases use the same existing maximum-three-attempt policy and do not change Task progress/account assignment/idempotency rules. Certificate verification failures remain permanent and are not automatically retried.

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.23**.
+Current version: **v1.0.0.1.24**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.23.md` - current release.
+- `release-notes/1.0.0.1.24.md` - current release.
+- `release-notes/1.0.0.1.23.md` - original P08 implementation release.
 - `release-notes/1.0.0.1.15.md` - original P05 implementation.
 - `release-notes/1.0.0.1.14.md` - Windows storage hotfix.
 - `release-notes/1.0.0.1.12.md` - original P04 feature release.
@@ -30,7 +31,7 @@ Detailed forensic reports, phase roadmap, phase completion ledger and update pro
 
 ## Current production phase
 
-P08 is complete in `v1.0.0.1.23`. Production progress is **8/14** and the next separately approval-gated phase is **P09 - Multi-Account Scheduling, Limits and Health**.
+P08 is complete and verification-corrected in `v1.0.0.1.24`. Production progress remains **8/14** and the next separately approval-gated phase is **P09 - Multi-Account Scheduling, Limits and Health**.
 
 ## P07 Task execution safety
 
@@ -48,6 +49,11 @@ Packaged provider runtime contracts now resolve through one internal registry. A
 
 `v1.0.0.1.22` was the verification-corrected pre-P08 provider-adapter baseline. Agiled remained fail-closed and P08 was still pending at that release.
 
-## v1.0.0.1.23 current baseline
+## v1.0.0.1.23 original P08 baseline
 
 P08 Worker and Network Reliability is complete. Invio now classifies transient/permanent provider failures, retries bounded transient recipient failures with cooperative backoff and Retry-After handling, uses an explicit 30-second urllib timeout policy, isolates unexpected recipient failures, and closes only after active task QThreads finish. Production progress is 8/14; P09 is next.
+
+
+## v1.0.0.1.24 current baseline
+
+P08 remains complete. The forensic correction extends the transient-disconnect classifier to truncated HTTP response bodies and TLS EOF/clean-close interruptions, while retaining known HTTP status and Retry-After semantics when an error body is incomplete. Retry count/backoff, provider operations, shutdown architecture and all P09+ behavior remain unchanged. Production progress remains 8/14; P09 is next.

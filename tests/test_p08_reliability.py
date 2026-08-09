@@ -5,6 +5,7 @@ import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
+from http.client import IncompleteRead
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
@@ -120,6 +121,56 @@ class P08ReliabilityTests(unittest.TestCase):
                 with self.assertRaises(ProviderRuntimeError) as raised:
                     _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
             self.assertTrue(raised.exception.retryable)
+
+    def test_transport_classifies_incomplete_response_body_as_retryable_disconnect(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                raise IncompleteRead(b'{"partial":', 4)
+
+        with patch("src.core.provider_runtime.runtime.urlopen", return_value=Response()):
+            with self.assertRaises(ProviderRuntimeError) as raised:
+                _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+        self.assertEqual(raised.exception.category, "network")
+        self.assertTrue(raised.exception.retryable)
+
+    def test_http_error_with_incomplete_body_keeps_status_classification_and_retry_after(self):
+        error = HTTPError(
+            "https://api.example.test",
+            503,
+            "service unavailable",
+            {"Retry-After": "2"},
+            None,
+        )
+        error.read = lambda: (_ for _ in ()).throw(IncompleteRead(b'{"error":', 10))  # type: ignore[method-assign]
+        with patch("src.core.provider_runtime.runtime.urlopen", side_effect=error):
+            with self.assertRaises(ProviderRuntimeError) as raised:
+                _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+        self.assertEqual(raised.exception.http_status, 503)
+        self.assertTrue(raised.exception.retryable)
+        self.assertEqual(raised.exception.retry_after_seconds, 2.0)
+
+    def test_tls_eof_disconnect_is_retryable_but_certificate_failure_remains_permanent(self):
+        import ssl
+
+        for reason in (ssl.SSLEOFError(8, "EOF occurred in violation of protocol"), ssl.SSLZeroReturnError(6, "TLS closed")):
+            with patch("src.core.provider_runtime.runtime.urlopen", side_effect=URLError(reason)):
+                with self.assertRaises(ProviderRuntimeError) as raised:
+                    _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+            self.assertEqual(raised.exception.category, "network")
+            self.assertTrue(raised.exception.retryable)
+
+        failure = URLError(ssl.SSLCertVerificationError(1, "certificate verify failed"))
+        with patch("src.core.provider_runtime.runtime.urlopen", side_effect=failure):
+            with self.assertRaises(ProviderRuntimeError) as raised:
+                _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+        self.assertEqual(raised.exception.category, "tls")
+        self.assertFalse(raised.exception.retryable)
 
     def test_retryable_recipient_failure_retries_at_most_three_total_attempts_and_counts_once(self):
         attempts = {"send": 0}

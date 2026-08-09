@@ -1,6 +1,6 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.23**.
+Current frozen implementation baseline: **Invio v1.0.0.1.24**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -21,7 +21,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 5. **P05 - Immutable Task Execution Snapshot and Input Consistency [COMPLETE in v1.0.0.1.15; verification-corrected in v1.0.0.1.16]**: durable creation-time recipients/template/provider/account-basis snapshots, snapshot-derived totals, Start/Retry reuse, and fail-closed legacy Task migration.
 6. **P06 - Provider Capability and Preflight Validation [COMPLETE in v1.0.0.1.17; verification-corrected in v1.0.0.1.18]**: reconcile declared/executable capabilities, protect packaged runtime IDs, validate provider/account/template/customer/endpoint contracts before side effects, and show precise correction messages.
 7. **P07 - Task State Machine and Resend Safety [COMPLETE in v1.0.0.1.19; verification-corrected in v1.0.0.1.20]**: deterministic First Run/Resume Remaining/Retry Failed semantics, centralized transitions, stop counter reconciliation, and current-session successful-recipient resend protection with fail-closed restart continuation.
-8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
+8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23; verification-corrected in v1.0.0.1.24]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
 9. **P09 - Multi-Account Scheduling, Limits and Health**: production-safe account distribution, limits and eligible failover.
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
 11. **P11 - Refrens End-to-End Task Enablement**: enable normal Refrens bulk Task execution using explicit required customer data.
@@ -42,3 +42,8 @@ The exact `v1.0.0.1.21` exception release was re-audited and no provider/API/inv
 ## P08 Completion - v1.0.0.1.23
 
 P08 is complete. The one-task-one-QThread boundary is preserved. Retry is bounded to three total recipient attempts, reactive `429/Retry-After` handling is implemented without introducing P09 rate scheduling, Stop is cooperative around in-flight requests, and application close waits for actual task-thread completion without blocking the GUI thread or calling `QThread.terminate()`. P09 is now the next production phase.
+
+
+## P08 Verification Correction - v1.0.0.1.24
+
+The exact `v1.0.0.1.23` P08 release was re-audited. `v1.0.0.1.24` closes truncated-response and TLS EOF/clean-close transient-disconnect classification gaps while preserving the approved retry/backoff/Retry-After, timeout, Stop/shutdown, progress and one-task-one-QThread contracts. It also synchronizes stale private phase/error-handling records. P08 remains complete; production progress remains 8/14 and P09 remains next.

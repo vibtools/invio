@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.24 - P08 Forensic Verification Correction
+
+- Re-audits the exact shipped `v1.0.0.1.23` P08 Worker and Network Reliability implementation.
+- Reproduces and fixes a transient-disconnect classification gap where `http.client.IncompleteRead` escaped the structured retry boundary and became an unexpected non-retry recipient failure.
+- Treats TLS EOF/clean-close interruptions as retryable transient disconnects while preserving permanent certificate-verification and non-transient TLS handling.
+- Preserves known HTTP status/`Retry-After` classification when an HTTP error body is itself truncated.
+- Keeps the approved maximum three total attempts, 0.5s/1.0s exponential backoff, 0-25% jitter, same-recipient/same-account/same-Stripe-idempotency behavior, one-task-one-QThread architecture, safe asynchronous shutdown, schema v4, dependencies, Refrens P11 gate, Agiled fail-close, and all P09+ behavior unchanged.
+- Corrects stale private P08 completion/error-handling records so the authoritative phase documents consistently show **8/14 complete**, **6/14 remaining**, and **P09 next**.
+- Production progress remains **8/14**; this correction does not implement P09.
+
 ## v1.0.0.1.23 - P08 Worker and Network Reliability
 
 - Adds structured provider/network failure classification with retryable/permanent metadata, HTTP status and parsed `Retry-After` where available.
