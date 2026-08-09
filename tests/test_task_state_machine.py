@@ -7,8 +7,10 @@ from src.tasks.state_machine import (
     COMPLETED_RESEND_MESSAGE,
     CONTINUATION_UNAVAILABLE_MESSAGE,
     FAILED_FULL_START_MESSAGE,
+    NO_REMAINING_RECIPIENTS_MESSAGE,
     TaskAction,
     TaskExecutionMode,
+    reconcile_worker_terminal_status,
     require_task_action,
     task_action_policy,
     validate_status_transition,
@@ -130,6 +132,37 @@ class TaskStateMachineTests(unittest.TestCase):
         self.assertFalse(failed.start_enabled)
         self.assertTrue(failed.retry_enabled)
         self.assertEqual(failed.start_tooltip, FAILED_FULL_START_MESSAGE)
+
+
+    def test_late_completed_worker_signal_resolves_to_stopped_without_expanding_transition_table(self):
+        self.assertEqual(reconcile_worker_terminal_status("Stopping", "Completed"), "Stopped")
+        self.assertEqual(reconcile_worker_terminal_status("Paused", "Completed"), "Stopped")
+        self.assertEqual(reconcile_worker_terminal_status("Stopped", "Completed"), "Stopped")
+        self.assertEqual(reconcile_worker_terminal_status("Running", "Completed"), "Completed")
+        with self.assertRaises(ValueError):
+            validate_status_transition("Stopping", "Completed")
+
+    def test_active_worker_availability_disables_stale_pause_resume_stop_controls(self):
+        self.task.status = "Running"
+        running = task_action_policy(self.task, active_worker_available=False)
+        self.assertFalse(running.pause_enabled)
+        self.assertFalse(running.stop_enabled)
+
+        self.task.status = "Paused"
+        paused = task_action_policy(self.task, active_worker_available=False)
+        self.assertFalse(paused.resume_enabled)
+        self.assertFalse(paused.stop_enabled)
+
+    def test_safe_empty_stopped_continuation_can_expose_precise_reason(self):
+        self.task.status = "Stopped"
+        policy = task_action_policy(
+            self.task,
+            resume_remaining_available=False,
+            continuation_unavailable_message=NO_REMAINING_RECIPIENTS_MESSAGE,
+        )
+        self.assertFalse(policy.start_enabled)
+        self.assertEqual(policy.start_label, "Resume Remaining")
+        self.assertEqual(policy.start_tooltip, NO_REMAINING_RECIPIENTS_MESSAGE)
 
     def test_close_is_blocked_while_worker_state_is_active(self):
         for status in ("Running", "Paused", "Stopping"):

@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.19`** completes **P07 - Task State Machine and Resend Safety** on top of the verified `v1.0.0.1.18` P06 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.20`** is the forensic verification/correction release for **P07 - Task State Machine and Resend Safety**, based on the exact verified `v1.0.0.1.19` P07 baseline.
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.19.md`
+- Release notes: `docs/release-notes/1.0.0.1.20.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.19` is the verified P07 baseline. Production progress is **7/14 phases complete**. The next separately approved phase is **P08 - Worker and Network Reliability**.
+`v1.0.0.1.20` is the verification-corrected P07 baseline. Production progress remains **7/14 phases complete**. The next separately approved phase is **P08 - Worker and Network Reliability**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -190,3 +190,13 @@ P07 makes every execution action deterministic without changing the P05 immutabl
 - If the process restarts, exact recipient continuation identities are intentionally considered unavailable. Invio never reconstructs or guesses them from aggregate counters; Retry/Resume fail closed until P10 adds durable recipient-level recovery.
 - The existing injected/external runner API remains first-run compatible, but P07 blocks Retry/Resume continuation for injected runners because that API does not expose a trustworthy recipient subset.
 - Account reservations remain held until **Close Task**. No new database table, worker pool, network retry/backoff, or provider-send behavior is introduced.
+
+## v1.0.0.1.20 P07 verification correction
+
+The exact shipped `v1.0.0.1.19` P07 implementation was re-audited without advancing the production roadmap. Three P07 integration gaps were corrected while preserving the approved state table, P05 immutable snapshots, P06 preflight, SQLite schema v4 and WorkerManager architecture:
+
+- a late queued worker `Completed` signal is reconciled to `Stopped` when the GUI has already accepted a valid late Pause/Stop state, avoiding an invalid `Paused/Stopping -> Completed` transition;
+- Pause/Resume/Stop are enabled and accepted only while the Task's existing WorkerManager thread is still active, preventing stale controls from mutating state after the worker has already exited;
+- a safe current-session continuation that is proven to be empty is distinguished from an unavailable continuation set, so the UI reports that nothing remains instead of falsely claiming recipient identities were lost.
+
+No recipient ledger, automatic network retry/backoff, new Task status, database migration, provider-send change or P08 behavior is introduced.

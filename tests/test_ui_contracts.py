@@ -510,6 +510,27 @@ class P07UiContractTests(unittest.TestCase):
         self.assertIn("if summary is not None and summary.continuation_safe", block)
         self.assertLess(block.index("self.state.set_task_progress"), block.index("self.state.set_task_status"))
 
+
+    def test_p07_correction_disables_stale_worker_controls_and_reconciles_late_completed_signal(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        policy = source.split("def _task_action_policy", 1)[1].split("def _require_task_action", 1)[0]
+        self.assertIn("active_worker_available=self.worker_manager.is_running(task.id)", policy)
+        for method, next_method in (("pause_task", "resume_task"), ("resume_task", "stop_task"), ("stop_task", "retry_task")):
+            block = source.split(f"def {method}", 1)[1].split(f"def {next_method}", 1)[0]
+            self.assertIn("self._require_active_worker(task)", block)
+        finished = source.split("def _worker_finished", 1)[1].split("# Reports / logs", 1)[0]
+        self.assertIn("reconcile_worker_terminal_status(task.status, status)", finished)
+        self.assertIn("there are no recipients remaining to resume", finished)
+
+    def test_p07_correction_distinguishes_safe_empty_continuation_from_lost_identity_state(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        block = source.split("def _task_continuation_message", 1)[1].split("def _task_action_policy", 1)[0]
+        self.assertIn("NO_REMAINING_RECIPIENTS_MESSAGE", block)
+        self.assertIn("NO_FAILED_RECIPIENTS_MESSAGE", block)
+        self.assertIn("summary.continuation_safe", block)
+
     def test_p07_worker_manager_thread_architecture_remains_unchanged(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")

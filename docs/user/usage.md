@@ -76,3 +76,9 @@ Use the action shown for the current state:
 - **Completed:** Close Task; create a new Task for another full execution.
 
 A Stop does not turn the next action into a full resend. Invio retains current-session failed and never-attempted recipients separately and excludes known successes. If the app restarts, those recipient identities are intentionally not inferred from the saved counts. Close the Task and create a new Task if continuation is unavailable; P10 is the planned durable recipient-recovery phase.
+
+## v1.0.0.1.20 Task-control verification note
+
+Pause, Resume and Stop are now actionable only while the Task's worker thread is actually active. This prevents a stale button click after a worker has already finished. If a Stop/Pause is accepted at the same time a completion signal is arriving, the Task safely settles as **Stopped** under the existing P07 state rules.
+
+If a safe Stopped Task has no failed or pending recipients left, **Resume Remaining** stays disabled and Invio explains that no unresolved recipients remain. This is different from restart recovery, where exact identities are unavailable and continuation intentionally fails closed.

@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.19`  
+**Baseline:** `v1.0.0.1.20`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -340,3 +340,10 @@ P07 treats ambiguous resend actions as validation errors before a new worker is 
 Controlled Stop reconciliation uses the same failed/pending sets to calculate persisted/UI counts. If recipient-level continuation becomes uncertain because of an unexpected runtime exception, or if the process restarts and the in-memory sets are lost, continuation is marked unavailable rather than reconstructed from aggregate counters. This avoids an accidental successful-recipient resend while leaving durable recovery to P10.
 
 P07 does not add automatic network retry, backoff, HTTP cancellation, rate-limit behavior or provider-side reconciliation; those remain P08/P10.
+
+## v1.0.0.1.20 P07 race/message corrections
+
+- A late worker `Completed` signal can race with queued GUI Pause/Stop state. P07 now resolves that terminal event to existing `Stopped` when current state is `Paused`, `Stopping` or `Stopped`, preserving the approved transition matrix instead of raising an invalid-transition persistence error.
+- Pause/Resume/Stop now fail before WorkerManager mutation when no active Task thread exists; the same active-worker fact disables those UI controls.
+- A safe empty continuation is not an error and is no longer described as missing identity state. It simply has no Resume/Retry action because there are no unresolved recipients.
+- This correction adds no network retry/error taxonomy, cancellation, durable recipient ledger or provider-side recovery; P08/P10 remain unchanged.

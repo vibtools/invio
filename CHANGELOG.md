@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.20 - P07 Forensic Verification and Resend-Safety Correction
+
+- Re-audited the exact shipped `v1.0.0.1.19` P07 implementation against its approved state-machine/resend plan.
+- Reconciles a late worker `Completed` terminal signal to `Stopped` when a valid late Pause/Stop UI state has already been accepted, preserving the approved transition table and avoiding a terminal-state race.
+- Requires an actually active WorkerManager thread before Pause/Resume/Stop can be enabled or accepted, preventing stale controls after worker completion.
+- Distinguishes a proven-safe empty continuation set from an unavailable recipient set so Stopped/Failed correction messages remain truthful.
+- Keeps P07 deterministic First Run / Resume Remaining / Retry Failed send-set semantics, P05 immutable snapshots, P06 preflight, account reservations, SQLite schema v4, WorkerManager architecture, provider contracts and dependencies unchanged.
+- Production progress remains **7/14**; P08 remains separately approval-gated.
+
 ## v1.0.0.1.19 - P07 Task State Machine and Resend Safety
 
 - Completed production phase **P07** on the verified `v1.0.0.1.18` P06 baseline while preserving SQLite schema v4, P05 immutable execution snapshots, P06 preflight, WorkerManager, packaged provider contracts, dependencies, and P08+ scope.

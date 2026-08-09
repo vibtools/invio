@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.19` preserves the verified P01-P06 architecture and completes P07 with a formal Task state/action boundary and current-session resend-safe continuation sets. No new UI page, worker architecture, database schema, Refrens production Task runner, external-provider architecture, or dependency is introduced.
+Invio `v1.0.0.1.20` preserves the verified P01-P06 architecture and the P07 state/action model, with a forensic correction for late worker-terminal/control races and safe-empty continuation reporting. No new UI page, worker architecture, database schema, Refrens production Task runner, external-provider architecture, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
@@ -174,3 +174,9 @@ ProviderRuntime extends its process-local delivery state with failed and pending
 A fresh First Run initializes `pending` to every frozen recipient and `failed` to empty. A controlled recipient success removes that address from pending/failed; a controlled provider failure moves it from pending to failed. Stop leaves both sets intact, so Resume Remaining is exactly their union. Retry Failed executes only the failed set. Unexpected exceptions mark continuation unsafe rather than guessing.
 
 These sets are deliberately not added to SQLite in P07. Startup recovery therefore preserves aggregate Task metadata but marks exact continuation unavailable; no recipient list is reconstructed from counters. Schema remains v4, and P10 remains the durable delivery/recovery phase.
+
+## v1.0.0.1.20 P07 terminal-signal integration
+
+The P07 status graph itself is unchanged. Qt worker terminal signals and GUI control actions are asynchronous, so MainWindow now reconciles a late queued `Completed` against an already accepted `Paused`/`Stopping`/`Stopped` control state by resolving the final state to existing `Stopped`. This keeps the state machine authoritative instead of adding `Paused/Stopping -> Completed` transitions.
+
+MainWindow also consults `WorkerManager.is_running(task.id)` for Pause/Resume/Stop policy and action guards. WorkerManager code and one-QThread-per-active-Task architecture are unchanged. ProviderRuntime failed/pending set semantics are unchanged; a safe empty set is distinguished only at the action/message boundary.

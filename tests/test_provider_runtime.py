@@ -536,6 +536,25 @@ class P07ProviderRuntimeResendSafetyTests(unittest.TestCase):
         self.assertTrue(final.continuation_safe)
         self.assertEqual((final.processed, final.success, final.failed, final.remaining), (4, 4, 0, 0))
 
+
+    def test_stop_after_last_success_keeps_safe_empty_continuation(self):
+        state, task = self._stripe_state(["a@example.com"])
+        context = _Context(task)
+
+        def on_send(_email: str):
+            context.stop_flag.set()
+            return {"id": "in_1"}
+
+        runtime = ProviderRuntime(transport=self._transport(on_send))
+        runtime.make_task_runner(task, state)(context)
+        summary = runtime.delivery_summary(task)
+        self.assertIsNotNone(summary)
+        self.assertTrue(summary.continuation_safe)
+        self.assertEqual(summary.failed_recipients, ())
+        self.assertEqual(summary.pending_recipients, ())
+        self.assertEqual((summary.processed, summary.success, summary.failed, summary.remaining), (1, 1, 0, 0))
+        self.assertFalse(summary.resume_remaining_available)
+
     def test_repeated_retry_failed_shrinks_to_unresolved_failure_set(self):
         state, task = self._stripe_state(["a@example.com", "b@example.com", "c@example.com"])
         sent: list[str] = []

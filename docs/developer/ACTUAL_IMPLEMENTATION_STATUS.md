@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.19`  
+**Baseline:** `Invio v1.0.0.1.20`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -175,3 +175,11 @@ P06 is COMPLETE and verification-corrected. Built-in packaged manifests must mat
 **INTENTIONALLY NOT DURABLE YET:** failed/pending recipient identity sets. After process restart Invio preserves aggregate status/counters but disables identity-based continuation rather than guessing. Durable recipient attempts, provider IDs, idempotency/recovery evidence remain P10.
 
 **UNCHANGED:** SQLite schema v4, P05 immutable snapshots, P06 provider capability/preflight, WorkerManager one-QThread-per-active-Task architecture, packaged provider send semantics, Refrens P11 gate, dependencies and unrelated UI.
+
+## v1.0.0.1.20 P07 verification correction
+
+**WORKING:** P07 now reconciles the late-worker terminal race at the controller boundary: a queued `Completed` received after a valid late Pause/Stop state resolves to existing `Stopped`, so the approved transition table is not bypassed. Pause/Resume/Stop also require the existing WorkerManager thread to still be active.
+
+**WORKING:** a current-session continuation can be proven safe but empty. That condition now reports that no recipients remain instead of using the separate restart/uncertain-state message. No send action is enabled for an empty set.
+
+**UNCHANGED:** exact continuation identities remain process-local, SQLite remains schema v4, WorkerManager itself is unchanged, P08 network reliability is not implemented, and P10 still owns durable recipient recovery.

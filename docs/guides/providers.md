@@ -73,3 +73,7 @@ The trusted Refrens endpoint is exact: `https://api.refrens.com` (an optional tr
 ## v1.0.0.1.19 P07 runner continuation boundary
 
 P07 does not change packaged provider manifests, P06 capability/preflight rules, or the public `register_task_runner(provider_id, runner)` registration API. Built-in Stripe can expose exact current-session failed/pending recipient sets for safe Retry Failed / Resume Remaining. An injected/external runner callback does not expose such a subset, so P07 allows its existing first-run path but fail-closes Retry/Resume continuation instead of rerunning the full callback. A richer executable external-provider continuation contract remains P13.
+
+## v1.0.0.1.20 P07 verification boundary
+
+Provider manifests, P06 preflight, Stripe/Refrens send contracts and the injected-runner API are unchanged. The P07 correction is limited to Task terminal/control integration and continuation messaging; it does not add provider retries, cancellation, delivery ledgers or external-provider continuation capability.

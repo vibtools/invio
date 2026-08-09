@@ -89,3 +89,9 @@ For a safe built-in Stripe continuation, persisted/UI counters are reconciled fr
 The continuation set is intentionally process-local. After application restart, Invio retains aggregate Task counters/status but does not invent email identities from them. Resume Remaining/Retry Failed is disabled when the exact set is unavailable. P10 remains responsible for durable recipient-level delivery/recovery.
 
 Injected/external runners retain the existing registration API and first-run behavior. Because that API does not provide a trustworthy recipient subset, P07 blocks injected-runner Retry Failed / Resume Remaining rather than falling back to a full resend.
+
+## v1.0.0.1.20 P07 verification behavior
+
+The P07 action names and recipient-selection rules are unchanged. If a worker has already ended, Pause/Resume/Stop is unavailable even if a stale Task status has not yet consumed the queued terminal signal. If `Completed` was queued just before a valid late Pause/Stop action, Invio resolves the Task to `Stopped` rather than attempting a transition that P07 intentionally forbids.
+
+A Stopped/Failed Task can also have a safe exact continuation set with zero recipients. In that case Invio reports that there is nothing to resume/retry; it does not claim the recipient set was lost. Restart/uncertain continuation still fails closed exactly as before.

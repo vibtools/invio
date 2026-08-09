@@ -51,6 +51,9 @@ EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE = (
 READY_NOT_PRISTINE_MESSAGE = (
     "This Ready Task already contains progress and cannot be treated as a first run. Close it and create a new Task."
 )
+NO_REMAINING_RECIPIENTS_MESSAGE = "This stopped Task has no unresolved recipients remaining to resume."
+NO_FAILED_RECIPIENTS_MESSAGE = "This failed Task has no exact failed recipients available to retry."
+WORKER_NOT_ACTIVE_MESSAGE = "The Task worker is no longer active. Wait for the final Task status before choosing another action."
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,12 +82,27 @@ def is_pristine_first_run(task: "Task") -> bool:
     return task.processed == 0 and task.success == 0 and task.failed == 0
 
 
+def reconcile_worker_terminal_status(current_status: str, worker_status: str) -> str:
+    """Resolve late Pause/Stop UI state against a worker terminal signal.
+
+    A worker can finish and queue ``Completed`` just before the GUI processes a
+    late Pause/Stop action. The approved P07 transition table intentionally does
+    not allow ``Paused/Stopping -> Completed``. Preserve that table and the
+    user's late control action by resolving the terminal state to ``Stopped``
+    instead of attempting an invalid transition.
+    """
+    if worker_status == "Completed" and current_status in {"Paused", "Stopping", "Stopped"}:
+        return "Stopped"
+    return worker_status
+
+
 def task_action_policy(
     task: "Task",
     *,
     resume_remaining_available: bool = False,
     retry_failed_available: bool = False,
     continuation_unavailable_message: str = CONTINUATION_UNAVAILABLE_MESSAGE,
+    active_worker_available: bool = True,
 ) -> TaskActionPolicy:
     snapshot_ready = task.has_immutable_execution_snapshot
     status = task.status
@@ -121,12 +139,12 @@ def task_action_policy(
         if not start_enabled:
             start_tooltip = READY_NOT_PRISTINE_MESSAGE
     elif status == "Running":
-        pause_enabled = True
-        stop_enabled = True
+        pause_enabled = active_worker_available
+        stop_enabled = active_worker_available
         close_enabled = False
     elif status == "Paused":
-        resume_enabled = True
-        stop_enabled = True
+        resume_enabled = active_worker_available
+        stop_enabled = active_worker_available
         close_enabled = False
     elif status == "Stopping":
         close_enabled = False

@@ -74,3 +74,9 @@ For packaged-manifest/runtime mismatch, uninstall and reinstall the packaged pro
 This is expected in v1.0.0.1.19. P07 keeps exact failed/pending recipient identities in the current ProviderRuntime process so successful recipients are never guessed or resent. SQLite still stores aggregate Task counters only; P10 is the planned durable recipient ledger/recovery phase.
 
 If Invio was restarted, the Task remains visible and its Account reservation is preserved, but **Resume Remaining** / **Retry Failed** is disabled when the exact recipient set cannot be proven. Close the Task to release its Accounts, then create a new Task for a deliberate new full execution. Do not interpret a disabled continuation button as data loss from the immutable P05 snapshot; it is a resend-safety gate.
+
+## A Task shows Stopped with no Resume Remaining action after finishing
+
+In `v1.0.0.1.20`, a late accepted Pause/Stop can intentionally make an arriving `Completed` terminal signal settle as **Stopped** so the approved P07 transition table remains valid. If all recipients were already resolved, the safe continuation set is empty and **Resume Remaining** is disabled because there is nothing left to send. This does not mean recipient identity state was lost.
+
+If the application was restarted, the separate existing rule still applies: exact continuation identities are not persisted until P10, so Resume/Retry fails closed rather than guessing.

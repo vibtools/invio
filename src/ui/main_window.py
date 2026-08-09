@@ -44,9 +44,13 @@ from ..tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
 from ..tasks.state_machine import (
     CONTINUATION_UNAVAILABLE_MESSAGE,
     EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE,
+    NO_FAILED_RECIPIENTS_MESSAGE,
+    NO_REMAINING_RECIPIENTS_MESSAGE,
+    WORKER_NOT_ACTIVE_MESSAGE,
     TaskAction,
     TaskActionPolicy,
     TaskExecutionMode,
+    reconcile_worker_terminal_status,
     require_task_action,
     task_action_policy,
 )
@@ -103,7 +107,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.19 started.")
+        self.log("Invio v1.0.0.1.20 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -244,7 +248,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.19")
+        self.runtime_status = QLabel("Production • v1.0.0.1.20")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -818,9 +822,14 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
         self._refresh_dashboard()
 
-    def _task_continuation_message(self, task: Task) -> str:
+    def _task_continuation_message(self, task: Task, summary=None) -> str:
         if task.provider_id in self.task_runners:
             return EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE
+        if summary is not None and summary.continuation_safe:
+            if task.status == "Stopped" and not summary.resume_remaining_available:
+                return NO_REMAINING_RECIPIENTS_MESSAGE
+            if task.status == "Failed" and not summary.retry_failed_available and not summary.pending_recipients:
+                return NO_FAILED_RECIPIENTS_MESSAGE
         return CONTINUATION_UNAVAILABLE_MESSAGE
 
     def _task_action_policy(self, task: Task) -> TaskActionPolicy:
@@ -836,7 +845,8 @@ class MainWindow(QMainWindow):
             task,
             resume_remaining_available=resume_available,
             retry_failed_available=retry_available,
-            continuation_unavailable_message=self._task_continuation_message(task),
+            continuation_unavailable_message=self._task_continuation_message(task, summary),
+            active_worker_available=self.worker_manager.is_running(task.id),
         )
 
     def _require_task_action(self, task: Task, action: TaskAction) -> TaskExecutionMode | None:
@@ -853,8 +863,12 @@ class MainWindow(QMainWindow):
             action,
             resume_remaining_available=resume_available,
             retry_failed_available=retry_available,
-            continuation_unavailable_message=self._task_continuation_message(task),
+            continuation_unavailable_message=self._task_continuation_message(task, summary),
         )
+
+    def _require_active_worker(self, task: Task) -> None:
+        if not self.worker_manager.is_running(task.id):
+            raise ValueError(WORKER_NOT_ACTIVE_MESSAGE)
 
     def _task_action_blocked(self, task: Task, action: str, message: str) -> None:
         self.log(f"{task.name}: {action} blocked: {message}")
@@ -951,6 +965,7 @@ class MainWindow(QMainWindow):
             return
         try:
             self._require_task_action(task, TaskAction.PAUSE)
+            self._require_active_worker(task)
         except ValueError as exc:
             self._task_action_blocked(task, "Pause", str(exc))
             return
@@ -962,6 +977,7 @@ class MainWindow(QMainWindow):
             return
         try:
             self._require_task_action(task, TaskAction.RESUME)
+            self._require_active_worker(task)
         except ValueError as exc:
             self._task_action_blocked(task, "Resume", str(exc))
             return
@@ -973,6 +989,7 @@ class MainWindow(QMainWindow):
             return
         try:
             self._require_task_action(task, TaskAction.STOP)
+            self._require_active_worker(task)
         except ValueError as exc:
             self._task_action_blocked(task, "Stop", str(exc))
             return
@@ -1072,6 +1089,7 @@ class MainWindow(QMainWindow):
             task = self.state.tasks[task_id]
             summary = self.provider_runtime.delivery_summary(task)
             try:
+                effective_status = reconcile_worker_terminal_status(task.status, status)
                 if summary is not None and summary.continuation_safe:
                     self.state.set_task_progress(
                         task_id,
@@ -1079,27 +1097,29 @@ class MainWindow(QMainWindow):
                         success=summary.success,
                         failed=summary.failed,
                     )
-                if status == "Failed":
+                if effective_status == "Failed":
                     if summary is not None and summary.continuation_safe and summary.failed:
                         message = f"{summary.failed} recipient(s) failed. Review Live Logs and use Retry Failed."
                     else:
                         message = (
                             "Worker failed. The exact retry recipient set is unavailable, so Retry Failed is disabled."
                         )
-                elif status == "Stopped":
-                    if summary is not None and summary.continuation_safe:
+                elif effective_status == "Stopped":
+                    if summary is not None and summary.continuation_safe and summary.resume_remaining_available:
                         message = (
                             f"Stopped with {summary.failed} failed and {summary.remaining} not-yet-attempted recipient(s). "
                             "Use Resume Remaining to continue only the unresolved set."
                         )
+                    elif summary is not None and summary.continuation_safe:
+                        message = "Stopped after all recipients were resolved; there are no recipients remaining to resume."
                     else:
                         message = (
                             "Worker stopped. The exact continuation recipient set is unavailable in this session; "
                             "Resume Remaining is disabled."
                         )
                 else:
-                    message = f"Worker finished with status: {status}"
-                self.state.set_task_status(task_id, status, message)
+                    message = f"Worker finished with status: {effective_status}"
+                self.state.set_task_status(task_id, effective_status, message)
             except StateError as exc:
                 self._task_persistence_failure(task_id, exc)
                 return
@@ -1107,7 +1127,7 @@ class MainWindow(QMainWindow):
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
             self._refresh_dashboard()
-            self.log(f"{task.name}: worker finished with {status}.")
+            self.log(f"{task.name}: worker finished with {effective_status}.")
 
     # Reports / logs ---------------------------------------------------
     def export_report(self) -> None:

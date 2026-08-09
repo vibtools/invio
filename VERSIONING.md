@@ -39,3 +39,11 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 - Reconciles stopped/failed counters from the exact runtime failed/pending sets.
 - Keeps exact continuation identities process-local and fails closed after restart; durable recipient recovery remains P10.
 - Preserves SQLite schema v4, P05 snapshots, P06 preflight, WorkerManager, provider manifests/send semantics, dependencies, and P08+ scope.
+
+## v1.0.0.1.20
+
+- P07 forensic verification/correction release.
+- Closes the late worker-terminal/late Pause-Stop transition race without expanding the approved P07 transition table.
+- Requires an active existing Task worker for Pause/Resume/Stop controls and backend actions.
+- Makes safe-empty Stopped/Failed continuation messaging distinct from restart/uncertain continuation unavailability.
+- Keeps SQLite schema v4, P05 immutable snapshots, P06 preflight, WorkerManager architecture, provider manifests/send semantics, dependencies and P08+ scope unchanged.

@@ -94,3 +94,7 @@ No folder/module/page is renamed or reorganized. Corrections remain in the exist
 ## v1.0.0.1.19 P07 State-Machine Note
 
 P07 adds `src/tasks/state_machine.py` inside the existing Task package. No top-level folder, UI page, database table, worker subsystem, or provider adapter is added. Existing Task, AppState, ProviderRuntime, DomainStore, MainWindow and Tasks page modules are extended in place. SQLite remains schema v4 and WorkerManager remains one QThread per active Task.
+
+## v1.0.0.1.20 P07 verification note
+
+No folder, page, database table, worker subsystem or provider adapter is added. The correction stays inside the existing P07 `src/tasks/state_machine.py` and `MainWindow` integration surfaces plus regression tests/release documentation. WorkerManager itself and SQLite schema v4 remain unchanged.

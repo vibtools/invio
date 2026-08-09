@@ -49,3 +49,11 @@ No Python/platform/dependency/SQLite-schema/provider-manifest/WorkerManager/P05-
 - Existing `register_task_runner(provider_id, runner)` remains source-compatible for first runs. Retry/Resume continuation is fail-closed for injected runners because the existing callback contract cannot expose an exact safe recipient subset.
 - SQLite remains schema v4; no recipient delivery ledger is introduced. Exact failed/pending identities are current-session memory only, so restart continuation is intentionally unavailable until P10.
 - P05 immutable snapshot format, P06 preflight, Stripe/Refrens provider-send contracts, account reservation rules, and dependency versions remain unchanged.
+
+## v1.0.0.1.20 P07 Verification Compatibility
+
+- Existing Task statuses, button inventory, First Run / Resume Remaining / Retry Failed semantics and `Task.id` identity remain unchanged.
+- WorkerManager remains source/behavior compatible and still owns one QThread per active Task; the controller now refuses Pause/Resume/Stop once that worker is no longer active.
+- A late `Completed` signal that races with an accepted Pause/Stop is resolved to existing `Stopped`, not to a new status or an expanded transition.
+- Safe empty continuation sets remain valid current-session knowledge but expose no send action because there are no unresolved recipients.
+- No SQLite migration, provider contract, dependency, P08 network-reliability behavior or P10 durable recipient ledger is introduced.
