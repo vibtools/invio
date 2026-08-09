@@ -22,9 +22,21 @@ from urllib.request import Request, urlopen
 from ...accounts.models import Account
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
+from ...tasks.delivery_ledger import (
+    DELIVERY_OPERATION_FAILED,
+    DELIVERY_OPERATION_SUCCEEDED,
+    DELIVERY_OPERATION_UNCERTAIN,
+    DELIVERY_RESULT_FAILED,
+    DELIVERY_RESULT_SUCCEEDED,
+    DELIVERY_RESULT_UNCERTAIN,
+    DELIVERY_RUN_COMPLETED,
+    DELIVERY_RUN_FAILED,
+    DELIVERY_RUN_STOPPED,
+)
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..state import AppState
+from ..storage import DomainStore, DomainStoreError
 from .adapters import ProviderSchedulingPolicy, provider_adapter_contract
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
@@ -129,20 +141,30 @@ class TaskDeliverySummary:
     success: int
     failed: int
     remaining: int
+    uncertain_recipients: tuple[str, ...] = ()
+    assigned_account_ids: tuple[tuple[str, str], ...] = ()
 
     @property
     def retry_failed_available(self) -> bool:
-        return self.continuation_safe and bool(self.failed_recipients) and not self.pending_recipients
+        return (
+            self.continuation_safe
+            and bool(self.failed_recipients)
+            and not self.pending_recipients
+            and not self.uncertain_recipients
+        )
 
     @property
     def resume_remaining_available(self) -> bool:
-        return self.continuation_safe and bool(self.failed_recipients or self.pending_recipients)
+        return self.continuation_safe and bool(
+            self.failed_recipients or self.pending_recipients or self.uncertain_recipients
+        )
 
 
 @dataclass(slots=True)
 class _DeliveryState:
     failed_recipients: set[str] = field(default_factory=set)
     pending_recipients: set[str] = field(default_factory=set)
+    uncertain_recipients: set[str] = field(default_factory=set)
     attempted_recipients: set[str] = field(default_factory=set)
     attempted_account_ids: dict[str, str] = field(default_factory=dict)
     continuation_safe: bool = False
@@ -362,8 +384,10 @@ class ProviderRuntime:
         transport: Transport | None = None,
         timeout: float = DEFAULT_CONNECT_TIMEOUT_SECONDS,
         retry_jitter_source: Callable[[], float] | None = None,
+        domain_store: DomainStore | None = None,
     ) -> None:
         self._transport = transport or _stdlib_transport
+        self._domain_store = domain_store
         # urllib has one socket timeout; keep connect/read policy equal and explicit.
         self.connect_timeout = max(1.0, float(timeout))
         self.read_timeout = max(1.0, float(timeout))
@@ -438,6 +462,28 @@ class ProviderRuntime:
         execution = task.execution_snapshot
         if execution is None or execution.state != TASK_SNAPSHOT_CAPTURED:
             return None
+        if self._domain_store is not None:
+            try:
+                durable = self._domain_store.delivery_summary(task)
+            except DomainStoreError as exc:
+                raise ProviderRuntimeError(
+                    f"Durable delivery ledger could not be read: {exc}",
+                    category="storage",
+                    retryable=False,
+                ) from exc
+            if durable is not None:
+                return TaskDeliverySummary(
+                    continuation_safe=durable.continuation_safe,
+                    failed_recipients=durable.failed_recipients,
+                    pending_recipients=durable.pending_recipients,
+                    uncertain_recipients=durable.uncertain_recipients,
+                    assigned_account_ids=durable.assigned_account_ids,
+                    processed=durable.processed,
+                    success=durable.success,
+                    failed=durable.failed,
+                    remaining=durable.remaining,
+                )
+
         order = tuple(customer.email for customer in execution.customers)
         known = set(order)
         with self._state_lock:
@@ -446,24 +492,31 @@ class ProviderRuntime:
                 return None
             failed_set = set(state.failed_recipients)
             pending_set = set(state.pending_recipients)
+            uncertain_set = set(state.uncertain_recipients)
+            bindings = dict(state.attempted_account_ids)
             safe = bool(state.continuation_safe)
 
-        safe = safe and failed_set.isdisjoint(pending_set)
-        safe = safe and failed_set.issubset(known) and pending_set.issubset(known)
+        safe = safe and failed_set.isdisjoint(pending_set | uncertain_set)
+        safe = safe and pending_set.isdisjoint(uncertain_set)
+        safe = safe and failed_set.issubset(known) and pending_set.issubset(known) and uncertain_set.issubset(known)
         ordered_failed = tuple(email for email in order if email in failed_set)
         ordered_pending = tuple(email for email in order if email in pending_set)
+        ordered_uncertain = tuple(email for email in order if email in uncertain_set)
+        ordered_bindings = tuple((email, bindings[email]) for email in order if email in bindings)
         if not safe:
             return TaskDeliverySummary(
                 continuation_safe=False,
                 failed_recipients=ordered_failed,
                 pending_recipients=ordered_pending,
+                uncertain_recipients=ordered_uncertain,
+                assigned_account_ids=ordered_bindings,
                 processed=task.processed,
                 success=task.success,
                 failed=task.failed,
                 remaining=task.remaining,
             )
 
-        processed = task.total - len(ordered_pending)
+        processed = task.total - len(ordered_pending) - len(ordered_uncertain)
         failed = len(ordered_failed)
         success = processed - failed
         if processed < 0 or success < 0 or processed > task.total:
@@ -471,6 +524,8 @@ class ProviderRuntime:
                 continuation_safe=False,
                 failed_recipients=ordered_failed,
                 pending_recipients=ordered_pending,
+                uncertain_recipients=ordered_uncertain,
+                assigned_account_ids=ordered_bindings,
                 processed=task.processed,
                 success=task.success,
                 failed=task.failed,
@@ -480,11 +535,34 @@ class ProviderRuntime:
             continuation_safe=True,
             failed_recipients=ordered_failed,
             pending_recipients=ordered_pending,
+            uncertain_recipients=ordered_uncertain,
+            assigned_account_ids=ordered_bindings,
             processed=processed,
             success=success,
             failed=failed,
-            remaining=len(ordered_pending),
+            remaining=len(ordered_pending) + len(ordered_uncertain),
         )
+
+    def _hydrate_delivery_state_from_summary(
+        self,
+        task: Task,
+        summary: TaskDeliverySummary,
+        *,
+        execution_mode: TaskExecutionMode,
+    ) -> _DeliveryState:
+        state = _DeliveryState(
+            failed_recipients=set(summary.failed_recipients),
+            pending_recipients=set(summary.pending_recipients),
+            uncertain_recipients=set(summary.uncertain_recipients),
+            attempted_recipients={email for email, _account_id in summary.assigned_account_ids},
+            attempted_account_ids=dict(summary.assigned_account_ids),
+            continuation_safe=summary.continuation_safe,
+            execution_mode=execution_mode.value,
+        )
+        with self._state_lock:
+            self._delivery_state[task.id] = state
+        return state
+
 
     def make_task_runner(
         self,
@@ -517,45 +595,84 @@ class ProviderRuntime:
         if not runtime_preflight.passed:
             raise ProviderRuntimeError(runtime_preflight.message)
 
-        with self._state_lock:
-            if retry_failed:
-                if task.status != "Failed":
-                    raise ProviderRuntimeError("Retry Failed is only available for a Failed Task.")
-                delivery = self._delivery_state.get(task.id)
-                if delivery is None or not delivery.continuation_safe:
-                    raise ProviderRuntimeError(
-                        "The exact failed recipient set is not available in this application session."
-                    )
-                if delivery.pending_recipients:
-                    raise ProviderRuntimeError(
-                        "Retry Failed is unavailable while unattempted recipients remain. Use Resume Remaining."
-                    )
-                recipients = tuple(
-                    email for email in snapshot.customer_emails if email in delivery.failed_recipients
+        existing_summary = self.delivery_summary(task)
+        if retry_failed:
+            if task.status != "Failed":
+                raise ProviderRuntimeError("Retry Failed is only available for a Failed Task.")
+            if existing_summary is None or not existing_summary.continuation_safe:
+                message = (
+                    "The exact failed recipient set is not available in the durable delivery ledger."
+                    if self._domain_store is not None
+                    else "The exact failed recipient set is not available in this application session."
                 )
-                if not recipients:
-                    raise ProviderRuntimeError("This task has no failed recipients to retry.")
-                delivery.execution_mode = TaskExecutionMode.RETRY_FAILED.value
-                mode = TaskExecutionMode.RETRY_FAILED
-            elif resume_remaining:
-                if task.status != "Stopped":
-                    raise ProviderRuntimeError("Resume Remaining is only available for a Stopped Task.")
-                delivery = self._delivery_state.get(task.id)
-                if delivery is None or not delivery.continuation_safe:
-                    raise ProviderRuntimeError(
-                        "The exact continuation recipient set is not available in this application session."
-                    )
-                eligible = delivery.failed_recipients | delivery.pending_recipients
-                recipients = tuple(email for email in snapshot.customer_emails if email in eligible)
-                if not recipients:
-                    raise ProviderRuntimeError("This task has no remaining recipients to resume.")
-                delivery.execution_mode = TaskExecutionMode.RESUME_REMAINING.value
-                mode = TaskExecutionMode.RESUME_REMAINING
+                raise ProviderRuntimeError(message)
+            if existing_summary.pending_recipients or existing_summary.uncertain_recipients:
+                raise ProviderRuntimeError(
+                    "Retry Failed is unavailable while pending or uncertain recipients remain. Use Resume Remaining."
+                )
+            recipients = tuple(
+                email for email in snapshot.customer_emails if email in existing_summary.failed_recipients
+            )
+            if not recipients:
+                raise ProviderRuntimeError("This task has no failed recipients to retry.")
+            if self._domain_store is not None:
+                self._hydrate_delivery_state_from_summary(
+                    task,
+                    existing_summary,
+                    execution_mode=TaskExecutionMode.RETRY_FAILED,
+                )
             else:
-                if task.status != "Ready" or not is_pristine_first_run(task):
-                    raise ProviderRuntimeError(
-                        "A full Start is only available for a pristine Ready Task. Create a new Task for another full execution."
-                    )
+                with self._state_lock:
+                    delivery = self._delivery_state.get(task.id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The exact failed recipient set is not available in this application session."
+                        )
+                    delivery.execution_mode = TaskExecutionMode.RETRY_FAILED.value
+            mode = TaskExecutionMode.RETRY_FAILED
+        elif resume_remaining:
+            if task.status != "Stopped":
+                raise ProviderRuntimeError("Resume Remaining is only available for a Stopped Task.")
+            if existing_summary is None or not existing_summary.continuation_safe:
+                message = (
+                    "The exact continuation recipient set is not available in the durable delivery ledger."
+                    if self._domain_store is not None
+                    else "The exact continuation recipient set is not available in this application session."
+                )
+                raise ProviderRuntimeError(message)
+            eligible = (
+                set(existing_summary.failed_recipients)
+                | set(existing_summary.pending_recipients)
+                | set(existing_summary.uncertain_recipients)
+            )
+            recipients = tuple(email for email in snapshot.customer_emails if email in eligible)
+            if not recipients:
+                raise ProviderRuntimeError("This task has no remaining recipients to resume.")
+            if self._domain_store is not None:
+                self._hydrate_delivery_state_from_summary(
+                    task,
+                    existing_summary,
+                    execution_mode=TaskExecutionMode.RESUME_REMAINING,
+                )
+            else:
+                with self._state_lock:
+                    delivery = self._delivery_state.get(task.id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The exact continuation recipient set is not available in this application session."
+                        )
+                    delivery.execution_mode = TaskExecutionMode.RESUME_REMAINING.value
+            mode = TaskExecutionMode.RESUME_REMAINING
+        else:
+            if task.status != "Ready" or not is_pristine_first_run(task):
+                raise ProviderRuntimeError(
+                    "A full Start is only available for a pristine Ready Task. Create a new Task for another full execution."
+                )
+            if existing_summary is not None:
+                raise ProviderRuntimeError(
+                    "This Task already has durable delivery history; a duplicate full Start is not allowed."
+                )
+            with self._state_lock:
                 existing = self._delivery_state.get(task.id)
                 if existing is not None and existing.execution_mode:
                     raise ProviderRuntimeError(
@@ -565,12 +682,66 @@ class ProviderRuntime:
                 self._delivery_state[task.id] = _DeliveryState(
                     failed_recipients=set(),
                     pending_recipients=set(recipients),
+                    uncertain_recipients=set(),
                     continuation_safe=True,
                     execution_mode=TaskExecutionMode.FIRST_RUN.value,
                 )
-                mode = TaskExecutionMode.FIRST_RUN
+            mode = TaskExecutionMode.FIRST_RUN
 
-        return lambda context: batch_handler(context, snapshot, recipients, execution_mode=mode)
+        def runner(context: Any) -> None:
+            run_id = ""
+            if self._domain_store is not None:
+                try:
+                    run = self._domain_store.begin_delivery_run(
+                        context.task,
+                        execution_mode=mode.value,
+                        recipients=recipients,
+                    )
+                except DomainStoreError as exc:
+                    raise ProviderRuntimeError(
+                        f"Durable delivery run could not be started before provider execution: {exc}",
+                        category="storage",
+                        retryable=False,
+                    ) from exc
+                run_id = run.run_id
+                context.log(f"Durable delivery run {run.run_id} started (run {run.run_number}).")
+            try:
+                batch_handler(
+                    context,
+                    snapshot,
+                    recipients,
+                    execution_mode=mode,
+                    run_id=run_id,
+                )
+            except Exception as exc:
+                if self._domain_store is not None and run_id:
+                    # A storage fault can leave a write-ahead Started operation
+                    # whose provider outcome is unknown. Keep the run Running so
+                    # startup recovery classifies it as Interrupted/Uncertain.
+                    if not isinstance(exc, ProviderRuntimeError) or exc.category != "storage":
+                        try:
+                            self._domain_store.finish_delivery_run(run_id, status=DELIVERY_RUN_FAILED)
+                        except DomainStoreError as finish_exc:
+                            raise ProviderRuntimeError(
+                                f"Delivery run terminal state could not be saved: {finish_exc}",
+                                category="storage",
+                                retryable=False,
+                            ) from exc
+                raise
+            else:
+                if self._domain_store is not None and run_id:
+                    terminal = DELIVERY_RUN_STOPPED if context.stop_flag.is_set() else DELIVERY_RUN_COMPLETED
+                    try:
+                        self._domain_store.finish_delivery_run(run_id, status=terminal)
+                    except DomainStoreError as exc:
+                        raise ProviderRuntimeError(
+                            f"Delivery run terminal state could not be saved: {exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from exc
+
+        return runner
+
 
     @staticmethod
     def _snapshot(task: Task, state: AppState) -> TaskSnapshot:
@@ -809,6 +980,52 @@ class ProviderRuntime:
             delivery.attempted_recipients.add(email)
             delivery.attempted_account_ids[email] = account_id
 
+    @staticmethod
+    def _safe_delivery_error(account: AccountSnapshot, exc: BaseException) -> tuple[str, str, str]:
+        message = str(exc).strip()
+        for secret in sorted((value for value in account.credentials.values() if value), key=len, reverse=True):
+            message = message.replace(secret, "***REDACTED***")
+        message = message[:2000]
+        if isinstance(exc, ProviderRuntimeError):
+            code = f"HTTP_{exc.http_status}" if exc.http_status is not None else (exc.category or "provider")
+        else:
+            code = type(exc).__name__
+        return type(exc).__name__, code, message
+
+    def _finish_ledger_recipient(
+        self,
+        *,
+        run_id: str,
+        recipient_ordinal: int,
+        result: str,
+        stage: str,
+        attempt_number: int,
+        account: AccountSnapshot,
+        error: BaseException | None = None,
+    ) -> None:
+        if self._domain_store is None or not run_id:
+            return
+        error_class = error_code = error_message = ""
+        if error is not None:
+            error_class, error_code, error_message = self._safe_delivery_error(account, error)
+        try:
+            self._domain_store.finish_delivery_recipient(
+                run_id=run_id,
+                recipient_ordinal=recipient_ordinal,
+                final_result=result,
+                stage=stage,
+                attempt_number=attempt_number,
+                error_class=error_class,
+                error_code=error_code,
+                error_message=error_message,
+            )
+        except DomainStoreError as exc:
+            raise ProviderRuntimeError(
+                f"Durable recipient result could not be saved: {exc}",
+                category="storage",
+                retryable=False,
+            ) from exc
+
     def _record_scheduler_failure(
         self,
         provider_id: str,
@@ -906,15 +1123,32 @@ class ProviderRuntime:
         snapshot: TaskSnapshot,
         account: AccountSnapshot,
         email: str,
-    ) -> dict[str, Any]:
+        *,
+        run_id: str = "",
+        recipient_ordinal: int = -1,
+    ) -> tuple[dict[str, Any], int]:
+        if not run_id:
+            run_id = str(getattr(context, "_invio_delivery_run_id", ""))
+        if recipient_ordinal < 0:
+            recipient_ordinal = int(getattr(context, "_invio_recipient_ordinal", -1))
         attempt = 1
         while True:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 raise ProviderRuntimeError("Stripe recipient execution stopped before the next attempt.", category="stopped")
             try:
-                return self._send_stripe_invoice(snapshot, account, email, context=context)
+                result = self._send_stripe_invoice(
+                    snapshot,
+                    account,
+                    email,
+                    context=context,
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                    attempt_number=attempt,
+                )
+                return result, attempt
             except ProviderRuntimeError as exc:
                 if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                    setattr(exc, "attempt_number", attempt)
                     raise
                 retry_number = attempt
                 delay = self._retry_delay_seconds(retry_number, exc)
@@ -930,6 +1164,10 @@ class ProviderRuntime:
                         retryable=False,
                     ) from exc
                 attempt += 1
+            except Exception as exc:
+                setattr(exc, "attempt_number", attempt)
+                raise
+
 
     def _run_stripe_batch(
         self,
@@ -938,6 +1176,7 @@ class ProviderRuntime:
         recipients: tuple[str, ...],
         *,
         execution_mode: TaskExecutionMode,
+        run_id: str = "",
     ) -> None:
         full_index = {email: index for index, email in enumerate(snapshot.customer_emails)}
         with self._state_lock:
@@ -960,11 +1199,12 @@ class ProviderRuntime:
         for email in recipients:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
-            primary_index = full_index[email] % len(snapshot.accounts)
+            recipient_ordinal = full_index[email]
+            primary_index = recipient_ordinal % len(snapshot.accounts)
             bound_account_id = attempted_account_ids.get(email)
             if email in attempted_before_execution and not bound_account_id:
                 raise ProviderRuntimeError(
-                    "The current-session attempted recipient has no exact account binding; "
+                    "The attempted recipient has no exact account binding in durable/current-session state; "
                     "continuation is blocked to prevent cross-account replay."
                 )
             if bound_account_id:
@@ -974,7 +1214,7 @@ class ProviderRuntime:
                 )
                 if bound_index is None:
                     raise ProviderRuntimeError(
-                        "The current-session attempted recipient account is no longer present in the frozen Task account set."
+                        "The attempted recipient account is no longer present in the frozen Task account set."
                     )
                 scheduling_index = bound_index
                 allow_failover = False
@@ -982,6 +1222,7 @@ class ProviderRuntime:
                 scheduling_index = primary_index
                 allow_failover = True
             account = snapshot.accounts[scheduling_index]
+            attempt_number = 1
             try:
                 account = self._select_stripe_account(
                     context,
@@ -990,12 +1231,51 @@ class ProviderRuntime:
                     scheduling_index,
                     allow_failover=allow_failover,
                 )
-                self._send_stripe_invoice_with_retry(context, snapshot, account, email)
+                setattr(context, "_invio_delivery_run_id", run_id)
+                setattr(context, "_invio_recipient_ordinal", recipient_ordinal)
+                send_result = self._send_stripe_invoice_with_retry(
+                    context,
+                    snapshot,
+                    account,
+                    email,
+                )
+                if (
+                    isinstance(send_result, tuple)
+                    and len(send_result) == 2
+                    and isinstance(send_result[1], int)
+                ):
+                    _sent, attempt_number = send_result
             except ProviderRuntimeError as exc:
+                attempt_number = int(getattr(exc, "attempt_number", attempt_number))
                 if exc.category == "stopped" and context.stop_flag.is_set():
                     break
+                if exc.category == "storage":
+                    raise
                 for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
                     context.log(message)
+                final_result = DELIVERY_RESULT_FAILED
+                if self._domain_store is not None and run_id:
+                    try:
+                        if self._domain_store.recipient_has_uncertain_mutation(
+                            run_id=run_id,
+                            recipient_ordinal=recipient_ordinal,
+                        ):
+                            final_result = DELIVERY_RESULT_UNCERTAIN
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"Durable delivery uncertainty could not be reconciled: {ledger_exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=final_result,
+                        stage="",
+                        attempt_number=attempt_number,
+                        account=account,
+                        error=exc,
+                    )
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -1003,9 +1283,38 @@ class ProviderRuntime:
                             "The Task continuation state became unavailable during execution."
                         ) from exc
                     delivery.pending_recipients.discard(email)
-                    delivery.failed_recipients.add(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                    if final_result == DELIVERY_RESULT_UNCERTAIN:
+                        delivery.uncertain_recipients.add(email)
+                    else:
+                        delivery.failed_recipients.add(email)
                 context.log(f"Stripe send failed for {email} via account '{account.name}': {exc}")
             except Exception as exc:
+                attempt_number = int(getattr(exc, "attempt_number", attempt_number))
+                final_result = DELIVERY_RESULT_FAILED
+                if self._domain_store is not None and run_id:
+                    try:
+                        if self._domain_store.recipient_has_uncertain_mutation(
+                            run_id=run_id,
+                            recipient_ordinal=recipient_ordinal,
+                        ):
+                            final_result = DELIVERY_RESULT_UNCERTAIN
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"Durable delivery uncertainty could not be reconciled: {ledger_exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=final_result,
+                        stage="",
+                        attempt_number=attempt_number,
+                        account=account,
+                        error=exc,
+                    )
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -1013,12 +1322,26 @@ class ProviderRuntime:
                             "The Task continuation state became unavailable during execution."
                         ) from exc
                     delivery.pending_recipients.discard(email)
-                    delivery.failed_recipients.add(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                    if final_result == DELIVERY_RESULT_UNCERTAIN:
+                        delivery.uncertain_recipients.add(email)
+                    else:
+                        delivery.failed_recipients.add(email)
                 context.log(
                     f"Stripe send failed unexpectedly for {email} via account '{account.name}': "
                     f"{type(exc).__name__}: {exc}"
                 )
             else:
+                if self._domain_store is not None and run_id:
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=DELIVERY_RESULT_SUCCEEDED,
+                        stage="invoice_send",
+                        attempt_number=attempt_number,
+                        account=account,
+                    )
                 self._record_scheduler_success(snapshot.provider_id, account)
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
@@ -1026,6 +1349,7 @@ class ProviderRuntime:
                         raise ProviderRuntimeError("The Task continuation state became unavailable during execution.")
                     delivery.pending_recipients.discard(email)
                     delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
                 context.log(f"Stripe invoice sent to {email} via account '{account.name}'.")
 
             attempted += 1
@@ -1050,11 +1374,12 @@ class ProviderRuntime:
             context.log("Stripe batch stopped by user request.")
             return
         if summary.pending_recipients:
-            with self._state_lock:
-                delivery = self._delivery_state.get(snapshot.task_id)
-                if delivery is not None:
-                    delivery.continuation_safe = False
             raise ProviderRuntimeError("Task execution ended before all selected recipients were resolved safely.")
+        if summary.uncertain_recipients:
+            raise ProviderRuntimeError(
+                f"{len(summary.uncertain_recipients)} recipient(s) have an uncertain provider outcome. "
+                "Use Resume Remaining to reconcile only unresolved recipients."
+            )
         if summary.failed_recipients:
             raise ProviderRuntimeError(
                 f"{summary.failed} recipient(s) failed. Use Retry Failed after reviewing Live Logs."
@@ -1086,6 +1411,9 @@ class ProviderRuntime:
         email: str,
         *,
         context: Any | None = None,
+        run_id: str = "",
+        recipient_ordinal: int = -1,
+        attempt_number: int = 1,
     ) -> dict[str, Any]:
         key = account.credentials.get("secret_key", "").strip()
         self._validate_stripe_key(key)
@@ -1097,11 +1425,21 @@ class ProviderRuntime:
             "account": account,
             "task_id": snapshot.task_id,
             "recipient_email": email,
+            "run_id": run_id,
+            "recipient_ordinal": recipient_ordinal,
+            "attempt_number": attempt_number,
         }
 
         customer_id = ""
         if template.reuse_customer:
-            found = self._stripe_request("GET", "/customers", key, query={"email": email, "limit": 1}, **scheduling_kwargs)
+            found = self._stripe_request(
+                "GET",
+                "/customers",
+                key,
+                query={"email": email, "limit": 1},
+                operation_stage="customer_lookup",
+                **scheduling_kwargs,
+            )
             data = found.get("data")
             if isinstance(data, list) and data and isinstance(data[0], dict):
                 customer_id = str(data[0].get("id", "")).strip()
@@ -1112,11 +1450,12 @@ class ProviderRuntime:
                 key,
                 form={"email": email},
                 idempotency=_idempotency_key(snapshot.task_id, email, "customer"),
+                operation_stage="customer_create",
                 **scheduling_kwargs,
             )
             customer_id = str(created_customer.get("id", "")).strip()
         if not customer_id:
-            raise ProviderRuntimeError("Stripe customer response did not contain an id.")
+            raise ProviderRuntimeError("Stripe customer response did not contain an id.", category="response")
 
         memo_parts = []
         if template.invoice_title.strip() and template.invoice_title.strip().casefold() != "invoice":
@@ -1150,11 +1489,12 @@ class ProviderRuntime:
             key,
             form=invoice_form,
             idempotency=_idempotency_key(snapshot.task_id, email, "invoice"),
+            operation_stage="invoice_create",
             **scheduling_kwargs,
         )
         invoice_id = str(invoice.get("id", "")).strip()
         if not invoice_id:
-            raise ProviderRuntimeError("Stripe invoice response did not contain an id.")
+            raise ProviderRuntimeError("Stripe invoice response did not contain an id.", category="response")
 
         for index, item in enumerate(template.items):
             quantity = item.quantity
@@ -1170,7 +1510,6 @@ class ProviderRuntime:
             if quantity == quantity.to_integral_value():
                 item_form["quantity"] = int(quantity)
             else:
-                # Stripe supports decimal invoice-item quantities directly.
                 item_form["quantity_decimal"] = _decimal_text(quantity)
             if template.automatic_tax:
                 item_form["tax_behavior"] = "exclusive"
@@ -1180,6 +1519,7 @@ class ProviderRuntime:
                 key,
                 form=item_form,
                 idempotency=_idempotency_key(snapshot.task_id, email, f"item-{index}"),
+                operation_stage=f"invoice_item:{index}",
                 **scheduling_kwargs,
             )
 
@@ -1189,6 +1529,7 @@ class ProviderRuntime:
             key,
             form={"auto_advance": False},
             idempotency=_idempotency_key(snapshot.task_id, email, "finalize"),
+            operation_stage="invoice_finalize",
             **scheduling_kwargs,
         )
         finalized_id = str(finalized.get("id", invoice_id)).strip() or invoice_id
@@ -1198,9 +1539,11 @@ class ProviderRuntime:
             key,
             form={},
             idempotency=_idempotency_key(snapshot.task_id, email, "send"),
+            operation_stage="invoice_send",
             **scheduling_kwargs,
         )
         return sent
+
 
     def _stripe_request(
         self,
@@ -1215,6 +1558,10 @@ class ProviderRuntime:
         account: AccountSnapshot | None = None,
         task_id: str = "",
         recipient_email: str = "",
+        run_id: str = "",
+        recipient_ordinal: int = -1,
+        attempt_number: int = 1,
+        operation_stage: str = "",
     ) -> dict[str, Any]:
         url = f"{self.STRIPE_BASE_URL}{path}"
         if query:
@@ -1223,7 +1570,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.26 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.27 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -1231,6 +1578,8 @@ class ProviderRuntime:
             body = _form_body(form or {})
         if idempotency:
             headers["Idempotency-Key"] = idempotency
+
+        ledger_started = False
         if context is not None and account is not None:
             if not self._wait_for_provider_health(context, "stripe", email=recipient_email):
                 raise ProviderRuntimeError(
@@ -1246,7 +1595,85 @@ class ProviderRuntime:
                 )
             if task_id and recipient_email:
                 self._mark_recipient_attempted(task_id, recipient_email, account.id)
-        return self._transport(method.upper(), url, headers, body, self.timeout)
+            if self._domain_store is not None and run_id:
+                if recipient_ordinal < 0 or not operation_stage:
+                    raise ProviderRuntimeError(
+                        "Durable delivery operation identity is incomplete before provider execution.",
+                        category="storage",
+                        retryable=False,
+                    )
+                try:
+                    self._domain_store.begin_delivery_operation(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        stage=operation_stage,
+                        account_id=account.id,
+                        account_name=account.name,
+                        idempotency_key=idempotency or "",
+                    )
+                except DomainStoreError as exc:
+                    raise ProviderRuntimeError(
+                        f"Durable Started operation could not be committed before provider request: {exc}",
+                        category="storage",
+                        retryable=False,
+                    ) from exc
+                ledger_started = True
+
+        try:
+            result = self._transport(method.upper(), url, headers, body, self.timeout)
+        except Exception as exc:
+            if ledger_started and self._domain_store is not None and account is not None:
+                if isinstance(exc, ProviderRuntimeError):
+                    ambiguous = exc.category in {"timeout", "network"} and method.upper() != "GET"
+                else:
+                    ambiguous = method.upper() != "GET"
+                op_status = DELIVERY_OPERATION_UNCERTAIN if ambiguous else DELIVERY_OPERATION_FAILED
+                error_class, error_code, error_message = self._safe_delivery_error(account, exc)
+                try:
+                    self._domain_store.finish_delivery_operation(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        stage=operation_stage,
+                        status=op_status,
+                        error_class=error_class,
+                        error_code=error_code,
+                        error_message=error_message,
+                    )
+                except DomainStoreError as ledger_exc:
+                    raise ProviderRuntimeError(
+                        f"Provider request ended but its durable operation result could not be saved: {ledger_exc}",
+                        category="storage",
+                        retryable=False,
+                    ) from exc
+            raise
+
+        if ledger_started and self._domain_store is not None:
+            provider_reference = ""
+            if operation_stage == "customer_lookup":
+                data = result.get("data") if isinstance(result, dict) else None
+                if isinstance(data, list) and data and isinstance(data[0], dict):
+                    provider_reference = str(data[0].get("id", "")).strip()
+            elif isinstance(result, dict):
+                provider_reference = str(result.get("id", "")).strip()
+            try:
+                self._domain_store.finish_delivery_operation(
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                    attempt_number=attempt_number,
+                    stage=operation_stage,
+                    status=DELIVERY_OPERATION_SUCCEEDED,
+                    provider_reference=provider_reference,
+                )
+            except DomainStoreError as exc:
+                raise ProviderRuntimeError(
+                    f"Provider request succeeded but its durable operation result could not be saved: {exc}",
+                    category="storage",
+                    retryable=False,
+                ) from exc
+        return result
+
 
     def _refrens_auth(self, credentials: dict[str, str]) -> tuple[str, str, str]:
         raw_base_url = credentials.get("base_url", "").strip()
@@ -1281,7 +1708,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.26 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.27 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

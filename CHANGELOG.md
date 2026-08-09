@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.27 - P10 Persistent Delivery Ledger, Idempotency and Recovery
+
+- Advances operational SQLite storage from schema v4 to schema v5 using the existing transactional pre-migration backup path and adds exactly three durable delivery-ledger tables: runs, per-run recipients and provider operations.
+- Adds a unique execution `run_id` per First Run / Resume Remaining / Retry Failed invocation while preserving `Task.id` as the canonical Stripe idempotency identity.
+- Adds write-ahead `Started` operation persistence before each Stripe Task transport call, durable P08 attempt/stage/idempotency/account evidence, provider customer/invoice IDs, sanitized errors and final recipient outcomes.
+- Reconciles interrupted runs on restart, classifies unresolved mutating operations as `Uncertain`, derives Task counters and durable Resume/Retry sets from ledger evidence, and preserves P09 exact attempted-account binding across restart.
+- Retains delivery history after Close Task and preserves fail-closed behavior for pre-P10 non-pristine Tasks without fabricating historical records.
+- Preserves one Task = one QThread, P05-P09 semantics, Stripe business flow, Refrens P11 gate, Agiled fail-close, dependencies, provider manifests, Settings/UI design and P11+ scope.
+- Production progress advances to **10/14**; **P11 - Refrens End-to-End Task Enablement** is next.
+
 ## v1.0.0.1.26 - P09 CI / Repository-Contract Verification Correction
 
 - Reproduces GitHub Actions run `31336019074` / job `93301866645`, where `test_p09_completion_records_are_synchronized` failed because a public CI checkout does not contain the intentionally Git-ignored private `project/` tree.

@@ -23,11 +23,11 @@
 │   │   ├── provider_runtime/ Internal packaged-provider adapter registry, API runtime and P06 preflight contracts
 │   │   ├── settings/         Persistent non-sensitive preferences
 │   │   ├── state/            Domain invariants plus P02 persistence coordination
-│   │   ├── storage/          SQLite domain store + protected credential store
+│   │   ├── storage/          SQLite domain store + protected credential store + schema-v5 delivery ledger persistence
 │   │   └── worker_manager/   One QThread per active task
 │   ├── customers/            Customer-list model and email importers
 │   ├── invoices/templates/   Invoice template/currency models
-│   ├── tasks/                Task model including immutable execution snapshots
+│   ├── tasks/                Task model, immutable snapshots and P10 delivery-ledger contracts
 │   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
 ├── tests/                    Unit/contract tests, including provider-adapter, P01-P07 storage/snapshot/preflight/state regressions
 ├── main.py
@@ -125,3 +125,7 @@ P09 adds no runtime package, page, schema package, worker subsystem or dependenc
 ## v1.0.0.1.26 CI Verification Structure Note
 
 No runtime folder/module/page structure is added, removed, renamed, or reorganized. `project/` remains intentionally Git-ignored private development material. Public CI repository-contract tests now depend only on tracked public records, while private project records are checked only when the full private baseline is present.
+
+## v1.0.0.1.27 P10 Structure Note
+
+P10 adds one focused runtime model module, `src/tasks/delivery_ledger.py`, inside the existing Task package. `DomainStore`, `ProviderRuntime` and MainWindow are extended in place; SQLite schema v5 adds exactly three delivery-ledger tables. No top-level folder, UI page, WorkerManager subsystem, provider package or dependency is added or renamed.

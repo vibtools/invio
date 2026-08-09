@@ -27,7 +27,7 @@ P02 uses SQLite for non-sensitive operational state:
 
 Typical database filename: `domain.sqlite3` in the same per-user Invio directory as `settings.json`.
 
-The database uses schema version `4`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Schema v3 added optional customer `name` and `country`; schema v4 adds immutable Task execution-snapshot tables. Corrupt, newer, partial, or unrecognized storage is not silently replaced.
+The database uses schema version `5`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Schema v3 added optional customer `name` and `country`; schema v4 added immutable Task execution-snapshot tables; schema v5 adds exactly three durable P10 delivery-ledger tables for runs, per-run recipients and provider operations. Corrupt, newer, partial, or unrecognized storage is not silently replaced.
 
 Migration backups use SQLite live-backup semantics. The `v1.0.0.1.14` close-before-replace correction remains active for the v3-to-v4 P05 migration, preventing Windows from self-locking the temporary backup file during startup.
 

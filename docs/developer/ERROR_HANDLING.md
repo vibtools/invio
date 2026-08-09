@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.26`  
+**Baseline:** `v1.0.0.1.27`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -388,3 +388,9 @@ No retry count, backoff, provider payload, Task state, WorkerManager, schema, de
 GitHub Actions run `31336019074` failed before application execution because `test_p09_completion_records_are_synchronized` directly opened a private file under `/project/`. That directory is intentionally excluded from public Git checkouts by `.gitignore`, so `FileNotFoundError` was deterministic in CI even though the full private baseline ZIP passed locally.
 
 The correction does not change runtime exception handling. Repository contracts now require tracked public P09 completion records and only inspect private `project/` records when that private tree exists.
+
+## 8. P10 durable delivery/recovery error handling - v1.0.0.1.27
+
+P10 resolves the process-memory-only continuation gap for supported Stripe Tasks. Every Task provider request requires a committed `Started` operation row before transport. If that write fails, no request is sent. If provider execution occurs but the corresponding durable result cannot be committed, execution stops before another recipient/request; the prior `Started` evidence remains so restart recovery can classify a mutating outcome as `Uncertain` rather than guessing.
+
+At startup, unfinished `Running` ledger runs become `Interrupted`; unresolved mutating operations become `Uncertain`, while read-only lookup uncertainty remains unresolved `Pending`. Latest durable recipient outcomes drive Task counter repair and continuation. Aggregate counters that claim outcomes unsupported by ledger evidence fail closed as inconsistent storage. Durable error records contain sanitized class/code/message only and never persist API keys, Authorization headers or provider credential payloads. P12 still owns generalized log/export/retention privacy and P14 owns live provider reconciliation/certification.

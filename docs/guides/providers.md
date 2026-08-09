@@ -87,3 +87,7 @@ Agiled is bundled with one required protected credential, `API Key`. It is inten
 ## v1.0.0.1.22 Verification Note
 
 Agiled installation continues to use the normal Providers workflow. The package remains visible/installable, but Add Account cannot become Task-ready because API Test has no executable Agiled handler. This is the intended fail-closed behavior, not a demo success path. Stripe/Refrens behavior is unchanged.
+
+## P10 provider-operation evidence
+
+P10 does not change provider manifests or enable Refrens/Agiled Task execution. For the existing supported Stripe Task path, ProviderRuntime now persists write-ahead operation evidence and the existing Task-derived idempotency key before transport, then stores safe provider references/outcomes. The external injected-runner API remains first-run compatible but does not gain a fabricated stage-level P10 contract; its continuation remains fail-closed until the separately approved external provider architecture phase.

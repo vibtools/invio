@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.26`** is the CI/repository-contract verification correction for the P09-complete `v1.0.0.1.25` baseline. P09 runtime behavior is unchanged, production progress remains **9/14**, and P10 is next only after separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.27`** completes **P10 - Persistent Delivery Ledger, Idempotency and Recovery** on the verified `v1.0.0.1.26` baseline. Production progress is now **10/14**; P11 is next only after separate approval.
 
 ## Current Application Scope
 
@@ -23,7 +23,7 @@ Non-sensitive operational state now survives application restart in a per-user S
 - Tasks, account selections, status/counters/message;
 - account reservations.
 
-The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 introduced schema v2 verification-health metadata and WAL-aware migration backups. P04 upgrades to schema v3 for customer metadata. P05 upgrades to **schema v4**, adding durable immutable Task execution-snapshot tables for recipients, copied invoice-template content, provider identity, and the ordered account-assignment basis while preserving existing Task/customer/template tables.
+The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 introduced schema v2 verification-health metadata and WAL-aware migration backups. P04 upgrades to schema v3 for customer metadata. P05 introduced **schema v4**, adding durable immutable Task execution-snapshot tables for recipients, copied invoice-template content, provider identity, and the ordered account-assignment basis. P10 advances current storage to **schema v5** with exactly three durable delivery-ledger tables for execution runs, per-run recipients and provider operations while preserving all prior domain/snapshot tables.
 
 Typical operational database paths use the same per-user Invio directory as Settings:
 
@@ -31,7 +31,7 @@ Typical operational database paths use the same per-user Invio directory as Sett
 - macOS: `~/Library/Application Support/Vib Tools/Invio/domain.sqlite3`
 - Linux: `$XDG_CONFIG_HOME/Vib Tools/Invio/domain.sqlite3`, otherwise `~/.config/Vib Tools/Invio/domain.sqlite3`
 
-If Invio previously stopped while a Task was `Running`, `Paused`, or `Stopping`, P02 restores that Task as **Stopped** and does not automatically resume provider activity. P07 additionally treats its exact recipient continuation set as unavailable after process restart, so **Resume Remaining** / **Retry Failed** fail closed rather than guessing recipient identities; durable recipient recovery remains P10.
+For Tasks with P10 delivery evidence, application restart reconciles interrupted runs from the durable ledger, derives exact `Succeeded` / `Failed` / `Pending` / `Uncertain` recipient outcomes, repairs lagging aggregate counters when evidence permits, and enables **Resume Remaining** / **Retry Failed** from durable state. Pre-P10 non-pristine Tasks still fail closed because Invio does not fabricate historical delivery evidence.
 
 ## Protected Provider Credentials
 
@@ -129,7 +129,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The current suite covers P01-P08 regressions plus P09 deterministic assignment, per-account rate pacing, account/provider health, bounded cooldown, eligible pre-attempt failover, attempted-recipient exact-account binding protection, auth-failure suppression, Refrens P11 blocking, Agiled fail-close, schema v4, and the one-task-one-QThread boundary.
+The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write-ahead delivery evidence, durable attempt/account/idempotency/provider-ID records, interruption uncertainty, restart-safe continuation, aggregate recovery, ledger retention, Refrens P11 blocking, Agiled fail-close, and the one-task-one-QThread boundary.
 
 ## Documentation
 
@@ -245,3 +245,9 @@ Only recipients that have not yet entered provider execution may route determini
 GitHub Actions exposed a repository-contract test that directly opened files under the intentionally Git-ignored private `project/` tree. The full baseline ZIP contains those private records, so local/full-baseline audits passed, but a clean public GitHub checkout correctly omits `project/` and the test failed with `FileNotFoundError`.
 
 `v1.0.0.1.26` makes the public tracked `README.md`, `ROADMAP.md`, and P09 release notes the mandatory CI completion records. The richer private `project/` records are still verified when the full private baseline is present. No P09 scheduler, provider, Task, WorkerManager, SQLite, dependency, Settings, page, layout, invoice-send, Refrens, Agiled, plugin, or P10 behavior changes.
+
+## P10 Persistent Delivery Ledger and Restart Recovery
+
+P10 keeps `Task.id` as the canonical logical provider/idempotency identity and adds a separate durable execution `run_id` for every First Run, Resume Remaining and Retry Failed invocation. Supported Stripe Task operations are write-ahead recorded before transport with recipient, primary/actual account, stage, P08 attempt number, existing deterministic idempotency key and timestamps. Provider customer/invoice IDs and sanitized failure evidence are persisted when available.
+
+On restart, unfinished runs are marked interrupted and any unresolved mutating operation is classified `Uncertain`. The latest durable recipient outcomes become the authoritative source for continuation and aggregate Task reconciliation. A recipient that previously entered provider execution retains its exact P09 account binding across restart; genuinely unattempted recipients may still use the existing deterministic P09 failover policy. Historical ledger rows survive Close Task. P12 still owns recipient-level report/export/retention UX.

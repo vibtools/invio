@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
             loaded=loaded_domain,
         )
         self.providers = ProviderManager(self.project_root)
-        self.provider_runtime = ProviderRuntime()
+        self.provider_runtime = ProviderRuntime(domain_store=self.domain_store)
         self.worker_manager = WorkerManager(self)
         self.task_runners: dict[str, TaskRunner] = {}
         self.pages: dict[str, QWidget] = {}
@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.26 started.")
+        self.log("Invio v1.0.0.1.27 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.26")
+        self.runtime_status = QLabel("Production • v1.0.0.1.27")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -1093,9 +1093,23 @@ class MainWindow(QMainWindow):
     def _worker_finished(self, task_id: str, status: str) -> None:
         if task_id in self.state.tasks:
             task = self.state.tasks[task_id]
-            summary = self.provider_runtime.delivery_summary(task)
+            try:
+                summary = self.provider_runtime.delivery_summary(task)
+            except ProviderRuntimeError as exc:
+                summary = None
+                self.log(f"{task.name}: durable delivery summary unavailable at worker finish: {exc}")
             try:
                 effective_status = reconcile_worker_terminal_status(task.status, status)
+                if effective_status == "Failed" and summary is not None and summary.continuation_safe:
+                    if (
+                        summary.success == task.total
+                        and not summary.failed_recipients
+                        and not summary.pending_recipients
+                        and not summary.uncertain_recipients
+                    ):
+                        effective_status = "Completed"
+                    elif summary.pending_recipients or summary.uncertain_recipients:
+                        effective_status = "Stopped"
                 if summary is not None and summary.continuation_safe:
                     self.state.set_task_progress(
                         task_id,
@@ -1113,8 +1127,9 @@ class MainWindow(QMainWindow):
                 elif effective_status == "Stopped":
                     if summary is not None and summary.continuation_safe and summary.resume_remaining_available:
                         message = (
-                            f"Stopped with {summary.failed} failed and {summary.remaining} not-yet-attempted recipient(s). "
-                            "Use Resume Remaining to continue only the unresolved set."
+                            f"Stopped with {summary.failed} failed, {len(summary.pending_recipients)} pending and "
+                            f"{len(summary.uncertain_recipients)} uncertain recipient(s). "
+                            "Use Resume Remaining to continue only the durable unresolved set."
                         )
                     elif summary is not None and summary.continuation_safe:
                         message = "Stopped after all recipients were resolved; there are no recipients remaining to resume."

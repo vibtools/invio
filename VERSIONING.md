@@ -74,3 +74,7 @@ P09 production release. Adds deterministic multi-account scheduling safety, Stri
 ## v1.0.0.1.26
 
 P09 CI/repository-contract verification correction. Runtime behavior is unchanged from `v1.0.0.1.25` except release/User-Agent markers. The correction removes a public-CI dependency on the intentionally private Git-ignored `project/` tree while retaining optional full-baseline verification of those private records. Production progress remains 9/14 and P10 remains next.
+
+## v1.0.0.1.27 P10
+
+Completes P10 Persistent Delivery Ledger, Idempotency and Recovery. SQLite advances from schema v4 to v5 with exactly three durable ledger tables. Every execution invocation gets a distinct `run_id`, but existing provider idempotency remains based on `Task.id`. Durable write-ahead operation records, attempts, account binding, provider references and sanitized error evidence make supported Stripe continuation restart-safe and observable. P05-P09 behavior, one-task-one-QThread, dependencies, provider manifests, Refrens P11 gate, Agiled fail-close and UI architecture remain unchanged.

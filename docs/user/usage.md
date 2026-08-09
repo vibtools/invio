@@ -28,7 +28,7 @@ CSV/TSV/XLSX/XLSM files with a first usable header row containing `email` use st
 
 ## 6. Tasks
 
-Choose Provider, Verified Account(s), Invoice Template, and Customer List. Tasks and account reservations survive restart. A Task that was actively Running/Paused/Stopping when the app ended is recovered as **Stopped** and is never auto-resumed. Because exact continuation recipient identities are not durable until P10, Resume Remaining/Retry Failed is disabled after process restart rather than guessing recipients.
+Choose Provider, Verified Account(s), Invoice Template, and Customer List. Tasks, account reservations, immutable P05 inputs and P10 delivery evidence survive restart. An interrupted Task is never auto-resumed. For P10-ledger Tasks, Invio reconstructs exact `Succeeded`, `Failed`, `Pending` and `Uncertain` recipient outcomes and enables Resume Remaining / Retry Failed only when the durable evidence proves the continuation safe. Pre-P10 non-pristine Tasks still fail closed rather than guessing historical recipient outcomes.
 
 P07 formalizes Task actions: **Start** is first-run-only for pristine Ready Tasks; **Pause/Resume** continues the same active worker; **Resume Remaining** on a safely stopped current-session run sends only failed plus never-attempted recipients; **Retry Failed** on a Failed current-session run sends only exact failures; **Completed** cannot resend. **Close Task** remains the action that releases Account reservations.
 
@@ -71,11 +71,11 @@ Use the action shown for the current state:
 - **Running:** Pause or Stop.
 - **Paused:** Resume the same worker, or Stop.
 - **Stopping:** wait for the worker to reach a terminal state.
-- **Stopped:** Resume Remaining only when Invio still has the exact current-session continuation set.
-- **Failed:** Retry Failed only when Invio still has the exact current-session failed set.
+- **Stopped:** Resume Remaining only when Invio has an exact safe continuation set from current-session or P10 durable evidence.
+- **Failed:** Retry Failed only when Invio has the exact durable/current-session failed set and no unfinished Pending/Uncertain work blocks that action.
 - **Completed:** Close Task; create a new Task for another full execution.
 
-A Stop does not turn the next action into a full resend. Invio retains current-session failed and never-attempted recipients separately and excludes known successes. If the app restarts, those recipient identities are intentionally not inferred from the saved counts. Close the Task and create a new Task if continuation is unavailable; P10 is the planned durable recipient-recovery phase.
+A Stop does not turn the next action into a full resend. P10 persists recipient outcomes and exact attempted-account binding, so restart continuation excludes known successes and does not infer identities from aggregate counters. An interrupted side-effecting operation is surfaced as `Uncertain`; Invio reuses the same Task-derived idempotency identity and exact bound account only when the durable record is sufficient. Pre-P10 Tasks without trustworthy delivery history remain fail-closed.
 
 ## v1.0.0.1.20 Task-control verification note
 
@@ -111,3 +111,7 @@ Tasks keep their original round-robin primary account assignment. Invio now pace
 ## v1.0.0.1.26 verification note
 
 No user workflow changes from `v1.0.0.1.25`. P09 account pacing, cooldown, deterministic pre-attempt fallback and current-session cross-account replay protection behave the same. This release only corrects a GitHub CI documentation-test boundary.
+
+## v1.0.0.1.27 P10 restart-safe delivery history
+
+Each supported Stripe Task execution now creates a durable execution Run ID separate from the Task ID. The Task ID still identifies the logical provider operation and remains the basis for existing Stripe idempotency keys. Invio records each selected recipient, primary/actual account, operation stage, attempt, provider IDs when available, timestamps and sanitized errors. If the application stops between a mutating provider request and its confirmed local outcome, the recipient is shown internally as `Uncertain` rather than guessed. Existing Tasks/Live Logs expose the resulting safe Resume Remaining or Retry Failed action; no new UI page was added.

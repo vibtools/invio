@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DOMAIN_SCHEMA_VERSION = 4
+DOMAIN_SCHEMA_VERSION = 5
 
 SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -156,6 +156,68 @@ SELECT id, 'LegacyUnavailable', provider_id, 'recipient_ordinal_round_robin_v1'
 FROM tasks;
 """
 
+MIGRATION_V4_TO_V5 = """
+CREATE TABLE task_delivery_runs (
+    run_id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    task_name TEXT NOT NULL,
+    run_number INTEGER NOT NULL,
+    provider_id TEXT NOT NULL,
+    execution_mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL DEFAULT '',
+    UNIQUE (task_id, run_number)
+);
+
+CREATE TABLE task_delivery_recipients (
+    run_id TEXT NOT NULL REFERENCES task_delivery_runs(run_id) ON DELETE CASCADE,
+    recipient_ordinal INTEGER NOT NULL,
+    recipient_email TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    primary_account_id TEXT NOT NULL,
+    primary_account_name TEXT NOT NULL,
+    assigned_account_id TEXT NOT NULL DEFAULT '',
+    assigned_account_name TEXT NOT NULL DEFAULT '',
+    stage TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'Pending',
+    attempt_number INTEGER NOT NULL DEFAULT 0,
+    provider_customer_id TEXT NOT NULL DEFAULT '',
+    provider_invoice_id TEXT NOT NULL DEFAULT '',
+    started_at TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL DEFAULT '',
+    error_class TEXT NOT NULL DEFAULT '',
+    error_code TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    final_result TEXT NOT NULL DEFAULT 'Pending',
+    PRIMARY KEY (run_id, recipient_ordinal),
+    UNIQUE (run_id, recipient_email)
+);
+
+CREATE TABLE task_delivery_operations (
+    run_id TEXT NOT NULL REFERENCES task_delivery_runs(run_id) ON DELETE CASCADE,
+    recipient_ordinal INTEGER NOT NULL,
+    attempt_number INTEGER NOT NULL,
+    stage TEXT NOT NULL,
+    status TEXT NOT NULL,
+    idempotency_key TEXT NOT NULL DEFAULT '',
+    provider_reference TEXT NOT NULL DEFAULT '',
+    started_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL DEFAULT '',
+    error_class TEXT NOT NULL DEFAULT '',
+    error_code TEXT NOT NULL DEFAULT '',
+    error_message TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (run_id, recipient_ordinal, attempt_number, stage),
+    FOREIGN KEY (run_id, recipient_ordinal)
+        REFERENCES task_delivery_recipients(run_id, recipient_ordinal) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_task_delivery_runs_task ON task_delivery_runs(task_id, run_number);
+CREATE INDEX idx_task_delivery_recipients_email ON task_delivery_recipients(recipient_email);
+CREATE INDEX idx_task_delivery_operations_status ON task_delivery_operations(status);
+"""
+
 APPLICATION_TABLES = {
     "accounts",
     "customer_lists",
@@ -171,4 +233,7 @@ APPLICATION_TABLES = {
     "task_snapshot_template",
     "task_snapshot_template_items",
     "task_snapshot_template_terms",
+    "task_delivery_operations",
+    "task_delivery_recipients",
+    "task_delivery_runs",
 }

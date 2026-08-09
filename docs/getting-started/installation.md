@@ -52,3 +52,7 @@ A normal `v1.0.0.1.21` installation includes `providers/packages/agiled/provider
 ## v1.0.0.1.22 Provider Verification
 
 A normal source installation continues to include the packaged Agiled manifest introduced in `v1.0.0.1.21`. `v1.0.0.1.22` verifies the package install/uninstall round trip without enabling network execution. No installation dependency or platform requirement changes.
+
+## v1.0.0.1.27 schema-v5 upgrade
+
+`v1.0.0.1.27` advances operational storage from schema v4 to schema v5. Keep the existing `domain.sqlite3`, protected credentials, Settings and provider registry in place. Invio uses the same WAL-aware pre-migration backup and transactional migration path, then adds exactly three delivery-ledger tables. Existing Task snapshots and domain rows are preserved; pre-P10 non-pristine Tasks do not receive fabricated historical delivery records.

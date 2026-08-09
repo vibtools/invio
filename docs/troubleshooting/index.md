@@ -71,15 +71,13 @@ For packaged-manifest/runtime mismatch, uninstall and reinstall the packaged pro
 
 ## Resume Remaining or Retry Failed is disabled after restarting Invio
 
-This is expected in v1.0.0.1.19. P07 keeps exact failed/pending recipient identities in the current ProviderRuntime process so successful recipients are never guessed or resent. SQLite still stores aggregate Task counters only; P10 is the planned durable recipient ledger/recovery phase.
-
-If Invio was restarted, the Task remains visible and its Account reservation is preserved, but **Resume Remaining** / **Retry Failed** is disabled when the exact recipient set cannot be proven. Close the Task to release its Accounts, then create a new Task for a deliberate new full execution. Do not interpret a disabled continuation button as data loss from the immutable P05 snapshot; it is a resend-safety gate.
+For Tasks executed with P10 (`v1.0.0.1.27+`), restart continuation is derived from the durable delivery ledger rather than aggregate counters. Resume Remaining / Retry Failed is enabled only when exact latest recipient outcomes and account binding are trustworthy. If the Task predates P10 and already had non-pristine execution state, Invio intentionally does not fabricate historical recipient/provider evidence; continuation may remain disabled and the Task can be closed to release its Accounts.
 
 ## A Task shows Stopped with no Resume Remaining action after finishing
 
 In `v1.0.0.1.20`, a late accepted Pause/Stop can intentionally make an arriving `Completed` terminal signal settle as **Stopped** so the approved P07 transition table remains valid. If all recipients were already resolved, the safe continuation set is empty and **Resume Remaining** is disabled because there is nothing left to send. This does not mean recipient identity state was lost.
 
-If the application was restarted, the separate existing rule still applies: exact continuation identities are not persisted until P10, so Resume/Retry fails closed rather than guessing.
+After P10, restart continuation uses durable ledger evidence. Pre-P10 non-pristine Tasks still fail closed when exact historical continuation cannot be proven.
 
 ## Agiled says API Test/runtime is unavailable
 
@@ -107,3 +105,7 @@ If Live Logs report an account cooldown, Invio is temporarily pacing that accoun
 ## GitHub Actions reports missing `project/planning/PHASE_COMPLETION_LOG.md`
 
 This was a `v1.0.0.1.25` repository-contract test defect, not a missing runtime file. `/project/` is intentionally private and Git-ignored. `v1.0.0.1.26` corrects the test so public CI validates tracked public completion records; do not publish the private `project/` tree to work around this failure.
+
+## A restarted P10 Task shows Uncertain recipients
+
+`Uncertain` means Invio had durable write-ahead evidence that a side-effecting provider operation started, but the previous process ended before a definitive local success/failure record was committed. Invio does not relabel that outcome as Failed or Succeeded. Resume Remaining uses the same Task-derived Stripe idempotency identity and exact previously assigned account when durable evidence makes replay safe; otherwise the action fails closed. Do not create a duplicate full Task merely to bypass an Uncertain state without reviewing the existing Task/Live Logs.

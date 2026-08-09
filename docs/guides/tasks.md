@@ -27,7 +27,7 @@ Re-testing a reserved Account is permitted only when its Task worker is inactive
 
 ## P02 Boundary
 
-P02 persists Task-level execution metadata, not the future P10 recipient delivery ledger. P05 defines `Task.id` as the canonical logical run identity. P07 keeps exact failed/pending continuation identities only in current-process ProviderRuntime memory and fails closed after restart; provider customer/invoice IDs, per-attempt delivery records, durable idempotency evidence, and exact crash-to-provider reconciliation remain P10 scope.
+P05 defines `Task.id` as the canonical logical provider/idempotency identity. P10 now adds a separate execution `run_id` for every First Run / Resume Remaining / Retry Failed invocation and persists recipient outcomes, exact account binding, provider-operation attempts, idempotency evidence and provider customer/invoice IDs when available. Restart continuation is derived from this durable ledger for P10-era supported Stripe executions; pre-P10 non-pristine Tasks remain fail-closed because historical delivery evidence is not fabricated.
 
 
 ## P04 Customer execution data
@@ -86,7 +86,7 @@ Allowed execution semantics are intentionally narrow:
 
 For a safe built-in Stripe continuation, persisted/UI counters are reconciled from the same runtime sets: `processed = total - pending`, `failed = len(failed)`, `success = processed - failed`, and `remaining = len(pending)`. No P08 automatic retry/backoff is added.
 
-The continuation set is intentionally process-local. After application restart, Invio retains aggregate Task counters/status but does not invent email identities from them. Resume Remaining/Retry Failed is disabled when the exact set is unavailable. P10 remains responsible for durable recipient-level delivery/recovery.
+For P10-era supported Stripe executions, the continuation set is durable. After restart Invio derives latest `Succeeded`, `Failed`, `Pending` and `Uncertain` outcomes from schema-v5 delivery records and restores Resume Remaining / Retry Failed only when exact evidence is safe. Pre-P10 Tasks without such evidence are never reconstructed from aggregate counters.
 
 Injected/external runners retain the existing registration API and first-run behavior. Because that API does not provide a trustworthy recipient subset, P07 blocks injected-runner Retry Failed / Resume Remaining rather than falling back to a full resend.
 
@@ -95,3 +95,7 @@ Injected/external runners retain the existing registration API and first-run beh
 The P07 action names and recipient-selection rules are unchanged. If a worker has already ended, Pause/Resume/Stop is unavailable even if a stale Task status has not yet consumed the queued terminal signal. If `Completed` was queued just before a valid late Pause/Stop action, Invio resolves the Task to `Stopped` rather than attempting a transition that P07 intentionally forbids.
 
 A Stopped/Failed Task can also have a safe exact continuation set with zero recipients. In that case Invio reports that there is nothing to resume/retry; it does not claim the recipient set was lost. Restart/uncertain continuation still fails closed exactly as before.
+
+## P10 durable execution history
+
+Every supported Stripe worker invocation has a durable Run ID separate from `Task.id`. Provider operation `Started` evidence is committed before transport; attempts, stages, actual assigned account, existing Task-derived Stripe idempotency key, provider IDs and sanitized errors are recorded. If the previous process ended during a side-effecting operation, restart records the outcome as `Uncertain` rather than guessing. Historical delivery rows survive Close Task, but P12—not P10—owns recipient-level report/export/retention UX.

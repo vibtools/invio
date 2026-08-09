@@ -86,3 +86,7 @@ P08 preserves the existing Python 3.12, PySide6 6.7-<7, `urllib`, keyring and op
 ## v1.0.0.1.26 P09 CI Verification Compatibility
 
 `v1.0.0.1.26` changes no provider API, scheduling policy, Task state, WorkerManager interface, SQLite schema, dependency, Settings key, page/layout, account assignment, Stripe idempotency, Refrens gate, Agiled fail-close or plugin contract. The only behavioral correction is to the repository test boundary: public CI no longer requires intentionally Git-ignored private `project/` files.
+
+## v1.0.0.1.27 P10 Compatibility
+
+SQLite advances from schema v4 to schema v5 through the existing backup/transaction migration path; all pre-existing domain and P05 snapshot tables remain. P10 adds exactly three non-secret delivery-ledger tables and no dependency/provider manifest/UI page change. `Task.id`, P05 snapshot format, P07 actions/status names, P08 retry count and P09 scheduling/account-failover rules remain compatible. Pre-P10 non-pristine Tasks are preserved without fabricated ledger history and continue fail-closed where exact continuation cannot be proven.

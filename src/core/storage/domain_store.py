@@ -1,14 +1,34 @@
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
 from ...accounts.models import Account
 from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate
+from ...tasks.delivery_ledger import (
+    DELIVERY_OPERATION_FAILED,
+    DELIVERY_OPERATION_STARTED,
+    DELIVERY_OPERATION_SUCCEEDED,
+    DELIVERY_OPERATION_UNCERTAIN,
+    DELIVERY_RESULT_FAILED,
+    DELIVERY_RESULT_PENDING,
+    DELIVERY_RESULT_SUCCEEDED,
+    DELIVERY_RESULT_UNCERTAIN,
+    DELIVERY_RUN_COMPLETED,
+    DELIVERY_RUN_FAILED,
+    DELIVERY_RUN_INTERRUPTED,
+    DELIVERY_RUN_RUNNING,
+    DELIVERY_RUN_STOPPED,
+    DeliveryLedgerSummary,
+    DeliveryRunRecord,
+    is_mutating_delivery_stage,
+)
 from ...tasks.models import (
     TASK_ASSIGNMENT_STRATEGY,
     TASK_SNAPSHOT_CAPTURED,
@@ -25,6 +45,7 @@ from .schema import (
     MIGRATION_V1_TO_V2,
     MIGRATION_V2_TO_V3,
     MIGRATION_V3_TO_V4,
+    MIGRATION_V4_TO_V5,
     SCHEMA_V1,
 )
 
@@ -111,7 +132,7 @@ class DomainStore:
             raise DomainStoreError(f"Operational storage could not be initialized: {exc}") from exc
 
     def _migrate(self, connection: sqlite3.Connection, version: int, *, backup_required: bool) -> None:
-        if version not in {0, 1, 2, 3}:
+        if version not in {0, 1, 2, 3, 4}:
             raise DomainStoreMigrationError(f"No migration path exists from schema {version} to {DOMAIN_SCHEMA_VERSION}.")
 
         if version == 0:
@@ -135,15 +156,21 @@ class DomainStore:
             scripts.append(MIGRATION_V1_TO_V2)
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
+            scripts.append(MIGRATION_V4_TO_V5)
         elif version == 1:
             scripts.append(MIGRATION_V1_TO_V2)
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
+            scripts.append(MIGRATION_V4_TO_V5)
         elif version == 2:
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
+            scripts.append(MIGRATION_V4_TO_V5)
         elif version == 3:
             scripts.append(MIGRATION_V3_TO_V4)
+            scripts.append(MIGRATION_V4_TO_V5)
+        elif version == 4:
+            scripts.append(MIGRATION_V4_TO_V5)
 
         script = f"BEGIN IMMEDIATE;\n{'\n'.join(scripts)}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
@@ -197,6 +224,610 @@ class DomainStore:
             raise DomainStoreError(f"Operational state could not be saved; the prior valid transaction was retained: {exc}") from exc
         except Exception as exc:
             raise DomainStoreError(f"Operational state could not be saved; the prior valid transaction was retained: {exc}") from exc
+
+    @staticmethod
+    def _utc_now() -> str:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _delivery_summary_from_connection(
+        connection: sqlite3.Connection,
+        task: Task,
+    ) -> DeliveryLedgerSummary | None:
+        run_count = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM task_delivery_runs WHERE task_id=?",
+                (task.id,),
+            ).fetchone()[0]
+        )
+        if run_count == 0:
+            return None
+
+        snapshot = task.execution_snapshot
+        if snapshot is None or snapshot.state != TASK_SNAPSHOT_CAPTURED:
+            return DeliveryLedgerSummary(
+                task_id=task.id,
+                has_history=True,
+                continuation_safe=False,
+                succeeded_recipients=(),
+                failed_recipients=(),
+                pending_recipients=(),
+                uncertain_recipients=(),
+                assigned_account_ids=(),
+                processed=task.processed,
+                success=task.success,
+                failed=task.failed,
+                remaining=task.remaining,
+            )
+
+        rows = connection.execute(
+            """SELECT r.run_number, d.*
+               FROM task_delivery_recipients AS d
+               JOIN task_delivery_runs AS r ON r.run_id=d.run_id
+               WHERE r.task_id=?
+               ORDER BY r.run_number, d.recipient_ordinal""",
+            (task.id,),
+        ).fetchall()
+        latest: dict[int, sqlite3.Row] = {}
+        for row in rows:
+            latest[int(row["recipient_ordinal"])] = row
+
+        expected = tuple(customer.email for customer in snapshot.customers)
+        known_accounts = set(snapshot.account_ids)
+        succeeded: list[str] = []
+        failed: list[str] = []
+        pending: list[str] = []
+        uncertain: list[str] = []
+        bindings: list[tuple[str, str]] = []
+        safe = len(latest) == len(expected)
+
+        for ordinal, email in enumerate(expected):
+            row = latest.get(ordinal)
+            if row is None:
+                safe = False
+                pending.append(email)
+                continue
+            if str(row["recipient_email"]) != email or str(row["provider_id"]) != task.provider_id:
+                safe = False
+            assigned_account_id = str(row["assigned_account_id"])
+            if assigned_account_id:
+                if assigned_account_id not in known_accounts:
+                    safe = False
+                bindings.append((email, assigned_account_id))
+
+            result = str(row["final_result"])
+            if result == DELIVERY_RESULT_PENDING:
+                operation_rows = connection.execute(
+                    """SELECT stage, status FROM task_delivery_operations
+                       WHERE run_id=? AND recipient_ordinal=?""",
+                    (str(row["run_id"]), ordinal),
+                ).fetchall()
+                if any(
+                    str(operation["stage"]) == "invoice_send"
+                    and str(operation["status"]) == DELIVERY_OPERATION_SUCCEEDED
+                    for operation in operation_rows
+                ):
+                    result = DELIVERY_RESULT_SUCCEEDED
+                elif any(
+                    str(operation["status"]) in {DELIVERY_OPERATION_STARTED, DELIVERY_OPERATION_UNCERTAIN}
+                    and is_mutating_delivery_stage(str(operation["stage"]))
+                    for operation in operation_rows
+                ):
+                    result = DELIVERY_RESULT_UNCERTAIN
+
+            if result == DELIVERY_RESULT_SUCCEEDED:
+                succeeded.append(email)
+            elif result == DELIVERY_RESULT_FAILED:
+                failed.append(email)
+            elif result == DELIVERY_RESULT_UNCERTAIN:
+                uncertain.append(email)
+            elif result == DELIVERY_RESULT_PENDING:
+                pending.append(email)
+            else:
+                safe = False
+                pending.append(email)
+
+        processed = len(succeeded) + len(failed)
+        return DeliveryLedgerSummary(
+            task_id=task.id,
+            has_history=True,
+            continuation_safe=safe,
+            succeeded_recipients=tuple(succeeded),
+            failed_recipients=tuple(failed),
+            pending_recipients=tuple(pending),
+            uncertain_recipients=tuple(uncertain),
+            assigned_account_ids=tuple(bindings),
+            processed=processed,
+            success=len(succeeded),
+            failed=len(failed),
+            remaining=len(pending) + len(uncertain),
+        )
+
+    @staticmethod
+    def _recover_interrupted_delivery_ledger(connection: sqlite3.Connection) -> list[str]:
+        now = DomainStore._utc_now()
+        interrupted = connection.execute(
+            "SELECT run_id, task_id, task_name FROM task_delivery_runs WHERE status=?",
+            (DELIVERY_RUN_RUNNING,),
+        ).fetchall()
+        if not interrupted:
+            return []
+
+        warnings: list[str] = []
+        for run in interrupted:
+            run_id = str(run["run_id"])
+            started = connection.execute(
+                """SELECT recipient_ordinal, stage FROM task_delivery_operations
+                   WHERE run_id=? AND status=?""",
+                (run_id, DELIVERY_OPERATION_STARTED),
+            ).fetchall()
+            for operation in started:
+                ordinal = int(operation["recipient_ordinal"])
+                stage = str(operation["stage"])
+                connection.execute(
+                    """UPDATE task_delivery_operations
+                       SET status=?, finished_at=?, error_class=?, error_code=?, error_message=?
+                       WHERE run_id=? AND recipient_ordinal=? AND stage=? AND status=?""",
+                    (
+                        DELIVERY_OPERATION_UNCERTAIN,
+                        now,
+                        "InterruptedOperation",
+                        "process_interruption",
+                        "Application exited before this provider operation outcome was durably confirmed.",
+                        run_id,
+                        ordinal,
+                        stage,
+                        DELIVERY_OPERATION_STARTED,
+                    ),
+                )
+                if is_mutating_delivery_stage(stage):
+                    connection.execute(
+                        """UPDATE task_delivery_recipients
+                           SET status=?, final_result=?, stage=?, updated_at=?, finished_at=?,
+                               error_class=?, error_code=?, error_message=?
+                           WHERE run_id=? AND recipient_ordinal=? AND final_result=?""",
+                        (
+                            DELIVERY_RESULT_UNCERTAIN,
+                            DELIVERY_RESULT_UNCERTAIN,
+                            stage,
+                            now,
+                            now,
+                            "InterruptedOperation",
+                            "process_interruption",
+                            "A side-effecting provider operation was in flight when Invio stopped; the outcome is uncertain.",
+                            run_id,
+                            ordinal,
+                            DELIVERY_RESULT_PENDING,
+                        ),
+                    )
+
+            recipient_rows = connection.execute(
+                """SELECT recipient_ordinal, final_result FROM task_delivery_recipients
+                   WHERE run_id=?""",
+                (run_id,),
+            ).fetchall()
+            for recipient in recipient_rows:
+                ordinal = int(recipient["recipient_ordinal"])
+                if str(recipient["final_result"]) != DELIVERY_RESULT_PENDING:
+                    continue
+                send_success = connection.execute(
+                    """SELECT 1 FROM task_delivery_operations
+                       WHERE run_id=? AND recipient_ordinal=? AND stage='invoice_send' AND status=? LIMIT 1""",
+                    (run_id, ordinal, DELIVERY_OPERATION_SUCCEEDED),
+                ).fetchone()
+                if send_success is not None:
+                    connection.execute(
+                        """UPDATE task_delivery_recipients
+                           SET status=?, final_result=?, stage='invoice_send', updated_at=?, finished_at=?
+                           WHERE run_id=? AND recipient_ordinal=?""",
+                        (
+                            DELIVERY_RESULT_SUCCEEDED,
+                            DELIVERY_RESULT_SUCCEEDED,
+                            now,
+                            now,
+                            run_id,
+                            ordinal,
+                        ),
+                    )
+                    continue
+                latest_operation = connection.execute(
+                    """SELECT status, stage, error_class, error_code, error_message
+                       FROM task_delivery_operations
+                       WHERE run_id=? AND recipient_ordinal=?
+                       ORDER BY attempt_number DESC, started_at DESC LIMIT 1""",
+                    (run_id, ordinal),
+                ).fetchone()
+                if latest_operation is not None and str(latest_operation["status"]) == DELIVERY_OPERATION_FAILED:
+                    connection.execute(
+                        """UPDATE task_delivery_recipients
+                           SET status=?, final_result=?, stage=?, updated_at=?, finished_at=?,
+                               error_class=?, error_code=?, error_message=?
+                           WHERE run_id=? AND recipient_ordinal=?""",
+                        (
+                            DELIVERY_RESULT_FAILED,
+                            DELIVERY_RESULT_FAILED,
+                            str(latest_operation["stage"]),
+                            now,
+                            now,
+                            str(latest_operation["error_class"]),
+                            str(latest_operation["error_code"]),
+                            str(latest_operation["error_message"]),
+                            run_id,
+                            ordinal,
+                        ),
+                    )
+
+            connection.execute(
+                "UPDATE task_delivery_runs SET status=?, finished_at=? WHERE run_id=?",
+                (DELIVERY_RUN_INTERRUPTED, now, run_id),
+            )
+            warnings.append(
+                f"{run['task_name']} delivery run {run_id} was interrupted and recovered from its durable delivery ledger."
+            )
+        connection.commit()
+        return warnings
+
+    def begin_delivery_run(
+        self,
+        task: Task,
+        *,
+        execution_mode: str,
+        recipients: tuple[str, ...],
+    ) -> DeliveryRunRecord:
+        snapshot = task.execution_snapshot
+        if snapshot is None or snapshot.state != TASK_SNAPSHOT_CAPTURED:
+            raise DomainStoreError("A durable delivery run requires a captured immutable Task snapshot.")
+        if not recipients:
+            raise DomainStoreError("A durable delivery run requires at least one recipient.")
+        run_id = f"run_{uuid.uuid4().hex}"
+        started_at = self._utc_now()
+        result: dict[str, int] = {}
+
+        def write(connection: sqlite3.Connection) -> None:
+            running = connection.execute(
+                "SELECT run_id FROM task_delivery_runs WHERE task_id=? AND status=? LIMIT 1",
+                (task.id, DELIVERY_RUN_RUNNING),
+            ).fetchone()
+            if running is not None:
+                raise sqlite3.IntegrityError(
+                    "A prior durable delivery run is still marked Running; restart Invio to reconcile it before continuing."
+                )
+            run_number = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(run_number), 0) + 1 FROM task_delivery_runs WHERE task_id=?",
+                    (task.id,),
+                ).fetchone()[0]
+            )
+            result["run_number"] = run_number
+            connection.execute(
+                """INSERT INTO task_delivery_runs (
+                       run_id, task_id, task_name, run_number, provider_id, execution_mode, status, started_at, finished_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '')""",
+                (
+                    run_id,
+                    task.id,
+                    task.name,
+                    run_number,
+                    task.provider_id,
+                    execution_mode,
+                    DELIVERY_RUN_RUNNING,
+                    started_at,
+                ),
+            )
+            email_to_ordinal = {customer.email: ordinal for ordinal, customer in enumerate(snapshot.customers)}
+            account_names = {
+                account_id: task.account_names[index]
+                for index, account_id in enumerate(task.account_ids)
+            }
+            rows: list[tuple[object, ...]] = []
+            for email in recipients:
+                ordinal = email_to_ordinal.get(email)
+                if ordinal is None:
+                    raise sqlite3.IntegrityError("Delivery recipient is not present in the immutable Task snapshot.")
+                primary_account_id = snapshot.account_ids[ordinal % len(snapshot.account_ids)]
+                prior = connection.execute(
+                    """SELECT d.assigned_account_id, d.assigned_account_name
+                       FROM task_delivery_recipients AS d
+                       JOIN task_delivery_runs AS r ON r.run_id=d.run_id
+                       WHERE r.task_id=? AND d.recipient_ordinal=? AND d.assigned_account_id<>''
+                       ORDER BY r.run_number DESC LIMIT 1""",
+                    (task.id, ordinal),
+                ).fetchone()
+                assigned_account_id = str(prior["assigned_account_id"]) if prior is not None else ""
+                assigned_account_name = str(prior["assigned_account_name"]) if prior is not None else ""
+                if assigned_account_id and assigned_account_id not in snapshot.account_ids:
+                    raise sqlite3.IntegrityError("Prior durable recipient account binding is outside the frozen Task account set.")
+                rows.append(
+                    (
+                        run_id,
+                        ordinal,
+                        email,
+                        task.provider_id,
+                        primary_account_id,
+                        account_names[primary_account_id],
+                        assigned_account_id,
+                        assigned_account_name,
+                        "",
+                        DELIVERY_RESULT_PENDING,
+                        0,
+                        "",
+                        "",
+                        "",
+                        started_at,
+                        "",
+                        "",
+                        "",
+                        "",
+                        DELIVERY_RESULT_PENDING,
+                    )
+                )
+            connection.executemany(
+                """INSERT INTO task_delivery_recipients (
+                       run_id, recipient_ordinal, recipient_email, provider_id,
+                       primary_account_id, primary_account_name, assigned_account_id, assigned_account_name,
+                       stage, status, attempt_number, provider_customer_id, provider_invoice_id,
+                       started_at, updated_at, finished_at, error_class, error_code, error_message, final_result
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+
+        self._transaction(write)
+        return DeliveryRunRecord(
+            run_id=run_id,
+            task_id=task.id,
+            task_name=task.name,
+            run_number=result["run_number"],
+            provider_id=task.provider_id,
+            execution_mode=execution_mode,
+            status=DELIVERY_RUN_RUNNING,
+            started_at=started_at,
+        )
+
+    def finish_delivery_run(self, run_id: str, *, status: str) -> None:
+        if status not in {
+            DELIVERY_RUN_COMPLETED,
+            DELIVERY_RUN_STOPPED,
+            DELIVERY_RUN_FAILED,
+            DELIVERY_RUN_INTERRUPTED,
+        }:
+            raise DomainStoreError(f"Unsupported delivery-run terminal status '{status}'.")
+        finished_at = self._utc_now()
+
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute(
+                "UPDATE task_delivery_runs SET status=?, finished_at=? WHERE run_id=?",
+                (status, finished_at, run_id),
+            )
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Delivery run row is missing.")
+
+        self._transaction(write)
+
+    def begin_delivery_operation(
+        self,
+        *,
+        run_id: str,
+        recipient_ordinal: int,
+        attempt_number: int,
+        stage: str,
+        account_id: str,
+        account_name: str,
+        idempotency_key: str,
+    ) -> None:
+        started_at = self._utc_now()
+
+        def write(connection: sqlite3.Connection) -> None:
+            recipient = connection.execute(
+                """SELECT assigned_account_id FROM task_delivery_recipients
+                   WHERE run_id=? AND recipient_ordinal=?""",
+                (run_id, recipient_ordinal),
+            ).fetchone()
+            if recipient is None:
+                raise sqlite3.IntegrityError("Delivery recipient row is missing.")
+            existing = str(recipient["assigned_account_id"])
+            if existing and existing != account_id:
+                raise sqlite3.IntegrityError(
+                    "Durable recipient account binding cannot change after provider execution begins."
+                )
+            connection.execute(
+                """UPDATE task_delivery_recipients
+                   SET assigned_account_id=?, assigned_account_name=?, stage=?, status='Running',
+                       attempt_number=?, started_at=CASE WHEN started_at='' THEN ? ELSE started_at END,
+                       updated_at=?
+                   WHERE run_id=? AND recipient_ordinal=?""",
+                (
+                    account_id,
+                    account_name,
+                    stage,
+                    attempt_number,
+                    started_at,
+                    started_at,
+                    run_id,
+                    recipient_ordinal,
+                ),
+            )
+            connection.execute(
+                """INSERT INTO task_delivery_operations (
+                       run_id, recipient_ordinal, attempt_number, stage, status, idempotency_key,
+                       provider_reference, started_at, finished_at, error_class, error_code, error_message
+                   ) VALUES (?, ?, ?, ?, ?, ?, '', ?, '', '', '', '')""",
+                (
+                    run_id,
+                    recipient_ordinal,
+                    attempt_number,
+                    stage,
+                    DELIVERY_OPERATION_STARTED,
+                    idempotency_key,
+                    started_at,
+                ),
+            )
+
+        self._transaction(write)
+
+    def finish_delivery_operation(
+        self,
+        *,
+        run_id: str,
+        recipient_ordinal: int,
+        attempt_number: int,
+        stage: str,
+        status: str,
+        provider_reference: str = "",
+        error_class: str = "",
+        error_code: str = "",
+        error_message: str = "",
+    ) -> None:
+        if status not in {
+            DELIVERY_OPERATION_SUCCEEDED,
+            DELIVERY_OPERATION_FAILED,
+            DELIVERY_OPERATION_UNCERTAIN,
+        }:
+            raise DomainStoreError(f"Unsupported delivery-operation status '{status}'.")
+        finished_at = self._utc_now()
+
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute(
+                """UPDATE task_delivery_operations
+                   SET status=?, provider_reference=?, finished_at=?, error_class=?, error_code=?, error_message=?
+                   WHERE run_id=? AND recipient_ordinal=? AND attempt_number=? AND stage=? AND status=?""",
+                (
+                    status,
+                    provider_reference,
+                    finished_at,
+                    error_class,
+                    error_code,
+                    error_message,
+                    run_id,
+                    recipient_ordinal,
+                    attempt_number,
+                    stage,
+                    DELIVERY_OPERATION_STARTED,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Started delivery operation row is missing or already finalized.")
+            customer_reference = provider_reference if stage in {"customer_lookup", "customer_create"} else None
+            invoice_reference = provider_reference if stage in {"invoice_create", "invoice_finalize", "invoice_send"} else None
+            if customer_reference is not None:
+                connection.execute(
+                    """UPDATE task_delivery_recipients
+                       SET stage=?, attempt_number=?, updated_at=?, provider_customer_id=CASE WHEN ?<>'' THEN ? ELSE provider_customer_id END
+                       WHERE run_id=? AND recipient_ordinal=?""",
+                    (stage, attempt_number, finished_at, customer_reference, customer_reference, run_id, recipient_ordinal),
+                )
+            elif invoice_reference is not None:
+                connection.execute(
+                    """UPDATE task_delivery_recipients
+                       SET stage=?, attempt_number=?, updated_at=?, provider_invoice_id=CASE WHEN ?<>'' THEN ? ELSE provider_invoice_id END
+                       WHERE run_id=? AND recipient_ordinal=?""",
+                    (stage, attempt_number, finished_at, invoice_reference, invoice_reference, run_id, recipient_ordinal),
+                )
+            else:
+                connection.execute(
+                    """UPDATE task_delivery_recipients
+                       SET stage=?, attempt_number=?, updated_at=?
+                       WHERE run_id=? AND recipient_ordinal=?""",
+                    (stage, attempt_number, finished_at, run_id, recipient_ordinal),
+                )
+
+        self._transaction(write)
+
+    def update_delivery_provider_ids(
+        self,
+        *,
+        run_id: str,
+        recipient_ordinal: int,
+        provider_customer_id: str | None = None,
+        provider_invoice_id: str | None = None,
+    ) -> None:
+        if provider_customer_id is None and provider_invoice_id is None:
+            return
+        updated_at = self._utc_now()
+
+        def write(connection: sqlite3.Connection) -> None:
+            row = connection.execute(
+                "SELECT provider_customer_id, provider_invoice_id FROM task_delivery_recipients WHERE run_id=? AND recipient_ordinal=?",
+                (run_id, recipient_ordinal),
+            ).fetchone()
+            if row is None:
+                raise sqlite3.IntegrityError("Delivery recipient row is missing.")
+            next_customer = str(row["provider_customer_id"]) if provider_customer_id is None else provider_customer_id
+            next_invoice = str(row["provider_invoice_id"]) if provider_invoice_id is None else provider_invoice_id
+            connection.execute(
+                """UPDATE task_delivery_recipients
+                   SET provider_customer_id=?, provider_invoice_id=?, updated_at=?
+                   WHERE run_id=? AND recipient_ordinal=?""",
+                (next_customer, next_invoice, updated_at, run_id, recipient_ordinal),
+            )
+
+        self._transaction(write)
+
+    def finish_delivery_recipient(
+        self,
+        *,
+        run_id: str,
+        recipient_ordinal: int,
+        final_result: str,
+        stage: str,
+        attempt_number: int,
+        error_class: str = "",
+        error_code: str = "",
+        error_message: str = "",
+    ) -> None:
+        if final_result not in {
+            DELIVERY_RESULT_SUCCEEDED,
+            DELIVERY_RESULT_FAILED,
+            DELIVERY_RESULT_UNCERTAIN,
+        }:
+            raise DomainStoreError(f"Unsupported recipient delivery result '{final_result}'.")
+        finished_at = self._utc_now()
+
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute(
+                """UPDATE task_delivery_recipients
+                   SET stage=CASE WHEN ?<>'' THEN ? ELSE stage END, status=?, attempt_number=?, updated_at=?, finished_at=?,
+                       error_class=?, error_code=?, error_message=?, final_result=?
+                   WHERE run_id=? AND recipient_ordinal=?""",
+                (
+                    stage,
+                    stage,
+                    final_result,
+                    attempt_number,
+                    finished_at,
+                    finished_at,
+                    error_class,
+                    error_code,
+                    error_message,
+                    final_result,
+                    run_id,
+                    recipient_ordinal,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Delivery recipient row is missing.")
+
+        self._transaction(write)
+
+    def delivery_summary(self, task: Task) -> DeliveryLedgerSummary | None:
+        try:
+            with self._connection() as connection:
+                return self._delivery_summary_from_connection(connection, task)
+        except DomainStoreError:
+            raise
+        except (sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+            raise DomainStoreError(f"Delivery ledger could not be read safely: {exc}") from exc
+
+    def recipient_has_uncertain_mutation(self, *, run_id: str, recipient_ordinal: int) -> bool:
+        try:
+            with self._connection() as connection:
+                rows = connection.execute(
+                    """SELECT stage FROM task_delivery_operations
+                       WHERE run_id=? AND recipient_ordinal=? AND status=?""",
+                    (run_id, recipient_ordinal, DELIVERY_OPERATION_UNCERTAIN),
+                ).fetchall()
+                return any(is_mutating_delivery_stage(str(row["stage"])) for row in rows)
+        except sqlite3.Error as exc:
+            raise DomainStoreError(f"Delivery uncertainty state could not be read safely: {exc}") from exc
 
     @staticmethod
     def _load_task_execution_snapshot(
@@ -340,8 +971,10 @@ class DomainStore:
         loaded = LoadedDomain()
         verification_recovery_updates: list[tuple[str, str, str, str]] = []
         recovery_updates: list[tuple[str, str, str]] = []
+        counter_recovery_updates: list[tuple[int, int, int, str]] = []
         try:
             with self._connection() as connection:
+                loaded.warnings.extend(self._recover_interrupted_delivery_ledger(connection))
                 account_rows = connection.execute(
                     "SELECT id, provider_id, provider_name, name, mode, status, credential_ref, last_verification_at, verification_error_summary FROM accounts ORDER BY rowid"
                 ).fetchall()
@@ -442,31 +1075,13 @@ class DomainStore:
                         "SELECT account_id, account_name FROM task_accounts WHERE task_id=? ORDER BY ordinal",
                         (task_id,),
                     ).fetchall()
-                    status = str(row["status"])
+                    persisted_status = str(row["status"])
+                    status = persisted_status
                     last_message = str(row["last_message"])
                     processed_value = int(row["processed"])
+                    success_value = int(row["success"])
                     failed_value = int(row["failed"])
                     total_value = int(row["total"])
-                    if status in {"Running", "Paused", "Stopping"}:
-                        status = "Stopped"
-                        last_message = (
-                            "Recovered after application restart; the exact continuation recipient set is unavailable, "
-                            "so Resume Remaining is disabled."
-                        )
-                        recovery_updates.append((status, last_message, task_id))
-                        loaded.warnings.append(f"{row['name']} was active when Invio last stopped and was recovered as Stopped.")
-                    elif status == "Stopped" and (failed_value > 0 or processed_value < total_value):
-                        last_message = (
-                            "Recovered after application restart; the exact continuation recipient set is unavailable, "
-                            "so Resume Remaining is disabled."
-                        )
-                        recovery_updates.append((status, last_message, task_id))
-                    elif status == "Failed" and failed_value > 0:
-                        last_message = (
-                            "Recovered after application restart; the exact failed recipient set is unavailable, "
-                            "so Retry Failed is disabled."
-                        )
-                        recovery_updates.append((status, last_message, task_id))
                     account_ids_for_task = [str(account_row["account_id"]) for account_row in account_rows_for_task]
                     execution_snapshot = self._load_task_execution_snapshot(
                         connection,
@@ -486,13 +1101,98 @@ class DomainStore:
                         invoice_template_id=str(row["invoice_template_id"]),
                         invoice_template_name=str(row["invoice_template_name"]),
                         status=status,
-                        total=int(row["total"]),
-                        success=int(row["success"]),
-                        failed=int(row["failed"]),
-                        processed=int(row["processed"]),
+                        total=total_value,
+                        success=success_value,
+                        failed=failed_value,
+                        processed=processed_value,
                         last_message=last_message,
                         execution_snapshot=execution_snapshot,
                     )
+
+                    ledger = self._delivery_summary_from_connection(connection, task)
+                    if ledger is not None:
+                        if not ledger.continuation_safe:
+                            raise DomainStoreCorruptionError(
+                                f"Task '{task.name}' durable delivery ledger is internally inconsistent."
+                            )
+                        if (
+                            task.processed > ledger.processed
+                            or task.success > ledger.success
+                            or task.failed > ledger.failed
+                        ):
+                            raise DomainStoreCorruptionError(
+                                f"Task '{task.name}' aggregate progress is ahead of its durable delivery evidence."
+                            )
+                        if (
+                            task.processed != ledger.processed
+                            or task.success != ledger.success
+                            or task.failed != ledger.failed
+                        ):
+                            task.processed = ledger.processed
+                            task.success = ledger.success
+                            task.failed = ledger.failed
+                            counter_recovery_updates.append(
+                                (task.success, task.failed, task.processed, task.id)
+                            )
+
+                        if ledger.pending_recipients or ledger.uncertain_recipients:
+                            status = "Stopped"
+                            last_message = (
+                                "Recovered durable delivery state after restart: "
+                                f"{ledger.success} succeeded, {ledger.failed} failed, "
+                                f"{len(ledger.pending_recipients)} pending, "
+                                f"{len(ledger.uncertain_recipients)} uncertain. "
+                                "Use Resume Remaining to continue only unresolved recipients."
+                            )
+                        elif ledger.failed_recipients:
+                            status = "Failed"
+                            last_message = (
+                                "Recovered durable delivery state after restart: "
+                                f"{ledger.success} succeeded and {ledger.failed} failed. "
+                                "Use Retry Failed to retry only the durable failed recipient set."
+                            )
+                        elif ledger.success == task.total:
+                            status = "Completed"
+                            last_message = "Recovered durable delivery state: all recipients are confirmed succeeded."
+                        else:
+                            status = persisted_status
+
+                        if task.status != status or task.last_message != last_message:
+                            task.status = status
+                            task.last_message = last_message
+                            recovery_updates.append((status, last_message, task.id))
+                        if persisted_status in {"Running", "Paused", "Stopping"}:
+                            loaded.warnings.append(
+                                f"{task.name} was active when Invio last stopped and was recovered from its durable delivery ledger."
+                            )
+                    else:
+                        # Pre-P10 Tasks have no fabricated delivery evidence. Preserve
+                        # the P07 fail-closed restart behavior for non-pristine history.
+                        if status in {"Running", "Paused", "Stopping"}:
+                            status = "Stopped"
+                            last_message = (
+                                "Recovered after application restart; this pre-P10 Task has no durable delivery ledger, "
+                                "so Resume Remaining is disabled."
+                            )
+                            recovery_updates.append((status, last_message, task_id))
+                            loaded.warnings.append(
+                                f"{row['name']} was active when Invio last stopped and was recovered as Stopped without fabricated P10 history."
+                            )
+                        elif status == "Stopped" and (failed_value > 0 or processed_value < total_value):
+                            last_message = (
+                                "Recovered after application restart; this pre-P10 Task has no durable delivery ledger, "
+                                "so Resume Remaining is disabled."
+                            )
+                            recovery_updates.append((status, last_message, task_id))
+                        elif status == "Failed" and failed_value > 0:
+                            last_message = (
+                                "Recovered after application restart; this pre-P10 Task has no durable delivery ledger, "
+                                "so Retry Failed is disabled."
+                            )
+                            recovery_updates.append((status, last_message, task_id))
+                        task.status = status
+                        task.last_message = last_message
+
                     loaded.tasks[task.id] = task
 
                 reservation_rows = connection.execute(
@@ -508,7 +1208,7 @@ class DomainStore:
         except (sqlite3.Error, ValueError, ArithmeticError, TypeError, KeyError) as exc:
             raise DomainStoreCorruptionError(f"Operational storage contains invalid data: {exc}") from exc
 
-        if verification_recovery_updates or recovery_updates:
+        if verification_recovery_updates or recovery_updates or counter_recovery_updates:
             def persist_recovery(connection: sqlite3.Connection) -> None:
                 if verification_recovery_updates:
                     connection.executemany(
@@ -517,10 +1217,16 @@ class DomainStore:
                            WHERE id=?""",
                         verification_recovery_updates,
                     )
-                connection.executemany(
-                    "UPDATE tasks SET status=?, last_message=? WHERE id=?",
-                    recovery_updates,
-                )
+                if recovery_updates:
+                    connection.executemany(
+                        "UPDATE tasks SET status=?, last_message=? WHERE id=?",
+                        recovery_updates,
+                    )
+                if counter_recovery_updates:
+                    connection.executemany(
+                        "UPDATE tasks SET success=?, failed=?, processed=? WHERE id=?",
+                        counter_recovery_updates,
+                    )
 
             self._transaction(persist_recovery)
         return loaded

@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.26`  
+**Baseline:** `Invio v1.0.0.1.27`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -15,7 +15,7 @@
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
 | Refrens normal Task sending | BLOCKED | P04 can store explicit name/country, but the production Refrens Task runner remains P11 |
 | Real Add Account API Test | WORKING/PARTIAL by provider | Stripe/Refrens verification is real on a dedicated dialog `QThread`; Agiled intentionally fails closed pending contract revalidation |
-| Durable Accounts metadata | WORKING | Current SQLite schema v4 restores IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
+| Durable Accounts metadata | WORKING | Current SQLite schema v5 retains IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
@@ -25,8 +25,8 @@
 | Dedicated worker thread per active Task | WORKING | Existing one-`QThread`-per-Task WorkerManager unchanged |
 | Worker/network reliability | WORKING | P08 structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy and safe asynchronous shutdown; v1.0.0.1.24 corrects truncated-body/TLS-close transient classification |
 | Retry Failed / Resume Remaining in current session | WORKING | P07 uses exact ProviderRuntime failed/pending sets and immutable P05 ordering |
-| Retry Failed / Resume Remaining after app restart | NOT IMPLEMENTED | Exact recipient identities are deliberately not guessed; P10 durable ledger/recovery |
-| Recipient delivery ledger/provider IDs | NOT IMPLEMENTED | P10 |
+| Retry Failed / Resume Remaining after app restart | WORKING | P10 uses durable latest recipient outcomes and exact attempted-account binding; unsupported historical evidence fails closed |
+| Recipient delivery ledger/provider IDs | WORKING | Schema v5 stores runs, per-run recipients, operations, attempts, idempotency evidence, provider customer/invoice IDs and sanitized errors |
 | Settings persistence | WORKING | Existing non-sensitive JSON remains separate from P02 storage |
 
 ## P02 Durable Storage
@@ -50,14 +50,14 @@
 - Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
 - Template parent/items/terms and customer email replacement are committed transactionally.
 - Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
-- Existing empty schema-v0 databases are backed up before migration through schema v1/v2/v3 to current schema v4; existing supported databases receive dedicated WAL-aware pre-migration backups before upgrade.
+- Existing supported schema-v0/v1/v2/v3/v4 databases use the existing WAL-aware pre-migration backup path before advancing to current schema v5.
 - Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
 - Previously active Tasks are not automatically resumed after process restart.
 - Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
 
 ### DELIBERATELY NOT P02
 
-- No per-recipient delivery ledger, remote provider reconciliation, persisted provider customer/invoice IDs or persistent Retry Failed recipient set. These remain P10.
+- P10 now persists per-recipient delivery evidence, attempts, exact account binding, provider customer/invoice IDs and restart-safe continuation. Remote provider-side reconciliation beyond the recorded API outcome remains outside this phase.
 - Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
 - Customer record name/country expansion is **WORKING in P04**; no billing/shipping/payment expansion was added.
 - Immutable Task execution snapshots are **WORKING in P05**; pre-P05 Tasks migrate as fail-closed `LegacyUnavailable` records.
@@ -225,3 +225,13 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 **VERIFIED / CORRECTED:** P09 runtime scheduling, limits, health and failover behavior remains unchanged from `v1.0.0.1.25`. GitHub Actions exposed one repository-contract test that required `project/planning/PHASE_COMPLETION_LOG.md` even though `/project/` is intentionally Git-ignored. The test now validates tracked public P09 completion records in every checkout and validates private project records only when the full private baseline is present.
 
 **Production progress:** 9/14; P10 remains next and unimplemented.
+
+## P10 status - v1.0.0.1.27
+
+**WORKING:** SQLite schema v5; exactly three durable delivery-ledger tables; distinct execution Run IDs; write-ahead operation starts; P08 attempt history; exact Stripe Task-derived idempotency evidence; provider customer/invoice IDs when returned; sanitized durable errors; final Pending/Succeeded/Failed/Uncertain outcomes; interrupted-run recovery; durable aggregate reconciliation; restart-safe Resume Remaining / Retry Failed; P09 exact attempted-account binding across restart; historical ledger retention after Close Task.
+
+**FAIL-CLOSED:** pre-P10 non-pristine Tasks do not receive invented delivery history; unsupported or inconsistent durable continuation evidence is rejected. A required pre-request ledger write failure sends nothing; a post-provider ledger result failure stops before further side effects and leaves observable write-ahead evidence for restart recovery.
+
+**UNCHANGED:** one Task = one QThread, P05 immutable snapshot contract, P06 preflight, P07 action/state names, P08 three-attempt retry/idempotency rules, P09 rate/health/failover policy, Stripe business request sequence, Refrens P11 gate, Agiled fail-close, provider manifests, dependencies and page inventory.
+
+**Production progress:** 10/14. P11 is next and remains separately approval-gated.

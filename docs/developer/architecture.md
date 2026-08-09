@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.26` is the CI-verification-corrected P09 Multi-Account Scheduling, Limits and Health baseline on the verification-corrected P08 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.27` is the P10 Persistent Delivery Ledger, Idempotency and Recovery baseline on the verified P09 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -59,7 +59,7 @@ Production backend acceptance is fail-closed: only the approved core OS-protecte
 
 ## 6. Schema / Migration
 
-Current schema version: **4**, tracked by `PRAGMA user_version`. Schema v2 added Account verification-health metadata. P04 schema v3 adds optional `name` and `country` columns to `customer_emails`. P05 schema v4 adds durable Task execution-snapshot tables. All supported migrations use WAL-aware pre-migration backup semantics and retain the v1.0.0.1.14 Windows close-before-replace fix.
+Current schema version: **5**, tracked by `PRAGMA user_version`. Schema v2 added Account verification-health metadata, schema v3 customer metadata, and P05 schema v4 immutable Task execution snapshots. P10 schema v5 adds exactly three delivery-ledger tables for runs, per-run recipients and provider operations. All supported migrations use WAL-aware pre-migration backup semantics and retain the v1.0.0.1.14 Windows close-before-replace fix.
 
 Core tables:
 
@@ -211,3 +211,9 @@ The immutable Task snapshot still owns the frozen account order and `recipient_o
 ## 22. P09 CI verification boundary - v1.0.0.1.26
 
 No runtime architecture changes. The repository privacy boundary is explicit: `/project/` remains private and Git-ignored, therefore public CI tests cannot require it. Public release/roadmap records are the mandatory GitHub-checkout verification surface; full private-baseline audits additionally validate `project/` records when present.
+
+## 23. P10 durable delivery architecture - v1.0.0.1.27
+
+P10 adds `src/tasks/delivery_ledger.py` and advances the existing `DomainStore` schema from v4 to v5 with exactly three tables: `task_delivery_runs`, `task_delivery_recipients`, and `task_delivery_operations`. The tables intentionally retain historical delivery evidence after a live Task is closed. A unique `run_id` identifies each First Run / Resume Remaining / Retry Failed invocation, while `Task.id` remains the canonical logical Stripe idempotency identity.
+
+For supported Stripe Task traffic the flow is `ProviderRuntime -> durable Started operation transaction -> existing transport -> durable operation result -> durable recipient result`. The write-ahead commit is required before transport. Provider customer/invoice IDs, exact assigned account, P08 attempt number, existing deterministic idempotency key, timestamps and sanitized errors are persisted. On startup `DomainStore` marks unfinished runs `Interrupted`, classifies unresolved mutating operations `Uncertain`, derives latest recipient outcomes and reconciles Task aggregate counters. ProviderRuntime reads that durable summary for restart-safe Resume Remaining / Retry Failed and hydrates only a runtime cache from it. WorkerManager remains one Task = one QThread; P09 scheduling and provider business flow are unchanged.
