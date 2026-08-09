@@ -120,3 +120,8 @@ No folder, runtime package, UI page, schema module, dependency or architecture b
 ## v1.0.0.1.25 P09 Structure Note
 
 P09 adds no runtime package, page, schema package, worker subsystem or dependency. Provider scheduling policy remains in `src/core/provider_runtime/adapters.py`; rate/health/failover behavior remains in `src/core/provider_runtime/runtime.py`; successful account re-verification clears runtime-only health through the existing `src/ui/main_window.py` account lifecycle. `tests/test_p09_scheduling.py` adds P09 regression coverage.
+
+
+## v1.0.0.1.26 CI Verification Structure Note
+
+No runtime folder/module/page structure is added, removed, renamed, or reorganized. `project/` remains intentionally Git-ignored private development material. Public CI repository-contract tests now depend only on tracked public records, while private project records are checked only when the full private baseline is present.

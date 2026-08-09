@@ -102,3 +102,8 @@ Timeouts, transient disconnects, HTTP 408/429 and selected 5xx responses can be 
 ## P09 account/provider cooldown
 
 If Live Logs report an account cooldown, Invio is temporarily pacing that account after a recognized Stripe rate-limit condition. Only not-yet-attempted recipients can use deterministic fallback. If Live Logs report a provider cooldown, Invio waits instead of hopping accounts. If an account is blocked after HTTP 401/403, use the existing account API Re-test/Edit verification workflow; a successful verification clears the runtime-only block.
+
+
+## GitHub Actions reports missing `project/planning/PHASE_COMPLETION_LOG.md`
+
+This was a `v1.0.0.1.25` repository-contract test defect, not a missing runtime file. `/project/` is intentionally private and Git-ignored. `v1.0.0.1.26` corrects the test so public CI validates tracked public completion records; do not publish the private `project/` tree to work around this failure.

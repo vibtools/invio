@@ -2,7 +2,7 @@
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Current pages in `v1.0.0.1.25` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings. P08 and its v1.0.0.1.24 verification correction add no page or layout change.
+Current pages in `v1.0.0.1.26` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings. P08 and its v1.0.0.1.24 verification correction add no page or layout change.
 
 Release history relevant to the current UI:
 
@@ -47,3 +47,6 @@ No UI/UX layout or workflow change is introduced. Source-contract verification c
 
 
 P09 adds no page, dialog, layout, control or visual redesign. Scheduling/health feedback uses existing Task status and Live Logs surfaces only.
+
+
+`v1.0.0.1.26` is CI/repository-contract verification only and introduces no UI page, layout, control, style, workflow or UX change.

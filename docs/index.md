@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.25**.
+Current version: **v1.0.0.1.26**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.25.md` - current release.
+- `release-notes/1.0.0.1.26.md` - current release.
+- `release-notes/1.0.0.1.25.md` - P09 production release.
 - `release-notes/1.0.0.1.24.md` - P08 verification-correction release.
 - `release-notes/1.0.0.1.23.md` - original P08 implementation release.
 - `release-notes/1.0.0.1.15.md` - original P05 implementation.
@@ -63,3 +64,8 @@ P08 remains complete. The forensic correction extends the transient-disconnect c
 ## v1.0.0.1.25 current baseline
 
 P09 adds conservative multi-account scheduling without changing the frozen round-robin primary mapping. Stripe Task traffic is paced per account, temporary account/provider health is runtime-only, eligible failover is restricted to unattempted recipients, and attempted recipients are protected from cross-account replay. P10 persistence/recovery remains unimplemented.
+
+
+## v1.0.0.1.26 current baseline
+
+The P09 runtime remains unchanged. This verification correction fixes the public CI repository-contract boundary so tracked documentation is mandatory in GitHub Actions while intentionally private Git-ignored `project/` records are only checked when available in a full private baseline. Production progress remains 9/14 and P10 remains next.

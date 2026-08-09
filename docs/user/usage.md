@@ -106,3 +106,8 @@ The automatic transient retry behavior also covers a provider connection that en
 ## P09 multi-account scheduling in v1.0.0.1.25
 
 Tasks keep their original round-robin primary account assignment. Invio now paces Stripe Task requests per account and may route a recipient to the next healthy frozen account only if that recipient has not yet entered provider execution and its primary account is temporarily cooling from a recognized Stripe account rate-limit condition. If any provider request has already started for that recipient, Invio will not move it to another account. Provider/network outages wait on a provider-wide cooldown, and an account that returns HTTP 401/403 is not used again in the current runtime until it is successfully re-tested.
+
+
+## v1.0.0.1.26 verification note
+
+No user workflow changes from `v1.0.0.1.25`. P09 account pacing, cooldown, deterministic pre-attempt fallback and current-session cross-account replay protection behave the same. This release only corrects a GitHub CI documentation-test boundary.

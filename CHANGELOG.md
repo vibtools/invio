@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0.1.26 - P09 CI / Repository-Contract Verification Correction
+
+- Reproduces GitHub Actions run `31336019074` / job `93301866645`, where `test_p09_completion_records_are_synchronized` failed because a public CI checkout does not contain the intentionally Git-ignored private `project/` tree.
+- Corrects the P09 repository-contract test so mandatory CI assertions use tracked public completion records; private `project/` completion records remain additionally verified when the full private baseline is present.
+- Adds an explicit current-release metadata contract for `v1.0.0.1.26` while retaining historical compatibility test names under the no-removal baseline rule.
+- Keeps the P09 runtime scheduler, rate/health/failover behavior, one-task-one-QThread boundary, SQLite schema v4, dependencies, Stripe send flow/idempotency, Refrens P11 gate, Agiled fail-close behavior, provider/plugin architecture and P10+ scope unchanged.
+- Production progress remains **9/14**; **P10 - Persistent Delivery Ledger, Idempotency and Recovery** remains next.
+
 ## v1.0.0.1.25 - P09 Multi-Account Scheduling, Limits and Health
 
 - Preserves the frozen `recipient_ordinal_round_robin_v1` primary assignment and P05 account ordering.

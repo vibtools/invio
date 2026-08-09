@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.25` is the P09 Multi-Account Scheduling, Limits and Health baseline on the verification-corrected P08 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.26` is the CI-verification-corrected P09 Multi-Account Scheduling, Limits and Health baseline on the verification-corrected P08 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -206,3 +206,8 @@ No architecture boundary changes. `_stdlib_transport()` now contains the complet
 ## 21. P09 Scheduling Boundary - v1.0.0.1.25
 
 The immutable Task snapshot still owns the frozen account order and `recipient_ordinal_round_robin_v1` primary mapping. `ProviderAdapterContract` now exposes an internal optional scheduling policy; Stripe declares 20 requests/second/account with burst 1 and bounded runtime health cooldown settings. `ProviderRuntime` owns monotonic per-account request slots plus runtime-only account/provider health. Failover is a deterministic circular choice only before a recipient's first provider request and only when its primary account is cooling from a recognized account-scoped limiter condition. Attempted recipients, provider/network failures, deterministic operation failures and permanent account-auth failures never cross accounts. The existing one-Task-one-QThread WorkerManager boundary remains unchanged.
+
+
+## 22. P09 CI verification boundary - v1.0.0.1.26
+
+No runtime architecture changes. The repository privacy boundary is explicit: `/project/` remains private and Git-ignored, therefore public CI tests cannot require it. Public release/roadmap records are the mandatory GitHub-checkout verification surface; full private-baseline audits additionally validate `project/` records when present.

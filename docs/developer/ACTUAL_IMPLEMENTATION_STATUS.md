@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.25`  
+**Baseline:** `Invio v1.0.0.1.26`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -218,3 +218,10 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 **WORKING.** The primary recipient/account mapping remains `recipient_ordinal_round_robin_v1`. Stripe Task requests use the internal 20 requests/second/account, burst-1 policy. Runtime-only account/provider health tracks bounded cooldowns; only unattempted recipients can use deterministic circular fallback for recognized account-scoped rate-limit cooldown. Attempted recipients never cross accounts, provider/network failures never account-hop, deterministic validation/customer/template failures never fail over, and HTTP 401/403 suppresses further network use until successful account re-verification. Intra-Task concurrency remains 1 and P10 persistence is not implemented.
 
 **Production progress:** 9/14; P10 is next.
+
+
+## P09 CI verification correction - v1.0.0.1.26
+
+**VERIFIED / CORRECTED:** P09 runtime scheduling, limits, health and failover behavior remains unchanged from `v1.0.0.1.25`. GitHub Actions exposed one repository-contract test that required `project/planning/PHASE_COMPLETION_LOG.md` even though `/project/` is intentionally Git-ignored. The test now validates tracked public P09 completion records in every checkout and validates private project records only when the full private baseline is present.
+
+**Production progress:** 9/14; P10 remains next and unimplemented.

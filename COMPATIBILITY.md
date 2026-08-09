@@ -81,3 +81,8 @@ P08 preserves the existing Python 3.12, PySide6 6.7-<7, `urllib`, keyring and op
 ## v1.0.0.1.24 P08 Verification-Correction Compatibility
 
 `v1.0.0.1.24` preserves the `v1.0.0.1.23` Python 3.12+, PySide6 6.7-<7, standard-library `urllib`, keyring and openpyxl technology set. The correction only extends P08 transient-disconnect classification for incomplete HTTP bodies and TLS EOF/clean-close conditions and preserves HTTP status/Retry-After when an error body is truncated. No API/provider payload, schema, dependency, page, QThread boundary, account assignment, idempotency, or P09+ compatibility contract changes.
+
+
+## v1.0.0.1.26 P09 CI Verification Compatibility
+
+`v1.0.0.1.26` changes no provider API, scheduling policy, Task state, WorkerManager interface, SQLite schema, dependency, Settings key, page/layout, account assignment, Stripe idempotency, Refrens gate, Agiled fail-close or plugin contract. The only behavioral correction is to the repository test boundary: public CI no longer requires intentionally Git-ignored private `project/` files.

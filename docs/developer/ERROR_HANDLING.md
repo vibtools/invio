@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.25`  
+**Baseline:** `v1.0.0.1.26`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -381,3 +381,10 @@ No retry count, backoff, provider payload, Task state, WorkerManager, schema, de
 - HTTP 401/403 blocks additional network use of that runtime account until a successful account re-verification clears the runtime health.
 - Deterministic 400/404/409/422/customer/template/operation failures do not cool, fail over or change account health.
 - Rate/cooldown waits use the existing Pause/Stop-aware cooperative worker wait; no GUI-thread blocking or forced worker termination is introduced.
+
+
+## 7. v1.0.0.1.26 CI repository-contract failure boundary
+
+GitHub Actions run `31336019074` failed before application execution because `test_p09_completion_records_are_synchronized` directly opened a private file under `/project/`. That directory is intentionally excluded from public Git checkouts by `.gitignore`, so `FileNotFoundError` was deterministic in CI even though the full private baseline ZIP passed locally.
+
+The correction does not change runtime exception handling. Repository contracts now require tracked public P09 completion records and only inspect private `project/` records when that private tree exists.

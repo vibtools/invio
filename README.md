@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.25`** completes **P09 - Multi-Account Scheduling, Limits and Health** on the verified `v1.0.0.1.24` baseline. Production progress is now 9/14; P10 is next and requires separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.26`** is the CI/repository-contract verification correction for the P09-complete `v1.0.0.1.25` baseline. P09 runtime behavior is unchanged, production progress remains **9/14**, and P10 is next only after separate approval.
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P08 regressions plus P09 deterministic assignment, 
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.25.md`
+- Release notes: `docs/release-notes/1.0.0.1.26.md`
 
 ## Private Project Material
 
@@ -238,3 +238,10 @@ The re-audit also corrected stale private P08 completion summaries/error-handlin
 P09 keeps the immutable round-robin primary assignment but adds a conservative runtime scheduler around the existing Stripe Task runner. Stripe Task requests are paced to 20 API requests/second/account with burst capacity 1. Recognized account-scoped Stripe rate-limit failures create runtime-only account cooldowns; timeout/disconnect/408/5xx failures create provider-wide cooldowns and never trigger account hopping.
 
 Only recipients that have not yet entered provider execution may route deterministically to the next healthy frozen account when their primary account is temporarily cooling. Once any provider request has started for a recipient, the recipient remains bound to its original/selected account for P08 retry and future current-session Resume/Retry safety. HTTP 401/403 blocks further network use of that account until successful re-verification clears the runtime-only health state. No persistent attempt ledger, schema migration, intra-Task concurrency, provider-send semantic change, Refrens enablement, Agiled execution, plugin change, Settings control or new UI page is included.
+
+
+## v1.0.0.1.26 P09 CI Verification Correction
+
+GitHub Actions exposed a repository-contract test that directly opened files under the intentionally Git-ignored private `project/` tree. The full baseline ZIP contains those private records, so local/full-baseline audits passed, but a clean public GitHub checkout correctly omits `project/` and the test failed with `FileNotFoundError`.
+
+`v1.0.0.1.26` makes the public tracked `README.md`, `ROADMAP.md`, and P09 release notes the mandatory CI completion records. The richer private `project/` records are still verified when the full private baseline is present. No P09 scheduler, provider, Task, WorkerManager, SQLite, dependency, Settings, page, layout, invoice-send, Refrens, Agiled, plugin, or P10 behavior changes.

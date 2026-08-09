@@ -69,3 +69,8 @@ P08 forensic verification correction. Reclassifies truncated HTTP response bodie
 ## v1.0.0.1.25
 
 P09 production release. Adds deterministic multi-account scheduling safety, Stripe per-account request pacing, runtime-only account/provider health and bounded cooldown, eligible pre-attempt deterministic failover, permanent account-auth suppression, and current-session attempted-recipient cross-account protection. No schema/dependency/UI architecture/P10 behavior change.
+
+
+## v1.0.0.1.26
+
+P09 CI/repository-contract verification correction. Runtime behavior is unchanged from `v1.0.0.1.25` except release/User-Agent markers. The correction removes a public-CI dependency on the intentionally private Git-ignored `project/` tree while retaining optional full-baseline verification of those private records. Production progress remains 9/14 and P10 remains next.

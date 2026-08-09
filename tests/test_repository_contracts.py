@@ -8,19 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v100125(self):
+    def test_release_metadata_is_v100126(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.25"', pyproject)
-        self.assertIn('"version": "1.0.0.1.25"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.25"', project_meta)
-        self.assertIn('"current": "1.0.0.1.25"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.25"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.25', main_window)
-        self.assertIn('Invio/1.0.0.1.25', runtime)
+        self.assertIn('version = "1.0.0.1.26"', pyproject)
+        self.assertIn('"version": "1.0.0.1.26"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.26"', project_meta)
+        self.assertIn('"current": "1.0.0.1.26"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.26"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.26', main_window)
+        self.assertIn('Invio/1.0.0.1.26', runtime)
+
+    def test_release_metadata_is_v100125(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100126()
 
     def test_release_metadata_is_v100123(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -63,12 +67,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.25"', pyproject)
-        self.assertIn('"version": "1.0.0.1.25"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.25"', project_meta)
+        self.assertIn('version = "1.0.0.1.26"', pyproject)
+        self.assertIn('"version": "1.0.0.1.26"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.26"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.25', main_window)
-        self.assertIn('Invio/1.0.0.1.25', runtime)
+        self.assertIn('Production • v1.0.0.1.26', main_window)
+        self.assertIn('Invio/1.0.0.1.26', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -146,16 +150,34 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertEqual(actual_keys, credential_keys)
 
     def test_p09_completion_records_are_synchronized(self):
-        phase_log = (ROOT / "project" / "planning" / "PHASE_COMPLETION_LOG.md").read_text(encoding="utf-8")
-        roadmap = (ROOT / "project" / "planning" / "PRODUCTION_ROADMAP.md").read_text(encoding="utf-8")
-        project_readme = (ROOT / "project" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Production implementation phases complete: **9 / 14**", phase_log)
-        self.assertIn("Production implementation phases remaining: **5 / 14**", phase_log)
-        self.assertIn("Next implementation phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", phase_log)
-        self.assertIn("Production implementation phases complete: **9 / 14**", roadmap)
-        self.assertIn("Production implementation phases remaining: **5 / 14**", roadmap)
-        self.assertIn("Next phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", roadmap)
-        self.assertIn("- P09: COMPLETE", project_readme)
+        public_roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+        public_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        public_release = (ROOT / "docs" / "release-notes" / "1.0.0.1.25.md").read_text(encoding="utf-8")
+        self.assertIn("Production implementation phases: **9 / 14 complete**", public_roadmap)
+        self.assertIn("Next planned phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", public_roadmap)
+        self.assertIn("production progress remains **9/14**", public_readme)
+        self.assertIn("P10 is next", public_readme)
+        self.assertIn("Production progress: **9/14**", public_release)
+        self.assertIn("P10 - Persistent Delivery Ledger, Idempotency and Recovery", public_release)
+
+        # ``project/`` is intentionally Git-ignored private development material.
+        # Validate its richer completion records only when the full private
+        # baseline is present; public CI must never require ignored files.
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            phase_log = (project_root / "planning" / "PHASE_COMPLETION_LOG.md").read_text(encoding="utf-8")
+            roadmap = (project_root / "planning" / "PRODUCTION_ROADMAP.md").read_text(encoding="utf-8")
+            project_readme = (project_root / "README.md").read_text(encoding="utf-8")
+            self.assertIn("Production implementation phases complete: **9 / 14**", phase_log)
+            self.assertIn("Production implementation phases remaining: **5 / 14**", phase_log)
+            self.assertIn(
+                "Next implementation phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**",
+                phase_log,
+            )
+            self.assertIn("Production implementation phases complete: **9 / 14**", roadmap)
+            self.assertIn("Production implementation phases remaining: **5 / 14**", roadmap)
+            self.assertIn("Next phase: **P10 - Persistent Delivery Ledger, Idempotency and Recovery**", roadmap)
+            self.assertIn("- P09: COMPLETE", project_readme)
 
     def test_p05_schema_v4_and_task_snapshot_contract_exist(self):
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
