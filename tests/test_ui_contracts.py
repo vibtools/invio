@@ -354,5 +354,32 @@ class UiContractTests(unittest.TestCase):
         self.assertNotIn("self.thread: QThread", source)
 
 
+    def test_p04_customer_page_and_import_contract_are_customer_aware(self):
+        page = (Path(__file__).resolve().parents[1] / "src" / "ui" / "pages" / "customer_lists_page.py").read_text(encoding="utf-8")
+        main_window = (Path(__file__).resolve().parents[1] / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        importer = (Path(__file__).resolve().parents[1] / "src" / "customers" / "importers" / "email_importer.py").read_text(encoding="utf-8")
+        model = (Path(__file__).resolve().parents[1] / "src" / "customers" / "models" / "customer_list.py").read_text(encoding="utf-8")
+        self.assertIn('["#", "Email", "Name", "Country"]', page)
+        self.assertIn('button("Upload Customers")', page)
+        self.assertIn('import_customers(path)', main_window)
+        self.assertIn('class CustomerRecord', model)
+        self.assertIn('def import_emails', importer)
+        self.assertIn('def import_customers', importer)
+        self.assertNotIn('Only email addresses are stored', page)
+
+    def test_p04_import_passes_source_rows_into_existing_list_merge(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "self.state.add_customers(list_id, imported.records, source_rows=imported.record_rows)",
+            window,
+        )
+
+    def test_p04_verification_restores_out_of_scope_dashboard_label(self):
+        root = Path(__file__).resolve().parents[1]
+        dashboard = (root / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
+        self.assertIn('("customers", "Customer Emails")', dashboard)
+        self.assertNotIn('("customers", "Customers")', dashboard)
+
 if __name__ == "__main__":
     unittest.main()

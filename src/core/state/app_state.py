@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass, field
 from decimal import Decimal
 
 from ...accounts.models import Account
-from ...customers.models import CustomerList
+from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
 from ...tasks.models import Task
 from ..storage import CredentialStore, CredentialStoreError, DomainStore, DomainStoreError, LoadedDomain
@@ -12,6 +13,14 @@ from ..storage import CredentialStore, CredentialStoreError, DomainStore, Domain
 
 class StateError(ValueError):
     pass
+
+
+@dataclass(slots=True)
+class CustomerMergeResult:
+    added: int = 0
+    enriched: int = 0
+    duplicates_skipped: int = 0
+    conflicts: list[str] = field(default_factory=list)
 
 
 class AppState:
@@ -322,27 +331,87 @@ class AppState:
         self.customer_lists[item.id] = item
         return item
 
-    def add_emails(self, list_id: str, emails: list[str]) -> int:
+    def add_customers(
+        self,
+        list_id: str,
+        customers: list[CustomerRecord],
+        *,
+        source_rows: list[int] | tuple[int, ...] | None = None,
+    ) -> CustomerMergeResult:
         customer_list = self.customer_lists.get(list_id)
         if customer_list is None:
             raise StateError("Customer list was not found.")
-        existing = set(customer_list.emails)
-        updated_emails = list(customer_list.emails)
-        added = 0
-        for email in emails:
-            normalized = email.strip().lower()
-            if normalized and normalized not in existing:
-                updated_emails.append(normalized)
-                existing.add(normalized)
-                added += 1
-        if added and self._domain_store is not None:
-            candidate = CustomerList(id=customer_list.id, name=customer_list.name, emails=updated_emails)
+
+        if source_rows is not None and len(source_rows) != len(customers):
+            raise StateError("Customer source-row metadata does not match the imported record count.")
+
+        result = CustomerMergeResult()
+        updated = list(customer_list.customers)
+        index_by_email = {item.email: index for index, item in enumerate(updated)}
+
+        for customer_index, raw in enumerate(customers):
             try:
-                self._domain_store.replace_customer_emails(candidate)
+                incoming = raw if isinstance(raw, CustomerRecord) else CustomerRecord(**raw)  # type: ignore[arg-type]
+            except (TypeError, ValueError) as exc:
+                raise StateError(str(exc)) from exc
+            existing_index = index_by_email.get(incoming.email)
+            if existing_index is None:
+                index_by_email[incoming.email] = len(updated)
+                updated.append(incoming)
+                result.added += 1
+                continue
+
+            current = updated[existing_index]
+            next_name = current.name
+            next_country = current.country
+            changed = False
+            conflicts: list[str] = []
+
+            if incoming.name:
+                if current.name and current.name != incoming.name:
+                    conflicts.append("name")
+                elif not current.name:
+                    next_name = incoming.name
+                    changed = True
+            if incoming.country:
+                if current.country and current.country != incoming.country:
+                    conflicts.append("country")
+                elif not current.country:
+                    next_country = incoming.country
+                    changed = True
+
+            if changed:
+                updated[existing_index] = CustomerRecord(current.email, next_name, next_country)
+                result.enriched += 1
+            elif not conflicts:
+                result.duplicates_skipped += 1
+
+            if conflicts:
+                row_number = source_rows[customer_index] if source_rows is not None else 0
+                row_prefix = f"Row {row_number}: " if row_number > 0 else ""
+                result.conflicts.append(
+                    f"{row_prefix}{incoming.email}: existing {' and '.join(conflicts)} data was kept; "
+                    "imported conflicting data was not applied."
+                )
+
+        if (result.added or result.enriched) and self._domain_store is not None:
+            candidate = CustomerList(id=customer_list.id, name=customer_list.name, customers=updated)
+            try:
+                self._domain_store.replace_customer_records(candidate)
             except DomainStoreError as exc:
                 raise self._persistence_error(exc) from exc
-        customer_list.emails = updated_emails
-        return added
+        if result.added or result.enriched:
+            customer_list.customers = updated
+        return result
+
+    def add_emails(self, list_id: str, emails: list[str]) -> int:
+        """Backward-compatible email-only Customer List append operation."""
+        records: list[CustomerRecord] = []
+        for email in emails:
+            normalized = str(email).strip().lower()
+            if normalized:
+                records.append(CustomerRecord(normalized))
+        return self.add_customers(list_id, records).added
 
     def delete_customer_list(self, list_id: str) -> None:
         if any(task.customer_list_id == list_id for task in self.tasks.values()):
@@ -466,8 +535,8 @@ class AppState:
         customer_list = self.customer_lists.get(customer_list_id)
         if customer_list is None:
             raise StateError("Select a customer list.")
-        if not customer_list.emails:
-            raise StateError("The selected customer list has no email addresses.")
+        if not customer_list.customers:
+            raise StateError("The selected customer list has no customers.")
         invoice_template = self.invoice_templates.get(invoice_template_id)
         if invoice_template is None:
             raise StateError("Select an invoice template.")

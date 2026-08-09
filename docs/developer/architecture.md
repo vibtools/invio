@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.11` preserves the P01/P02 runtime, storage, provider and WorkerManager architecture while retaining the P03 account lifecycle, verification-health persistence and provider-install execution consistency from v1.0.0.1.10 and correcting P03 persistence/recovery safety. No new UI page, provider execution engine, Task thread architecture, Customer contract, or Invoice contract is introduced.
+Invio `v1.0.0.1.14` preserves the verified P01-P04 architecture and applies only the scoped operational-storage/runtime correction described in this release. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, or Refrens production Task runner is introduced.
 
 ## 2. Core Responsibilities
 
@@ -26,7 +26,7 @@ QApplication
   -> CredentialStore(keyring)
   -> DomainStore.load(CredentialStore)
        -> Accounts metadata + protected credentials
-       -> Customer Lists/emails
+       -> Customer Lists/customer records
        -> Invoice Templates/items/terms
        -> Tasks/account selections/reservations
        -> active-state recovery to Stopped
@@ -44,7 +44,7 @@ Examples:
 
 - Add Account: protected credential write -> SQLite account metadata transaction -> in-memory account.
 - Edit Account: durable `Not Verified` safety marker -> protected credential replacement -> verified SQLite candidate; compensation restores prior secret/metadata only when it can do so completely.
-- Customer email import: complete ordered email replacement in one transaction -> in-memory list update.
+- Customer import: complete ordered customer-record replacement in one transaction -> in-memory list update.
 - Invoice Template save: template + items + terms in one transaction -> in-memory template.
 - Task create: Task + ordered selected accounts + account reservations in one transaction -> in-memory Task/reservations.
 - Task close: reservation release + Task deletion in one transaction -> in-memory removal.
@@ -58,7 +58,7 @@ Production backend acceptance is fail-closed: only the approved core OS-protecte
 
 ## 6. Schema / Migration
 
-Current schema version: **2**, tracked by `PRAGMA user_version`. Schema v2 adds only `last_verification_at` and `verification_error_summary` to `accounts`; existing schema-v1 databases migrate transactionally with a pre-migration backup.
+Current schema version: **3**, tracked by `PRAGMA user_version`. Schema v2 added Account verification-health metadata. P04 schema v3 adds optional `name` and `country` columns to the existing `customer_emails` table; existing schema-v2 rows migrate losslessly with blank metadata. All supported migrations use WAL-aware pre-migration backup semantics.
 
 Core tables:
 
@@ -92,7 +92,7 @@ Per-recipient attempts, provider customer/invoice IDs, durable idempotency evide
 
 ## 10. Current Extension Boundary
 
-External provider manifest loading remains metadata-only unless a runner is registered. P02 does not change that provider architecture.
+External provider manifest loading remains metadata-only unless a runner is registered. P04 does not change that provider architecture.
 
 ## v1.0.0.1.9 P02 verification correction
 
@@ -114,3 +114,22 @@ The storage architecture is unchanged from P02. The corrective release only hard
 ## v1.0.0.1.11 P03 verification correction
 
 The architecture remains unchanged. `DomainStore` now creates migration backups through SQLite's backup API so the backup includes committed WAL state, and credential-loss recovery persists the Account's `Not Verified` health state before startup completes. `AppState.update_account()` uses an existing-store fail-closed staging state before protected credentials are replaced, preventing a process interruption or failed compensation from leaving a durable `Verified` row paired with partially changed credentials. No P04 data contract or new service layer is introduced.
+
+
+## 12. P04 Customer Data Contract and Import
+
+- `CustomerRecord` is provider-neutral: mandatory normalized email, optional explicit name, optional explicit uppercase two-letter ASCII country. No name/country inference is performed.
+- `CustomerList.customers` is authoritative; the historical mutable `CustomerList.emails` list behavior is preserved through a customer-record-backed compatibility view/setter.
+- `AppState.add_customers()` performs deterministic merge/enrichment and commits through `DomainStore.replace_customer_records()` before mutating the live list. `add_emails()` remains a compatibility wrapper.
+- Structured CSV/TSV/XLSX/XLSM import is selected only when the first usable row contains an `email` header. TXT and files without that header retain legacy email extraction.
+- SQLite schema v3 preserves the existing `customer_emails` table name/order and adds `name`/`country` metadata.
+- `TaskSnapshot` now carries immutable-in-run `CustomerSnapshot` records plus a backward-compatible `customer_emails` property. This is still a start-time snapshot only; P05 will define/persist the Task-creation execution snapshot.
+- Stripe batch logic remains email-based and unchanged in customer creation/reuse semantics. Refrens data can be supplied explicitly but its Task runner remains disabled until P11.
+
+## 13. v1.0.0.1.13 P04 Verification Correction
+
+No new architectural layer is introduced. `CustomerImportResult` carries source-row metadata alongside accepted records so `AppState.add_customers()` can keep existing-list conflict diagnostics row-aware. The customer model restores mutable-list compatibility for the pre-P04 `emails` surface while keeping `customers` authoritative. Import parser exceptions are normalized at the importer boundary. The unrelated Dashboard label change from v1.0.0.1.12 is reverted to the parent-baseline wording.
+## 14. v1.0.0.1.14 Operational Storage Runtime Hotfix
+
+No architectural layer or schema change is introduced. `DomainStore._create_migration_backup()` continues to use SQLite's live backup API so committed WAL pages are included, but it now explicitly closes the temporary destination connection before `Path.replace()` performs the atomic `.bak.tmp -> .bak` replacement. This is required on Windows because the SQLite connection context manager does not close the underlying file handle on `with` exit. The startup flow, schema v3, AppState/DomainStore/CredentialStore boundaries, ProviderRuntime, and one-QThread-per-active-Task WorkerManager remain unchanged.
+

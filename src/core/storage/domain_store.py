@@ -7,11 +7,11 @@ from decimal import Decimal
 from pathlib import Path
 
 from ...accounts.models import Account
-from ...customers.models import CustomerList
+from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate
 from ...tasks.models import Task
 from .credential_store import CredentialStore, CredentialStoreError
-from .schema import DOMAIN_SCHEMA_VERSION, MIGRATION_V1_TO_V2, SCHEMA_V1
+from .schema import DOMAIN_SCHEMA_VERSION, MIGRATION_V1_TO_V2, MIGRATION_V2_TO_V3, SCHEMA_V1
 
 
 class DomainStoreError(RuntimeError):
@@ -96,7 +96,7 @@ class DomainStore:
             raise DomainStoreError(f"Operational storage could not be initialized: {exc}") from exc
 
     def _migrate(self, connection: sqlite3.Connection, version: int, *, backup_required: bool) -> None:
-        if version not in {0, 1}:
+        if version not in {0, 1, 2}:
             raise DomainStoreMigrationError(f"No migration path exists from schema {version} to {DOMAIN_SCHEMA_VERSION}.")
 
         if version == 0:
@@ -110,22 +110,22 @@ class DomainStore:
                 raise DomainStoreMigrationError(
                     "Operational storage has an unversioned schema and cannot be migrated automatically."
                 )
-            if backup_required and self.path.exists():
-                self._create_migration_backup(0, connection)
-            script = f"BEGIN IMMEDIATE;\n{SCHEMA_V1}\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
-            try:
-                connection.executescript(script)
-            except sqlite3.Error as exc:
-                if connection.in_transaction:
-                    connection.rollback()
-                raise DomainStoreMigrationError(
-                    f"Operational storage migration failed; prior data was preserved: {exc}"
-                ) from exc
-            return
 
         if backup_required and self.path.exists():
-            self._create_migration_backup(1, connection)
-        script = f"BEGIN IMMEDIATE;\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
+            self._create_migration_backup(version, connection)
+
+        scripts: list[str] = []
+        if version == 0:
+            scripts.append(SCHEMA_V1)
+            scripts.append(MIGRATION_V1_TO_V2)
+            scripts.append(MIGRATION_V2_TO_V3)
+        elif version == 1:
+            scripts.append(MIGRATION_V1_TO_V2)
+            scripts.append(MIGRATION_V2_TO_V3)
+        elif version == 2:
+            scripts.append(MIGRATION_V2_TO_V3)
+
+        script = f"BEGIN IMMEDIATE;\n{'\n'.join(scripts)}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
             connection.executescript(script)
         except sqlite3.Error as exc:
@@ -141,8 +141,16 @@ class DomainStore:
         try:
             if temporary.exists():
                 temporary.unlink()
-            with sqlite3.connect(temporary) as destination:
+            destination = sqlite3.connect(temporary)
+            try:
                 source.backup(destination)
+            finally:
+                # sqlite3.Connection's context-manager protocol commits or
+                # rolls back but does not close the connection. On Windows, an
+                # open destination handle prevents replacing the temporary
+                # backup file (WinError 32). Close it explicitly before the
+                # atomic rename.
+                destination.close()
             temporary.replace(backup)
         except (OSError, sqlite3.Error) as exc:
             raise DomainStoreMigrationError(f"Could not create the pre-migration backup: {exc}") from exc
@@ -220,11 +228,18 @@ class DomainStore:
 
                 for row in connection.execute("SELECT id, name FROM customer_lists ORDER BY rowid").fetchall():
                     item = CustomerList(id=str(row["id"]), name=str(row["name"]))
-                    email_rows = connection.execute(
-                        "SELECT email FROM customer_emails WHERE list_id=? ORDER BY ordinal",
+                    customer_rows = connection.execute(
+                        "SELECT email, name, country FROM customer_emails WHERE list_id=? ORDER BY ordinal",
                         (item.id,),
                     ).fetchall()
-                    item.emails = [str(email_row["email"]) for email_row in email_rows]
+                    item.customers = [
+                        CustomerRecord(
+                            email=str(customer_row["email"]),
+                            name=str(customer_row["name"]),
+                            country=str(customer_row["country"]),
+                        )
+                        for customer_row in customer_rows
+                    ]
                     loaded.customer_lists[item.id] = item
 
                 for row in connection.execute("SELECT * FROM invoice_templates ORDER BY rowid").fetchall():
@@ -413,14 +428,21 @@ class DomainStore:
     def create_customer_list(self, item: CustomerList) -> None:
         self._transaction(lambda connection: connection.execute("INSERT INTO customer_lists (id, name) VALUES (?, ?)", (item.id, item.name)))
 
-    def replace_customer_emails(self, item: CustomerList) -> None:
+    def replace_customer_records(self, item: CustomerList) -> None:
         def write(connection: sqlite3.Connection) -> None:
             connection.execute("DELETE FROM customer_emails WHERE list_id=?", (item.id,))
             connection.executemany(
-                "INSERT INTO customer_emails (list_id, ordinal, email) VALUES (?, ?, ?)",
-                [(item.id, ordinal, email) for ordinal, email in enumerate(item.emails)],
+                "INSERT INTO customer_emails (list_id, ordinal, email, name, country) VALUES (?, ?, ?, ?, ?)",
+                [
+                    (item.id, ordinal, customer.email, customer.name, customer.country)
+                    for ordinal, customer in enumerate(item.customers)
+                ],
             )
         self._transaction(write)
+
+    def replace_customer_emails(self, item: CustomerList) -> None:
+        """Backward-compatible email-only persistence wrapper."""
+        self.replace_customer_records(item)
 
     def delete_customer_list(self, list_id: str) -> None:
         self._transaction(lambda connection: connection.execute("DELETE FROM customer_lists WHERE id=?", (list_id,)))

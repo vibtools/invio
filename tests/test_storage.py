@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import closing
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from src.accounts.models import Account
@@ -15,9 +16,9 @@ from src.core.storage import (
     DomainStoreCorruptionError,
     DomainStoreMigrationError,
 )
-from src.customers.models import CustomerList
+from src.customers.models import CustomerList, CustomerRecord
 from src.tasks.models import Task
-from src.core.storage.schema import SCHEMA_V1
+from src.core.storage.schema import MIGRATION_V1_TO_V2, SCHEMA_V1
 
 
 class FakeKeyring:
@@ -93,7 +94,7 @@ class P02StorageTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        self.assertEqual(version, 2)
+        self.assertEqual(version, 3)
         self.assertIn("accounts", tables)
         self.assertIn("tasks", tables)
         self.assertIn("account_reservations", tables)
@@ -317,10 +318,58 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v1.sqlite3.pre_migration_v1.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
             columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
         self.assertIn("last_verification_at", columns)
         self.assertIn("verification_error_summary", columns)
+
+    def test_migration_backup_closes_destination_before_atomic_replace(self):
+        legacy = self.root / "windows_lock_v1.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+
+        source = sqlite3.connect(legacy)
+        store = object.__new__(DomainStore)
+        store.path = legacy
+        real_connect = sqlite3.connect
+        tracked: dict[str, object] = {}
+
+        class TrackingConnection(sqlite3.Connection):
+            explicitly_closed = False
+
+            def close(self):
+                self.explicitly_closed = True
+                return super().close()
+
+        def connect_tracking(database, *args, **kwargs):
+            if Path(database).name.endswith(".tmp"):
+                connection = real_connect(database, *args, factory=TrackingConnection, **kwargs)
+                tracked["destination"] = connection
+                return connection
+            return real_connect(database, *args, **kwargs)
+
+        real_replace = Path.replace
+
+        def replace_only_after_close(path_self, target):
+            destination = tracked.get("destination")
+            self.assertIsNotNone(destination)
+            self.assertTrue(
+                getattr(destination, "explicitly_closed", False),
+                "Migration backup destination must be closed before atomic replacement on Windows.",
+            )
+            return real_replace(path_self, target)
+
+        try:
+            with mock.patch("src.core.storage.domain_store.sqlite3.connect", side_effect=connect_tracking), \
+                 mock.patch.object(Path, "replace", new=replace_only_after_close):
+                store._create_migration_backup(1, source)
+        finally:
+            source.close()
+
+        backup = legacy.with_name("windows_lock_v1.sqlite3.pre_migration_v1.bak")
+        self.assertTrue(backup.exists())
 
     def test_schema_v1_backup_includes_committed_wal_state(self):
         legacy = self.root / "legacy_v1_wal.sqlite3"
@@ -626,7 +675,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy.sqlite3.pre_migration_v0.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
 
     def test_unversioned_unknown_schema_is_rejected_without_replacement(self):
         legacy = self.root / "unknown.sqlite3"
@@ -679,6 +728,98 @@ class P02StorageTests(unittest.TestCase):
         with self.assertRaises(DomainStoreCorruptionError):
             DomainStore(corrupt)
         self.assertEqual(corrupt.read_bytes(), original)
+
+
+    def test_customer_record_round_trip_preserves_order_and_metadata(self):
+        state = self.state()
+        item = state.create_customer_list("Structured")
+        state.add_customers(item.id, [
+            CustomerRecord("one@example.com", "One", "US"),
+            CustomerRecord("two@example.com", "", "BD"),
+        ])
+        loaded = self.store.load(self.credentials)
+        restored = loaded.customer_lists[item.id]
+        self.assertEqual(
+            [(record.email, record.name, record.country) for record in restored.customers],
+            [("one@example.com", "One", "US"), ("two@example.com", "", "BD")],
+        )
+
+    def test_schema_v2_migrates_to_v3_and_preserves_email_rows_with_blank_metadata(self):
+        legacy = self.root / "legacy_v2.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.executescript(MIGRATION_V1_TO_V2)
+            connection.execute("INSERT INTO customer_lists (id, name) VALUES ('list_old', 'Old')")
+            connection.execute(
+                "INSERT INTO customer_emails (list_id, ordinal, email) VALUES ('list_old', 0, 'old@example.com')"
+            )
+            connection.execute("PRAGMA user_version = 2")
+            connection.commit()
+        DomainStore(legacy)
+        backup = legacy.with_name("legacy_v2.sqlite3.pre_migration_v2.bak")
+        self.assertTrue(backup.exists())
+        with closing(sqlite3.connect(legacy)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 3)
+            row = connection.execute(
+                "SELECT email, name, country FROM customer_emails WHERE list_id='list_old'"
+            ).fetchone()
+        self.assertEqual(row, ("old@example.com", "", ""))
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(customer_emails)").fetchall()}
+        self.assertNotIn("name", columns)
+        self.assertNotIn("country", columns)
+
+    def test_customer_record_persistence_failure_keeps_prior_list_unchanged(self):
+        state = self.state()
+        item = state.create_customer_list("Atomic")
+        state.add_customers(item.id, [CustomerRecord("one@example.com", "One", "US")])
+        original = self.store.replace_customer_records
+
+        def fail(*_args, **_kwargs):
+            from src.core.storage import DomainStoreError
+            raise DomainStoreError("forced customer write failure")
+
+        self.store.replace_customer_records = fail  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced customer write failure"):
+                state.add_customers(item.id, [CustomerRecord("two@example.com", "Two", "GB")])
+        finally:
+            self.store.replace_customer_records = original  # type: ignore[method-assign]
+        self.assertEqual([(r.email, r.name, r.country) for r in item.customers], [("one@example.com", "One", "US")])
+        loaded = self.store.load(self.credentials)
+        self.assertEqual(loaded.customer_lists[item.id].emails, ["one@example.com"])
+
+
+    def test_schema_v2_backup_includes_committed_wal_customer_state(self):
+        legacy = self.root / "legacy_v2_wal.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.executescript(MIGRATION_V1_TO_V2)
+            connection.execute("PRAGMA user_version = 2")
+            connection.commit()
+
+        writer = sqlite3.connect(legacy)
+        try:
+            writer.execute("PRAGMA journal_mode = WAL")
+            writer.execute("PRAGMA wal_autocheckpoint = 0")
+            writer.execute("INSERT INTO customer_lists (id, name) VALUES ('list_wal', 'WAL Customers')")
+            writer.execute(
+                "INSERT INTO customer_emails (list_id, ordinal, email) VALUES ('list_wal', 0, 'wal@example.com')"
+            )
+            writer.commit()
+            self.assertTrue(Path(f"{legacy}-wal").exists())
+            DomainStore(legacy)
+        finally:
+            writer.close()
+
+        backup = legacy.with_name("legacy_v2_wal.sqlite3.pre_migration_v2.bak")
+        with closing(sqlite3.connect(backup)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            self.assertEqual(
+                connection.execute("SELECT email FROM customer_emails WHERE list_id='list_wal'").fetchone()[0],
+                "wal@example.com",
+            )
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from ...accounts.models import Account
+from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
 from ...tasks.models import Task
 from ..state import AppState
@@ -35,13 +36,52 @@ class AccountSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class CustomerSnapshot:
+    email: str
+    name: str = ""
+    country: str = ""
+
+    @classmethod
+    def from_record(cls, record: CustomerRecord) -> "CustomerSnapshot":
+        return cls(record.email, record.name, record.country)
+
+
+@dataclass(frozen=True, slots=True, init=False)
 class TaskSnapshot:
     task_id: str
     task_name: str
     provider_id: str
     accounts: tuple[AccountSnapshot, ...]
-    customer_emails: tuple[str, ...]
+    customers: tuple[CustomerSnapshot, ...]
     template: InvoiceTemplate
+
+    def __init__(
+        self,
+        task_id: str,
+        task_name: str,
+        provider_id: str,
+        accounts: tuple[AccountSnapshot, ...],
+        customer_emails: tuple[str, ...] | None,
+        template: InvoiceTemplate,
+        *,
+        customers: tuple[CustomerSnapshot, ...] | None = None,
+    ) -> None:
+        if customers is not None and customer_emails is not None:
+            raise ValueError("Provide customers or customer_emails, not both.")
+        resolved = customers
+        if resolved is None:
+            resolved = tuple(CustomerSnapshot(email=email) for email in (customer_emails or ()))
+        object.__setattr__(self, "task_id", task_id)
+        object.__setattr__(self, "task_name", task_name)
+        object.__setattr__(self, "provider_id", provider_id)
+        object.__setattr__(self, "accounts", accounts)
+        object.__setattr__(self, "customers", tuple(resolved))
+        object.__setattr__(self, "template", template)
+
+    @property
+    def customer_emails(self) -> tuple[str, ...]:
+        """Backward-compatible email view used by the unchanged Stripe engine."""
+        return tuple(customer.email for customer in self.customers)
 
 
 @dataclass(slots=True)
@@ -143,7 +183,7 @@ class ProviderRuntime:
     """Built-in execution adapters for packaged invoice providers.
 
     Each call to ``make_task_runner`` snapshots the selected accounts, template,
-    and customer emails on the GUI thread. The returned runner performs network
+    and provider-neutral customer records on the GUI thread. The returned runner performs network
     work only inside the task-owned worker thread created by ``WorkerManager``.
     """
 
@@ -189,15 +229,12 @@ class ProviderRuntime:
     def make_task_runner(self, task: Task, state: AppState, *, retry_failed: bool = False) -> Callable[[Any], None]:
         snapshot = self._snapshot(task, state)
         if snapshot.provider_id == "refrens":
-            # Refrens' documented create-invoice contract requires both a billed
-            # customer name and ISO country. Invio's approved Customer List model
-            # currently stores email only. Guessing a country would create
-            # incorrect billing data, so execution is blocked before any invoice
-            # is created. The REST adapter remains implemented and testable for a
-            # future owner-approved customer-data extension.
+            # P04 stores explicit provider-neutral customer name/country data, but
+            # the approved Refrens production Task runner remains a later P11
+            # phase. Keep this fail-closed gate until that pipeline is approved.
             raise ProviderRuntimeError(
-                "Refrens requires billedTo.country for each invoice, but the current Customer List stores email addresses only. "
-                "Invio will not guess customer billing data; no Refrens invoice was created or sent."
+                "Refrens customer name/country data can be stored explicitly, but the Refrens production Task runner "
+                "is not enabled until the approved P11 pipeline is implemented. No Refrens invoice was created or sent."
             )
         if snapshot.provider_id != "stripe":
             raise ProviderRuntimeError("No built-in task runner is available for this provider.")
@@ -220,8 +257,8 @@ class ProviderRuntime:
         if template is None:
             raise ProviderRuntimeError("The invoice template assigned to this task no longer exists.")
         customer_list = state.customer_lists.get(task.customer_list_id)
-        if customer_list is None or not customer_list.emails:
-            raise ProviderRuntimeError("The customer list assigned to this task has no email addresses.")
+        if customer_list is None or not customer_list.customers:
+            raise ProviderRuntimeError("The customer list assigned to this task has no customers.")
 
         accounts: list[AccountSnapshot] = []
         for account_id in task.account_ids:
@@ -239,8 +276,9 @@ class ProviderRuntime:
             task_name=task.name,
             provider_id=task.provider_id,
             accounts=tuple(accounts),
-            customer_emails=tuple(customer_list.emails),
+            customer_emails=None,
             template=copy.deepcopy(template),
+            customers=tuple(CustomerSnapshot.from_record(customer) for customer in customer_list.customers),
         )
 
     def _run_stripe_batch(
@@ -443,7 +481,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.11 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.14 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -482,7 +520,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.11 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.14 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -501,12 +539,12 @@ class ProviderRuntime:
     ) -> dict[str, Any]:
         """Build a documented Refrens payload when required customer data exists.
 
-        The current Invio Customer List does not yet provide ``customer_country``;
-        this method exists so the provider adapter is complete and contract-testable
-        without inventing billing data.
+        P04 Customer Lists can provide explicit ``customer_country`` and optional
+        name data. This helper remains contract-testable while the production
+        Refrens Task runner itself stays disabled until P11.
         """
         country = customer_country.strip().upper()
-        if len(country) != 2 or not country.isalpha():
+        if len(country) != 2 or not country.isascii() or not country.isalpha():
             raise ProviderRuntimeError("Refrens customer country must be an ISO 3166-1 alpha-2 code.")
         email = customer_email.strip().lower()
         if not email:

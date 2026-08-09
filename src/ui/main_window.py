@@ -31,7 +31,7 @@ from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowS
 from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
-from ..customers.importers import import_emails
+from ..customers.importers import import_customers
 from .dialogs import AccountRetestDialog, AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
 from .pages import (
     AccountsPage,
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.11 started.")
+        self.log("Invio v1.0.0.1.14 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -219,7 +219,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.11")
+        self.runtime_status = QLabel("Production • v1.0.0.1.14")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -627,12 +627,13 @@ class MainWindow(QMainWindow):
         self._refresh_dashboard()
 
     def import_customer_emails(self, list_id: str) -> None:
+        """Import customer data while preserving the historical callback name."""
         customer_list = self.state.customer_lists.get(list_id)
         if not customer_list:
             return
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Upload Customer Emails",
+            "Upload Customers",
             self._dialog_directory(),
             "Customer Files (*.csv *.tsv *.xlsx *.xlsm *.txt);;All Files (*)",
         )
@@ -640,16 +641,38 @@ class MainWindow(QMainWindow):
             return
         self._remember_dialog_path(path)
         try:
-            emails, warnings = import_emails(path)
-            added = self.state.add_emails(list_id, emails)
+            imported = import_customers(path)
+            merged = self.state.add_customers(list_id, imported.records, source_rows=imported.record_rows)
         except (OSError, ValueError, StateError) as exc:
             self._message("Customer List", f"Import failed: {exc}", QMessageBox.Icon.Warning)
             return
-        self.log(f"Imported {added} email(s) into customer list '{customer_list.name}'.")
+
+        invalid_count = len(imported.issues)
+        conflict_count = len(merged.conflicts)
+        duplicate_count = imported.duplicates_skipped + merged.duplicates_skipped
+        self.log(
+            f"Customer import for '{customer_list.name}': added={merged.added}, enriched={merged.enriched}, "
+            f"duplicates={duplicate_count}, invalid/conflict={invalid_count + conflict_count}."
+        )
         self.customer_page.refresh(list_id)
         self._refresh_dashboard()
-        if warnings:
-            self._message("Customer List", "\n".join(warnings), QMessageBox.Icon.Warning)
+
+        summary = [
+            f"Added: {merged.added}",
+            f"Enriched: {merged.enriched}",
+            f"Duplicates skipped: {duplicate_count}",
+            f"Invalid/conflicting rows: {invalid_count + conflict_count}",
+        ]
+        issue_lines = [issue.display() for issue in imported.issues] + merged.conflicts
+        if issue_lines:
+            preview_limit = 8
+            summary.append("")
+            summary.extend(issue_lines[:preview_limit])
+            remaining = len(issue_lines) - preview_limit
+            if remaining > 0:
+                summary.append(f"... and {remaining} more issue(s).")
+        icon = QMessageBox.Icon.Warning if issue_lines else QMessageBox.Icon.Information
+        self._message("Customer Import", "\n".join(summary), icon)
 
     def delete_customer_list(self, list_id: str) -> None:
         item = self.state.customer_lists.get(list_id)

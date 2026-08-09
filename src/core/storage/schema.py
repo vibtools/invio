@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DOMAIN_SCHEMA_VERSION = 2
+DOMAIN_SCHEMA_VERSION = 3
 
 SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -93,6 +93,11 @@ CREATE TABLE IF NOT EXISTS account_reservations (
 MIGRATION_V1_TO_V2 = """
 ALTER TABLE accounts ADD COLUMN last_verification_at TEXT NOT NULL DEFAULT '';
 ALTER TABLE accounts ADD COLUMN verification_error_summary TEXT NOT NULL DEFAULT '';
+"""
+
+MIGRATION_V2_TO_V3 = """
+ALTER TABLE customer_emails ADD COLUMN name TEXT NOT NULL DEFAULT '';
+ALTER TABLE customer_emails ADD COLUMN country TEXT NOT NULL DEFAULT '';
 """
 
 APPLICATION_TABLES = {

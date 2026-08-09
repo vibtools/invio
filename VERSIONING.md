@@ -18,3 +18,7 @@ Invio release versions are controlled by Vib Tools. Every approved update freeze
 - `v1.0.0.1.11`: P03 verification/corrective release; makes schema-migration backups WAL-aware, persists credential-loss verification downgrades, and hardens cross-store Account Edit recovery to remain fail-closed.
 
 Future version changes require a new explicit scope lock. No unapproved feature or architecture change is included in a release delta.
+
+- `v1.0.0.1.12`: P04 customer data/import release; adds backward-compatible email/name/country customer records, schema v3, structured validation/duplicate handling and customer-aware runtime snapshots without enabling Refrens Task sending.
+- `v1.0.0.1.13`: P04 verification/correction release; restores mutable `CustomerList.emails` compatibility, row-numbered existing-list conflicts, ASCII two-letter country validation, malformed-file error containment, and pre-P04 Dashboard label scope fidelity.
+- `v1.0.0.1.14`: Windows operational-storage/runtime hotfix; explicitly closes the temporary SQLite migration-backup connection before atomic replacement, preventing the self-inflicted `WinError 32` startup failure while keeping schema v3 and P01-P04 behavior unchanged.

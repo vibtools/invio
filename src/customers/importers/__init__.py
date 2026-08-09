@@ -1,3 +1,3 @@
-from .email_importer import import_emails
+from .email_importer import CustomerImportIssue, CustomerImportResult, import_customers, import_emails
 
-__all__ = ["import_emails"]
+__all__ = ["CustomerImportIssue", "CustomerImportResult", "import_customers", "import_emails"]

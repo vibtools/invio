@@ -16,6 +16,12 @@ Its non-sensitive metadata was loaded from SQLite but the protected credential e
 
 Invio does not silently replace a corrupt, unsupported, or newer `domain.sqlite3`. Keep the database file for forensic/recovery work. Correct the underlying file/storage/version issue before reopening. An existing v0 database is backed up before the supported v0->v1 migration.
 
+## Windows startup reports `WinError 32` for `pre_migration_*.bak.tmp`
+
+This was a self-lock in the migration-backup implementation through `v1.0.0.1.13`: the temporary SQLite backup connection was still open when Windows was asked to rename `.bak.tmp` to `.bak`. `v1.0.0.1.14` explicitly closes that connection before the atomic replacement. Apply the `v1.0.0.1.14` patch and restart Invio.
+
+If the same file-lock error still appears on `v1.0.0.1.14`, another process or security/indexing tool may actually be holding the backup path. Close other Invio instances and any tool directly accessing the Invio operational-storage files before retrying. Do not delete or overwrite `domain.sqlite3` as a first response.
+
 ## A Task was Running before restart but is now Stopped
 
 Expected P02 behavior. Worker threads do not survive process restart, so `Running`, `Paused`, and `Stopping` tasks are recovered as **Stopped** and are not automatically resumed.
@@ -28,10 +34,14 @@ Expected while the owning Task remains open. P02 restores reservations. Close th
 
 Stripe/Refrens API Test performs real provider connection/permission requests. Correct credentials/mode and retry. Providers without an executable API-test adapter cannot become Task-ready.
 
-## Refrens Task is blocked with `billedTo.country`
+## Refrens Task is blocked even though name/country are imported
 
-Expected. P02 does not change the email-only Customer List contract or guess required billing country.
+Expected in P04. Customer Lists can now store explicit Refrens-required name/country data, but the production Refrens Task runner is still intentionally disabled until P11. Invio never guesses country.
 
 ## Invoice Template dialog does not fit the display
 
 The editor remains compact and internally scrollable; P02 does not change its UI geometry.
+
+## Customer import says the workbook cannot be read
+
+The selected XLSX/XLSM file is malformed, damaged, mislabeled, or not a valid workbook. Invio reports this as a Customer Import error and does not modify the existing Customer List. Re-export the file as a valid supported workbook and retry.

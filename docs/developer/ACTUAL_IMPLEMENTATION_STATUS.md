@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.11`  
-**Completed production phases:** P01, P02, P03  
+**Baseline:** `Invio v1.0.0.1.14`  
+**Completed production phases:** P01, P02, P03, P04  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -13,11 +13,11 @@
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
 | Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute provider code |
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
-| Refrens normal Task sending | BLOCKED | Current email-only customer contract cannot supply required country |
+| Refrens normal Task sending | BLOCKED | P04 can store explicit name/country, but the production Refrens Task runner remains P11 |
 | Real Add Account API Test | WORKING | P01 real Stripe/Refrens verification on a dedicated dialog `QThread` |
-| Durable Accounts metadata | WORKING | SQLite schema v2 restores IDs/provider/name/mode/status/verification health/credential reference |
+| Durable Accounts metadata | WORKING | Current SQLite schema v3 restores IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
-| Durable Customer Lists | WORKING | Lists and ordered email addresses restore after restart |
+| Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
 | Durable Tasks/reservations | WORKING | Task metadata, ordered accounts, counters/message and reservations restore |
 | Active-task restart recovery | WORKING | Running/Paused/Stopping recover as existing `Stopped`; no auto-resume/send |
@@ -47,7 +47,7 @@
 - Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
 - Template parent/items/terms and customer email replacement are committed transactionally.
 - Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
-- Existing empty schema-v0 databases are backed up before migration through schema v1 to current schema v2; existing schema-v1 databases receive a dedicated pre-migration backup before v2 upgrade.
+- Existing empty schema-v0 databases are backed up before migration through schema v1/v2 to current schema v3; existing schema-v1/v2 databases receive dedicated WAL-aware pre-migration backups before upgrade.
 - Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
 - Previously active Tasks are not automatically resumed after process restart.
 - Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
@@ -56,7 +56,7 @@
 
 - No per-recipient delivery ledger, remote provider reconciliation, persisted provider customer/invoice IDs or persistent Retry Failed recipient set. These remain P10.
 - Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
-- No Customer model name/country expansion. P04.
+- Customer record name/country expansion is **WORKING in P04**; no billing/shipping/payment expansion was added.
 - No immutable Task execution snapshot. P05.
 - No provider capability preflight. P06.
 - No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
@@ -93,7 +93,7 @@
 
 ### REMAINING
 
-- Customer Lists remain email-only and live-mutable after Task creation. P04/P05.
+- Customer Lists now carry email + optional explicit name/country. They remain live-mutable after Task creation; immutable execution inputs remain P05.
 - Bound Invoice Templates remain editable and runtime uses current template at Start/Retry. P05.
 - Completed/Failed full-Start resend semantics remain unchanged. P07.
 - Retry Failed remains process-memory only. P10.
@@ -113,4 +113,25 @@ P01/P02/P03 unit/contract/source audits verify the implemented local contracts. 
 
 **WORKING:** migration backups now include committed WAL state; startup credential-loss recovery durably keeps the Account `Not Verified` even if the protected secret later becomes readable again; Account Edit stages a durable fail-closed state before changing protected credentials and keeps runtime/durable state non-executable when compensation cannot restore the prior secret/metadata.
 
-**UNCHANGED:** P03 remains 3/14 production phases complete; P04-P14 remain pending.
+**UNCHANGED by the v1.0.0.1.11 corrective release:** P03 remained 3/14 at that historical point.
+
+
+## v1.0.0.1.12 P04 Customer Data Contract
+
+**WORKING:** `CustomerRecord` stores mandatory normalized email plus optional explicit name and uppercase two-letter ASCII country. Existing `CustomerList.emails`, `AppState.add_emails()` and `import_emails()` remain backward-compatible. Structured CSV/TSV/XLSX/XLSM imports recognize `email`, `name`, `country`; legacy files without an `email` header and TXT retain email extraction. Invalid structured rows, malformed import files, same-file conflicts, and existing-list metadata conflicts are reported; existing blank metadata can be enriched without silently overwriting nonblank values. SQLite schema v3 persists ordered records and migrates schema-v2 email rows with blank metadata. Task runtime snapshots carry customer records while Stripe execution continues to use email exactly as before.
+
+**BLOCKED/REMAINING:** Refrens production Task execution remains P11. Customer Lists remain mutable after Task creation until P05. Manual per-record edit/delete UI, billing/shipping/payment fields, recipient delivery ledger, retry/rate-limit work and live certification are not part of P04.
+
+**Production progress:** 4/14 phases complete. Next separately approved phase: P05.
+
+## v1.0.0.1.13 P04 Verification Correction
+
+**WORKING:** mutable `CustomerList.emails` compatibility is restored; import records retain source-row metadata through existing-list conflict reporting; country rejects non-ASCII two-letter lookalikes; malformed workbook/parser failures are contained in the import error boundary; the unrelated Dashboard label is restored to its pre-P04 wording.
+
+**Production progress:** unchanged at 4/14 phases complete. P05 remains next and is not implemented here.
+## v1.0.0.1.14 Operational Storage Runtime Hotfix
+
+**WORKING:** the supported SQLite migration path still creates a WAL-aware pre-migration backup, and the temporary destination database is now explicitly closed before its atomic rename. This corrects the Windows `WinError 32` startup failure reproduced from the supplied screenshot.
+
+**UNCHANGED:** schema v3, protected credentials, startup recovery semantics, ProviderRuntime send/API-test logic, WorkerManager, Customer/Invoice/Task/Account contracts and the 4/14 production-phase status. P05 is not implemented by this hotfix.
+

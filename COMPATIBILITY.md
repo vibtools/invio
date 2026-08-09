@@ -14,3 +14,15 @@ No schema version, dependency, provider ID, credential field, UI page, Task mode
 ## v1.0.0.1.10 P03
 
 Existing schema-v1 operational databases migrate transactionally to schema v2 with a pre-migration backup. Existing provider IDs, credential field keys, Account IDs, Task IDs, Customer Lists, Invoice Templates, WorkerManager behavior, and supported desktop platforms are unchanged. P03 adds no dependency.
+
+## v1.0.0.1.12 P04
+
+No platform, Python, PySide6, openpyxl, keyring, provider ID, credential field, WorkerManager architecture, or dependency requirement changes are introduced. SQLite advances from schema v2 to v3 by adding optional customer `name` and `country` columns to the existing ordered `customer_emails` table. Existing email-only rows migrate with blank metadata, so Stripe-compatible legacy lists remain usable without conversion.
+
+## v1.0.0.1.13 P04 Verification Correction
+
+No platform, Python, PySide6, openpyxl, keyring, provider ID, credential field, WorkerManager/ProviderManager architecture, schema version, or dependency requirement changes are introduced. The pre-P04 `CustomerList.emails` attribute was a mutable `list`; v1.0.0.1.13 restores in-place list mutation compatibility while keeping customer records authoritative. Structured/legacy import formats and Stripe email-only execution remain unchanged.
+## v1.0.0.1.14 Windows Operational Storage Runtime Hotfix
+
+No platform target, Python/PySide6/openpyxl/keyring requirement, SQLite schema version, provider ID, credential field, UI page, WorkerManager/ProviderManager architecture or provider execution contract changes are introduced. The migration backup destination connection is now explicitly closed before the temporary backup file is atomically replaced. This removes the Windows file-handle self-lock that could raise `WinError 32` during schema migration. SQLite remains schema v3 and continues to use the live backup API so committed WAL state is included.
+

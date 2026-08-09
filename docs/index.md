@@ -1,12 +1,12 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.11**.
+Current version: **v1.0.0.1.14**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
 **Provider -> Verified Account(s) -> Invoice Template -> Customer List -> Task -> Provider Runtime -> Reports/Live Logs**
 
-P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials without adding a new UI page.
+P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials. P04 adds backward-compatible customer records and structured import; v1.0.0.1.13 verifies/corrects P04 compatibility and import-error boundaries. v1.0.0.1.14 adds only the Windows migration-backup handle-lifecycle hotfix and preserves the existing page inventory.
 
 Use these documents:
 
@@ -20,7 +20,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.11.md` - current release.
+- `release-notes/1.0.0.1.14.md` - current release.
+- `release-notes/1.0.0.1.12.md` - original P04 feature release.
 - `release-notes/1.0.0.1.9.md` - P02 corrective release.
 
 Detailed forensic reports, phase roadmap, phase completion ledger and update protocol are private records under `project/`.

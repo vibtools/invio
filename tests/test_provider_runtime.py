@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
 from src.core.provider_runtime import ProviderRuntime, ProviderRuntimeError
+from src.customers.models import CustomerRecord
 from src.core.state import AppState
 
 
@@ -139,6 +140,9 @@ class ProviderRuntimeTests(unittest.TestCase):
         self.assertIn("/v1/invoiceitems", paths)
         self.assertIn("/v1/invoices/in_1/finalize", paths)
         self.assertIn("/v1/invoices/in_1/send", paths)
+        customer_call = next(call for call in calls if call[0] == "POST" and urlparse(call[1]).path == "/v1/customers")
+        customer_form = parse_qs((customer_call[3] or b"").decode("utf-8"))
+        self.assertEqual(customer_form, {"email": ["customer@example.com"]})
         invoice_call = next(call for call in calls if call[0] == "POST" and urlparse(call[1]).path == "/v1/invoices")
         invoice_form = parse_qs((invoice_call[3] or b"").decode("utf-8"))
         self.assertEqual(invoice_form["currency"], ["usd"])
@@ -263,10 +267,74 @@ class ProviderRuntimeTests(unittest.TestCase):
         )
         task = state.create_task("refrens", "Refrens", [account.id], customer_list.id, template.id)
         runtime = ProviderRuntime(transport=lambda *args: called.append(args) or {})
-        with self.assertRaisesRegex(ProviderRuntimeError, r"billedTo\.country"):
+        with self.assertRaisesRegex(ProviderRuntimeError, r"P11"):
             runtime.make_task_runner(task, state)
         self.assertEqual(called, [])
 
+
+    def test_task_snapshot_carries_customer_records_while_stripe_email_view_is_unchanged(self):
+        state, task = self._stripe_state()
+        customer_list = state.customer_lists[task.customer_list_id]
+        state.add_customers(
+            customer_list.id,
+            [CustomerRecord("customer@example.com", "Explicit Name", "US")],
+        )
+        snapshot = ProviderRuntime._snapshot(task, state)
+        self.assertEqual(snapshot.customer_emails, ("customer@example.com",))
+        self.assertEqual(snapshot.customers[0].name, "Explicit Name")
+        self.assertEqual(snapshot.customers[0].country, "US")
+
+    def test_refrens_task_runner_remains_disabled_even_when_explicit_customer_data_exists(self):
+        called = []
+        state = AppState()
+        account = state.add_account(
+            "refrens",
+            "Refrens",
+            "Primary",
+            "Live",
+            {"base_url": "https://api.refrens.com", "url_key": "biz", "app_id": "app", "app_secret": "secret"},
+            status="Verified",
+        )
+        customer_list = state.create_customer_list("Customers")
+        state.add_customers(customer_list.id, [CustomerRecord("a@example.com", "Alice", "BD")])
+        template = state.save_invoice_template(
+            template_id=None,
+            name="Invoice",
+            currency="USD",
+            days_until_due=7,
+            memo="",
+            footer="",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Service", "1", "10", "0")],
+        )
+        task = state.create_task("refrens", "Refrens", [account.id], customer_list.id, template.id)
+        runtime = ProviderRuntime(transport=lambda *args: called.append(args) or {})
+        with self.assertRaisesRegex(ProviderRuntimeError, r"P11"):
+            runtime.make_task_runner(task, state)
+        self.assertEqual(called, [])
+
+    def test_task_snapshot_preserves_old_positional_email_constructor(self):
+        from src.core.provider_runtime import AccountSnapshot, TaskSnapshot
+        state, task = self._stripe_state()
+        template = state.invoice_templates[task.invoice_template_id]
+        snapshot = TaskSnapshot(
+            task.id, task.name, task.provider_id,
+            (AccountSnapshot("acct", "A", "Test", {}),),
+            ("legacy@example.com",), template,
+        )
+        self.assertEqual(snapshot.customer_emails, ("legacy@example.com",))
+        self.assertEqual(snapshot.customers[0].name, "")
+        self.assertEqual(snapshot.customers[0].country, "")
+
+    def test_refrens_country_rejects_non_ascii_two_letter_values(self):
+        state, task = self._stripe_state()
+        template = state.invoice_templates[task.invoice_template_id]
+        runtime = ProviderRuntime(transport=lambda *_args: {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "ISO 3166-1 alpha-2"):
+            runtime.build_refrens_invoice_payload(
+                template, customer_email="a@example.com", customer_country="éé"
+            )
 
 if __name__ == "__main__":
     unittest.main()

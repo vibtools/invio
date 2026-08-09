@@ -36,37 +36,45 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "src" / "core" / "settings" / "manager.py").is_file())
         self.assertTrue((ROOT / "src" / "core" / "settings" / "__init__.py").is_file())
 
-    def test_release_metadata_is_v100111(self):
+    def test_release_metadata_is_v100114(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.11"', pyproject)
-        self.assertIn('"version": "1.0.0.1.11"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.11"', project_meta)
+        self.assertIn('version = "1.0.0.1.14"', pyproject)
+        self.assertIn('"version": "1.0.0.1.14"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.14"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.11', main_window)
-        self.assertIn('Invio/1.0.0.1.11', runtime)
+        self.assertIn('Production • v1.0.0.1.14', main_window)
+        self.assertIn('Invio/1.0.0.1.14', runtime)
+
+    def test_release_metadata_is_v100113(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100114()
+
+    def test_release_metadata_is_v100111(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100114()
 
     def test_release_metadata_is_v100110(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100111()
+        self.test_release_metadata_is_v100114()
 
     def test_release_metadata_is_v10019(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100111()
+        self.test_release_metadata_is_v100114()
 
     def test_release_metadata_is_v10018(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100111()
+        self.test_release_metadata_is_v100114()
 
     def test_release_metadata_is_v10017(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100111()
+        self.test_release_metadata_is_v100114()
 
     def test_release_metadata_is_v10014(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v100111()
+        self.test_release_metadata_is_v100114()
 
     def test_p02_storage_package_and_keyring_dependency_exist(self):
         storage_dir = ROOT / "src" / "core" / "storage"

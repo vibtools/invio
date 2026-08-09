@@ -41,4 +41,4 @@ Provider/account country rules can further restrict which currencies a specific 
 
 ### Refrens
 
-The adapter supports invoice title, subtitle, type, currency, due date, notes, terms, line quantity/rate, and line tax rate. Refrens also requires customer billing identity/country. Because current Customer Lists contain email only, Refrens task execution is blocked before invoice creation until approved customer data can supply the required country.
+The adapter supports invoice title, subtitle, type, currency, due date, notes, terms, line quantity/rate, and line tax rate. Refrens also requires customer billing identity/country. P04 Customer Lists can now supply explicit customer name/country data, while keeping that data outside Invoice Templates. Refrens Task execution remains blocked until the separately approved P11 production runner is implemented.

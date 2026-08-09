@@ -1,3 +1,3 @@
-from .customer_list import CustomerList
+from .customer_list import CustomerList, CustomerRecord
 
-__all__ = ["CustomerList"]
+__all__ = ["CustomerList", "CustomerRecord"]

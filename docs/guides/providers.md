@@ -30,7 +30,7 @@ Credential: secret/restricted key. Modes: Test and Live. The existing built-in r
 
 ## Refrens
 
-Credentials: API Base URL, URL Key, App ID, App Secret. P02 protects the credential dictionary but does not change the current required-country Task block.
+Credentials: API Base URL, URL Key, App ID, App Secret. P02 protects the credential dictionary. P04 Customer Lists can now store explicit name/country data, but Refrens production Task execution remains disabled until P11.
 
 ## External Providers
 
@@ -40,3 +40,12 @@ Loading a manifest alone declares provider metadata; executable behavior still r
 ## v1.0.0.1.11 P03 persistence-safety correction
 
 Migration backups are WAL-aware, credential-loss `Not Verified` recovery is durable, and Account Edit stages a durable fail-closed state before protected credentials are replaced. Provider install/uninstall behavior and API verification contracts are otherwise unchanged.
+
+
+## v1.0.0.1.12 P04 customer data boundary
+
+Provider manifests and credential fields are unchanged. Customer Lists can carry explicit optional name/country data for provider contracts that require it. Stripe continues using email-only customer lookup/create semantics. Refrens Task execution remains blocked until P11; P04 does not activate it.
+
+## v1.0.0.1.13 P04 verification correction
+
+Explicit country metadata is constrained to two ASCII alphabetic characters before it can satisfy the provider-neutral customer contract or Refrens payload helper. This does not enable Refrens Task sending; the P11 gate remains unchanged.

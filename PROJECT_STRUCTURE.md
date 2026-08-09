@@ -62,3 +62,16 @@ P03 extends the existing `Account` model and SQLite `accounts` table with verifi
 ## v1.0.0.1.11 P03 Verification Correction
 
 No production folder/module/page/dependency structure changes are introduced. The corrective delta only hardens existing `AppState` Account Edit persistence and `DomainStore` migration/startup recovery behavior, adds regression tests, and synchronizes release/audit documentation.
+
+
+## v1.0.0.1.12 P04 Customer Data Upgrade
+
+P04 keeps the existing file/folder architecture. `src/customers/models/customer_list.py` now defines `CustomerRecord`; `src/customers/importers/email_importer.py` contains both the preserved email-only importer and the structured customer importer. Existing storage/runtime/UI modules are extended in place; no new application page or dependency is introduced.
+
+## v1.0.0.1.13 P04 Verification Correction
+
+No folder/module architecture is added or renamed. The correction stays inside the existing P04 customer model/import/state/runtime/UI integration files plus tests/release documentation. `src/ui/pages/dashboard_page.py` is restored to its pre-P04 content because its label change was outside the approved P04 UI file scope.
+## v1.0.0.1.14 Runtime/Storage Hotfix
+
+No folder or module is renamed/reorganized. The hotfix changes only the existing `DomainStore` migration-backup handle lifecycle, regression/release tests, version metadata and synchronized documentation/private forensic records. No new runtime package, page, provider adapter, dependency or database table is introduced.
+

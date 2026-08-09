@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.0.0.1.14 - Windows Operational Storage Runtime Hotfix
+
+- Reproduced the reported Windows startup failure in the SQLite pre-migration backup path: the temporary backup database remained open when `Path.replace()` attempted `.bak.tmp -> .bak`, producing `WinError 32`.
+- Root cause: Python's `sqlite3.Connection` context-manager protocol does not close the connection on `with` exit; it only commits/rolls back.
+- Fixed `DomainStore._create_migration_backup()` to explicitly close the SQLite backup destination before the atomic replacement while preserving SQLite live-backup/WAL semantics.
+- Added a regression test that fails if the migration backup destination is still open at replacement time.
+- Kept SQLite schema v3, migration order, protected credential storage, ProviderManager, WorkerManager, provider send behavior, customer/import behavior, UI/UX and all P01-P04 features unchanged.
+- Production phase progress remains **4/14**; P05 is still the next separately approved phase.
+
+## v1.0.0.1.13 - P04 Verification & Correction
+
+- Re-audited the exact shipped `v1.0.0.1.12` P04 baseline against the approved P04 plan and preserved the 4/14 production-phase status.
+- Restored the pre-P04 mutable-list behavior of `CustomerList.emails` while retaining `CustomerRecord` as the authoritative customer representation and preserving existing name/country metadata for unchanged emails.
+- Preserved source row numbers through structured/legacy imports so conflicts against existing Customer List metadata are row-numbered instead of email-only.
+- Tightened explicit country validation to two ASCII alphabetic characters in both the customer contract and the Refrens payload helper; country is still never guessed.
+- Converted malformed customer-workbook/parser failures into the existing caught `ValueError` import boundary so invalid files cannot escape as uncaught parser exceptions.
+- Reverted the unrelated Dashboard `Customer Emails` label that P04 had changed outside the approved Customer Lists UI scope.
+- Added regression coverage for all corrections; no P05+, Refrens Task enablement, dependency, provider manifest, WorkerManager/ProviderManager, Account/Invoice/Task model, or shared UI design-system change is included.
+
+## v1.0.0.1.12 - P04 Customer Data Contract and Import Upgrade
+
+- Added backward-compatible `CustomerRecord` data with mandatory normalized email plus optional explicit name/country; no name/country inference.
+- Added structured CSV/TSV/XLSX/XLSM imports using `email`, `name`, `country` headers while preserving TXT and legacy email-extraction behavior.
+- Added row-numbered validation, deterministic duplicate/conflict handling, and safe enrichment of previously blank customer metadata.
+- Upgraded durable domain schema from v2 to v3 by adding customer `name`/`country` columns to the existing ordered `customer_emails` table with WAL-aware migration backup.
+- Added transactional customer-record persistence and kept `CustomerList.emails`, `AppState.add_emails()` and `import_emails()` backward compatible.
+- Upgraded task runtime snapshots to carry customer records while preserving the email-only view and unchanged Stripe customer/send behavior.
+- Kept Refrens production Task execution disabled until P11 even when explicit name/country is available.
+- Updated Customer Lists UI to display Email, Name and Country and provide bounded import-result diagnostics.
+- No new page, dependency, Account/Invoice/Task model redesign, WorkerManager/ProviderManager architecture change, provider manifest change, or P05+ implementation is included.
+
 ## v1.0.0.1.11 - P03 Verification & Correction
 
 - Re-audited the exact shipped `v1.0.0.1.10` P03 baseline without introducing P04 functionality.

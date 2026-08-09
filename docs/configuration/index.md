@@ -1,6 +1,6 @@
 # Configuration
 
-Invio `v1.0.0.1.11` separates Settings, durable operational data, provider registry state, and protected provider credentials.
+Invio `v1.0.0.1.14` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 
@@ -19,14 +19,16 @@ Typical settings paths:
 P02 uses SQLite for non-sensitive operational state:
 
 - Accounts metadata/status and credential reference;
-- Customer Lists and ordered emails;
+- Customer Lists and ordered customer records (email, optional name/country);
 - Invoice Templates/items/terms;
 - Tasks, account selection, counters/status/message;
 - account reservations.
 
 Typical database filename: `domain.sqlite3` in the same per-user Invio directory as `settings.json`.
 
-The database uses schema version `1`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Corrupt, newer, or unrecognized storage is not silently replaced.
+The database uses schema version `3`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Schema v3 adds optional customer `name` and `country` to the existing ordered customer table while preserving legacy email-only rows. Corrupt, newer, or unrecognized storage is not silently replaced.
+
+Migration backups use SQLite live-backup semantics. In `v1.0.0.1.14`, the temporary backup connection is explicitly closed before the `.bak.tmp` file is atomically replaced, preventing Windows from self-locking the migration backup file during startup.
 
 ## Protected Credentials
 

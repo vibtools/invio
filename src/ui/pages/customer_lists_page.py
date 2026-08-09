@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.state import AppState
-from ..widgets import button, card, label, page_header
+from ..widgets import button, card, page_header
 
 
 class CustomerListsPage(QWidget):
@@ -42,15 +42,15 @@ class CustomerListsPage(QWidget):
         root.addWidget(
             page_header(
                 "Customer Lists",
-                "Create separate customer lists and keep a different bulk email set inside each list.",
+                "Create separate customer lists with mandatory email and optional explicit name/country data.",
                 [new],
             )
         )
 
         split = QSplitter(Qt.Orientation.Horizontal)
-        lists_card = card("Lists", "Select a list to manage its email addresses.")
+        lists_card = card("Lists", "Select a list to manage its customer records.")
         self.lists = QTableWidget(0, 2)
-        self.lists.setHorizontalHeaderLabels(["List", "Emails"])
+        self.lists.setHorizontalHeaderLabels(["List", "Customers"])
         self.lists.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.lists.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.lists.verticalHeader().setVisible(False)
@@ -60,24 +60,29 @@ class CustomerListsPage(QWidget):
         lists_card.layout().addWidget(self.lists)
         split.addWidget(lists_card)
 
-        emails_card = card("List Emails", "Upload CSV, TSV, Excel or text files. Only email addresses are stored in a customer list.")
+        customers_card = card(
+            "List Customers",
+            "Upload CSV, TSV, Excel or text files. Email is mandatory; name is optional; country is explicit only when a provider requires it.",
+        )
         action_row = QHBoxLayout()
-        self.import_button = button("Upload Emails")
+        self.import_button = button("Upload Customers")
         self.delete_button = button("Delete List", "danger")
         self.import_button.clicked.connect(self._import_current)
         self.delete_button.clicked.connect(self._delete_current)
         action_row.addWidget(self.import_button)
         action_row.addWidget(self.delete_button)
         action_row.addStretch(1)
-        emails_card.layout().addLayout(action_row)
-        self.email_table = QTableWidget(0, 2)
-        self.email_table.setHorizontalHeaderLabels(["#", "Email"])
+        customers_card.layout().addLayout(action_row)
+        self.email_table = QTableWidget(0, 4)
+        self.email_table.setHorizontalHeaderLabels(["#", "Email", "Name", "Country"])
         self.email_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.email_table.verticalHeader().setVisible(False)
         self.email_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.email_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        emails_card.layout().addWidget(self.email_table)
-        split.addWidget(emails_card)
+        self.email_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.email_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        customers_card.layout().addWidget(self.email_table)
+        split.addWidget(customers_card)
         split.setStretchFactor(0, 1)
         split.setStretchFactor(1, 2)
         root.addWidget(split, 1)
@@ -114,6 +119,7 @@ class CustomerListsPage(QWidget):
         self._refresh_emails()
 
     def _refresh_emails(self) -> None:
+        """Refresh the customer-record table while preserving the historical helper name."""
         self.email_table.setRowCount(0)
         current = self.state.customer_lists.get(self.selected_list_id or "")
         enabled = current is not None
@@ -121,11 +127,13 @@ class CustomerListsPage(QWidget):
         self.delete_button.setEnabled(enabled)
         if not current:
             return
-        for index, email in enumerate(current.emails, 1):
+        for index, customer in enumerate(current.customers, 1):
             row = self.email_table.rowCount()
             self.email_table.insertRow(row)
             self.email_table.setItem(row, 0, QTableWidgetItem(str(index)))
-            self.email_table.setItem(row, 1, QTableWidgetItem(email))
+            self.email_table.setItem(row, 1, QTableWidgetItem(customer.email))
+            self.email_table.setItem(row, 2, QTableWidgetItem(customer.name))
+            self.email_table.setItem(row, 3, QTableWidgetItem(customer.country))
 
     def _import_current(self) -> None:
         if self.selected_list_id:

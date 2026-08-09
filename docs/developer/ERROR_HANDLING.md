@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.11`  
+**Baseline:** `v1.0.0.1.14`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -159,7 +159,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-002 | **RESOLVED in P02:** transactional SQLite domain storage, schema checks, migration backup, corruption/future-schema fail-closed startup | Operational state now restart-durable by local contract | COMPLETE v1.0.0.1.8 |
 | EH-003 | **RESOLVED in P02:** provider credentials use approved protected keyring storage with no plaintext fallback; missing secret restores Account as `Not Verified` | Native OS backend certification remains P14 | COMPLETE v1.0.0.1.8 |
 | EH-004 | **RESOLVED in P03:** manual Re-test plus persisted verification state/time/safe error; failed Re-test becomes Not Verified | Known failed credentials cannot execute; no age-based/continuous health policy is claimed | COMPLETE v1.0.0.1.10 |
-| EH-005 | Customer import does not provide complete row-level diagnostics | Partial/ambiguous bulk import | P04 |
+| EH-005 | **RESOLVED in P04; corrected in v1.0.0.1.13:** structured customer import reports row-numbered missing/invalid email, invalid country, same-file conflicts, and existing-list metadata conflicts; malformed workbook/parser failures stay inside the caught import-error boundary | False/ambiguous customer rows/files are surfaced without silently creating data | COMPLETE v1.0.0.1.12; CORRECTED v1.0.0.1.13 |
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
 | EH-007 | Provider capability/customer/template mismatch lacks preflight error | Side effects can start before incompatibility is clear | P06 |
 | EH-008 | Completed/Failed full Start resend semantics are not protected | Duplicate invoice/email risk | P07 |
@@ -171,7 +171,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-014 | Unexpected exception inside a recipient stage is not reconciled at recipient level | Partial/uncertain run | P08/P10 |
 | EH-015 | No account-health/failover error rules | Repeated failures on unhealthy account | P09 |
 | EH-016 | Retry/idempotency/delivery state is not durable | Duplicate/unknown results after restart | P10 |
-| EH-017 | Refrens task currently stops at required-country gate | Provider unavailable for normal bulk task | P11 |
+| EH-017 | Refrens Task runner remains disabled even though P04 can now store explicit required customer data | Provider unavailable for normal bulk task | P11 |
 | EH-018 | Export report/log writes lack user-facing `OSError` handling | Event-handler error on disk/path failure | P12 |
 | EH-019 | Emails/PII are logged in clear | Privacy/support risk | P12 |
 | EH-020 | Secret masking is Stripe-pattern-specific | Other provider secrets may appear in error text | P12 |
@@ -182,7 +182,8 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-025 | Stop can leave internal retry recipients not reflected in `task.failed` | Retry button/state inconsistency | P07/P10 |
 | EH-026 | CSV export is not spreadsheet-formula-safe | Spreadsheet execution risk on opened export | P12 |
 | EH-027 | Provider API acceptance is treated as Task success without inbox-delivery confirmation | Misinterpreted delivery state | P10/P12/P14 |
-| EH-028 | File import catches only a limited exception set at the MainWindow boundary | Some malformed workbook/parser failures may escape the intended user warning path | P04/P12 |
+| EH-028 | File import boundary still does not classify every malformed workbook/parser exception | Some malformed files may escape the intended user warning taxonomy | P12 |
+| EH-029 | **RESOLVED in v1.0.0.1.14:** migration-backup destination connection remained open across atomic rename on Windows | `WinError 32` could block application startup during supported schema migration | COMPLETE v1.0.0.1.14 |
 
 ## 3. Required Production Error Taxonomy
 
@@ -269,3 +270,27 @@ Implemented in `v1.0.0.1.10`:
 - **Migration backup fidelity:** pre-migration backups are created with SQLite backup semantics instead of copying only the main database file, so committed WAL pages are included.
 - **Credential-loss restart safety:** missing/unreadable protected credentials are not only restored as `Not Verified` in memory; that downgrade/error summary is persisted before startup completes. If the recovery write fails, startup fails rather than silently retaining a stale durable `Verified` row.
 - **Account Edit cross-store safety:** Account Edit persists a `Not Verified` safety state before replacing protected credentials. If protected-store/SQLite compensation fails, both runtime and durable state remain non-executable instead of reporting/retaining a stale `Verified` state.
+
+
+## P04 customer import handling
+
+Implemented in `v1.0.0.1.12`:
+
+- structured CSV/TSV/XLSX/XLSM rows require a valid email cell and report row-numbered validation failures;
+- optional country is accepted only as an explicit two-letter ASCII alphabetic code and is never guessed;
+- name is never derived from email;
+- duplicate identity is normalized lowercase email; same-file conflicting metadata is reported while the first accepted row remains authoritative;
+- existing blank customer metadata can be enriched, but existing nonblank metadata is never silently overwritten;
+- customer record persistence is transactional, so failed durable writes leave the previous in-memory/durable list unchanged;
+- legacy `import_emails()` and email-only file behavior remain available for Stripe-compatible lists;
+- Refrens production Task execution remains fail-closed pending P11 rather than being implicitly enabled by P04 data availability.
+
+Malformed file/parser taxonomy beyond row validation remains a P12 hardening item (EH-028).
+
+### v1.0.0.1.13 P04 correction
+
+The P04 verification pass found that conflicts against already-stored customer metadata had lost their import row number, malformed workbook exceptions could escape the UI catch boundary, and the country test accepted non-ASCII alphabetic lookalikes. The correction preserves source-row metadata through merge diagnostics, wraps parser failures into the existing `ValueError` import contract, and restricts country to two ASCII alphabetic characters.
+## v1.0.0.1.14 runtime/storage correction
+
+The Windows migration-backup failure was traced to SQLite connection lifecycle rather than database corruption. `with sqlite3.connect(temp_backup)` did not close the destination connection before `Path.replace()`; Windows therefore rejected the rename because Invio itself still held the file. The destination is now explicitly closed in a `finally` block before replacement. A regression test enforces the close-before-replace ordering. No schema, provider, worker, task-state or future-roadmap behavior is added.
+

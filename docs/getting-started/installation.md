@@ -27,3 +27,7 @@ On first P02 launch, Invio creates the version-1 operational SQLite schema in th
 ## Upgrade from v1.0.0.1.7
 
 The previous release did not persist Accounts, Customer Lists, Invoice Templates, Tasks, or reservations. Therefore there is no prior domain-state file to migrate from `v1.0.0.1.7`; only data created after P02 is durable. Existing `settings.json` and provider registry behavior are preserved.
+
+## Upgrade to v1.0.0.1.14
+
+`v1.0.0.1.14` is a replace-ready runtime/storage hotfix and does not change dependencies or SQLite schema version. On Windows it explicitly closes the temporary SQLite migration-backup connection before the backup file is atomically renamed, preventing the `WinError 32` startup failure seen in earlier builds during supported schema migration. Existing `domain.sqlite3`, protected credentials, Settings and provider registry state must be left in place; no manual database deletion is required.

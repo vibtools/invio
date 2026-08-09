@@ -1,13 +1,13 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.11`** is the P03 verification/correction baseline. P03 account lifecycle/provider-install consistency was introduced in `v1.0.0.1.10`; this corrective release hardens migration backup fidelity, durable fail-closed credential-loss recovery, and cross-store Account Edit safety without adding P04 functionality.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.14`** is a scoped Windows operational-storage/runtime hotfix on top of the verified `v1.0.0.1.13` P04 baseline.
 
 ## Current Application Scope
 
-- **Dashboard**: live summary for installed providers, accounts, templates, customer emails, task activity, account reservations, and next setup/action.
+- **Dashboard**: live summary for installed providers, accounts, templates, customer count, task activity, account reservations, and next setup/action.
 - **Accounts**: provider-grouped accounts with Add/Edit/Re-test/Delete lifecycle controls, real non-blocking API verification, durable verification health, protected credentials, and task reservation safety.
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
-- **Customer Lists**: independent named bulk-email lists with CSV, TSV, XLSX, XLSM, and TXT import.
+- **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list. One account cannot belong to two open tasks.
 - **Providers**: manifest-based install/load/uninstall workflow. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
@@ -18,12 +18,12 @@
 Non-sensitive operational state now survives application restart in a per-user SQLite database:
 
 - Accounts metadata and verification status;
-- Customer Lists and ordered email addresses;
+- Customer Lists and ordered customer records (email, optional name, optional country);
 - Invoice Templates, items, Decimal amounts/rates, and ordered terms;
 - Tasks, account selections, status/counters/message;
 - account reservations.
 
-The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 upgrades the schema to version 2 and creates a pre-migration backup before upgrading an existing version-1 database; `v1.0.0.1.11` makes that backup WAL-aware so committed state is preserved even when it is still present in SQLite WAL. The existing version-0 path remains supported.
+The database schema is versioned with SQLite `PRAGMA user_version`. Writes use explicit transactions, foreign keys, WAL journaling, and full synchronous durability. Corrupt/newer/unrecognized storage is not silently replaced. P03 introduced schema v2 verification-health metadata and WAL-aware migration backups. P04 upgrades to **schema v3**, adding optional `name` and `country` columns to the existing ordered `customer_emails` table so legacy email-only rows migrate losslessly with blank metadata.
 
 Typical operational database paths use the same per-user Invio directory as Settings:
 
@@ -49,6 +49,24 @@ SQLite stores only an opaque account credential reference such as `account:<acco
 - A provider with an active Task cannot be uninstalled. Existing inactive Tasks remain preserved, but Start/Retry is blocked until the provider is installed again.
 - No age-based verification expiry or background health polling is introduced.
 
+## P04 Verification Corrections in v1.0.0.1.13
+
+The v1.0.0.1.12 P04 implementation was re-audited against the approved plan. v1.0.0.1.13 keeps the P04 architecture and feature scope unchanged while correcting four P04 contract defects and one out-of-scope UI drift:
+
+- the historical mutable `CustomerList.emails` list behavior is restored through a customer-record-backed compatibility view;
+- conflicts against existing Customer List metadata now retain the source row number in import diagnostics;
+- explicit country values are restricted to two ASCII alphabetic characters so provider-required two-letter codes cannot accept non-ASCII lookalikes;
+- malformed workbook/parser failures are converted to the existing user-facing import error contract instead of escaping as uncaught parser exceptions;
+- the unrelated Dashboard metric label is restored to its pre-P04 wording.
+
+No P05 immutable Task behavior, Refrens Task enablement, provider/worker architecture change, dependency change, or new page is included.
+
+## v1.0.0.1.14 Operational Storage Runtime Hotfix
+
+A Windows startup failure was reproduced in the schema-migration backup path. `DomainStore` created the WAL-aware SQLite backup into a temporary `.bak.tmp` database using the SQLite connection context manager and then immediately attempted to atomically replace the final `.bak` file. Python's `sqlite3.Connection` context manager commits or rolls back but does **not** close the connection, so Windows could keep the temporary backup file locked and raise `WinError 32` during `Path.replace()`.
+
+`v1.0.0.1.14` explicitly closes the temporary backup destination connection before the atomic replacement. The migration sequence, WAL-aware live-backup semantics, schema version **3**, corruption/future-schema fail-closed rules, protected credentials, provider runtime, Task workers, UI and production roadmap are otherwise unchanged. A platform-neutral regression test now verifies that the destination handle is closed before replacement.
+
 ## Packaged Providers
 
 ### Stripe
@@ -57,7 +75,7 @@ Stripe remains bundled with Test and Live modes. The built-in runtime can find/c
 
 ### Refrens
 
-Refrens remains bundled with API Base URL, URL Key, App ID, and App Secret. Authentication, invoice payload construction, invoice creation, and create-time email-delivery helpers remain implemented. Normal Refrens Task sending is still deliberately blocked because the current email-only Customer List cannot provide the required customer country. P02 does not change that data contract.
+Refrens remains bundled with API Base URL, URL Key, App ID, and App Secret. Authentication, invoice payload construction, invoice creation, and create-time email-delivery helpers remain implemented. P04 can now store explicit customer name/country data required by the Refrens payload contract, but **normal Refrens Task sending remains deliberately disabled until the separately approved P11 pipeline**.
 
 ## Invoice Template Contract
 
@@ -92,7 +110,7 @@ python -m unittest discover -s tests -v
 python scripts/test/audit.py
 ```
 
-The P03 suite covers schema-v1-to-v2 migration, Account edit/delete/re-test, protected-secret compensation, verification-health persistence, provider-uninstall consistency, Task execution gates, WAL-aware migration-backup fidelity, durable credential-loss downgrade, and fail-closed cross-store Account Edit recovery while retaining the P01/P02 regression suite.
+The current suite covers P01-P03 regression behavior plus P04 schema-v2-to-v3 migration, customer-record round trips, structured/legacy imports, row validation, duplicate/enrichment rules, customer-aware execution snapshots, unchanged Stripe email-only sending semantics, and the continued P11 Refrens Task gate.
 
 ## Documentation
 
@@ -104,7 +122,7 @@ The P03 suite covers schema-v1-to-v2 migration, Account edit/delete/re-test, pro
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.11.md`
+- Release notes: `docs/release-notes/1.0.0.1.14.md`
 
 ## Private Project Material
 
@@ -112,7 +130,7 @@ The P03 suite covers schema-v1-to-v2 migration, Account edit/delete/re-test, pro
 
 ## Production Readiness Program
 
-`v1.0.0.1.11` is the verified P03 corrective baseline. Production progress remains **3/14 phases complete**. The next separately approved phase is **P04 - Customer Data Contract and Import Upgrade**.
+`v1.0.0.1.14` is the verified runtime/storage-hotfix baseline. Production progress remains **4/14 phases complete**. The next separately approved phase is **P05 - Immutable Task Execution Snapshot and Input Consistency**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 

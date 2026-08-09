@@ -2,7 +2,7 @@
 
 ## 1. Dashboard
 
-Dashboard shows installed providers, accounts, templates, customer-email count, task activity, account usage, and next setup/action. P02-restored state appears automatically after startup.
+Dashboard shows installed providers, accounts, templates, customer count, task activity, account usage, and next setup/action. P02-restored state appears automatically after startup.
 
 ## 2. Providers
 
@@ -22,7 +22,9 @@ Create reusable invoice content. Templates are now restart-durable. Customer/bil
 
 ## 5. Customer Lists
 
-Create independent named lists and import CSV, TSV, XLSX, XLSM, or TXT email data. Lists and email ordering are durable across restart.
+Create independent named lists and import CSV, TSV, XLSX, XLSM, or TXT customer data. Email is mandatory. Name is optional. Country is optional and must be supplied explicitly as a two-letter ASCII alphabetic code when a provider requires it; Invio never guesses country or derives a name from email.
+
+CSV/TSV/XLSX/XLSM files with a first usable header row containing `email` use structured `email`, `name`, `country` import. Files without that header and TXT files retain the legacy email-extraction workflow. Duplicate email identity is case-insensitive. Existing blank metadata can be enriched by explicit imported data, while conflicting nonblank metadata is reported with the source row number instead of overwritten silently. Malformed workbook/parser failures are reported as import errors rather than escaping the import workflow.
 
 ## 6. Tasks
 
@@ -37,3 +39,7 @@ Reports use the restored Task state. Live Logs remain current-session display da
 ## 8. Settings
 
 Settings remain separate non-sensitive JSON preferences. Provider credentials are never written into `settings.json`.
+
+## 9. Operational Storage Startup
+
+Invio checks and, when required, migrates the per-user `domain.sqlite3` before the normal pages open. `v1.0.0.1.14` corrects a Windows-specific migration-backup handle issue that could raise `WinError 32` while renaming `pre_migration_*.bak.tmp` to `.bak`. No user data migration step or UI workflow changed; supported databases continue to migrate automatically and fail closed if storage is genuinely unavailable or unsafe.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from src.core.state import AppState, StateError
+from src.customers.models import CustomerRecord
 
 
 class AppStateTests(unittest.TestCase):
@@ -112,6 +113,38 @@ class AppStateTests(unittest.TestCase):
         self.assertEqual(added, 1)
         self.assertEqual(self.customer_list.count, 3)
 
+
+    def test_customer_records_preserve_email_only_compatibility_and_explicit_metadata(self):
+        self.assertEqual(self.customer_list.emails, ["a@example.com", "b@example.com"])
+        result = self.state.add_customers(
+            self.customer_list.id,
+            [CustomerRecord("c@example.com", "Customer C", "bd")],
+        )
+        self.assertEqual(result.added, 1)
+        record = self.customer_list.customers[-1]
+        self.assertEqual((record.email, record.name, record.country), ("c@example.com", "Customer C", "BD"))
+
+    def test_existing_email_only_record_can_be_enriched_without_silent_overwrite(self):
+        first = self.state.add_customers(
+            self.customer_list.id,
+            [CustomerRecord("a@example.com", "Alice", "US")],
+        )
+        self.assertEqual(first.enriched, 1)
+        second = self.state.add_customers(
+            self.customer_list.id,
+            [CustomerRecord("a@example.com", "Alicia", "GB")],
+        )
+        self.assertEqual(second.enriched, 0)
+        self.assertEqual(len(second.conflicts), 1)
+        record = self.customer_list.customers[0]
+        self.assertEqual((record.name, record.country), ("Alice", "US"))
+
+    def test_customer_name_and_country_are_never_inferred(self):
+        item = self.state.create_customer_list("No Guess")
+        self.state.add_emails(item.id, ["person@example.com"])
+        self.assertEqual(item.customers[0].name, "")
+        self.assertEqual(item.customers[0].country, "")
+
     def test_invoice_template_has_no_customer_billing_shipping_or_payment_fields(self):
         self.assertEqual(self.template.currency, "USD")
         for field in ("customer", "billing", "shipping", "payment_details"):
@@ -159,6 +192,31 @@ class AppStateTests(unittest.TestCase):
                 "stripe", "Stripe", [self.account_a.id], self.customer_list.id, "missing-template"
             )
 
+
+    def test_customer_list_emails_keeps_pre_p04_mutable_list_behavior(self):
+        from src.customers.models import CustomerList
+
+        item = CustomerList("legacy", "Legacy", customers=[CustomerRecord("a@example.com", "Alice", "US")])
+        legacy_view = item.emails
+        self.assertIsInstance(legacy_view, list)
+        legacy_view.append("B@Example.com")
+        self.assertEqual(item.emails, ["a@example.com", "b@example.com"])
+        self.assertEqual((item.customers[0].name, item.customers[0].country), ("Alice", "US"))
+        legacy_view[0] = "c@example.com"
+        self.assertEqual(item.emails, ["c@example.com", "b@example.com"])
+
+    def test_existing_list_conflict_can_preserve_import_row_number(self):
+        self.state.add_customers(
+            self.customer_list.id,
+            [CustomerRecord("a@example.com", "Alice", "US")],
+        )
+        result = self.state.add_customers(
+            self.customer_list.id,
+            [CustomerRecord("a@example.com", "Alicia", "GB")],
+            source_rows=[7],
+        )
+        self.assertEqual(len(result.conflicts), 1)
+        self.assertTrue(result.conflicts[0].startswith("Row 7: a@example.com:"))
 
 if __name__ == "__main__":
     unittest.main()
