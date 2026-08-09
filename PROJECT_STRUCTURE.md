@@ -79,3 +79,7 @@ No folder or module is renamed/reorganized. The hotfix changes only the existing
 ## v1.0.0.1.15 P05 Immutable Task Snapshot
 
 No new top-level folder, application page, dependency, provider adapter or worker subsystem is introduced. The existing `src/tasks/models/task.py`, `AppState`, `DomainStore`, `ProviderRuntime`, Tasks page and tests are extended in place. SQLite schema v4 adds Task execution-snapshot tables; the existing Task/account/customer/template tables remain.
+## v1.0.0.1.16 P05 Verification Correction
+
+No folder, module, page, provider adapter, dependency, worker subsystem or database table is added/renamed. The correction stays inside the existing `AppState`/`DomainStore` P05 consistency boundary plus regression tests and synchronized release documentation. SQLite remains schema v4.
+

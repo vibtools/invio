@@ -30,3 +30,7 @@ No platform target, Python/PySide6/openpyxl/keyring requirement, SQLite schema v
 ## v1.0.0.1.15 P05
 
 No Python, PySide6, openpyxl, keyring, provider ID, credential-field, ProviderManager, WorkerManager, packaged-provider, or platform-target change is introduced. SQLite advances from schema v3 to v4 with WAL-aware/Windows-safe pre-migration backup. Existing v3 Tasks are preserved but marked `LegacyUnavailable` because their historical creation-time recipients/template were never persisted; Invio does not guess those inputs. New Tasks persist immutable execution snapshots and continue using existing Stripe/provider send semantics.
+## v1.0.0.1.16 P05 Verification Correction
+
+No platform, Python, PySide6, openpyxl, keyring, provider ID, credential field, ProviderManager, WorkerManager, provider manifest or dependency change is introduced. SQLite remains schema v4. The release only hardens P05 snapshot creation/progress/total consistency and updates release metadata/documentation.
+

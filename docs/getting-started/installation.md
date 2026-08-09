@@ -37,3 +37,7 @@ The previous release did not persist Accounts, Customer Lists, Invoice Templates
 `v1.0.0.1.15` advances operational storage from schema v3 to schema v4. Keep the existing `domain.sqlite3`, protected credentials, Settings, and provider registry files in place. Invio creates a WAL-aware pre-migration backup using the Windows-safe close-before-replace path from `v1.0.0.1.14`, then creates the immutable Task snapshot tables.
 
 Tasks created before P05 are preserved but marked `LegacyUnavailable`; their historical creation-time recipients/template cannot be reconstructed safely. They remain visible/closable but cannot Start/Retry. New Tasks created after upgrade receive durable immutable execution snapshots. No dependency change is required.
+## Upgrade to v1.0.0.1.16
+
+`v1.0.0.1.16` is a replace-ready P05 verification/correction release. It does not change dependencies or SQLite schema version; schema remains v4. Keep `domain.sqlite3`, protected credentials, Settings and provider registry state in place. The release hardens normal post-P05 Task snapshot creation and captured Task progress/total consistency; no manual database reset is required.
+

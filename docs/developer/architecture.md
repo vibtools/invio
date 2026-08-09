@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.15` preserves the verified P01-P04 architecture and completes P05 by adding durable immutable Task execution snapshots. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, Refrens production Task runner, or dependency is introduced.
+Invio `v1.0.0.1.16` preserves the verified P01-P04 architecture and completes P05 by adding durable immutable Task execution snapshots. No new UI page, provider execution engine, Task thread architecture, Invoice Template customer fields, Refrens production Task runner, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
@@ -148,3 +148,7 @@ The ordered `task_accounts` rows remain the durable account-assignment basis, an
 Schema-v3 Tasks migrate with snapshot state `LegacyUnavailable`. Because pre-P05 releases never persisted creation-time recipients/template copies, migration does not fabricate them from current state. Legacy Tasks keep metadata/counters/reservations and can be closed, but Start/Retry fail closed in both UI and backend.
 
 `Task.id` is the canonical logical run identity. Starting, pausing, stopping or retrying the same Task does not create another run identity. A materially different execution requires a new Task and therefore a new Task ID/snapshot. P05 does not implement P07 resend-state policy or P10 delivery-ledger recovery.
+## 16. v1.0.0.1.16 P05 verification correction
+
+The P05 architecture remains unchanged: Task creation captures immutable input, schema v4 persists it, and ProviderRuntime consumes that snapshot. The correction tightens invariants at the existing boundaries: `DomainStore.create_task_with_reservations()` rejects missing/legacy snapshots for new Tasks, captured progress must agree with processed recipients, and `DomainStore.update_task()` no longer updates the immutable `total` column after Task creation. No new table/module/page is introduced.
+

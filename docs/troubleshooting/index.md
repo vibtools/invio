@@ -54,3 +54,7 @@ Expected for a Task created before P05/schema v4. Invio cannot reconstruct the e
 ## Invio reports an invalid or incomplete Task execution snapshot
 
 Invio fails closed when a captured Task snapshot is missing, partial, has a provider/account-order mismatch, or disagrees with the persisted Task total. Do not edit the SQLite tables manually or replace the snapshot with current Customer List/Template data. Preserve `domain.sqlite3` and use the normal backup/recovery path or forensic support.
+## Task snapshot or progress consistency error
+
+On v1.0.0.1.16, a captured Task whose stored total/progress no longer agrees with its immutable recipient snapshot is rejected rather than silently repaired from the current Customer List or Invoice Template. Preserve the operational database for diagnosis; do not delete it as a first response. Newly persisted Tasks also cannot be created as `LegacyUnavailable`; that state is reserved for migrated pre-P05 Tasks.
+

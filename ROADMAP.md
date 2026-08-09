@@ -1,6 +1,6 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.15**.
+Current frozen implementation baseline: **Invio v1.0.0.1.16**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -18,7 +18,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 2. **P02 - Durable Domain Storage and Protected Credentials [COMPLETE in v1.0.0.1.8; verification-corrected in v1.0.0.1.9]**: SQLite operational persistence, versioned schema/transactions/recovery, and owner-approved OS-protected keyring credentials with no plaintext fallback.
 3. **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency [COMPLETE in v1.0.0.1.10; verification-corrected in v1.0.0.1.11]**: reservation-safe edit/delete/re-test, durable verification health, provider-uninstall preservation, and provider-installed Task execution gates.
 4. **P04 - Customer Data Contract and Import Upgrade [COMPLETE in v1.0.0.1.12; verified/corrected in v1.0.0.1.13]**: backward-compatible customer records, structured/legacy imports, schema-v3 metadata persistence and customer-aware runtime snapshots while preserving Stripe email-only semantics.
-5. **P05 - Immutable Task Execution Snapshot and Input Consistency [COMPLETE in v1.0.0.1.15]**: durable creation-time recipients/template/provider/account-basis snapshots, snapshot-derived totals, Start/Retry reuse, and fail-closed legacy Task migration.
+5. **P05 - Immutable Task Execution Snapshot and Input Consistency [COMPLETE in v1.0.0.1.15; verification-corrected in v1.0.0.1.16]**: durable creation-time recipients/template/provider/account-basis snapshots, snapshot-derived totals, Start/Retry reuse, and fail-closed legacy Task migration.
 6. **P06 - Provider Capability and Preflight Validation**: reject unsupported provider/account/template/customer combinations before side effects.
 7. **P07 - Task State Machine and Resend Safety**: deterministic Start/Retry semantics and protection against accidental successful-recipient resend.
 8. **P08 - Worker and Network Reliability**: retry/backoff/rate-limit/timeout/cancellation/shutdown hardening.

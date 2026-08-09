@@ -2,7 +2,7 @@
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Current pages in `v1.0.0.1.15` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
+Current pages in `v1.0.0.1.16` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
 
 Release history relevant to the current UI:
 

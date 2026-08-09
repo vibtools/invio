@@ -57,3 +57,7 @@ For every **new Task**, Invio captures the approved inputs at Task creation time
 Schema-v3 Tasks are preserved during the v3-to-v4 migration, including status/counters/references/reservations, but their original creation-time recipient/template data never existed on disk. Invio therefore marks them `LegacyUnavailable` rather than copying current list/template data and pretending it is historical. Legacy Tasks remain visible and closable, but **Start** and **Retry Failed** are disabled and backend-gated. Create a new Task to execute current inputs.
 
 P05 does not change the existing Task state-machine semantics, automatic retries, rate limiting, provider failover, or delivery-ledger/restart reconciliation.
+## v1.0.0.1.16 P05 verification correction
+
+Normal post-P05 Task creation may persist only a real `Captured` execution snapshot. `LegacyUnavailable` is reserved for migrated pre-P05 Tasks and is never assigned as a fallback to a newly persisted Task. Captured Task progress must remain consistent with its frozen recipient count, and routine status/progress persistence cannot rewrite the immutable Task total. These are fail-closed consistency checks; Start/Retry semantics otherwise remain unchanged pending P07.
+

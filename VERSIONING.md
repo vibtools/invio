@@ -24,3 +24,5 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 - `v1.0.0.1.14`: Windows operational-storage/runtime hotfix; explicitly closes the temporary SQLite migration-backup connection before atomic replacement, preventing the self-inflicted `WinError 32` startup failure while keeping schema v3 and P01-P04 behavior unchanged.
 
 - `v1.0.0.1.15`: P05 immutable Task execution snapshots; schema v4 freezes ordered recipients, copied invoice-template content, provider ID and account-assignment basis at Task creation, uses `Task.id` as the canonical logical run identity, and preserves pre-P05 Tasks as non-executable `LegacyUnavailable` records rather than fabricating historical inputs.
+- `v1.0.0.1.16`: P05 forensic verification/correction; rejects post-P05 Tasks without a captured immutable snapshot, validates captured Task progress against its frozen recipient set, and prevents routine Task updates from rewriting the immutable total. Schema remains v4 and production progress remains 5/14.
+

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.16 - P05 Forensic Verification & Consistency Correction
+
+- Re-audited the exact shipped `v1.0.0.1.15` P05 baseline against the approved immutable-execution plan.
+- Corrected the normal post-P05 persistence path so a new Task with no captured snapshot (or an explicit `LegacyUnavailable` snapshot) is rejected transactionally instead of being silently reclassified as a pre-P05 legacy Task.
+- Added snapshot-bound progress validation: captured Tasks reject inconsistent processed/success/failed state at runtime persistence boundaries and on startup load.
+- Stopped routine Task status/progress updates from rewriting the immutable `tasks.total` column; captured Task total drift now fails closed against the frozen recipient snapshot.
+- Preserved schema v4, Task.id run identity, Customer/Template immutability, P03/P04 behavior, ProviderManager, WorkerManager, provider-send semantics, dependencies and UI/UX.
+- Added focused regression coverage and synchronized P05 verification/release documentation. Production progress remains **5/14**; P06 is still approval-gated.
+
 ## v1.0.0.1.15 - P05 Immutable Task Execution Snapshot and Input Consistency
 
 - Completed production phase **P05** without changing WorkerManager, ProviderManager, provider manifests, provider-send semantics, dependencies, or unrelated UI.

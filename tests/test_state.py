@@ -309,6 +309,12 @@ class P05TaskSnapshotStateTests(unittest.TestCase):
         self.assertEqual(task.processed, 2)
         self.assertEqual(len(task.execution_snapshot.customers), 2)
 
+    def test_progress_rejects_success_failed_counts_that_disagree_with_processed_snapshot_count(self):
+        state, _account, _customer_list, _template, task = self._state_with_task()
+        with self.assertRaisesRegex(StateError, "success/failed progress"):
+            state.set_task_progress(task.id, processed=1, success=2, failed=0)
+        self.assertEqual((task.processed, task.success, task.failed), (0, 0, 0))
+
     def test_new_logical_execution_requires_new_task_identity_and_captures_current_inputs(self):
         state, account, customer_list, template, first = self._state_with_task()
         state.add_customers(customer_list.id, [CustomerRecord("three@example.com", "Three", "GB")])

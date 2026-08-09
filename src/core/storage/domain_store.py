@@ -537,6 +537,14 @@ class DomainStore:
                     )
                 if not snapshot.customers:
                     raise DomainStoreCorruptionError(f"Task '{task.name}' captured snapshot has no recipients.")
+                if task.processed < 0 or task.processed > task.total:
+                    raise DomainStoreCorruptionError(
+                        f"Task '{task.name}' processed count is outside its immutable recipient snapshot."
+                    )
+                if task.success < 0 or task.failed < 0 or task.success + task.failed != task.processed:
+                    raise DomainStoreCorruptionError(
+                        f"Task '{task.name}' success/failed progress does not match its processed recipient count."
+                    )
             elif snapshot.state != TASK_SNAPSHOT_LEGACY_UNAVAILABLE:
                 raise DomainStoreCorruptionError(f"Task '{task.name}' has an unknown execution-snapshot state.")
 
@@ -684,10 +692,10 @@ class DomainStore:
     @staticmethod
     def _write_task_execution_snapshot(connection: sqlite3.Connection, task: Task) -> None:
         snapshot = task.execution_snapshot
-        if snapshot is None:
-            snapshot = TaskExecutionSnapshot.legacy_unavailable(
-                provider_id=task.provider_id,
-                account_ids=task.account_ids,
+        if snapshot is None or snapshot.state != TASK_SNAPSHOT_CAPTURED:
+            raise ValueError(
+                "New tasks must contain a captured immutable execution snapshot; "
+                "LegacyUnavailable is reserved for migrated pre-P05 tasks."
             )
         if snapshot.provider_id != task.provider_id:
             raise ValueError("Task execution snapshot provider does not match the task provider.")
@@ -695,18 +703,15 @@ class DomainStore:
             raise ValueError("Task execution snapshot account order does not match the task account order.")
         if snapshot.assignment_strategy != TASK_ASSIGNMENT_STRATEGY:
             raise ValueError("Task execution snapshot uses an unsupported account-assignment strategy.")
+        if not snapshot.account_ids:
+            raise ValueError("Captured task execution snapshot must contain at least one account assignment.")
+        if not snapshot.customers:
+            raise ValueError("Captured task execution snapshot must contain at least one recipient.")
 
         connection.execute(
             "INSERT INTO task_execution_snapshots (task_id, snapshot_state, provider_id, assignment_strategy) VALUES (?, ?, ?, ?)",
             (task.id, snapshot.state, snapshot.provider_id, snapshot.assignment_strategy),
         )
-
-        if snapshot.state == TASK_SNAPSHOT_LEGACY_UNAVAILABLE:
-            return
-        if snapshot.state != TASK_SNAPSHOT_CAPTURED:
-            raise ValueError("Task execution snapshot state is unsupported.")
-        if not snapshot.customers:
-            raise ValueError("Captured task execution snapshot must contain at least one recipient.")
         if task.total != len(snapshot.customers):
             raise ValueError("Task total must equal the immutable execution-snapshot recipient count.")
         if snapshot.template is None:
@@ -784,9 +789,18 @@ class DomainStore:
 
     def update_task(self, task: Task) -> None:
         def write(connection: sqlite3.Connection) -> None:
+            snapshot = task.execution_snapshot
+            if snapshot is not None and snapshot.state == TASK_SNAPSHOT_CAPTURED:
+                snapshot_total = len(snapshot.customers)
+                if task.total != snapshot_total:
+                    raise ValueError("Task total no longer matches its immutable recipient snapshot.")
+                if task.processed < 0 or task.processed > snapshot_total:
+                    raise ValueError("Task processed count is outside its immutable recipient snapshot.")
+                if task.success < 0 or task.failed < 0 or task.success + task.failed != task.processed:
+                    raise ValueError("Task success/failed progress does not match its processed recipient count.")
             cursor = connection.execute(
-                """UPDATE tasks SET status=?, total=?, success=?, failed=?, processed=?, last_message=? WHERE id=?""",
-                (task.status, task.total, task.success, task.failed, task.processed, task.last_message, task.id),
+                """UPDATE tasks SET status=?, success=?, failed=?, processed=?, last_message=? WHERE id=?""",
+                (task.status, task.success, task.failed, task.processed, task.last_message, task.id),
             )
             if cursor.rowcount != 1:
                 raise sqlite3.IntegrityError("Task row is missing.")

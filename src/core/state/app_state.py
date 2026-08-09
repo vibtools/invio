@@ -619,10 +619,23 @@ class AppState:
 
     def set_task_progress(self, task_id: str, *, processed: int, success: int, failed: int) -> Task:
         task = self.tasks[task_id]
+        snapshot = task.execution_snapshot
+        authoritative_total = task.total
+        if snapshot is not None and snapshot.is_captured:
+            authoritative_total = len(snapshot.customers)
+            if task.total != authoritative_total:
+                raise StateError("Task total no longer matches its immutable recipient snapshot.")
+
+        next_processed = max(0, min(processed, authoritative_total))
+        next_success = max(0, success)
+        next_failed = max(0, failed)
+        if snapshot is not None and snapshot.is_captured and next_success + next_failed != next_processed:
+            raise StateError("Task success/failed progress does not match its processed recipient count.")
+
         previous = (task.processed, task.success, task.failed)
-        task.processed = max(0, min(processed, task.total))
-        task.success = max(0, success)
-        task.failed = max(0, failed)
+        task.processed = next_processed
+        task.success = next_success
+        task.failed = next_failed
         if self._domain_store is not None:
             try:
                 self._domain_store.update_task(task)

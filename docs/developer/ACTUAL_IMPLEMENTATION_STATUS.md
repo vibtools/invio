@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.15`  
+**Baseline:** `Invio v1.0.0.1.16`  
 **Completed production phases:** P01, P02, P03, P04, P05  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -148,3 +148,7 @@ P01-P05 unit/contract/source audits verify the implemented local contracts. Nati
 **STILL NOT IMPLEMENTED:** P06 provider preflight, P07 state-machine/resend hardening, P08/P09 network/scheduling hardening, P10 durable recipient delivery ledger/retry recovery, P11 Refrens Task enablement, P12 observability/privacy completion, P13 executable external adapters, P14 native/live production certification.
 
 **Production progress:** 5/14 phases complete. Next separately approved phase: P06.
+## v1.0.0.1.16 P05 Verification Correction
+
+**WORKING / VERIFIED:** New post-P05 Tasks cannot be persisted without a real captured immutable execution snapshot; `LegacyUnavailable` is migration-only. Captured progress is checked against the frozen recipient set during state updates and startup load, and routine Task status/progress writes no longer mutate the persisted immutable total. P05 remains complete; P06 is not implemented.
+

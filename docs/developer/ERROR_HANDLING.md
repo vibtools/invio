@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.15`  
+**Baseline:** `v1.0.0.1.16`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -187,6 +187,9 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-030 | **RESOLVED in v1.0.0.1.15:** existing Task execution re-read live Customer List/Invoice Template at Start/Retry | Recipient/template drift could silently change an approved run and disagree with `Task.total` | COMPLETE P05 |
 | EH-031 | **RESOLVED in v1.0.0.1.15:** pre-P05 Tasks have no trustworthy historical execution snapshot | Migration could fabricate false historical inputs if current list/template were copied | COMPLETE P05: preserve as `LegacyUnavailable`, block Start/Retry |
 | EH-032 | **RESOLVED in v1.0.0.1.15:** persisted Task/snapshot provider/account/recipient/template invariants could be inconsistent | Unsafe execution or incorrect progress basis | COMPLETE P05: schema-v4 validation fails closed |
+| EH-033 | **RESOLVED in v1.0.0.1.16:** normal post-P05 persistence could silently convert a new Task with no captured snapshot into `LegacyUnavailable` | A newly created Task could be misclassified as historical legacy state instead of failing creation | P05 correction: new Task persistence requires `Captured`; legacy state is migration-only |
+| EH-034 | **RESOLVED in v1.0.0.1.16:** captured Task success/failed counters were not validated against processed recipients on update/load | Progress data could disagree with the immutable recipient snapshot while still loading | P05 correction: progress invariants fail closed |
+| EH-035 | **RESOLVED in v1.0.0.1.16:** routine Task updates rewrote the persisted `total` column | Accidental in-memory total drift could be persisted even though P05 defines total as immutable | P05 correction: total is creation-only; update path validates but does not rewrite it |
 
 ## 3. Required Production Error Taxonomy
 
@@ -308,3 +311,7 @@ Implemented in `v1.0.0.1.15`:
 - Schema-v3 Tasks are migrated as `LegacyUnavailable` with no fabricated customer/template rows. Their Start/Retry actions are disabled and backend-gated; Close remains available so reservations can be released intentionally.
 - Snapshot state contains no provider credential values. Existing protected Account credentials are resolved only through the normal P03-gated execution path.
 - P05 does not claim P07 resend-state safety or P10 per-recipient delivery/restart reconciliation.
+## v1.0.0.1.16 P05 verification correction
+
+P05 creation/progress persistence is now fail-closed at both runtime-state and durable-storage boundaries. New Tasks must carry a captured snapshot; captured `processed/success/failed` values must agree; and the persisted Task total is not updated after creation. SQLite remains schema v4.
+

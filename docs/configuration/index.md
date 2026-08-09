@@ -1,6 +1,6 @@
 # Configuration
 
-Invio `v1.0.0.1.15` separates Settings, durable operational data, provider registry state, and protected provider credentials.
+Invio `v1.0.0.1.16` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 

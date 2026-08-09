@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.15`** completes **P05 - Immutable Task Execution Snapshot and Input Consistency** on top of the verified `v1.0.0.1.14` runtime/storage-hotfix baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.16`** is the forensic verification/correction release for **P05 - Immutable Task Execution Snapshot and Input Consistency**, built on the shipped `v1.0.0.1.15` P05 baseline.
 
 ## Current Application Scope
 
@@ -82,6 +82,10 @@ Every newly created Task now captures and durably stores the exact execution inp
 
 Existing pre-P05 Tasks are preserved during schema-v3-to-v4 migration but are marked **LegacyUnavailable** because their historical creation-time recipients/template were never stored. Invio does not invent those missing inputs from current data. Such Tasks remain visible and closable, but Start/Retry fail closed; create a new Task to execute current inputs. Provider credentials are never copied into snapshot storage.
 
+## v1.0.0.1.16 P05 verification correction
+
+The P05 re-audit found three consistency gaps not covered by the v1.0.0.1.15 suite. New post-P05 Task persistence now requires a real captured snapshot and can no longer silently create `LegacyUnavailable` records; captured Task progress is validated against the frozen recipient count; and routine status/progress persistence no longer rewrites the immutable Task total. SQLite remains schema v4 and no P06 behavior is introduced.
+
 ## Packaged Providers
 
 ### Stripe
@@ -137,7 +141,7 @@ The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 mi
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.15.md`
+- Release notes: `docs/release-notes/1.0.0.1.16.md`
 
 ## Private Project Material
 
@@ -145,7 +149,7 @@ The current suite covers P01-P04 regression behavior plus P05 schema-v3-to-v4 mi
 
 ## Production Readiness Program
 
-`v1.0.0.1.15` is the verified P05 baseline. Production progress is **5/14 phases complete**. The next separately approved phase is **P06 - Provider Capability and Preflight Validation**.
+`v1.0.0.1.16` is the verification-corrected P05 baseline. Production progress is **5/14 phases complete**. The next separately approved phase is **P06 - Provider Capability and Preflight Validation**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 

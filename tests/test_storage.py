@@ -986,6 +986,85 @@ class P05SnapshotStorageTests(unittest.TestCase):
         with self.assertRaisesRegex(DomainStoreCorruptionError, "exactly one invoice template"):
             self.store.load(self.credentials)
 
+    def test_post_p05_task_without_captured_snapshot_is_rejected_instead_of_becoming_legacy(self):
+        state, accounts, customer_list, template, existing = self.populate()
+        state.close_task(existing.id)
+        task = Task(
+            id="task_missing_snapshot",
+            name="Missing Snapshot",
+            provider_id="stripe",
+            provider_name="Stripe",
+            account_ids=[accounts[0].id],
+            account_names=[accounts[0].name],
+            customer_list_id=customer_list.id,
+            customer_list_name=customer_list.name,
+            invoice_template_id=template.id,
+            invoice_template_name=template.name,
+            total=len(customer_list.customers),
+        )
+        with self.assertRaisesRegex(DomainStoreError, "captured immutable execution snapshot"):
+            self.store.create_task_with_reservations(task)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM tasks WHERE id=?", (task.id,)).fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM task_execution_snapshots WHERE task_id=?", (task.id,)).fetchone()[0], 0)
+
+    def test_post_p05_legacy_snapshot_is_rejected_by_normal_task_creation_path(self):
+        state, accounts, customer_list, template, existing = self.populate()
+        state.close_task(existing.id)
+        task = Task(
+            id="task_false_legacy",
+            name="False Legacy",
+            provider_id="stripe",
+            provider_name="Stripe",
+            account_ids=[accounts[0].id],
+            account_names=[accounts[0].name],
+            customer_list_id=customer_list.id,
+            customer_list_name=customer_list.name,
+            invoice_template_id=template.id,
+            invoice_template_name=template.name,
+            total=len(customer_list.customers),
+            execution_snapshot=TaskExecutionSnapshot.legacy_unavailable(
+                provider_id="stripe",
+                account_ids=[accounts[0].id],
+            ),
+        )
+        with self.assertRaisesRegex(DomainStoreError, "LegacyUnavailable is reserved"):
+            self.store.create_task_with_reservations(task)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM tasks WHERE id=?", (task.id,)).fetchone()[0], 0)
+
+    def test_captured_snapshot_load_rejects_progress_counter_drift(self):
+        _state, _accounts, _customer_list, _template, task = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                "UPDATE tasks SET processed=1, success=2, failed=0 WHERE id=?",
+                (task.id,),
+            )
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "success/failed progress"):
+            self.store.load(self.credentials)
+
+    def test_captured_snapshot_load_rejects_processed_count_beyond_recipient_total(self):
+        _state, _accounts, _customer_list, _template, task = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                "UPDATE tasks SET processed=999, success=999, failed=0 WHERE id=?",
+                (task.id,),
+            )
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "processed count is outside"):
+            self.store.load(self.credentials)
+
+    def test_task_status_update_does_not_persist_mutated_snapshot_total(self):
+        state, _accounts, _customer_list, _template, task = self.populate()
+        original_total = task.total
+        task.total = original_total + 1
+        with self.assertRaisesRegex(StateError, "Task total no longer matches"):
+            state.set_task_status(task.id, "Ready", "Should not persist drift")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            stored_total = connection.execute("SELECT total FROM tasks WHERE id=?", (task.id,)).fetchone()[0]
+        self.assertEqual(stored_total, original_total)
+
     def test_task_creation_snapshot_failure_rolls_back_task_accounts_and_reservations(self):
         state, accounts, customer_list, template, existing = self.populate()
         state.close_task(existing.id)
