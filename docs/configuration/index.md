@@ -1,6 +1,6 @@
 # Configuration
 
-Invio `v1.0.0.1.9` separates Settings, durable operational data, provider registry state, and protected provider credentials.
+Invio `v1.0.0.1.10` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 
@@ -37,3 +37,6 @@ If the protected credential entry/backend is unavailable at startup, the Account
 ## Provider Registry
 
 Bundled manifests remain under `providers/packages/`; installed manifests remain under ignored `providers/registry/`. P02 does not change ProviderManager behavior.
+
+
+P03 uses SQLite schema v2 to persist Account verification timestamp and safe error summary. Provider secrets remain outside SQLite.

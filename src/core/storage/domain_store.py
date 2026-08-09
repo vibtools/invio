@@ -12,7 +12,7 @@ from ...customers.models import CustomerList
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate
 from ...tasks.models import Task
 from .credential_store import CredentialStore, CredentialStoreError
-from .schema import DOMAIN_SCHEMA_VERSION, SCHEMA_V1
+from .schema import DOMAIN_SCHEMA_VERSION, MIGRATION_V1_TO_V2, SCHEMA_V1
 
 
 class DomainStoreError(RuntimeError):
@@ -97,34 +97,51 @@ class DomainStore:
             raise DomainStoreError(f"Operational storage could not be initialized: {exc}") from exc
 
     def _migrate(self, connection: sqlite3.Connection, version: int, *, backup_required: bool) -> None:
-        if version != 0:
+        if version not in {0, 1}:
             raise DomainStoreMigrationError(f"No migration path exists from schema {version} to {DOMAIN_SCHEMA_VERSION}.")
 
-        existing_tables = {
-            str(row[0])
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-            ).fetchall()
-        }
-        if existing_tables:
-            raise DomainStoreMigrationError(
-                "Operational storage has an unversioned schema and cannot be migrated automatically."
-            )
+        if version == 0:
+            existing_tables = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                ).fetchall()
+            }
+            if existing_tables:
+                raise DomainStoreMigrationError(
+                    "Operational storage has an unversioned schema and cannot be migrated automatically."
+                )
+            if backup_required and self.path.exists():
+                self._create_migration_backup(0)
+            script = f"BEGIN IMMEDIATE;\n{SCHEMA_V1}\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
+            try:
+                connection.executescript(script)
+            except sqlite3.Error as exc:
+                if connection.in_transaction:
+                    connection.rollback()
+                raise DomainStoreMigrationError(
+                    f"Operational storage migration failed; prior data was preserved: {exc}"
+                ) from exc
+            return
 
         if backup_required and self.path.exists():
-            backup = self.path.with_name(f"{self.path.name}.pre_migration_v0.bak")
-            try:
-                shutil.copy2(self.path, backup)
-            except OSError as exc:
-                raise DomainStoreMigrationError(f"Could not create the pre-migration backup: {exc}") from exc
-
-        script = f"BEGIN IMMEDIATE;\n{SCHEMA_V1}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
+            self._create_migration_backup(1)
+        script = f"BEGIN IMMEDIATE;\n{MIGRATION_V1_TO_V2}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
             connection.executescript(script)
         except sqlite3.Error as exc:
             if connection.in_transaction:
                 connection.rollback()
-            raise DomainStoreMigrationError(f"Operational storage migration failed; prior data was preserved: {exc}") from exc
+            raise DomainStoreMigrationError(
+                f"Operational storage migration failed; prior data was preserved: {exc}"
+            ) from exc
+
+    def _create_migration_backup(self, version: int) -> None:
+        backup = self.path.with_name(f"{self.path.name}.pre_migration_v{version}.bak")
+        try:
+            shutil.copy2(self.path, backup)
+        except OSError as exc:
+            raise DomainStoreMigrationError(f"Could not create the pre-migration backup: {exc}") from exc
 
     def _transaction(self, callback) -> None:
         try:
@@ -149,19 +166,23 @@ class DomainStore:
         try:
             with self._connection() as connection:
                 account_rows = connection.execute(
-                    "SELECT id, provider_id, provider_name, name, mode, status, credential_ref FROM accounts ORDER BY rowid"
+                    "SELECT id, provider_id, provider_name, name, mode, status, credential_ref, last_verification_at, verification_error_summary FROM accounts ORDER BY rowid"
                 ).fetchall()
                 for row in account_rows:
                     status = str(row["status"])
+                    last_verification_at = str(row["last_verification_at"])
+                    verification_error_summary = str(row["verification_error_summary"])
                     credentials: dict[str, str] = {}
                     try:
                         restored = credential_store.get_credentials(str(row["credential_ref"]))
                     except CredentialStoreError as exc:
                         status = "Not Verified"
+                        verification_error_summary = "Protected credentials are unavailable."
                         loaded.warnings.append(f"Account '{row['name']}' credentials are unavailable; the account was restored as Not Verified. ({exc})")
                     else:
                         if restored is None:
                             status = "Not Verified"
+                            verification_error_summary = "Protected credentials are unavailable."
                             loaded.warnings.append(
                                 f"Account '{row['name']}' has no protected credential entry; the account was restored as Not Verified."
                             )
@@ -175,6 +196,8 @@ class DomainStore:
                         mode=str(row["mode"]),
                         status=status,
                         credentials=credentials,
+                        last_verification_at=last_verification_at,
+                        verification_error_summary=verification_error_summary,
                     )
                     loaded.accounts[account.id] = account
 
@@ -312,9 +335,56 @@ class DomainStore:
     def save_account(self, account: Account, credential_ref: str) -> None:
         def write(connection: sqlite3.Connection) -> None:
             connection.execute(
-                "INSERT INTO accounts (id, provider_id, provider_name, name, mode, status, credential_ref) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (account.id, account.provider_id, account.provider_name, account.name, account.mode, account.status, credential_ref),
+                """INSERT INTO accounts (
+                       id, provider_id, provider_name, name, mode, status, credential_ref,
+                       last_verification_at, verification_error_summary
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    account.id, account.provider_id, account.provider_name, account.name, account.mode,
+                    account.status, credential_ref, account.last_verification_at, account.verification_error_summary,
+                ),
             )
+        self._transaction(write)
+
+    def update_account(self, account: Account) -> None:
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute(
+                """UPDATE accounts
+                   SET name=?, mode=?, status=?, last_verification_at=?, verification_error_summary=?
+                   WHERE id=?""",
+                (
+                    account.name, account.mode, account.status, account.last_verification_at,
+                    account.verification_error_summary, account.id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Account row is missing.")
+        self._transaction(write)
+
+    def update_account_verification(
+        self,
+        account_id: str,
+        *,
+        status: str,
+        last_verification_at: str,
+        verification_error_summary: str,
+    ) -> None:
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute(
+                """UPDATE accounts
+                   SET status=?, last_verification_at=?, verification_error_summary=?
+                   WHERE id=?""",
+                (status, last_verification_at, verification_error_summary, account_id),
+            )
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Account row is missing.")
+        self._transaction(write)
+
+    def delete_account(self, account_id: str) -> None:
+        def write(connection: sqlite3.Connection) -> None:
+            cursor = connection.execute("DELETE FROM accounts WHERE id=?", (account_id,))
+            if cursor.rowcount != 1:
+                raise sqlite3.IntegrityError("Account row is missing.")
         self._transaction(write)
 
     def create_customer_list(self, item: CustomerList) -> None:

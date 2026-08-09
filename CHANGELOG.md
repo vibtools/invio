@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0.1.10 - P03 Account Lifecycle, Verification Health and Provider-Install Consistency
+
+- Added reservation-safe Account **Edit**, **Re-test**, and **Delete** workflows without adding a new page.
+- Account Edit keeps provider identity immutable and requires a new successful real API Test before saving metadata/credential changes. Failed candidate verification does not overwrite the saved account.
+- Added durable `last_verification_at` and secret-scrubbed `verification_error_summary` metadata with SQLite schema v2 and transactional v1-to-v2 migration backup.
+- Added protected-credential compensation for Account update/delete failure paths; no plaintext fallback is introduced.
+- Provider uninstall now blocks while a provider Task has an active worker, preserves existing accounts/tasks/reservations/credentials when inactive, and keeps those accounts visible as **Not Installed**.
+- Task Start/Retry now fail closed when the Task provider is not currently installed.
+- Re-test failure persists `Not Verified`, so existing P01 creation/Start/Retry gates prevent execution with known-invalid credentials.
+- If a failed Re-test cannot be persisted, the current process still fails the Account closed to `Not Verified`; a successful Re-test never elevates an Account unless its durable verification-health write commits.
+- Corrected the Accounts credential label from the stale `Stored in memory` text to the actual protected-storage state.
+- No verification-age expiry, background health polling, WorkerManager change, provider manifest change, invoice/customer/task model redesign, or P04+ feature is included.
+
 
 ## v1.0.0.1.9 - P02 verification corrective release
 

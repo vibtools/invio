@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.9`  
-**Completed production phases:** P01, P02  
+**Baseline:** `Invio v1.0.0.1.10`  
+**Completed production phases:** P01, P02, P03  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -15,7 +15,7 @@
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
 | Refrens normal Task sending | BLOCKED | Current email-only customer contract cannot supply required country |
 | Real Add Account API Test | WORKING | P01 real Stripe/Refrens verification on a dedicated dialog `QThread` |
-| Durable Accounts metadata | WORKING | SQLite schema v1 restores IDs/provider/name/mode/status/credential reference |
+| Durable Accounts metadata | WORKING | SQLite schema v2 restores IDs/provider/name/mode/status/verification health/credential reference |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
 | Durable Customer Lists | WORKING | Lists and ordered email addresses restore after restart |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
@@ -47,7 +47,7 @@
 - Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
 - Template parent/items/terms and customer email replacement are committed transactionally.
 - Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
-- Existing empty schema-v0 databases are backed up before migration to schema v1.
+- Existing empty schema-v0 databases are backed up before migration through schema v1 to current schema v2; existing schema-v1 databases receive a dedicated pre-migration backup before v2 upgrade.
 - Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
 - Previously active Tasks are not automatically resumed after process restart.
 - Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
@@ -55,11 +55,18 @@
 ### DELIBERATELY NOT P02
 
 - No per-recipient delivery ledger, remote provider reconciliation, persisted provider customer/invoice IDs or persistent Retry Failed recipient set. These remain P10.
-- No account edit/delete/re-test/verification-age lifecycle. P03.
+- Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
 - No Customer model name/country expansion. P04.
 - No immutable Task execution snapshot. P05.
 - No provider capability preflight. P06.
 - No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
+
+
+### v1.0.0.1.10 P03
+
+**WORKING:** reservation-safe Account Edit/Delete, non-blocking Re-test, schema-v2 verification health, protected-credential rollback/restore handling, uninstalled-provider account visibility, active-Task uninstall block, and Task Start/Retry provider-installed gate.
+
+**NOT CLAIMED:** automatic verification expiry, continuous health monitoring, send-time auth-health mutation, customer data upgrade, immutable Task inputs, retry/rate-limit engine, recipient delivery ledger, or live provider/native keyring certification.
 
 ## Provider / Accounts
 
@@ -73,8 +80,7 @@
 
 ### REMAINING
 
-- Account edit/delete/re-test and verification health metadata are P03.
-- Provider-uninstall consistency for existing Tasks is P03.
+- Account edit/delete/re-test, verification time/error metadata, and provider-uninstall Task consistency are **WORKING in P03**.
 - External executable provider adapters are P13.
 
 ## Customer Lists / Invoice Templates / Tasks
@@ -100,4 +106,4 @@ Remaining worker reliability work is P08/P09/P10.
 
 ## Current Certification Boundary
 
-P01/P02 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.
+P01/P02/P03 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.

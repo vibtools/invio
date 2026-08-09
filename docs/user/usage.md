@@ -10,9 +10,11 @@ Install Stripe/Refrens or load an approved external manifest. Provider install/u
 
 ## 3. Accounts
 
-Open **Accounts**, choose **Add Account**, select provider/mode, enter provider-defined credentials, and run **API Test**. Real verification runs outside the GUI thread. A successful account is stored with non-sensitive metadata in Invio's per-user SQLite database and credentials in the approved OS-protected keyring.
+Open **Accounts** to Add, Edit, Re-test, or Delete a provider account. Add/Edit require a successful real API Test before commit. Edit is blocked while an account is assigned to an open Task. Re-test checks the current protected credentials without changing them and records the latest UTC test time plus a safe failure summary. Delete is blocked while a Task still references the account.
 
-If protected credentials cannot be safely saved, the account is not added. If a previously stored protected credential is unavailable at restart, the account remains visible as **Not Verified** and cannot be used for a Task.
+If a provider is uninstalled, its existing accounts remain visible under **Not Installed** and are not deleted. Edit/Re-test require reinstalling the provider; Delete remains available when the account is not Task-protected. Credentials remain in the approved OS-protected keyring and are never displayed.
+
+If protected credentials cannot be safely saved or restored, the Account is not Task-ready. A missing protected credential restores the Account as **Not Verified**.
 
 ## 4. Invoice Templates
 

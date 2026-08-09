@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable
 
-from PySide6.QtCore import QObject, QThread, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..accounts.models import Account
 from ..core.provider_manager import ProviderManifest
 from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
 from ..core.state import AppState
@@ -73,6 +75,10 @@ class _AccountVerificationWorker(QObject):
             self.succeeded.emit(message)
         finally:
             self.finished.emit()
+
+
+def _verification_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _apply_compact_dialog_geometry(
@@ -190,17 +196,21 @@ class AddAccountDialog(QDialog):
         *,
         provider_runtime: ProviderRuntime | None = None,
         log_callback: Callable[[str], None] | None = None,
+        account: Account | None = None,
     ):
         super().__init__(parent)
         self.providers = providers
         self.provider_runtime = provider_runtime or ProviderRuntime()
         self.log_callback = log_callback
+        self.account = account
+        self._provider_locked = account is not None
         self.credential_inputs: dict[str, QLineEdit] = {}
         self._validated = False
+        self._last_verification_at = ""
         self._verification_thread: QThread | None = None
         self._verification_worker: _AccountVerificationWorker | None = None
         self._verification_credentials: dict[str, str] = {}
-        self.setWindowTitle("Add Account")
+        self.setWindowTitle("Edit Account" if account is not None else "Add Account")
         self.setModal(True)
         _apply_compact_dialog_geometry(
             self, parent, width_ratio=0.64, preferred_height=450, min_width=760, max_width=920, min_height=390
@@ -209,15 +219,22 @@ class AddAccountDialog(QDialog):
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 12, 14, 12)
         root.setSpacing(8)
-        root.addWidget(label("Add Provider Account", "PageTitle", False))
-        root.addWidget(label("Only installed providers are available. Credentials are kept in memory for the current application session.", "Description"))
+        root.addWidget(label("Edit Provider Account" if account is not None else "Add Provider Account", "PageTitle", False))
+        root.addWidget(
+            label(
+                "Provider identity is fixed. Any saved account change requires a new successful API Test."
+                if account is not None
+                else "Only installed providers are available. Credentials are saved through protected credential storage after a successful API Test.",
+                "Description",
+            )
+        )
 
         self.provider_combo = QComboBox()
         for provider in providers:
             self.provider_combo.addItem(provider.name, provider.id)
         self.provider_combo.currentIndexChanged.connect(self._rebuild_provider_fields)
 
-        self.account_name = QLineEdit()
+        self.account_name = QLineEdit(account.name if account is not None else "")
         self.account_name.setPlaceholderText("Account label")
         self.mode_combo = QComboBox()
 
@@ -249,7 +266,7 @@ class AddAccountDialog(QDialog):
         action_row.addStretch(1)
         self.cancel_button = button("Cancel")
         self.test_button = button("API Test")
-        self.add_button = button("Add Account", "primary")
+        self.add_button = button("Save Changes" if account is not None else "Add Account", "primary")
         self.cancel_button.clicked.connect(self.reject)
         self.test_button.clicked.connect(self._ui_validate_credentials)
         self.add_button.clicked.connect(self._accept_if_valid)
@@ -262,6 +279,16 @@ class AddAccountDialog(QDialog):
         self.account_name.textChanged.connect(lambda _text: self._reset_validation())
         self.mode_combo.currentIndexChanged.connect(lambda _index: self._reset_validation())
         self._rebuild_provider_fields()
+        self.provider_combo.setEnabled(not self._provider_locked)
+        if account is not None:
+            mode_index = self.mode_combo.findText(account.mode, Qt.MatchFlag.MatchFixedString)
+            if mode_index >= 0:
+                self.mode_combo.setCurrentIndex(mode_index)
+            for key, value in account.credentials.items():
+                field = self.credential_inputs.get(key)
+                if field is not None:
+                    field.setText(value)
+            self._reset_validation()
 
     def _current_provider(self) -> ProviderManifest | None:
         provider_id = self.provider_combo.currentData()
@@ -319,6 +346,7 @@ class AddAccountDialog(QDialog):
         if self._verification_running():
             return
         self._validated = False
+        self._last_verification_at = ""
         if self._has_api_test_adapter():
             self.validation_label.setText("API test has not been run.")
         else:
@@ -346,7 +374,7 @@ class AddAccountDialog(QDialog):
         return self._verification_thread is not None and self._verification_thread.isRunning()
 
     def _set_verification_controls_enabled(self, enabled: bool) -> None:
-        self.provider_combo.setEnabled(enabled)
+        self.provider_combo.setEnabled(enabled and not self._provider_locked)
         self.account_name.setEnabled(enabled)
         self.mode_combo.setEnabled(enabled)
         for field in self.credential_inputs.values():
@@ -419,6 +447,7 @@ class AddAccountDialog(QDialog):
     def _verification_succeeded(self, message: str) -> None:
         safe = self._safe_verification_message(message)
         self._validated = True
+        self._last_verification_at = _verification_timestamp()
         self.validation_label.setText(safe)
         provider = self._current_provider()
         provider_name = provider.name if provider is not None else "Provider"
@@ -431,6 +460,7 @@ class AddAccountDialog(QDialog):
     def _verification_failed(self, message: str) -> None:
         safe = self._safe_verification_message(message)
         self._validated = False
+        self._last_verification_at = ""
         self.validation_label.setText(f"Verification failed: {safe}")
         provider = self._current_provider()
         provider_name = provider.name if provider is not None else "Provider"
@@ -493,7 +523,148 @@ class AddAccountDialog(QDialog):
             "mode": self.mode_combo.currentText(),
             "credentials": self._credential_values(),
             "status": "Verified",
+            "last_verification_at": self._last_verification_at,
+            "verification_error_summary": "",
         }
+
+
+class AccountRetestDialog(QDialog):
+    """Run a real API verification against one already-saved account."""
+
+    def __init__(
+        self,
+        account: Account,
+        parent: QWidget | None = None,
+        *,
+        provider_runtime: ProviderRuntime | None = None,
+        log_callback: Callable[[str], None] | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.account = account
+        self.provider_runtime = provider_runtime or ProviderRuntime()
+        self.log_callback = log_callback
+        self._verification_thread: QThread | None = None
+        self._verification_worker: _AccountVerificationWorker | None = None
+        self._verification_credentials = dict(account.credentials)
+        self.verified = False
+        self.result_message = ""
+        self.last_verification_at = ""
+        self.setWindowTitle("Re-test Account")
+        self.setModal(True)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.46, preferred_height=250, min_width=520, max_width=680, min_height=230
+        )
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(14, 14, 14, 14)
+        root.setSpacing(10)
+        root.addWidget(label("Re-test Provider Account", "PageTitle", False))
+        root.addWidget(
+            label(
+                f"{account.provider_name} / {account.name} / {account.mode}. Current protected credentials will be verified without being changed.",
+                "Description",
+            )
+        )
+        self.status_label = label("Starting API Test...", "Caption")
+        root.addWidget(self.status_label)
+        root.addStretch(1)
+        self.close_button = button("Close")
+        self.close_button.setEnabled(False)
+        self.close_button.clicked.connect(self.reject)
+        actions = QHBoxLayout()
+        actions.addStretch(1)
+        actions.addWidget(self.close_button)
+        root.addLayout(actions)
+        QTimer.singleShot(0, self._start_api_test)
+
+    def _safe_verification_message(self, message: str) -> str:
+        safe = str(message).strip() or "Provider API verification failed."
+        for secret in sorted((value for value in self._verification_credentials.values() if value), key=len, reverse=True):
+            safe = safe.replace(secret, "***REDACTED***")
+        return safe
+
+    def _log_verification(self, message: str) -> None:
+        if self.log_callback is not None:
+            self.log_callback(message)
+
+    def _start_api_test(self) -> None:
+        if self._verification_thread is not None and self._verification_thread.isRunning():
+            return
+        if not self.provider_runtime.supports_api_test(self.account.provider_id):
+            self.verified = False
+            self.result_message = "API Test is unavailable because no executable API-test adapter is installed."
+            self.last_verification_at = _verification_timestamp()
+            self.status_label.setText(self.result_message)
+            self.close_button.setEnabled(True)
+            return
+        if not self._verification_credentials:
+            self.verified = False
+            self.result_message = "Protected provider credentials are unavailable."
+            self.last_verification_at = _verification_timestamp()
+            self.status_label.setText(self.result_message)
+            self.close_button.setEnabled(True)
+            return
+
+        self._log_verification(
+            f"API Re-test started: {self.account.provider_name}/{self.account.name} ({self.account.mode or 'Default'})."
+        )
+        thread = QThread(self)
+        thread.setObjectName(f"InvioAccountApiRetest-{self.account.id}")
+        worker = _AccountVerificationWorker(
+            self.provider_runtime, self.account.provider_id, self._verification_credentials, self.account.mode
+        )
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._verification_succeeded)
+        worker.failed.connect(self._verification_failed)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._verification_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._verification_thread = thread
+        self._verification_worker = worker
+        thread.start()
+
+    @Slot(str)
+    def _verification_succeeded(self, message: str) -> None:
+        self.verified = True
+        self.result_message = self._safe_verification_message(message)
+        self.last_verification_at = _verification_timestamp()
+        self.status_label.setText(self.result_message)
+        self._log_verification(
+            f"API Re-test verified: {self.account.provider_name}/{self.account.name} ({self.account.mode or 'Default'})."
+        )
+
+    @Slot(str)
+    def _verification_failed(self, message: str) -> None:
+        self.verified = False
+        self.result_message = self._safe_verification_message(message)
+        self.last_verification_at = _verification_timestamp()
+        self.status_label.setText(f"Verification failed: {self.result_message}")
+        self._log_verification(
+            f"API Re-test failed: {self.account.provider_name}/{self.account.name} ({self.account.mode or 'Default'}): {self.result_message}"
+        )
+
+    @Slot()
+    def _verification_finished(self) -> None:
+        self._verification_worker = None
+        self._verification_thread = None
+        self._verification_credentials.clear()
+        self.close_button.setEnabled(True)
+        self.accept()
+
+    def reject(self) -> None:  # type: ignore[override]
+        if self._verification_thread is not None and self._verification_thread.isRunning():
+            self.status_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+            return
+        super().reject()
+
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        if self._verification_thread is not None and self._verification_thread.isRunning():
+            self.status_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+            event.ignore()
+            return
+        super().closeEvent(event)
 
 
 class InvoiceTemplateDialog(QDialog):

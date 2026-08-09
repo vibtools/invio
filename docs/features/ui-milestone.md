@@ -2,7 +2,7 @@
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.
 
-Current pages in `v1.0.0.1.9` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
+Current pages in `v1.0.0.1.10` are Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, and Settings.
 
 Release history relevant to the current UI:
 
@@ -20,3 +20,5 @@ The core Step-40J tokens, provider/account reservation behavior, and one-QThread
 
 - `v1.0.0.1.8`: no UI redesign; P02 restores durable application state into the existing pages before the shell is shown.
 - `v1.0.0.1.9`: no UI redesign; P02 verification correction is backend/recovery-only, with release markers synchronized.
+
+- `v1.0.0.1.10`: P03 adds lifecycle actions to the existing Accounts page only; page inventory and shared design system remain unchanged.

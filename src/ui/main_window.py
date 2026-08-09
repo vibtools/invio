@@ -32,7 +32,7 @@ from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_emails
-from .dialogs import AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
+from .dialogs import AccountRetestDialog, AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
 from .pages import (
     AccountsPage,
     CustomerListsPage,
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.9 started.")
+        self.log("Invio v1.0.0.1.10 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -180,7 +180,9 @@ class MainWindow(QMainWindow):
 
     def _register_pages(self) -> None:
         self.dashboard_page = DashboardPage(self.state, self.providers, self.new_task)
-        self.accounts_page = AccountsPage(self.state, self.providers, self.add_account)
+        self.accounts_page = AccountsPage(
+            self.state, self.providers, self.add_account, self.edit_account, self.retest_account, self.delete_account
+        )
         self.invoice_page = InvoiceTemplatesPage(self.state, self.new_template, self.edit_template, self.delete_template)
         self.customer_page = CustomerListsPage(self.state, self.new_customer_list, self.import_customer_emails, self.delete_customer_list)
         self.tasks_page = TasksPage(
@@ -217,7 +219,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.9")
+        self.runtime_status = QLabel("Production • v1.0.0.1.10")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -356,13 +358,31 @@ class MainWindow(QMainWindow):
         self._refresh_dashboard()
 
     def uninstall_provider(self, provider_id: str) -> None:
-        provider = self.providers.get_installed(provider_id)
+        try:
+            provider = self.providers.get_installed(provider_id)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
         if provider is None:
             self._message("Provider", "This provider is not installed.", QMessageBox.Icon.Warning)
             return
+
+        active_tasks = [
+            task for task in self.state.tasks.values()
+            if task.provider_id == provider_id and self.worker_manager.is_running(task.id)
+        ]
+        if active_tasks:
+            names = ", ".join(task.name for task in active_tasks)
+            self._message(
+                "Provider",
+                f"Stop the active task before uninstalling {provider.name}. Active: {names}.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+
         answer = self._question(
             "Uninstall Provider",
-            f"Uninstall {provider.name}? Existing accounts and tasks are kept in the current session, but this provider will no longer be available for new account or task selection until it is installed again.",
+            f"Uninstall {provider.name}? Existing accounts, protected credentials, tasks and reservations will remain saved, but this provider cannot be used to edit/re-test accounts or start/retry tasks until it is installed again.",
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
@@ -374,6 +394,7 @@ class MainWindow(QMainWindow):
         self.log(f"Provider uninstalled: {removed.name} v{removed.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self.tasks_page.refresh()
         self._refresh_dashboard()
 
     def load_provider(self) -> None:
@@ -406,6 +427,143 @@ class MainWindow(QMainWindow):
             self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
             return
         self.log(f"Account added: {account.provider_name}/{account.name} ({account.mode}).")
+        self.accounts_page.refresh()
+        self._refresh_dashboard()
+
+    def _account_task_reference(self, account_id: str):
+        task_id = self.state.account_reservations.get(account_id)
+        if task_id and task_id in self.state.tasks:
+            return self.state.tasks[task_id]
+        return next((task for task in self.state.tasks.values() if account_id in task.account_ids), None)
+
+    def edit_account(self, account_id: str) -> None:
+        account = self.state.accounts.get(account_id)
+        if account is None:
+            return
+        referenced_by = self._account_task_reference(account_id)
+        if referenced_by is not None:
+            self._message(
+                "Accounts",
+                f"Account '{account.name}' is assigned to {referenced_by.name}. Close that task before editing the account.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+        try:
+            provider = self.providers.get_installed(account.provider_id)
+        except ProviderManifestError as exc:
+            self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
+            return
+        if provider is None:
+            self._message(
+                "Accounts",
+                "Reinstall this provider before editing or re-testing the account.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+
+        dialog = AddAccountDialog(
+            [provider], self, provider_runtime=self.provider_runtime, log_callback=self.log, account=account
+        )
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        payload = dialog.payload()
+        try:
+            updated = self.state.update_account(
+                account.id,
+                name=payload["name"],
+                mode=payload["mode"],
+                credentials=payload["credentials"],
+                status=payload["status"],
+                last_verification_at=payload["last_verification_at"],
+                verification_error_summary=payload["verification_error_summary"],
+            )
+        except StateError as exc:
+            self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Account updated and verified: {updated.provider_name}/{updated.name} ({updated.mode}).")
+        self.accounts_page.refresh()
+        self._refresh_dashboard()
+
+    def retest_account(self, account_id: str) -> None:
+        account = self.state.accounts.get(account_id)
+        if account is None:
+            return
+        try:
+            provider = self.providers.get_installed(account.provider_id)
+        except ProviderManifestError as exc:
+            self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
+            return
+        if provider is None:
+            self._message(
+                "Accounts",
+                "Reinstall this provider before editing or re-testing the account.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+        if not self.provider_runtime.supports_api_test(account.provider_id):
+            self._message(
+                "API Test Unavailable",
+                "This provider has no executable API-test adapter in the current Invio runtime.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+        referenced_by = self._account_task_reference(account_id)
+        if referenced_by is not None and self.worker_manager.is_running(referenced_by.id):
+            self._message(
+                "Accounts",
+                f"Stop {referenced_by.name} before re-testing account '{account.name}'.",
+                QMessageBox.Icon.Warning,
+            )
+            return
+
+        dialog = AccountRetestDialog(
+            account, self, provider_runtime=self.provider_runtime, log_callback=self.log
+        )
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+        try:
+            updated = self.state.record_account_verification(
+                account.id,
+                verified=dialog.verified,
+                last_verification_at=dialog.last_verification_at,
+                error_summary=dialog.result_message,
+            )
+        except StateError as exc:
+            self.accounts_page.refresh()
+            self.tasks_page.refresh()
+            self._refresh_dashboard()
+            self._message("Operational Storage", str(exc), QMessageBox.Icon.Warning)
+            self.log(f"{account.provider_name}/{account.name}: API Re-test result could not be saved: {exc}")
+            return
+
+        self.accounts_page.refresh()
+        self.tasks_page.refresh()
+        self._refresh_dashboard()
+        if updated.status == "Verified":
+            self._message("API Test", f"{updated.provider_name}/{updated.name} is verified.")
+        else:
+            self._message(
+                "API Test Failed",
+                updated.verification_error_summary or "Provider API verification failed.",
+                QMessageBox.Icon.Warning,
+            )
+
+    def delete_account(self, account_id: str) -> None:
+        account = self.state.accounts.get(account_id)
+        if account is None:
+            return
+        answer = self._question(
+            "Delete Account",
+            f"Delete account '{account.name}' and remove its protected provider credentials?",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self.state.delete_account(account.id)
+        except StateError as exc:
+            self._message("Accounts", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.log(f"Account deleted: {account.provider_name}/{account.name}.")
         self.accounts_page.refresh()
         self._refresh_dashboard()
 
@@ -546,6 +704,14 @@ class MainWindow(QMainWindow):
         task = self.state.tasks.get(task_id)
         if not task:
             return None, None, "Task was not found."
+        try:
+            installed_provider = self.providers.get_installed(task.provider_id)
+        except ProviderManifestError as exc:
+            return task, None, f"Provider installation state could not be read: {exc}"
+        if installed_provider is None:
+            return task, None, (
+                f"{task.provider_name} is not installed. Reinstall the provider before starting or retrying this task."
+            )
         for account_id in task.account_ids:
             account = self.state.accounts.get(account_id)
             if account is None:

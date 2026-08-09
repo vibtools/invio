@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.9` preserves the P01 PySide6/provider-runtime/WorkerManager behavior and adds P02 durable operational storage plus protected provider credentials. No new UI page, provider execution workflow, Task thread architecture, or Customer/Invoice domain field is introduced.
+Invio `v1.0.0.1.10` preserves the P01/P02 runtime, storage, provider and WorkerManager architecture while completing P03 account lifecycle, verification-health persistence and provider-install execution consistency. No new UI page, provider execution engine, Task thread architecture, Customer contract, or Invoice contract is introduced.
 
 ## 2. Core Responsibilities
 
@@ -57,7 +57,7 @@ Production backend acceptance is fail-closed: only the approved core OS-protecte
 
 ## 6. Schema / Migration
 
-P02 schema version: **1**, tracked by `PRAGMA user_version`.
+Current schema version: **2**, tracked by `PRAGMA user_version`. Schema v2 adds only `last_verification_at` and `verification_error_summary` to `accounts`; existing schema-v1 databases migrate transactionally with a pre-migration backup.
 
 Core tables:
 
@@ -96,3 +96,15 @@ External provider manifest loading remains metadata-only unless a runner is regi
 ## v1.0.0.1.9 P02 verification correction
 
 The storage architecture is unchanged from P02. The corrective release only hardens two boundaries: persistence-failure Stop handling is re-entrancy-safe, and loaded Task/account reservation state must be an exact match before `AppState` is constructed.
+
+
+## 11. P03 Account Lifecycle and Provider Consistency
+
+- `Account` adds `last_verification_at` and `verification_error_summary`; provider identity remains immutable during Edit.
+- `AppState.update_account()` blocks Task-referenced accounts, commits a re-verified candidate through protected credentials plus SQLite, and compensates the protected secret if the metadata commit fails.
+- `AppState.record_account_verification()` persists Verified/Not Verified, UTC attempt time, and a credential-scrubbed error summary.
+- A real failed Re-test fails closed in current runtime memory even if the verification-health database write fails; successful re-verification is not promoted unless durable persistence succeeds.
+- `AppState.delete_account()` fail-safely checks both reservation and Task references, removes the protected secret, deletes durable metadata, and restores the secret if the database delete fails.
+- Accounts page remains the only account UI page; it adds Edit/Re-test/Delete actions and keeps accounts visible when their provider is not installed.
+- Provider uninstall is blocked while a matching Task worker is active. Inactive Tasks/accounts/reservations remain durable. `_runner_for_task()` blocks Start/Retry while the provider is absent.
+- WorkerManager, ProviderManager, provider manifests and provider send behavior are unchanged.

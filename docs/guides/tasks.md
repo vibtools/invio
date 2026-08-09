@@ -21,7 +21,9 @@ Account reservations are restored with the Task, so an account reserved by an op
 
 ## Controls
 
-Existing controls remain: **Start**, **Pause**, **Resume**, **Stop**, **Retry Failed**, and **Close Task**. Worker threading and provider execution semantics are unchanged by P02.
+Existing controls remain: **Start**, **Pause**, **Resume**, **Stop**, **Retry Failed**, and **Close Task**. P03 adds a pre-execution provider-install gate: Start/Retry cannot create a runner while the Task provider is uninstalled. Reinstalling the provider restores availability without rebuilding the Task or its Account reservation.
+
+Re-testing a reserved Account is permitted only when its Task worker is inactive. If that Re-test fails, the Account becomes **Not Verified** and the existing P01 execution gate blocks the Task.
 
 ## P02 Boundary
 

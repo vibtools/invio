@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.9`  
+**Baseline:** `v1.0.0.1.10`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -158,7 +158,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-001 | **RESOLVED in P01:** Add Account executes real provider API verification on a dedicated `QThread` and fails closed | Invalid/revoked/unavailable credentials cannot become Task-ready | COMPLETE v1.0.0.1.6; re-verified v1.0.0.1.7 |
 | EH-002 | **RESOLVED in P02:** transactional SQLite domain storage, schema checks, migration backup, corruption/future-schema fail-closed startup | Operational state now restart-durable by local contract | COMPLETE v1.0.0.1.8 |
 | EH-003 | **RESOLVED in P02:** provider credentials use approved protected keyring storage with no plaintext fallback; missing secret restores Account as `Not Verified` | Native OS backend certification remains P14 | COMPLETE v1.0.0.1.8 |
-| EH-004 | No verified-account health/retest lifecycle | Stale/revoked credentials fail during send | P03 |
+| EH-004 | **RESOLVED in P03:** manual Re-test plus persisted verification state/time/safe error; failed Re-test becomes Not Verified | Known failed credentials cannot execute; no age-based/continuous health policy is claimed | COMPLETE v1.0.0.1.10 |
 | EH-005 | Customer import does not provide complete row-level diagnostics | Partial/ambiguous bulk import | P04 |
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
 | EH-007 | Provider capability/customer/template mismatch lacks preflight error | Side effects can start before incompatibility is clear | P06 |
@@ -247,3 +247,18 @@ Implemented in `v1.0.0.1.8`:
 - **Persistence-stop re-entrancy:** the faulted-task guard is now set before `WorkerManager.stop()` is called, preventing recursive storage-failure handling if Stop emits `Stopping` while the database remains unavailable.
 - **Reservation recovery consistency:** startup now fails closed when persisted `task_accounts` and `account_reservations` are not an exact one-to-one match. This prevents restored Tasks from losing account exclusivity silently.
 - These are corrections to P02 failure/recovery handling only; no P03 lifecycle behavior is introduced.
+
+
+## P03 account lifecycle handling
+
+Implemented in `v1.0.0.1.10`:
+
+- Account Edit is rejected while any open Task references the account and requires a new successful real API Test before commit.
+- Failed candidate Edit verification never overwrites the saved account or protected credential.
+- Re-test runs on a dialog-owned `QThread`; success/failure is durably recorded with UTC timestamp and credential-scrubbed error summary.
+- Re-test is blocked while the referenced Task worker is active. Failed Re-test makes the account `Not Verified`, activating existing P01 execution gates.
+- If the durable verification-health write fails after a real failed Re-test, the current process still marks the Account `Not Verified` before surfacing the persistence error. A successful Re-test never elevates an Account when its durable write fails.
+- Account Delete is rejected while reserved/Task-referenced. Protected-secret deletion and SQLite deletion use compensation so a database failure attempts to restore the prior protected credential.
+- Provider Uninstall is rejected while a matching Task worker is active. Otherwise provider installation state alone is removed; Accounts/Tasks/reservations/credentials remain.
+- Task Start/Retry fail closed while the Task provider is not installed.
+- Provider uninstall/reinstall does not invent verification expiry and does not silently delete/recreate accounts.

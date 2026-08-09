@@ -42,6 +42,13 @@ class AppState:
     def _id(prefix: str) -> str:
         return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
+    @staticmethod
+    def _safe_verification_error(account: Account, message: str) -> str:
+        safe = str(message).strip()
+        for secret in sorted((value for value in account.credentials.values() if value), key=len, reverse=True):
+            safe = safe.replace(secret, "***REDACTED***")
+        return safe
+
     def add_account(
         self,
         provider_id: str,
@@ -50,6 +57,8 @@ class AppState:
         mode: str,
         credentials: dict[str, str],
         status: str = "Ready",
+        last_verification_at: str = "",
+        verification_error_summary: str = "",
     ) -> Account:
         if not name.strip():
             raise StateError("Account name is required.")
@@ -61,6 +70,8 @@ class AppState:
             mode=mode.strip() or "Default",
             status=status,
             credentials=dict(credentials),
+            last_verification_at=last_verification_at.strip(),
+            verification_error_summary=verification_error_summary.strip(),
         )
         credential_ref = ""
         if self._credential_store is not None:
@@ -87,6 +98,157 @@ class AppState:
                 raise self._persistence_error(exc) from exc
         self.accounts[account.id] = account
         return account
+
+    def _account_task_reference(self, account_id: str) -> Task | None:
+        reserved_by = self.account_reservations.get(account_id)
+        if reserved_by and reserved_by in self.tasks:
+            return self.tasks[reserved_by]
+        return next((task for task in self.tasks.values() if account_id in task.account_ids), None)
+
+    def update_account(
+        self,
+        account_id: str,
+        *,
+        name: str,
+        mode: str,
+        credentials: dict[str, str],
+        status: str,
+        last_verification_at: str,
+        verification_error_summary: str = "",
+    ) -> Account:
+        account = self.accounts.get(account_id)
+        if account is None:
+            raise StateError("Account was not found.")
+        referenced_by = self._account_task_reference(account_id)
+        if referenced_by is not None:
+            raise StateError(
+                f"Account '{account.name}' is assigned to {referenced_by.name}. Close that task before editing the account."
+            )
+        clean_name = name.strip()
+        if not clean_name:
+            raise StateError("Account name is required.")
+        if status != "Verified":
+            raise StateError("Account changes require a successful API Test before they can be saved.")
+
+        candidate = Account(
+            id=account.id,
+            provider_id=account.provider_id,
+            provider_name=account.provider_name,
+            name=clean_name,
+            mode=mode.strip() or "Default",
+            status="Verified",
+            credentials=dict(credentials),
+            last_verification_at=last_verification_at.strip(),
+            verification_error_summary=verification_error_summary.strip(),
+        )
+
+        old_protected: dict[str, str] | None = None
+        credential_ref = CredentialStore.credential_ref(account.id)
+        if self._credential_store is not None:
+            try:
+                old_protected = self._credential_store.get_credentials(credential_ref)
+                self._credential_store.set_credentials(account.id, candidate.credentials)
+            except CredentialStoreError as exc:
+                raise self._persistence_error(exc) from exc
+
+        if self._domain_store is not None:
+            try:
+                self._domain_store.update_account(candidate)
+            except DomainStoreError as exc:
+                rollback_error: CredentialStoreError | None = None
+                if self._credential_store is not None:
+                    try:
+                        if old_protected is None:
+                            self._credential_store.delete_credentials(credential_ref)
+                        else:
+                            self._credential_store.set_credentials(account.id, old_protected)
+                    except CredentialStoreError as rollback_exc:
+                        rollback_error = rollback_exc
+                if rollback_error is not None:
+                    raise StateError(
+                        f"{exc} Protected credential rollback also failed; account state was not reported as updated."
+                    ) from exc
+                raise self._persistence_error(exc) from exc
+
+        self.accounts[account.id] = candidate
+        return candidate
+
+    def record_account_verification(
+        self,
+        account_id: str,
+        *,
+        verified: bool,
+        last_verification_at: str,
+        error_summary: str = "",
+    ) -> Account:
+        account = self.accounts.get(account_id)
+        if account is None:
+            raise StateError("Account was not found.")
+        status = "Verified" if verified else "Not Verified"
+        safe_error = "" if verified else self._safe_verification_error(account, error_summary)
+        timestamp = last_verification_at.strip()
+        if not timestamp:
+            raise StateError("Verification timestamp is required.")
+        if self._domain_store is not None:
+            try:
+                self._domain_store.update_account_verification(
+                    account.id,
+                    status=status,
+                    last_verification_at=timestamp,
+                    verification_error_summary=safe_error,
+                )
+            except DomainStoreError as exc:
+                # A real failed re-test is authoritative for the current
+                # process even if durable storage is temporarily unavailable.
+                # Fail closed in memory so a previously Verified account cannot
+                # execute after a known verification failure. A successful
+                # result never elevates state unless the durable write commits.
+                if not verified:
+                    account.status = "Not Verified"
+                    account.last_verification_at = timestamp
+                    account.verification_error_summary = safe_error
+                raise self._persistence_error(exc) from exc
+        account.status = status
+        account.last_verification_at = timestamp
+        account.verification_error_summary = safe_error
+        return account
+
+    def delete_account(self, account_id: str) -> None:
+        account = self.accounts.get(account_id)
+        if account is None:
+            return
+        referenced_by = self._account_task_reference(account_id)
+        if referenced_by is not None:
+            raise StateError(
+                f"Account '{account.name}' is assigned to {referenced_by.name}. Close that task before deleting the account."
+            )
+
+        credential_ref = CredentialStore.credential_ref(account.id)
+        old_protected: dict[str, str] | None = None
+        if self._credential_store is not None:
+            try:
+                old_protected = self._credential_store.get_credentials(credential_ref)
+                self._credential_store.delete_credentials(credential_ref)
+            except CredentialStoreError as exc:
+                raise self._persistence_error(exc) from exc
+
+        if self._domain_store is not None:
+            try:
+                self._domain_store.delete_account(account.id)
+            except DomainStoreError as exc:
+                restore_error: CredentialStoreError | None = None
+                if old_protected is not None and self._credential_store is not None:
+                    try:
+                        self._credential_store.set_credentials(account.id, old_protected)
+                    except CredentialStoreError as restore_exc:
+                        restore_error = restore_exc
+                if restore_error is not None:
+                    raise StateError(
+                        f"{exc} Protected credential restore also failed; account deletion was not reported as successful."
+                    ) from exc
+                raise self._persistence_error(exc) from exc
+
+        self.accounts.pop(account.id, None)
 
     def accounts_for_provider(self, provider_id: str, *, available_only: bool = False) -> list[Account]:
         accounts = [item for item in self.accounts.values() if item.provider_id == provider_id]

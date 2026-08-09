@@ -316,6 +316,36 @@ class UiContractTests(unittest.TestCase):
             method.index("self.worker_manager.stop(task_id)"),
         )
 
+    def test_p03_account_lifecycle_ui_and_verification_health_are_wired(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertIn('button("Edit")', page)
+        self.assertIn('button("Re-test")', page)
+        self.assertIn('button("Delete")', page)
+        self.assertIn('"Last API Test"', page)
+        self.assertIn('"Protected storage"', page)
+        self.assertIn('"Not Installed"', page)
+        self.assertIn('class AccountRetestDialog(QDialog)', dialogs)
+        self.assertIn('thread.setObjectName(f"InvioAccountApiRetest-{self.account.id}")', dialogs)
+        self.assertIn('account: Account | None = None', dialogs)
+        self.assertIn('self.provider_combo.setEnabled(not self._provider_locked)', dialogs)
+        self.assertIn('"Save Changes" if account is not None else "Add Account"', dialogs)
+        self.assertIn('def edit_account(self, account_id: str)', window)
+        self.assertIn('def retest_account(self, account_id: str)', window)
+        self.assertIn('def delete_account(self, account_id: str)', window)
+
+    def test_p03_provider_uninstall_and_task_execution_are_consistent(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        uninstall = window.split("def uninstall_provider", 1)[1].split("def load_provider", 1)[0]
+        runner = window.split("def _runner_for_task", 1)[1].split("def start_task", 1)[0]
+        self.assertIn('self.worker_manager.is_running(task.id)', uninstall)
+        self.assertIn('Existing accounts, protected credentials, tasks and reservations will remain saved', uninstall)
+        self.assertIn('self.providers.get_installed(task.provider_id)', runner)
+        self.assertIn('Reinstall the provider before starting or retrying this task.', runner)
+
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
         self.assertIn("self._slots: dict[str, _WorkerSlot]", source)

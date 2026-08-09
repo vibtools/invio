@@ -29,7 +29,7 @@
 │   ├── invoices/templates/   Invoice template/currency models
 │   ├── tasks/                Task model including template binding
 │   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
-├── tests/                    Unit/contract tests, including P02 storage tests
+├── tests/                    Unit/contract tests, including P01-P03 provider/storage/account-lifecycle regressions
 ├── main.py
 ├── requirements.txt
 └── pyproject.toml
@@ -52,3 +52,8 @@
 ## v1.0.0.1.9 P02 Verification Correction
 
 No directory or module is renamed/reorganized. The corrective release changes only P02 recovery/failure-path logic, release tests/metadata, and synchronized documentation.
+
+
+## v1.0.0.1.10 P03 Account Lifecycle
+
+P03 extends the existing `Account` model and SQLite `accounts` table with verification-health metadata, adds lifecycle operations in `AppState`/`DomainStore`, and adds Edit/Re-test/Delete controls to the existing Accounts page. No new UI page or dependency is introduced.

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.9**.
+Current version: **v1.0.0.1.10**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,6 +20,7 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.9.md` - current release.
+- `release-notes/1.0.0.1.10.md` - current release.
+- `release-notes/1.0.0.1.9.md` - P02 corrective release.
 
 Detailed forensic reports, phase roadmap, phase completion ledger and update protocol are private records under `project/`.

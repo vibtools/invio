@@ -18,3 +18,5 @@ class Account:
     mode: str
     status: str = "Ready"
     credentials: dict[str, str] = field(default_factory=dict, repr=False)
+    last_verification_at: str = ""
+    verification_error_summary: str = ""

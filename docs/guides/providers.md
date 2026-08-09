@@ -6,6 +6,12 @@ Providers are manifest-based registrations. Bundled packages appear on **Provide
 
 Add Account requires an executable provider API-test adapter. Bundled Stripe and Refrens runtimes provide one. API Test runs outside the GUI thread and only a successful test creates a `Verified` Account. Stripe verification enforces selected Test/Live mode; Refrens authenticates and checks invoice-list access.
 
+## P03 Provider/Account Consistency
+
+Uninstall is deterministic: a provider cannot be uninstalled while one of its Tasks has an active worker. With no active worker, uninstall removes only provider installation state; Accounts, protected credentials, Tasks and reservations remain durable. Preserved accounts stay visible as **Not Installed**, and Task Start/Retry is blocked until the provider is installed again.
+
+Account Re-test and Edit require the provider to be installed. Reinstall does not silently delete/recreate the account and does not invent an age-based verification expiry.
+
 ## P02 Credential Protection
 
 After successful API Test and account acceptance:

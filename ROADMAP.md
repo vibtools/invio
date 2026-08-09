@@ -1,22 +1,22 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.9**.
+Current frozen implementation baseline: **Invio v1.0.0.1.10**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Production implementation phases: **2 / 14 complete**.
-- Completed: **P01**, **P02**.
-- Next planned phase: **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency**.
+- Production implementation phases: **3 / 14 complete**.
+- Completed: **P01**, **P02**, **P03**.
+- Next planned phase: **P04 - Customer Data Contract and Import Upgrade**.
 - Current status: **not production-certified**.
 
 ## Ordered Production Phases
 
 1. **P01 - Real Account API Verification [COMPLETE]**: real non-blocking provider API Test and verified-account Task gates.
 2. **P02 - Durable Domain Storage and Protected Credentials [COMPLETE in v1.0.0.1.8; verification-corrected in v1.0.0.1.9]**: SQLite operational persistence, versioned schema/transactions/recovery, and owner-approved OS-protected keyring credentials with no plaintext fallback.
-3. **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency [NEXT]**: edit/delete/retest/health and deterministic uninstall behavior.
+3. **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency [COMPLETE in v1.0.0.1.10]**: reservation-safe edit/delete/re-test, durable verification health, provider-uninstall preservation, and provider-installed Task execution gates.
 4. **P04 - Customer Data Contract and Import Upgrade**: preserve email-only Stripe use while adding explicit provider-required customer data such as Refrens country.
 5. **P05 - Immutable Task Execution Snapshot and Input Consistency**: freeze recipients/template/account basis and eliminate list/template drift.
 6. **P06 - Provider Capability and Preflight Validation**: reject unsupported provider/account/template/customer combinations before side effects.

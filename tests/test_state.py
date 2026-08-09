@@ -41,6 +41,56 @@ class AppStateTests(unittest.TestCase):
         with self.assertRaisesRegex(StateError, "not verified"):
             self.create_task([unverified.id])
 
+    def test_reserved_account_cannot_be_edited_or_deleted(self):
+        task = self.create_task()
+        with self.assertRaisesRegex(StateError, "Close that task before editing"):
+            self.state.update_account(
+                self.account_a.id, name="Changed", mode="Test", credentials={"secret_key": "new"},
+                status="Verified", last_verification_at="2026-08-09T02:00:00+00:00"
+            )
+        with self.assertRaisesRegex(StateError, "Close that task before deleting"):
+            self.state.delete_account(self.account_a.id)
+        self.assertIn(task.id, self.state.tasks)
+
+    def test_unreserved_account_edit_requires_verified_candidate(self):
+        with self.assertRaisesRegex(StateError, "successful API Test"):
+            self.state.update_account(
+                self.account_b.id, name="Changed", mode="Test", credentials={"secret_key": "new"},
+                status="Not Verified", last_verification_at="2026-08-09T02:00:00+00:00"
+            )
+        updated = self.state.update_account(
+            self.account_b.id, name="Changed", mode="Live", credentials={"secret_key": "new"},
+            status="Verified", last_verification_at="2026-08-09T02:01:00+00:00"
+        )
+        self.assertEqual(updated.provider_id, "stripe")
+        self.assertEqual(updated.name, "Changed")
+        self.assertEqual(updated.mode, "Live")
+        self.assertEqual(updated.last_verification_at, "2026-08-09T02:01:00+00:00")
+
+    def test_retest_failure_marks_account_unverified_and_blocks_task_creation(self):
+        self.state.record_account_verification(
+            self.account_b.id, verified=False, last_verification_at="2026-08-09T02:02:00+00:00",
+            error_summary="Credential rejected."
+        )
+        self.assertEqual(self.account_b.status, "Not Verified")
+        self.assertEqual(self.account_b.verification_error_summary, "Credential rejected.")
+        with self.assertRaisesRegex(StateError, "not verified"):
+            self.create_task([self.account_b.id])
+
+    def test_verification_error_summary_redacts_current_account_secrets(self):
+        self.account_b.credentials = {"secret_key": "super-secret-value"}
+        self.state.record_account_verification(
+            self.account_b.id, verified=False, last_verification_at="2026-08-09T02:03:00+00:00",
+            error_summary="Provider rejected super-secret-value."
+        )
+        self.assertNotIn("super-secret-value", self.account_b.verification_error_summary)
+        self.assertIn("***REDACTED***", self.account_b.verification_error_summary)
+
+    def test_unreserved_account_delete_removes_account(self):
+        account_id = self.account_b.id
+        self.state.delete_account(account_id)
+        self.assertNotIn(account_id, self.state.accounts)
+
     def test_accounts_are_filtered_by_provider(self):
         ids = {item.id for item in self.state.accounts_for_provider("stripe")}
         self.assertEqual(ids, {self.account_a.id, self.account_b.id})

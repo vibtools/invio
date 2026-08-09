@@ -17,6 +17,7 @@ from src.core.storage import (
 )
 from src.customers.models import CustomerList
 from src.tasks.models import Task
+from src.core.storage.schema import SCHEMA_V1
 
 
 class FakeKeyring:
@@ -92,7 +93,7 @@ class P02StorageTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        self.assertEqual(version, 1)
+        self.assertEqual(version, 2)
         self.assertIn("accounts", tables)
         self.assertIn("tasks", tables)
         self.assertIn("account_reservations", tables)
@@ -285,6 +286,202 @@ class P02StorageTests(unittest.TestCase):
         self.assertEqual(duplicate_count, 0)
         self.assertEqual(reservation, first_task_id)
 
+    def test_populated_schema_v1_account_migrates_without_losing_metadata(self):
+        legacy = self.root / "populated_v1.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.execute(
+                "INSERT INTO accounts (id, provider_id, provider_name, name, mode, status, credential_ref) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("acct_legacy", "stripe", "Stripe", "Legacy", "Test", "Verified", "account:acct_legacy"),
+            )
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+        backend = FakeKeyring()
+        credentials = CredentialStore(backend)
+        credentials.set_credentials("acct_legacy", {"secret_key": "sk_test_LEGACY"})
+        store = DomainStore(legacy)
+        loaded = store.load(credentials)
+        account = loaded.accounts["acct_legacy"]
+        self.assertEqual(account.name, "Legacy")
+        self.assertEqual(account.status, "Verified")
+        self.assertEqual(account.last_verification_at, "")
+        self.assertEqual(account.verification_error_summary, "")
+
+    def test_schema_v1_migrates_to_v2_with_backup_and_verification_columns(self):
+        legacy = self.root / "legacy_v1.sqlite3"
+        with closing(sqlite3.connect(legacy)) as connection:
+            connection.executescript(SCHEMA_V1)
+            connection.execute("PRAGMA user_version = 1")
+            connection.commit()
+        DomainStore(legacy)
+        backup = legacy.with_name("legacy_v1.sqlite3.pre_migration_v1.bak")
+        self.assertTrue(backup.exists())
+        with closing(sqlite3.connect(legacy)) as connection:
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
+        self.assertIn("last_verification_at", columns)
+        self.assertIn("verification_error_summary", columns)
+
+    def test_verification_health_round_trip_survives_restart(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_HEALTH"},
+            status="Verified", last_verification_at="2026-08-09T02:00:00+00:00"
+        )
+        state.record_account_verification(
+            account.id, verified=False, last_verification_at="2026-08-09T02:10:00+00:00", error_summary="Permission denied."
+        )
+        loaded = self.store.load(self.credentials)
+        restored = loaded.accounts[account.id]
+        self.assertEqual(restored.status, "Not Verified")
+        self.assertEqual(restored.last_verification_at, "2026-08-09T02:10:00+00:00")
+        self.assertEqual(restored.verification_error_summary, "Permission denied.")
+
+    def test_missing_protected_credentials_preserve_last_api_timestamp_and_mark_unverified(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_HEALTH_MISSING"},
+            status="Verified", last_verification_at="2026-08-09T02:20:00+00:00"
+        )
+        self.backend.values.clear()
+        loaded = self.store.load(self.credentials)
+        restored = loaded.accounts[account.id]
+        self.assertEqual(restored.status, "Not Verified")
+        self.assertEqual(restored.last_verification_at, "2026-08-09T02:20:00+00:00")
+        self.assertEqual(restored.verification_error_summary, "Protected credentials are unavailable.")
+
+    def test_account_update_database_failure_restores_old_protected_credentials(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_OLD"}, status="Verified"
+        )
+        original = self.store.update_account
+
+        def fail_update(*_args, **_kwargs):
+            from src.core.storage import DomainStoreError
+            raise DomainStoreError("forced account update failure")
+
+        self.store.update_account = fail_update  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced account update failure"):
+                state.update_account(
+                    account.id, name="Changed", mode="Test", credentials={"secret_key": "sk_test_NEW"},
+                    status="Verified", last_verification_at="2026-08-09T02:30:00+00:00"
+                )
+        finally:
+            self.store.update_account = original  # type: ignore[method-assign]
+        self.assertEqual(state.accounts[account.id].name, "Primary")
+        self.assertEqual(self.credentials.get_credentials(f"account:{account.id}"), {"secret_key": "sk_test_OLD"})
+
+    def test_failed_retest_persistence_failure_still_fails_closed_in_memory(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_RETEST_FAIL"}, status="Verified"
+        )
+        original = self.store.update_account_verification
+
+        def fail_verification_update(*_args, **_kwargs):
+            from src.core.storage import DomainStoreError
+            raise DomainStoreError("forced verification persistence failure")
+
+        self.store.update_account_verification = fail_verification_update  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced verification persistence failure"):
+                state.record_account_verification(
+                    account.id, verified=False, last_verification_at="2026-08-09T02:25:00+00:00",
+                    error_summary="Credential rejected."
+                )
+        finally:
+            self.store.update_account_verification = original  # type: ignore[method-assign]
+        self.assertEqual(state.accounts[account.id].status, "Not Verified")
+        self.assertEqual(state.accounts[account.id].last_verification_at, "2026-08-09T02:25:00+00:00")
+        self.assertEqual(state.accounts[account.id].verification_error_summary, "Credential rejected.")
+
+    def test_successful_retest_persistence_failure_does_not_elevate_unverified_account(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_RETEST_SUCCESS"}, status="Not Verified"
+        )
+        original = self.store.update_account_verification
+
+        def fail_verification_update(*_args, **_kwargs):
+            from src.core.storage import DomainStoreError
+            raise DomainStoreError("forced verification persistence failure")
+
+        self.store.update_account_verification = fail_verification_update  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced verification persistence failure"):
+                state.record_account_verification(
+                    account.id, verified=True, last_verification_at="2026-08-09T02:26:00+00:00"
+                )
+        finally:
+            self.store.update_account_verification = original  # type: ignore[method-assign]
+        self.assertEqual(state.accounts[account.id].status, "Not Verified")
+
+    def test_account_delete_database_failure_restores_protected_credentials(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_DELETE_OLD"}, status="Verified"
+        )
+        original = self.store.delete_account
+
+        def fail_delete(*_args, **_kwargs):
+            from src.core.storage import DomainStoreError
+            raise DomainStoreError("forced account delete failure")
+
+        self.store.delete_account = fail_delete  # type: ignore[method-assign]
+        try:
+            with self.assertRaisesRegex(StateError, "forced account delete failure"):
+                state.delete_account(account.id)
+        finally:
+            self.store.delete_account = original  # type: ignore[method-assign]
+        self.assertIn(account.id, state.accounts)
+        self.assertEqual(
+            self.credentials.get_credentials(f"account:{account.id}"), {"secret_key": "sk_test_DELETE_OLD"}
+        )
+
+    def test_account_delete_protected_credential_failure_keeps_account_and_database(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_DELETE_BLOCK"}, status="Verified"
+        )
+        self.backend.fail_delete = True
+        with self.assertRaises(StateError):
+            state.delete_account(account.id)
+        self.assertIn(account.id, state.accounts)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM accounts WHERE id=?", (account.id,)).fetchone()[0]
+        self.assertEqual(count, 1)
+
+    def test_successful_account_update_persists_new_protected_secret_and_health(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_BEFORE"}, status="Verified"
+        )
+        updated = state.update_account(
+            account.id, name="Primary Updated", mode="Live", credentials={"secret_key": "sk_live_AFTER"},
+            status="Verified", last_verification_at="2026-08-09T02:40:00+00:00"
+        )
+        self.assertEqual(updated.provider_id, "stripe")
+        self.assertEqual(self.credentials.get_credentials(f"account:{account.id}"), {"secret_key": "sk_live_AFTER"})
+        loaded = self.store.load(self.credentials).accounts[account.id]
+        self.assertEqual(loaded.name, "Primary Updated")
+        self.assertEqual(loaded.mode, "Live")
+        self.assertEqual(loaded.last_verification_at, "2026-08-09T02:40:00+00:00")
+
+    def test_successful_account_delete_removes_database_and_protected_secret(self):
+        state = self.state()
+        account = state.add_account(
+            "stripe", "Stripe", "Disposable", "Test", {"secret_key": "sk_test_DELETE_OK"}, status="Verified"
+        )
+        reference = f"account:{account.id}"
+        state.delete_account(account.id)
+        self.assertNotIn(account.id, state.accounts)
+        self.assertIsNone(self.credentials.get_credentials(reference))
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            count = connection.execute("SELECT COUNT(*) FROM accounts WHERE id=?", (account.id,)).fetchone()[0]
+        self.assertEqual(count, 0)
+
     def test_future_schema_is_rejected_without_downgrade(self):
         future_path = self.root / "future.sqlite3"
         with closing(sqlite3.connect(future_path)) as connection:
@@ -302,7 +499,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy.sqlite3.pre_migration_v0.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
 
     def test_unversioned_unknown_schema_is_rejected_without_replacement(self):
         legacy = self.root / "unknown.sqlite3"
