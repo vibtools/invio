@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.22`  
+**Baseline:** `Invio v1.0.0.1.23`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06, P07  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -182,7 +182,7 @@ P06 is COMPLETE and verification-corrected. Built-in packaged manifests must mat
 
 **WORKING:** a current-session continuation can be proven safe but empty. That condition now reports that no recipients remain instead of using the separate restart/uncertain-state message. No send action is enabled for an empty set.
 
-**UNCHANGED:** exact continuation identities remain process-local, SQLite remains schema v4, WorkerManager itself is unchanged, P08 network reliability is not implemented, and P10 still owns durable recipient recovery.
+**HISTORICAL P07 NOTE:** exact continuation identities remain process-local and P10 still owns durable recipient recovery. SQLite remains schema v4. P08 network reliability is now implemented in v1.0.0.1.23 without changing the one-task-one-QThread architecture.
 
 ## v1.0.0.1.21 Current Provider Execution Status
 
@@ -192,8 +192,14 @@ P06 is COMPLETE and verification-corrected. Built-in packaged manifests must mat
 | Refrens | Working | Working | Blocked | P11 gate preserved |
 | Agiled | Working | Fail-closed | Fail-closed | Authoritative API contract required |
 
-The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrary external provider adapter discovery/loading is **NOT IMPLEMENTED** and remains P13. This release does not advance production progress beyond 7/14.
+The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrary external provider adapter discovery/loading is **NOT IMPLEMENTED** and remains P13. The v1.0.0.1.21 provider exception did not advance production progress; v1.0.0.1.23 subsequently completes P08 and advances progress to 8/14.
 
 ## v1.0.0.1.22 Verification Status
 
 **VERIFIED:** the `v1.0.0.1.21` internal packaged-provider adapter registry, Stripe binding, Refrens P11 gate, Agiled package/manifest, declared-vs-executable capability separation, and Agiled no-transport fail-close behavior remain correct. Additional tests now cover Agiled package install/uninstall, runtime handler binding resolution, and the generic UI/API-test gate. No new executable Agiled capability is claimed.
+
+## P08 status - v1.0.0.1.23
+
+**WORKING:** structured network/provider retry classification, maximum three total recipient attempts, exponential backoff/jitter, Retry-After parsing, explicit 30-second shared urllib socket timeout, cooperative Pause/Stop-aware retry waits, per-recipient unexpected-exception isolation, and non-blocking application shutdown coordination that waits for task QThread completion.
+
+**UNCHANGED / OUT OF SCOPE:** account failover and per-account rate scheduling (P09), persistent attempt/delivery ledger (P10), Refrens Task sending (P11), Agiled execution, external executable plugin loading (P13), SQLite schema v4 and dependencies.

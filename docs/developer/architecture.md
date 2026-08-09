@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.22` is the forensic verification baseline for the pre-P08 internal packaged-provider adapter registry plus Agiled packaged contract introduced in `v1.0.0.1.21`. P01-P07 behavior remains preserved. No new UI page, WorkerManager architecture, database schema, Refrens production Task runner, dynamic external-provider loading architecture, P08 behavior, or dependency is introduced.
+Invio `v1.0.0.1.23` completes P08 Worker and Network Reliability on the verified provider-adapter baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
 
 ## 2. Core Responsibilities
 
@@ -190,3 +190,9 @@ This removes duplicated provider-ID dispatch without moving network implementati
 ## 18. v1.0.0.1.22 Verification Boundary
 
 The architecture is unchanged from `v1.0.0.1.21`. Verification adds explicit tests that packaged Agiled installation remains manifest-only, executable Stripe/Refrens handler names resolve to callable existing `ProviderRuntime` methods, Agiled has no executable handler, and the UI remains generic/manifest-driven rather than adding an Agiled-specific branch. No adapter discovery/runtime subsystem is added.
+
+## 19. P08 Reliability Boundary - v1.0.0.1.23
+
+The task concurrency boundary is unchanged: `MainWindow -> WorkerManager -> one QThread -> ProviderRuntime runner`. ProviderRuntime classifies transport failures and performs recipient-level bounded retry. The retry helper receives the same immutable Task snapshot and already selected AccountSnapshot, so account assignment and `Task.id`-based Stripe idempotency keys remain stable.
+
+`WorkerManager.stop_all()` is now non-blocking and cooperative. It emits `all_stopped` only after the final task-owned thread finishes. `MainWindow.closeEvent()` ignores the first accepted shutdown request while workers are active, requests Stop, remains responsive, and performs the final close after `all_stopped`. No forced QThread termination is used.

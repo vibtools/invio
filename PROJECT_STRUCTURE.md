@@ -106,3 +106,7 @@ No folder, page, database table, worker subsystem or provider adapter is added. 
 ## v1.0.0.1.22 Verification Structure Note
 
 No application folder/module architecture is added, removed, renamed, or reorganized. The existing `src/core/provider_runtime/adapters.py` and `providers/packages/agiled/provider.json` from `v1.0.0.1.21` are retained unchanged. This release adds only verification/release records and test coverage plus version markers.
+
+## v1.0.0.1.23 P08 Structure Note
+
+P08 changes no folder architecture and adds no runtime package. Reliability logic remains in `src/core/provider_runtime/runtime.py`, task-thread lifecycle remains in `src/core/worker_manager/manager.py`, and shutdown coordination remains in `src/ui/main_window.py`. `tests/test_p08_reliability.py` adds P08 regression coverage. No UI page, schema package or dependency is added.

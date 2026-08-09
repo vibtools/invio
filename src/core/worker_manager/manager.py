@@ -90,6 +90,7 @@ class WorkerManager(QObject):
     status_changed = Signal(str, str, str)
     log_message = Signal(str, str)
     finished = Signal(str, str)
+    all_stopped = Signal()
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -114,7 +115,7 @@ class WorkerManager(QObject):
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(lambda tid=task.id: self._slots.pop(tid, None))
+        thread.finished.connect(lambda tid=task.id: self._worker_thread_finished(tid))
         self._slots[task.id] = _WorkerSlot(thread=thread, worker=worker)
         thread.start()
 
@@ -133,13 +134,27 @@ class WorkerManager(QObject):
         if slot:
             slot.worker.stop()
 
-    def stop_all(self, wait_ms: int = 1500) -> None:
+    def stop_all(self) -> None:
+        """Request cooperative stop without blocking the GUI thread.
+
+        P08 keeps the window alive until ``all_stopped`` confirms every
+        task-owned QThread has actually terminated.
+        """
         slots = list(self._slots.values())
+        if not slots:
+            self.all_stopped.emit()
+            return
         for slot in slots:
             slot.worker.stop()
-        for slot in slots:
-            if slot.thread.isRunning():
-                slot.thread.wait(wait_ms)
+
+    def has_active_workers(self) -> bool:
+        return any(slot.thread.isRunning() for slot in self._slots.values())
+
+    @Slot(str)
+    def _worker_thread_finished(self, task_id: str) -> None:
+        self._slots.pop(task_id, None)
+        if not self._slots:
+            self.all_stopped.emit()
 
     @Slot(str, str)
     def _forward_finished(self, task_id: str, status: str) -> None:

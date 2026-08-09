@@ -88,3 +88,7 @@ This is expected in `v1.0.0.1.21`. Invio has the Agiled package but deliberately
 ## Agiled remains unavailable in v1.0.0.1.22
 
 This is still intentional. The current Agiled product page documents Bearer API-key authentication while the linked public OpenAPI document exposes a different legacy server/query-token/Brand-header contract, and an authoritative invoice-email send API operation has not been established. Invio therefore continues to fail before transport rather than guessing.
+
+## Transient network retries in v1.0.0.1.23
+
+Timeouts, transient disconnects, HTTP 408/429 and selected 5xx responses can be retried automatically for the same recipient up to three total attempts. Permanent validation/authentication/TLS-certificate failures are not automatically retried. If Exit appears to wait after stopping active Tasks, Invio is intentionally keeping the window alive until an in-flight request returns or reaches the explicit 30-second timeout so the task QThread is not destroyed unsafely.

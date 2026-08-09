@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.22`  
+**Baseline:** `v1.0.0.1.23`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -359,3 +359,9 @@ P07 does not add automatic network retry, backoff, HTTP cancellation, rate-limit
 ## v1.0.0.1.22 Verification Result
 
 No new provider/API error-handling defect was found in the `v1.0.0.1.21` delta. Agiled still rejects API Test and Task execution before transport, and registry handler integrity is now explicitly regression-tested. P08 remains responsible for retry/backoff/rate-limit/timeout/cancellation/shutdown behavior.
+
+## P08 Network and Worker Error Handling - v1.0.0.1.23
+
+`ProviderRuntimeError` now carries `category`, `retryable`, optional `http_status`, and optional `retry_after_seconds` while remaining backward-compatible with existing message-only raises. Retryable transport failures are timeout/transient disconnect plus HTTP 408/429/500/502/503/504. Deterministic 4xx, invalid response shape/JSON and TLS certificate verification failures are permanent.
+
+Automatic retry is recipient-scoped and bounded to three total attempts. Exponential delays are 0.5s then 1.0s before 0-25% jitter; Retry-After can extend the delay. Stop/Pause use cooperative Events rather than forced thread interruption. Unexpected recipient exceptions are recorded as one failed recipient and execution continues to the next recipient, preserving `processed = success + failed` for resolved recipients.

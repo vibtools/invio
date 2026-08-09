@@ -4,9 +4,14 @@ import base64
 import copy
 import hashlib
 import json
+import random
+import socket
+import ssl
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from decimal import Decimal
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
@@ -23,8 +28,33 @@ from .adapters import provider_adapter_contract
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
 
+RETRYABLE_HTTP_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+PERMANENT_HTTP_STATUSES = frozenset({400, 401, 403, 404, 409, 422})
+DEFAULT_CONNECT_TIMEOUT_SECONDS = 30.0
+DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+MAX_TOTAL_ATTEMPTS = 3
+RETRY_BASE_DELAY_SECONDS = 0.5
+RETRY_BACKOFF_CAP_SECONDS = 8.0
+RETRY_JITTER_RATIO = 0.25
+
+
 class ProviderRuntimeError(RuntimeError):
-    """Raised when a packaged provider cannot execute a requested operation."""
+    """Provider/runtime failure with machine-readable P08 retry metadata."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        category: str = "provider",
+        retryable: bool = False,
+        http_status: int | None = None,
+        retry_after_seconds: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.category = category
+        self.retryable = bool(retryable)
+        self.http_status = http_status
+        self.retry_after_seconds = retry_after_seconds
 
 
 Transport = Callable[[str, str, dict[str, str], bytes | None, float], dict[str, Any]]
@@ -133,10 +163,60 @@ def _extract_api_error(data: Any) -> str:
     return ""
 
 
+def _parse_retry_after(value: str | None) -> float | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        pass
+    try:
+        retry_at = parsedate_to_datetime(raw)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=timezone.utc)
+    return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
+
+
+def _network_runtime_error(exc: BaseException) -> ProviderRuntimeError:
+    reason = exc.reason if isinstance(exc, URLError) else exc
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return ProviderRuntimeError(
+            f"Provider TLS certificate verification failed: {reason}",
+            category="tls",
+            retryable=False,
+        )
+    if isinstance(reason, ssl.SSLError):
+        return ProviderRuntimeError(
+            f"Provider TLS connection failed: {reason}",
+            category="tls",
+            retryable=False,
+        )
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return ProviderRuntimeError(
+            f"Provider network request timed out: {reason}",
+            category="timeout",
+            retryable=True,
+        )
+    retryable_disconnect = isinstance(
+        reason,
+        (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, ConnectionError),
+    )
+    return ProviderRuntimeError(
+        f"Provider network request failed: {reason}",
+        category="network",
+        retryable=retryable_disconnect or isinstance(exc, URLError),
+    )
+
+
 def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float) -> dict[str, Any]:
     request = Request(url, data=body, headers=headers, method=method.upper())
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed HTTPS provider endpoints / user-declared Refrens base URL
+        # urllib exposes one socket timeout value; P08 deliberately uses the
+        # same explicit bound for connection establishment and response reads.
+        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed HTTPS provider endpoints / trusted Refrens endpoint
             raw = response.read()
     except HTTPError as exc:
         raw = exc.read()
@@ -144,19 +224,35 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
             data = json.loads(raw.decode("utf-8")) if raw else {}
         except (UnicodeDecodeError, json.JSONDecodeError):
             data = {"raw": raw.decode("utf-8", errors="replace")[:1000]}
-        message = _extract_api_error(data) or f"Provider API returned HTTP {exc.code}."
-        raise ProviderRuntimeError(message) from exc
+        status = int(exc.code)
+        message = _extract_api_error(data) or f"Provider API returned HTTP {status}."
+        retryable = status in RETRYABLE_HTTP_STATUSES
+        raise ProviderRuntimeError(
+            message,
+            category="rate-limit" if status == 429 else "http",
+            retryable=retryable,
+            http_status=status,
+            retry_after_seconds=_parse_retry_after(exc.headers.get("Retry-After")) if retryable else None,
+        ) from exc
     except (URLError, TimeoutError, OSError) as exc:
-        raise ProviderRuntimeError(f"Provider network request failed: {exc}") from exc
+        raise _network_runtime_error(exc) from exc
 
     if not raw:
         return {}
     try:
         data = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ProviderRuntimeError("Provider API returned an invalid JSON response.") from exc
+        raise ProviderRuntimeError(
+            "Provider API returned an invalid JSON response.",
+            category="response",
+            retryable=False,
+        ) from exc
     if not isinstance(data, dict):
-        raise ProviderRuntimeError("Provider API returned an unexpected response format.")
+        raise ProviderRuntimeError(
+            "Provider API returned an unexpected response format.",
+            category="response",
+            retryable=False,
+        )
     return data
 
 
@@ -204,6 +300,22 @@ def _wait_for_resume(context: Any) -> bool:
     return not context.stop_flag.is_set()
 
 
+def _cooperative_retry_wait(context: Any, delay_seconds: float) -> bool:
+    remaining = max(0.0, float(delay_seconds))
+    while remaining > 0:
+        if context.stop_flag.is_set():
+            return False
+        if not context.pause_gate.is_set() and not _wait_for_resume(context):
+            return False
+        step = min(0.1, remaining)
+        started = time.monotonic()
+        if context.stop_flag.wait(step):
+            return False
+        if context.pause_gate.is_set():
+            remaining = max(0.0, remaining - (time.monotonic() - started))
+    return not context.stop_flag.is_set()
+
+
 class ProviderRuntime:
     """Built-in execution adapters for packaged invoice providers.
 
@@ -214,9 +326,19 @@ class ProviderRuntime:
 
     STRIPE_BASE_URL = "https://api.stripe.com/v1"
 
-    def __init__(self, *, transport: Transport | None = None, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        transport: Transport | None = None,
+        timeout: float = DEFAULT_CONNECT_TIMEOUT_SECONDS,
+        retry_jitter_source: Callable[[], float] | None = None,
+    ) -> None:
         self._transport = transport or _stdlib_transport
-        self.timeout = max(1.0, float(timeout))
+        # urllib has one socket timeout; keep connect/read policy equal and explicit.
+        self.connect_timeout = max(1.0, float(timeout))
+        self.read_timeout = max(1.0, float(timeout))
+        self.timeout = max(self.connect_timeout, self.read_timeout)
+        self._retry_jitter_source = retry_jitter_source or random.random
         self._state_lock = threading.Lock()
         self._delivery_state: dict[str, _DeliveryState] = {}
 
@@ -443,6 +565,46 @@ class ProviderRuntime:
             customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
         )
 
+    def _retry_delay_seconds(self, retry_number: int, exc: ProviderRuntimeError) -> float:
+        exponent = max(0, retry_number - 1)
+        base = min(RETRY_BACKOFF_CAP_SECONDS, RETRY_BASE_DELAY_SECONDS * (2**exponent))
+        jitter = base * RETRY_JITTER_RATIO * max(0.0, min(1.0, float(self._retry_jitter_source())))
+        computed = base + jitter
+        if exc.retry_after_seconds is not None:
+            computed = max(computed, max(0.0, float(exc.retry_after_seconds)))
+        return computed
+
+    def _send_stripe_invoice_with_retry(
+        self,
+        context: Any,
+        snapshot: TaskSnapshot,
+        account: AccountSnapshot,
+        email: str,
+    ) -> dict[str, Any]:
+        attempt = 1
+        while True:
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                raise ProviderRuntimeError("Stripe recipient execution stopped before the next attempt.", category="stopped")
+            try:
+                return self._send_stripe_invoice(snapshot, account, email)
+            except ProviderRuntimeError as exc:
+                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                    raise
+                retry_number = attempt
+                delay = self._retry_delay_seconds(retry_number, exc)
+                context.log(
+                    f"Stripe transient failure for {email} via account '{account.name}' "
+                    f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. "
+                    f"Retrying in {delay:.2f}s."
+                )
+                if not _cooperative_retry_wait(context, delay):
+                    raise ProviderRuntimeError(
+                        "Stripe recipient retry stopped by user request.",
+                        category="stopped",
+                        retryable=False,
+                    ) from exc
+                attempt += 1
+
     def _run_stripe_batch(
         self,
         context: Any,
@@ -467,8 +629,10 @@ class ProviderRuntime:
                 break
             account = snapshot.accounts[full_index[email] % len(snapshot.accounts)]
             try:
-                self._send_stripe_invoice(snapshot, account, email)
+                self._send_stripe_invoice_with_retry(context, snapshot, account, email)
             except ProviderRuntimeError as exc:
+                if exc.category == "stopped" and context.stop_flag.is_set():
+                    break
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -478,12 +642,19 @@ class ProviderRuntime:
                     delivery.pending_recipients.discard(email)
                     delivery.failed_recipients.add(email)
                 context.log(f"Stripe send failed for {email} via account '{account.name}': {exc}")
-            except Exception:
+            except Exception as exc:
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
-                    if delivery is not None:
-                        delivery.continuation_safe = False
-                raise
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The Task continuation state became unavailable during execution."
+                        ) from exc
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.add(email)
+                context.log(
+                    f"Stripe send failed unexpectedly for {email} via account '{account.name}': "
+                    f"{type(exc).__name__}: {exc}"
+                )
             else:
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
@@ -666,7 +837,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.22 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.23 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -709,7 +880,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.22 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.23 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

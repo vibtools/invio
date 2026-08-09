@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0.1.23 - P08 Worker and Network Reliability
+
+- Adds structured provider/network failure classification with retryable/permanent metadata, HTTP status and parsed `Retry-After` where available.
+- Adds a maximum of three total recipient attempts using bounded exponential backoff (0.5s, 1.0s before jitter) with 0-25% jitter and an 8-second exponential cap.
+- Handles transient timeout/disconnect, HTTP 408/429/500/502/503/504 automatically; deterministic 4xx, invalid responses and TLS certificate verification failures remain permanent.
+- Preserves original task/account assignment and existing deterministic Stripe idempotency keys across automatic retries; retry attempts do not increment Task progress.
+- Makes retry waits Pause/Stop-aware and prevents a Stop request from starting the next retry or recipient.
+- Replaces the unsafe fixed 1500 ms shutdown wait with cooperative asynchronous shutdown; the application does not accept close while a task-owned QThread remains active and never force-terminates workers.
+- Isolates unexpected per-recipient exceptions and reconciles each recipient exactly once in aggregate progress.
+- Keeps one task-owned QThread per active Task, SQLite schema v4, dependencies, Stripe/Refrens send contracts, Agiled fail-close behavior and P09+ scope unchanged.
+- Verification: 254/254 tests PASS plus repository/syntax/privacy/provider audits. Native Qt/keyring launch is not certified in the current audit environment because those runtime packages are unavailable.
+- Production progress advances to **8/14**; **P09 - Multi-Account Scheduling, Limits and Health** is next.
+
 ## v1.0.0.1.22 - Pre-P08 Provider Adapter Forensic Verification
 
 - Re-audits the exact `v1.0.0.1.21` Provider Adapter Foundation + Agiled release against its approved scope and `v1.0.0.1.20` parent baseline.

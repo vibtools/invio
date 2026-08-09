@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.22`** is the forensic verification release for the approved pre-P08 provider-adapter/Agiled exception introduced in `v1.0.0.1.21`. The provider runtime behavior remains unchanged, production phase progress remains 7/14, and P08 is still next.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.23`** completes **P08 - Worker and Network Reliability** on the verified `v1.0.0.1.22` baseline. Production progress is now 8/14; P09 is next and requires separate approval.
 
 ## Current Application Scope
 
@@ -11,7 +11,7 @@
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
 - **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. Built-in packaged runtime binding is now resolved through one internal adapter registry. Stripe remains executable, Refrens Task sending remains P11-gated, and packaged Agiled remains fail-closed until its current official API contract is authoritative. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
-- **Threading**: each active Task runs through its own `QThread`; provider network sending remains outside the GUI thread.
+- **Threading**: each active Task runs through its own `QThread`; P08 keeps provider network sending and retry/backoff outside the GUI thread and uses cooperative worker shutdown without forced thread termination.
 
 ## P02 Durable Storage
 
@@ -141,7 +141,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.22.md`
+- Release notes: `docs/release-notes/1.0.0.1.23.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.22` is the current verification-corrected pre-P08 provider-adapter baseline. Production progress remains **7/14 phases complete** because this verification release does not complete a roadmap production phase. The next separately approved phase is still **P08 - Worker and Network Reliability**.
+`v1.0.0.1.23` is the current P08-complete baseline. Production progress is **8/14 phases complete**. The next separately approved phase is **P09 - Multi-Account Scheduling, Limits and Health**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -212,3 +212,11 @@ See `project/research/AGILED_API_CONTRACT_REVALIDATION_v1.0.0.1.21.md` for the e
 ## v1.0.0.1.22 Provider Adapter Verification Correction
 
 `v1.0.0.1.22` re-audits the exact shipped `v1.0.0.1.21` provider-adapter/Agiled implementation. No functional provider, invoice-send, UI, WorkerManager, storage, or Task-state defect was found in the approved scope. The release adds explicit regression coverage for packaged Agiled install/uninstall, executable handler binding integrity, and the generic manifest-driven UI/API-test gate, and revalidates that Agiled remains fail-closed before transport while the official Agiled materials still conflict on the executable API contract. Runtime changes are limited to release-version/User-Agent markers.
+
+## v1.0.0.1.23 P08 Worker and Network Reliability
+
+P08 adds structured provider/network failure metadata, bounded automatic retry with at most three total recipient attempts, exponential backoff with jitter, `Retry-After` handling, and an explicit 30-second shared urllib socket timeout policy for connection establishment and response reads. Retry remains recipient-scoped, preserves the original round-robin account assignment, and reuses the existing deterministic Stripe stage idempotency keys.
+
+Retry waits are cooperative with existing Pause/Stop events. Stop never starts a new retry or recipient after cancellation is observed. Application shutdown is now asynchronous: active task workers receive Stop, the initial close event is ignored, and the window closes only after all task-owned `QThread`s have actually finished. Unexpected per-recipient exceptions are isolated and counted once without corrupting aggregate progress.
+
+P08 does not add account failover, intra-task concurrency, rate-per-second scheduling, persistent attempt ledgers, Refrens Task sending, Agiled execution, external plugin loading, schema changes, dependency changes, or new UI pages.

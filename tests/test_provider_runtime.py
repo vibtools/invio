@@ -633,21 +633,25 @@ class P07ProviderRuntimeResendSafetyTests(unittest.TestCase):
             restarted_runtime.make_task_runner(task, state, resume_remaining=True)
         self.assertEqual(calls, [])
 
-    def test_unexpected_runtime_exception_marks_continuation_unsafe(self):
+    def test_unexpected_runtime_exception_isolated_per_recipient_with_safe_progress(self):
         state, task = self._stripe_state(["a@example.com", "b@example.com"])
 
         def on_send(_email: str):
             raise RuntimeError("unexpected execution defect")
 
         runtime = ProviderRuntime(transport=self._transport(on_send))
-        with self.assertRaisesRegex(RuntimeError, "unexpected execution defect"):
-            runtime.make_task_runner(task, state)(_Context(task))
+        context = _Context(task)
+        with self.assertRaisesRegex(ProviderRuntimeError, r"2 recipient\(s\) failed"):
+            runtime.make_task_runner(task, state)(context)
         summary = runtime.delivery_summary(task)
         self.assertIsNotNone(summary)
-        self.assertFalse(summary.continuation_safe)
+        self.assertTrue(summary.continuation_safe)
+        self.assertEqual(summary.failed_recipients, ("a@example.com", "b@example.com"))
+        self.assertEqual((summary.processed, summary.success, summary.failed), (2, 0, 2))
+        self.assertEqual(context.progress_events[-1][:3], (2, 0, 2))
         task.status = "Failed"
-        with self.assertRaisesRegex(ProviderRuntimeError, "exact failed recipient set"):
-            runtime.make_task_runner(task, state, retry_failed=True)
+        task.processed, task.success, task.failed = 2, 0, 2
+        self.assertIsNotNone(runtime.make_task_runner(task, state, retry_failed=True))
 
     def test_full_start_is_rejected_for_non_pristine_or_terminal_task(self):
         state, task = self._stripe_state(["a@example.com"])

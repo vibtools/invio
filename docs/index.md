@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.22**.
+Current version: **v1.0.0.1.23**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,7 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.22.md` - current release.
+- `release-notes/1.0.0.1.23.md` - current release.
 - `release-notes/1.0.0.1.15.md` - original P05 implementation.
 - `release-notes/1.0.0.1.14.md` - Windows storage hotfix.
 - `release-notes/1.0.0.1.12.md` - original P04 feature release.
@@ -30,7 +30,7 @@ Detailed forensic reports, phase roadmap, phase completion ledger and update pro
 
 ## Current production phase
 
-`v1.0.0.1.20` is the verification-corrected **P07 - Task State Machine and Resend Safety** baseline. Production progress remains **7/14**. The next separately approval-gated phase is **P08 - Worker and Network Reliability**.
+P08 is complete in `v1.0.0.1.23`. Production progress is **8/14** and the next separately approval-gated phase is **P09 - Multi-Account Scheduling, Limits and Health**.
 
 ## P07 Task execution safety
 
@@ -42,8 +42,12 @@ P07's send-set rules are unchanged. The correction makes late worker terminal si
 
 ## v1.0.0.1.21 Provider Adapter / Agiled Boundary
 
-Packaged provider runtime contracts now resolve through one internal registry. Agiled is installable as a packaged provider but remains non-executable until its current official API contract is revalidated. See the provider guide, API manifest guide and v1.0.0.1.22 release notes. P08 remains next.
+Packaged provider runtime contracts now resolve through one internal registry. Agiled is installable as a packaged provider but remains non-executable until its current official API contract is revalidated. See the provider guide, API manifest guide and v1.0.0.1.22 historical release notes. Agiled remains fail-closed; P08 later completed in v1.0.0.1.23.
 
-## v1.0.0.1.22 current baseline
+## v1.0.0.1.22 historical verification baseline
 
-`v1.0.0.1.22` is the current verification-corrected pre-P08 provider-adapter baseline. Production progress remains 7/14, Agiled remains fail-closed pending authoritative API convergence, and P08 remains the next separately approval-gated production phase.
+`v1.0.0.1.22` was the verification-corrected pre-P08 provider-adapter baseline. Agiled remained fail-closed and P08 was still pending at that release.
+
+## v1.0.0.1.23 current baseline
+
+P08 Worker and Network Reliability is complete. Invio now classifies transient/permanent provider failures, retries bounded transient recipient failures with cooperative backoff and Retry-After handling, uses an explicit 30-second urllib timeout policy, isolates unexpected recipient failures, and closes only after active task QThreads finish. Production progress is 8/14; P09 is next.

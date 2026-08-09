@@ -55,3 +55,7 @@ Pre-P08 provider-adapter foundation and packaged Agiled provider. This owner-app
 ## v1.0.0.1.22
 
 Pre-P08 provider-adapter forensic verification release. It preserves the `v1.0.0.1.21` runtime behavior, adds targeted Agiled/adapter integration regression gates, revalidates the Agiled fail-closed contract boundary, synchronizes release records, and keeps P08 as the next separately approved production phase.
+
+## v1.0.0.1.23
+
+Completes P08 Worker and Network Reliability. Adds structured transient/permanent failure metadata, bounded three-attempt recipient retry with exponential backoff/jitter and Retry-After support, explicit 30-second shared urllib connect/read socket timeout policy, cooperative Pause/Stop-aware waits, safe asynchronous application shutdown, and per-recipient unexpected-exception isolation. Preserves one task-owned QThread, Stripe idempotency/account assignment, schema v4, dependencies, Refrens P11 gate, Agiled fail-close and all P09+ behavior.

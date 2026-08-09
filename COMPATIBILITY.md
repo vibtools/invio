@@ -72,3 +72,7 @@ No Python/platform/dependency/SQLite-schema/provider-manifest/WorkerManager/P05-
 - Stripe and Refrens runtime behavior remains the same as `v1.0.0.1.21` except for the release User-Agent marker.
 - Agiled remains package/install compatible but non-executable; API Test and Task execution still fail before network transport.
 - The release adds verification tests and documentation only beyond required version markers.
+
+## v1.0.0.1.23 P08 Compatibility
+
+P08 preserves the existing Python 3.12, PySide6 6.7-<7, `urllib`, keyring and openpyxl technology set. No dependency or SQLite schema change is introduced. One task-owned QThread remains the concurrency boundary. Existing Stripe/Refrens/Agiled provider contracts are unchanged; Agiled remains fail-closed and Refrens normal Task sending remains P11-gated.

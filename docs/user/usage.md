@@ -90,3 +90,9 @@ Agiled appears as a packaged provider and can be installed. Its Account dialog a
 ## Agiled verification in v1.0.0.1.22
 
 The user-facing behavior is unchanged from `v1.0.0.1.21`: install Agiled through Providers to expose its manifest-driven Account form, but API Test remains unavailable and the account cannot become Task-ready. No API key or invoice request is transmitted. This release verifies that the UI remains generic and does not contain an Agiled-specific execution bypass.
+
+## P08 retry and shutdown behavior
+
+When Stripe encounters a transient timeout, disconnect, HTTP 408/429 or selected 5xx response, Invio can retry that recipient automatically up to a maximum of three total attempts. Live Logs show the transient failure and retry delay. A recipient is counted only once in Task progress, regardless of automatic attempts.
+
+Pause also pauses retry waiting. Stop cancels future retries/recipients after any currently blocking request returns or reaches the 30-second timeout. If you exit while a Task is active, the existing exit confirmation is used; after confirmation Invio remains open until the active task thread has stopped safely, then closes automatically.

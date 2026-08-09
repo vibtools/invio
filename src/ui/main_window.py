@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self.page_indexes: dict[str, int] = {}
         self.nav_buttons: dict[str, QPushButton] = {}
         self._persistence_faulted_tasks: set[str] = set()
+        self._shutdown_pending = False
 
         self.setWindowTitle("Invio — Vib Tools")
         self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
@@ -107,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.22 started.")
+        self.log("Invio v1.0.0.1.23 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -248,7 +249,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.22")
+        self.runtime_status = QLabel("Production • v1.0.0.1.23")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -256,6 +257,7 @@ class MainWindow(QMainWindow):
         self.worker_manager.status_changed.connect(self._worker_status)
         self.worker_manager.log_message.connect(lambda task_id, message: self.log(f"{task_id}: {message}"))
         self.worker_manager.finished.connect(self._worker_finished)
+        self.worker_manager.all_stopped.connect(self._complete_pending_shutdown)
 
     def navigate(self, name: str) -> None:
         if name not in self.page_indexes:
@@ -1170,16 +1172,27 @@ class MainWindow(QMainWindow):
         self._remember_dialog_path(path)
         Path(path).write_text(self.logs_page.viewer.toPlainText(), encoding="utf-8")
 
+    def _complete_pending_shutdown(self) -> None:
+        if not self._shutdown_pending or self.worker_manager.has_active_workers():
+            return
+        self.log("All task worker threads stopped; completing application shutdown.")
+        self.close()
+
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        active = [task_id for task_id in self.state.tasks if self.worker_manager.is_running(task_id)]
-        if active:
-            if self.app_settings.confirm_exit_active_tasks:
+        if self.worker_manager.has_active_workers():
+            if not self._shutdown_pending and self.app_settings.confirm_exit_active_tasks:
                 answer = self._question("Exit Invio", "Active task worker threads are running. Stop them and exit?")
                 if answer != QMessageBox.StandardButton.Yes:
                     event.ignore()
                     return
-            self.worker_manager.stop_all()
+            if not self._shutdown_pending:
+                self._shutdown_pending = True
+                self.log("Application shutdown requested; waiting for active task workers to stop safely.")
+                self.worker_manager.stop_all()
+            event.ignore()
+            return
 
+        self._shutdown_pending = False
         geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
         self.settings_manager.record_window_state(
             WindowState(geometry.x(), geometry.y(), geometry.width(), geometry.height())
