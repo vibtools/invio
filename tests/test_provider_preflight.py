@@ -121,6 +121,19 @@ class ProviderPreflightTests(unittest.TestCase):
         )
         self.assertFalse(manifest_runtime_contract_matches(conflicting, self.stripe))
 
+    def test_builtin_packaged_manifest_must_match_hard_coded_runtime_contract(self):
+        assert self.stripe is not None
+        drifted_packaged = ProviderManifest(
+            id="stripe",
+            name="Stripe",
+            version="1.0.0",
+            description="",
+            credential_fields=(),
+            account_modes=self.stripe.account_modes,
+            capabilities=self.stripe.capabilities,
+        )
+        self.assertFalse(manifest_runtime_contract_matches(drifted_packaged, drifted_packaged))
+
     def test_external_manifest_cannot_claim_packaged_provider_id(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -230,6 +243,20 @@ class ProviderPreflightTests(unittest.TestCase):
             customers=(CustomerRecord("a@example.com"),),
         )
         self.assertIn("currency-unsupported", [issue.code for issue in result.issues])
+
+    def test_stripe_region_specific_three_decimal_currencies_remain_blocked_by_current_static_contract(self):
+        assert self.stripe is not None
+        for currency in ("BHD", "JOD", "KWD", "OMR", "TND"):
+            with self.subTest(currency=currency):
+                result = preflight_candidate(
+                    provider_id="stripe",
+                    installed_manifest=self.stripe,
+                    packaged_manifest=self.stripe,
+                    accounts=(self.stripe_account(),),
+                    template=invoice_template(currency=currency),
+                    customers=(CustomerRecord("a@example.com"),),
+                )
+                self.assertIn("currency-unsupported", [issue.code for issue in result.issues])
 
     def test_provider_installation_is_required_before_candidate_execution(self):
         assert self.stripe is not None
@@ -359,11 +386,24 @@ class ProviderPreflightTests(unittest.TestCase):
         self.assertEqual(result.first_issue.code, "task-runtime-unavailable")
         self.assertIn("P11", result.message)
 
+    def test_refrens_invalid_currency_is_reported_even_while_p11_runner_is_disabled(self):
+        assert self.refrens is not None
+        result = preflight_candidate(
+            provider_id="refrens",
+            installed_manifest=self.refrens,
+            packaged_manifest=self.refrens,
+            accounts=(self.refrens_account(),),
+            template=invoice_template(currency="ZZZ", reuse_customer=False),
+            customers=(CustomerRecord("a@example.com", "Alice", "BD"),),
+        )
+        codes = [issue.code for issue in result.issues]
+        self.assertEqual(codes[0], "task-runtime-unavailable")
+        self.assertIn("currency-unsupported", codes)
+
     def test_refrens_endpoint_trust_accepts_only_canonical_contract(self):
         accepted = (
             "https://api.refrens.com",
             "https://api.refrens.com/",
-            "https://api.refrens.com:443",
         )
         for value in accepted:
             with self.subTest(value=value):
@@ -376,6 +416,7 @@ class ProviderPreflightTests(unittest.TestCase):
             "https://api.refrens.com/custom/path",
             "https://api.refrens.com?redirect=x",
             "https://api.refrens.com#fragment",
+            "https://api.refrens.com:443",
             "https://api.refrens.com:444",
         )
         for value in rejected:
@@ -428,6 +469,40 @@ class ProviderPreflightTests(unittest.TestCase):
             accounts=(account,),
         )
         self.assertTrue(result.passed, result.message)
+
+    def test_task_preflight_rejects_account_input_not_matching_frozen_assignment(self):
+        assert self.stripe is not None
+        frozen = self.stripe_account()
+        frozen.id = "acct_frozen"
+        supplied = self.stripe_account()
+        supplied.id = "acct_other"
+        snapshot = TaskExecutionSnapshot.capture(
+            provider_id="stripe",
+            account_ids=[frozen.id],
+            customers=[CustomerRecord("frozen@example.com")],
+            template=invoice_template(),
+        )
+        task = Task(
+            id="task_binding",
+            name="Task Binding",
+            provider_id="stripe",
+            provider_name="Stripe",
+            account_ids=[frozen.id],
+            customer_list_id="list_1",
+            customer_list_name="Customers",
+            invoice_template_id="tpl_1",
+            invoice_template_name="Standard",
+            total=1,
+            execution_snapshot=snapshot,
+        )
+        result = preflight_task(
+            task=task,
+            installed_manifest=self.stripe,
+            packaged_manifest=self.stripe,
+            accounts=(supplied,),
+        )
+        self.assertFalse(result.passed)
+        self.assertIn("account-input-binding-mismatch", [issue.code for issue in result.issues])
 
     def test_external_registered_runner_keeps_existing_generic_runtime_boundary(self):
         manifest = ProviderManifest(

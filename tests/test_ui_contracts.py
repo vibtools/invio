@@ -380,6 +380,20 @@ class UiContractTests(unittest.TestCase):
         dashboard = (root / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
         self.assertIn('("customers", "Customer Emails")', dashboard)
         self.assertNotIn('("customers", "Customers")', dashboard)
+    def test_p06_provider_page_uses_actual_installed_manifest_for_declared_capabilities(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        self.assertIn("installed_by_id", source)
+        self.assertIn("installed_by_id.get(provider.id, provider)", source)
+
+    def test_p06_runtime_capability_display_fails_closed_on_manifest_mismatch(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        block = source[source.index("def _runtime_capabilities_for_provider"):source.index("def _provider_manifest_contract_error")]
+        self.assertIn("manifest_runtime_contract_matches", block)
+        self.assertIn("effective_capabilities(provider)", block)
+
+
 
 if __name__ == "__main__":
     unittest.main()

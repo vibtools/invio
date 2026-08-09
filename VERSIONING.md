@@ -28,3 +28,5 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 
 
 - `v1.0.0.1.17`: P06 provider capability/preflight release; adds packaged manifest/runtime reconciliation, reserved built-in provider-ID collision protection, no-side-effect New Task/Start/Retry preflight, strict account/template/customer checks, Stripe INVOICE/tax safety gates, canonical Refrens endpoint trust, and runtime-capability visibility. SQLite remains schema v4.
+
+- `v1.0.0.1.18`: P06 forensic verification/correction; hardens executable manifest truth, frozen Account binding, Refrens currency/endpoint validation and installed-provider capability reporting without changing schema v4 or advancing to P07.

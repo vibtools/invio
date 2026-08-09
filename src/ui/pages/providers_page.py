@@ -96,10 +96,17 @@ class ProvidersPage(QWidget):
             item = self.grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        installed_ids = self.manager.installed_ids()
-        providers = self.manager.list_available()
-        external = [item for item in self.manager.list_installed() if item.id not in {p.id for p in providers}]
-        providers.extend(external)
+        installed = self.manager.list_installed()
+        installed_by_id = {provider.id: provider for provider in installed}
+        installed_ids = set(installed_by_id)
+        available = self.manager.list_available()
+        available_ids = {provider.id for provider in available}
+        # Installed cards must display the actual registry declaration, not a
+        # canonical packaged look-alike. This keeps P06 declared/runtime
+        # capability reporting truthful for pre-existing conflicting registry
+        # state while leaving normal packaged cards visually unchanged.
+        providers = [installed_by_id.get(provider.id, provider) for provider in available]
+        providers.extend(provider for provider in installed if provider.id not in available_ids)
         if not providers:
             empty = card("No provider packages", "Use Load Provider to add a validated provider manifest.")
             self.grid.addWidget(empty, 0, 0)

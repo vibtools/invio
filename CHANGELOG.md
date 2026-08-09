@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.18 - P06 Forensic Verification & Contract Correction
+
+- Re-audited the exact v1.0.0.1.17 P06 release against its approved capability/preflight plan.
+- Hardened built-in packaged-manifest reconciliation against hard-coded executable credential/mode/capability contracts instead of allowing a modified packaged manifest to validate itself.
+- Added frozen Account-input binding validation to Task preflight.
+- Made Refrens use the existing safe currency catalogue for static validation and restricted its trusted base URL to canonical `https://api.refrens.com` with no explicit port.
+- Corrected Providers capability truthfulness by displaying the actual installed manifest and fail-closing effective runtime capability on packaged/runtime mismatch.
+- Corrected the static Stripe currency certification record: Stripe availability is account-country dependent; region-specific three-decimal currencies remain blocked because the current Invio minor-unit sender does not implement that contract.
+- SQLite remains schema v4; WorkerManager, P05 snapshots, provider manifests, dependencies, external runner API, Stripe send semantics, Refrens P11 gate and P07+ behavior remain unchanged.
+
 ## v1.0.0.1.17 - P06 Provider Capability and Preflight Validation
 
 - Completed production phase **P06** on the verified `v1.0.0.1.16` P05 baseline without changing SQLite schema v4, WorkerManager, P05 immutable snapshots, provider manifests, dependencies, external runner API, or P07+ behavior.

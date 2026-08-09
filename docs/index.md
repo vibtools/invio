@@ -1,12 +1,12 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.17**.
+Current version: **v1.0.0.1.18**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
 **Provider -> Verified Account(s) -> Invoice Template -> Customer List -> Task -> Provider Runtime -> Reports/Live Logs**
 
-P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials. P04 adds backward-compatible customer records and structured import. v1.0.0.1.14 preserves the Windows-safe migration backup path. P05 makes Task execution inputs durable/immutable and v1.0.0.1.16 hardens those invariants. v1.0.0.1.17 adds P06 provider capability/preflight validation before Task persistence or provider runner execution.
+P02 adds restart-durable non-sensitive operational state and OS-protected provider credentials. P04 adds backward-compatible customer records and structured import. v1.0.0.1.14 preserves the Windows-safe migration backup path. P05 makes Task execution inputs durable/immutable and v1.0.0.1.16 hardens those invariants. v1.0.0.1.17 added P06 provider capability/preflight validation; v1.0.0.1.18 verification-corrects its manifest, Account-binding, Refrens currency/endpoint and capability-display contracts.
 
 Use these documents:
 
@@ -30,4 +30,4 @@ Detailed forensic reports, phase roadmap, phase completion ledger and update pro
 
 ## Current production phase
 
-`v1.0.0.1.17` completes **P06 - Provider Capability and Preflight Validation**. Production progress is **6/14**. The next separately approval-gated phase is **P07 - Task State Machine and Resend Safety**.
+`v1.0.0.1.18` is the verified/corrected **P06 - Provider Capability and Preflight Validation** baseline. Production progress is **6/14**. The next separately approval-gated phase is **P07 - Task State Machine and Resend Safety**.

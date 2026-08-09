@@ -10,7 +10,7 @@ from ...accounts.models import Account
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCY_SET
 from ...tasks.models import TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
-from ..provider_manager import ProviderManifest
+from ..provider_manager import CredentialField, ProviderManifest
 
 CANONICAL_REFRENS_BASE_URL = "https://api.refrens.com"
 
@@ -91,7 +91,7 @@ _REFRENS_PROFILE = ProviderCapabilityProfile(
         "Refrens production Task sending is not enabled until P11. No invoice request was made."
     ),
     invoice_types=frozenset({"INVOICE", "BOS"}),
-    currencies=None,
+    currencies=frozenset(SUPPORTED_INVOICE_CURRENCY_SET),
     supports_automatic_tax=False,
     supports_line_tax=True,
     supports_customer_reuse=False,
@@ -105,6 +105,33 @@ _REFRENS_PROFILE = ProviderCapabilityProfile(
 _BUILTIN_PROFILES = {
     _STRIPE_PROFILE.provider_id: _STRIPE_PROFILE,
     _REFRENS_PROFILE.provider_id: _REFRENS_PROFILE,
+}
+
+
+_BUILTIN_MANIFEST_RUNTIME_CONTRACTS = {
+    "stripe": ProviderManifest(
+        id="stripe",
+        name="Stripe",
+        version="runtime",
+        description="Built-in Stripe runtime contract.",
+        credential_fields=(CredentialField("secret_key", "Secret key", "password", True),),
+        account_modes=("Test", "Live"),
+        capabilities=("invoice", "send_invoice", "api_test"),
+    ),
+    "refrens": ProviderManifest(
+        id="refrens",
+        name="Refrens",
+        version="runtime",
+        description="Built-in Refrens runtime contract.",
+        credential_fields=(
+            CredentialField("base_url", "API Base URL", "text", True),
+            CredentialField("url_key", "URL Key", "text", True),
+            CredentialField("app_id", "App ID", "text", True),
+            CredentialField("app_secret", "App Secret", "password", True),
+        ),
+        account_modes=("Default",),
+        capabilities=("invoice", "send_invoice", "api_test"),
+    ),
 }
 
 
@@ -129,19 +156,33 @@ def _credential_contract(manifest: ProviderManifest) -> tuple[tuple[str, str, bo
     return tuple((field.key, field.kind, field.required) for field in manifest.credential_fields)
 
 
+def _manifest_execution_contract_matches(left: ProviderManifest, right: ProviderManifest) -> bool:
+    return (
+        left.id == right.id
+        and _credential_contract(left) == _credential_contract(right)
+        and tuple(left.account_modes) == tuple(right.account_modes)
+        and frozenset(left.capabilities) == frozenset(right.capabilities)
+    )
+
+
 def manifest_runtime_contract_matches(installed: ProviderManifest, packaged: ProviderManifest) -> bool:
-    """Compare execution-relevant manifest declarations for a packaged runtime ID.
+    """Compare packaged/installed declarations with the built-in runtime contract.
 
     Display-only name/version/description fields intentionally do not affect the
-    executable runtime binding. Credential order is retained because it is also
-    the deterministic credential-entry contract shown to the user.
+    executable runtime binding. For built-in provider IDs, both the packaged file
+    and the installed registry copy must match the hard-coded executable contract;
+    this prevents a modified packaged manifest from becoming its own false source
+    of truth. Credential order remains part of the deterministic entry contract.
     """
 
+    if not _manifest_execution_contract_matches(installed, packaged):
+        return False
+    runtime_contract = _BUILTIN_MANIFEST_RUNTIME_CONTRACTS.get(installed.id)
+    if runtime_contract is None:
+        return True
     return (
-        installed.id == packaged.id
-        and _credential_contract(installed) == _credential_contract(packaged)
-        and tuple(installed.account_modes) == tuple(packaged.account_modes)
-        and frozenset(installed.capabilities) == frozenset(packaged.capabilities)
+        _manifest_execution_contract_matches(packaged, runtime_contract)
+        and _manifest_execution_contract_matches(installed, runtime_contract)
     )
 
 
@@ -155,7 +196,7 @@ def canonical_refrens_base_url(value: str) -> str:
     if (
         parsed.scheme.casefold() != "https"
         or (parsed.hostname or "").casefold() != "api.refrens.com"
-        or port not in {None, 443}
+        or port is not None
         or parsed.username is not None
         or parsed.password is not None
         or parsed.path not in {"", "/"}
@@ -527,6 +568,14 @@ def preflight_task(
         return PreflightResult(tuple(issues))
 
     account_values = tuple(accounts)
+    if tuple(account.id for account in account_values) != execution.account_ids:
+        issues.append(
+            PreflightIssue(
+                "account-input-binding-mismatch",
+                "The Account inputs supplied to preflight do not match the immutable Task account assignment.",
+                "Reload the Task and retry without changing its frozen Account basis.",
+            )
+        )
     issues.extend(_account_issues(account_values, installed_manifest))
     profile = capability_profile(task.provider_id)
     issues.extend(

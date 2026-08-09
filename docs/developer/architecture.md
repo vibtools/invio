@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.17` preserves the verified P01-P05 architecture and completes P06 with a no-side-effect provider capability/preflight boundary. No new UI page, executable external-provider architecture, Task thread architecture, database schema, Refrens production Task runner, or dependency is introduced.
+Invio `v1.0.0.1.18` preserves the verified P01-P05 architecture and completes P06 with a no-side-effect provider capability/preflight boundary. No new UI page, executable external-provider architecture, Task thread architecture, database schema, Refrens production Task runner, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
@@ -159,3 +159,8 @@ The P05 architecture remains unchanged: Task creation captures immutable input, 
 Flow: `NewTaskDialog payload -> preflight_candidate -> AppState.create_task/P05 snapshot`, and `Task Start/Retry -> P03 installed/account gates -> preflight_task -> injected/built-in runner -> WorkerManager`. `ProviderRuntime.make_task_runner()` also rechecks built-in static template/customer inputs so direct runtime use cannot bypass Stripe BOS/tax safety.
 
 ProviderManager remains manifest-only. P06 adds packaged-manifest lookup and reserves packaged IDs against external-manifest collision, but does not load executable external adapters. Refrens endpoint trust validation is performed before authentication payload construction. SQLite remains schema v4; no preflight state is persisted.
+
+
+## v1.0.0.1.18 P06 contract boundary
+
+Provider preflight remains a pure validation layer. The executable built-in manifest contract is now independent of mutable packaged JSON, while valid provider execution architecture and WorkerManager boundaries are unchanged.

@@ -86,3 +86,7 @@ No folder, module, page, provider adapter, dependency, worker subsystem or datab
 ## v1.0.0.1.17 P06 Provider Preflight
 
 P06 adds one focused module, `src/core/provider_runtime/preflight.py`, inside the existing provider-runtime package. ProviderManager is extended in place only for packaged-manifest lookup and reserved packaged-ID protection; MainWindow and the existing Providers page integrate preflight/capability display without adding a new application page. SQLite remains schema v4 and no storage table, worker subsystem, provider manifest, dependency, or top-level folder is added.
+
+## v1.0.0.1.18 P06 Verification Note
+
+No folder/module/page is renamed or reorganized. Corrections remain in the existing ProviderManager/ProviderRuntime/MainWindow/ProvidersPage P06 surfaces plus regression tests and synchronized documentation. SQLite remains schema v4.

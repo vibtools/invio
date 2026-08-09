@@ -29,6 +29,7 @@ from ..core.provider_manager import ProviderManager, ProviderManifest, ProviderM
 from ..core.provider_runtime import (
     ProviderRuntime,
     ProviderRuntimeError,
+    effective_capabilities,
     executable_capabilities,
     manifest_runtime_contract_matches,
     preflight_candidate,
@@ -93,7 +94,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.17 started.")
+        self.log("Invio v1.0.0.1.18 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -233,7 +234,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.17")
+        self.runtime_status = QLabel("Production • v1.0.0.1.18")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -361,9 +362,14 @@ class MainWindow(QMainWindow):
 
     # Provider workflow -------------------------------------------------
     def _runtime_capabilities_for_provider(self, provider: ProviderManifest) -> tuple[str, ...]:
-        built_in = executable_capabilities(provider.id)
-        if built_in:
-            return built_in
+        try:
+            packaged = self.providers.get_packaged(provider.id)
+        except ProviderManifestError:
+            return ()
+        if packaged is not None:
+            if not manifest_runtime_contract_matches(provider, packaged):
+                return ()
+            return effective_capabilities(provider)
         if provider.id in self.task_runners:
             return ("registered_task_runner",)
         return ()

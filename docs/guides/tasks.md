@@ -68,3 +68,7 @@ New Task creation now validates the selected provider, current Account health, t
 Start and Retry run the same capability/health validation against the existing P05 immutable snapshot before any runner is returned to WorkerManager. The snapshot is not refreshed from current Customer Lists or Invoice Templates. A failed preflight leaves provider-side invoice/customer state untouched and reports the first deterministic correction message.
 
 Current packaged runtime rules include: Stripe standard `INVOICE` only; Stripe Automatic Tax and non-zero template percentage line tax are blocked under the current data/runtime contract; Refrens production Task execution remains blocked until P11. P07 still owns Task state-machine/resend policy and is not implemented by P06.
+
+## v1.0.0.1.18 P06 verification correction
+
+Start/Retry preflight now verifies that the Account objects supplied to validation match the exact ordered Account IDs frozen in the P05 immutable Task snapshot. A mismatched Account input sequence is blocked before a runner is created. Refrens currency is also validated against Invio's existing approved invoice-currency catalogue even though the Refrens production Task runner remains disabled until P11.

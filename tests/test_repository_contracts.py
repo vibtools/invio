@@ -41,12 +41,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.17"', pyproject)
-        self.assertIn('"version": "1.0.0.1.17"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.17"', project_meta)
+        self.assertIn('version = "1.0.0.1.18"', pyproject)
+        self.assertIn('"version": "1.0.0.1.18"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.18"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.17', main_window)
-        self.assertIn('Invio/1.0.0.1.17', runtime)
+        self.assertIn('Production • v1.0.0.1.18', main_window)
+        self.assertIn('Invio/1.0.0.1.18', runtime)
 
     def test_release_metadata_is_v100116(self):
         """Compatibility alias retained under the no-removal baseline contract."""

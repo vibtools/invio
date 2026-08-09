@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.17`  
+**Baseline:** `Invio v1.0.0.1.18`  
 **Completed production phases:** P01, P02, P03, P04, P05, P06  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -161,3 +161,8 @@ P01-P06 unit/contract/source audits verify the implemented local contracts. Nati
 **WORKING SECURITY BOUNDARY:** Refrens authentication accepts only the canonical `https://api.refrens.com` origin and rejects untrusted URL variants before the App ID/App Secret authentication payload is constructed.
 
 **NOT IMPLEMENTED BY P06:** P07 resend/state-machine rules, P08 retry/backoff/network reliability, P09 account scheduling/failover, P10 durable delivery ledger, P11 Refrens normal Task execution, P13 executable external adapter architecture, and P14 live/native production certification.
+
+
+## v1.0.0.1.18 P06 verification correction
+
+P06 is COMPLETE and verification-corrected. Built-in packaged manifests must match hard-coded executable contracts; Task preflight validates frozen Account ordering; Refrens uses the safe currency catalogue and exact canonical endpoint; Providers displays installed declarations with effective runtime capability.

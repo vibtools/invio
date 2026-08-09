@@ -53,3 +53,7 @@ When a new Task is created, Invio copies the complete selected Invoice Template,
 Invoice Templates remain provider-neutral reusable content, but a Task can execute only when its **immutable P05 template copy** passes the selected provider's current runtime contract. For the built-in Stripe adapter, P06 allows standard `INVOICE`, rejects `BOS`, rejects Automatic Tax under the current customer-location contract, and rejects any non-zero template percentage line tax because the current Stripe sender does not translate it into Stripe TaxRate object assignments. Existing customer-reuse, memo/title/subtitle, footer/customer-note, and terms mappings remain unchanged.
 
 P06 does not remove or redesign template fields. Unsupported combinations are simply blocked before provider-side invoice creation with a correction message.
+
+## v1.0.0.1.18 P06 contract clarification
+
+The existing invoice-currency catalogue is intentionally unchanged. P06 continues to fail closed for currencies outside that catalogue rather than silently broadening provider currency/minor-unit handling. Stripe Automatic Tax and non-zero template percentage line tax remain blocked by the current Invio Stripe preflight contract, and Stripe remains `INVOICE`-only in the current adapter.

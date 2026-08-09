@@ -57,3 +57,9 @@ A manifest capability remains a **declaration**, not proof of executable code. P
 The packaged IDs `stripe` and `refrens` are reserved. `ProviderManager.load_external()` rejects external manifests using a packaged ID rather than overwriting `providers/registry/<id>.json`. Existing conflicting packaged-ID registry state is preserved on disk but Account/Test/Task operations fail closed until the owner explicitly uninstalls/reinstalls the packaged provider.
 
 Current executable capabilities are reported separately from declared capabilities. Stripe currently executes `invoice`, `send_invoice`, and `api_test`; Refrens currently executes `api_test` only because its normal Task pipeline remains P11 scope. External manifests do not gain executable capability from declaration alone; the historical injected task-runner API remains the only existing external execution boundary until P13.
+
+## v1.0.0.1.18 P06 verification correction
+
+Packaged `stripe` and `refrens` manifests are now checked against an independent hard-coded executable credential/mode/capability contract as well as the installed registry copy. This prevents a modified packaged manifest from validating a matching modified registry manifest against itself. The comparison still ignores display-only name/version/description fields.
+
+Provider cards render the declaration from the actual installed registry manifest when a packaged ID is installed. Effective runtime capabilities are shown only when that installed declaration also matches the packaged and hard-coded executable contract. Existing external provider IDs and the historical injected task-runner boundary remain unchanged.

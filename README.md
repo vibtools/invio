@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.17`** completes **P06 - Provider Capability and Preflight Validation** on top of the verified `v1.0.0.1.16` P05 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.18`** is the forensic verification/correction release for **P06 - Provider Capability and Preflight Validation**, based on the verified `v1.0.0.1.17` P06 baseline.
 
 ## Current Application Scope
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.17` is the verified P06 baseline. Production progress is **6/14 phases complete**. The next separately approved phase is **P07 - Task State Machine and Resend Safety**.
+`v1.0.0.1.18` is the verified/corrected P06 baseline. Production progress is **6/14 phases complete**. The next separately approved phase is **P07 - Task State Machine and Resend Safety**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -170,3 +170,9 @@ Packaged IDs (`stripe`, `refrens`) are reserved against external-manifest collis
 The current Stripe adapter is preflighted as standard `INVOICE` only. Automatic Tax and non-zero template line tax are blocked before network execution because the current Invio customer/send contract does not supply the location/tax-rate object semantics needed to guarantee those behaviors. Customer reuse and the existing description/footer/customer-note/terms mappings remain supported.
 
 Refrens authentication is now allowed only to the canonical `https://api.refrens.com` origin. URL trust is validated before App ID/App Secret authentication payload construction. No Refrens Task sending is enabled by P06.
+
+## v1.0.0.1.18 P06 Verification Corrections
+
+The exact v1.0.0.1.17 P06 baseline was re-audited. v1.0.0.1.18 keeps SQLite schema v4 and the approved P06 architecture while correcting five contract gaps: built-in packaged manifests are now checked against hard-coded executable credential/mode/capability truth; Task preflight verifies the supplied Account sequence matches the P05 frozen Account assignment; Refrens currency validation uses the existing safe invoice-currency catalogue; the trusted Refrens URL accepts only the canonical host with no explicit port; and Providers cards display the actual installed manifest with effective runtime capability rather than a packaged look-alike.
+
+Stripe documentation is account-country sensitive and can expose additional region-specific three-decimal currencies such as BHD/JOD/KWD/OMR/TND. Invio does not silently add them in this correction because the existing sender's minor-unit contract supports the frozen zero/two-decimal set only. Those currencies therefore remain preflight-blocked rather than being mis-scaled.

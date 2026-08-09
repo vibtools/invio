@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.17`  
+**Baseline:** `v1.0.0.1.18`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -326,3 +326,8 @@ Implemented in `v1.0.0.1.17`:
 - Stripe `BOS`, Automatic Tax under the current customer-location contract, and non-zero template percentage line tax under the current Stripe sender are rejected before invoice creation.
 - Refrens normal Task capability remains unavailable until P11. Refrens endpoint trust is validated before App ID/App Secret payload construction.
 - P06 does not classify network errors/retries or persist recipient attempt state; those remain P08/P10.
+
+
+## v1.0.0.1.18 P06 fail-closed corrections
+
+P06 now also fail-closes packaged-manifest self-drift, preflight Account-input mismatch, Refrens unsupported currency, and any explicit Refrens port including `:443`. These failures occur before provider invoice/customer mutation.

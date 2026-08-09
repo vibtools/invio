@@ -47,3 +47,8 @@ P03 uses SQLite schema v2 to persist Account verification timestamp and safe err
 ## P06 provider endpoint configuration
 
 Refrens `API Base URL` remains an Account credential field, but P06 restricts executable authentication to the canonical `https://api.refrens.com` origin. The validation rejects HTTP, alternate/deceptive hosts, embedded URL credentials, non-root paths, queries, and fragments before App ID/App Secret authentication data is constructed. No configurable trust override is added.
+
+
+## v1.0.0.1.18 Refrens endpoint rule
+
+The trusted Refrens API Base URL is exactly `https://api.refrens.com` (optional trailing slash only). Explicit ports, including `:443`, are rejected before App ID/App Secret transport.

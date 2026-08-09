@@ -63,3 +63,9 @@ Packaged provider IDs are reserved against external-manifest collision. If an in
 Before Task creation and Start/Retry, P06 checks Account provider identity, `Verified` status, recorded successful verification timestamp, empty verification error, declared mode, and required credential presence. Stripe also rechecks key-format/Test-Live consistency locally. This preflight does not perform an automatic network Re-test.
 
 Refrens API credentials are sent only to `https://api.refrens.com`; host aliases, deceptive subdomains, URL credentials, custom path/query/fragment values, or HTTP are rejected before the authentication payload is constructed. Normal Refrens Task sending remains disabled until P11.
+
+## v1.0.0.1.18 P06 verification correction
+
+P06 verification now fails closed if a packaged built-in manifest itself drifts from the hard-coded Stripe/Refrens executable credential, mode, or capability contract. Providers cards show the actual installed declaration and suppress effective built-in runtime capability when that declaration is inconsistent.
+
+The trusted Refrens endpoint is exact: `https://api.refrens.com` (an optional trailing `/` is normalized). Explicit ports, including `:443`, are rejected together with alternate hosts, embedded credentials, custom paths, query strings, fragments, and HTTP. Refrens Task sending remains P11 scope.

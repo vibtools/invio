@@ -57,3 +57,8 @@ Invio checks and, when required, migrates the per-user `domain.sqlite3` before t
 When you click **Create Task**, Invio checks the installed provider/runtime contract, selected verified Accounts, Invoice Template, and Customer List before saving the Task. When you later click **Start** or **Retry Failed**, Invio checks the same provider/account rules again against the Task's frozen P05 snapshot.
 
 If a combination is unsupported, Invio shows **Preflight Failed** with a correction instead of beginning provider execution. Typical corrections include reinstalling a conflicting packaged provider, re-testing an unhealthy Account, using Stripe `INVOICE` instead of `BOS`, disabling Stripe Automatic Tax, setting unsupported Stripe line tax to zero, or restoring the canonical Refrens API Base URL.
+
+
+## v1.0.0.1.18 provider preflight note
+
+If a packaged provider manifest is inconsistent, Invio shows no safe effective runtime capability and blocks Task execution until the provider is reinstalled. Refrens API Base URL must be exactly `https://api.refrens.com` or the same URL with a trailing slash; explicit ports are rejected.
