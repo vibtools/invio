@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.18`** is the forensic verification/correction release for **P06 - Provider Capability and Preflight Validation**, based on the verified `v1.0.0.1.17` P06 baseline.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.19`** completes **P07 - Task State Machine and Resend Safety** on top of the verified `v1.0.0.1.18` P06 baseline.
 
 ## Current Application Scope
 
@@ -8,7 +8,7 @@
 - **Accounts**: provider-grouped accounts with Add/Edit/Re-test/Delete lifecycle controls, real non-blocking API verification, durable verification health, protected credentials, and task reservation safety.
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
-- **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list. One account cannot belong to two open tasks.
+- **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
 - **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; provider network sending remains outside the GUI thread.
@@ -31,7 +31,7 @@ Typical operational database paths use the same per-user Invio directory as Sett
 - macOS: `~/Library/Application Support/Vib Tools/Invio/domain.sqlite3`
 - Linux: `$XDG_CONFIG_HOME/Vib Tools/Invio/domain.sqlite3`, otherwise `~/.config/Vib Tools/Invio/domain.sqlite3`
 
-If Invio previously stopped while a Task was `Running`, `Paused`, or `Stopping`, P02 restores that Task as **Stopped** and does not automatically resume provider activity.
+If Invio previously stopped while a Task was `Running`, `Paused`, or `Stopping`, P02 restores that Task as **Stopped** and does not automatically resume provider activity. P07 additionally treats its exact recipient continuation set as unavailable after process restart, so **Resume Remaining** / **Retry Failed** fail closed rather than guessing recipient identities; durable recipient recovery remains P10.
 
 ## Protected Provider Credentials
 
@@ -90,7 +90,7 @@ The P05 re-audit found three consistency gaps not covered by the v1.0.0.1.15 sui
 
 ### Stripe
 
-Stripe remains bundled with Test and Live modes. The built-in runtime can find/create customers by email, create draft `send_invoice` invoices, create line items, finalize invoices, call Stripe's invoice-send endpoint, and retain current-process failed-recipient state for **Retry Failed**. Stripe documents that test-mode send requests do not emit real customer emails, so test-mode API success must not be interpreted as inbox delivery.
+Stripe remains bundled with Test and Live modes. The built-in runtime can find/create customers by email, create draft `send_invoice` invoices, create line items, finalize invoices, call Stripe's invoice-send endpoint, and retain current-session exact failed/pending recipient state for **Retry Failed** and **Resume Remaining**. Successful recipients are excluded from those continuation sets. Stripe documents that test-mode send requests do not emit real customer emails, so test-mode API success must not be interpreted as inbox delivery.
 
 ### Refrens
 
@@ -141,7 +141,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.17.md`
+- Release notes: `docs/release-notes/1.0.0.1.19.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P05 regression behavior plus P06 manifest/runtime r
 
 ## Production Readiness Program
 
-`v1.0.0.1.18` is the verified/corrected P06 baseline. Production progress is **6/14 phases complete**. The next separately approved phase is **P07 - Task State Machine and Resend Safety**.
+`v1.0.0.1.19` is the verified P07 baseline. Production progress is **7/14 phases complete**. The next separately approved phase is **P08 - Worker and Network Reliability**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -176,3 +176,17 @@ Refrens authentication is now allowed only to the canonical `https://api.refrens
 The exact v1.0.0.1.17 P06 baseline was re-audited. v1.0.0.1.18 keeps SQLite schema v4 and the approved P06 architecture while correcting five contract gaps: built-in packaged manifests are now checked against hard-coded executable credential/mode/capability truth; Task preflight verifies the supplied Account sequence matches the P05 frozen Account assignment; Refrens currency validation uses the existing safe invoice-currency catalogue; the trusted Refrens URL accepts only the canonical host with no explicit port; and Providers cards display the actual installed manifest with effective runtime capability rather than a packaged look-alike.
 
 Stripe documentation is account-country sensitive and can expose additional region-specific three-decimal currencies such as BHD/JOD/KWD/OMR/TND. Invio does not silently add them in this correction because the existing sender's minor-unit contract supports the frozen zero/two-decimal set only. Those currencies therefore remain preflight-blocked rather than being mis-scaled.
+
+## P07 Task State Machine and Resend Safety
+
+P07 makes every execution action deterministic without changing the P05 immutable input snapshot, P06 provider preflight, SQLite schema v4, or WorkerManager architecture.
+
+- **Start** is a first-run action only for a pristine `Ready` Task.
+- `Running -> Paused -> Running` resumes the same active worker and does not build a new send set.
+- A safely stopped built-in Stripe run exposes **Resume Remaining**, which contains only the exact current-session union of failed recipients and recipients that were never attempted. Previously successful recipients are excluded.
+- A `Failed` built-in Stripe run exposes **Retry Failed** only when the exact current-session failed-recipient set is available. Repeated retries shrink to the still-unresolved failures.
+- `Completed` Tasks cannot Start/Retry/Resume again; another full execution requires a new Task and therefore a new `Task.id`/P05 snapshot.
+- Stop reconciliation keeps runtime continuation state, persisted counters, and UI counts aligned: `success + failed == processed`, while `remaining == total - processed`.
+- If the process restarts, exact recipient continuation identities are intentionally considered unavailable. Invio never reconstructs or guesses them from aggregate counters; Retry/Resume fail closed until P10 adds durable recipient-level recovery.
+- The existing injected/external runner API remains first-run compatible, but P07 blocks Retry/Resume continuation for injected runners because that API does not expose a trustworthy recipient subset.
+- Account reservations remain held until **Close Task**. No new database table, worker pool, network retry/backoff, or provider-send behavior is introduced.

@@ -12,7 +12,7 @@ from .preflight import (
     preflight_runtime_inputs,
     preflight_task,
 )
-from .runtime import AccountSnapshot, CustomerSnapshot, ProviderRuntime, ProviderRuntimeError, TaskSnapshot
+from .runtime import AccountSnapshot, CustomerSnapshot, ProviderRuntime, ProviderRuntimeError, TaskDeliverySummary, TaskSnapshot
 
 __all__ = [
     "AccountSnapshot",
@@ -23,6 +23,7 @@ __all__ = [
     "ProviderCapabilityProfile",
     "ProviderRuntime",
     "ProviderRuntimeError",
+    "TaskDeliverySummary",
     "TaskSnapshot",
     "canonical_refrens_base_url",
     "capability_profile",

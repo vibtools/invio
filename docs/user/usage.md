@@ -28,9 +28,9 @@ CSV/TSV/XLSX/XLSM files with a first usable header row containing `email` use st
 
 ## 6. Tasks
 
-Choose Provider, Verified Account(s), Invoice Template, and Customer List. Tasks and account reservations survive restart. A Task that was actively Running/Paused/Stopping when the app ended is recovered as **Stopped** and is never auto-resumed.
+Choose Provider, Verified Account(s), Invoice Template, and Customer List. Tasks and account reservations survive restart. A Task that was actively Running/Paused/Stopping when the app ended is recovered as **Stopped** and is never auto-resumed. Because exact continuation recipient identities are not durable until P10, Resume Remaining/Retry Failed is disabled after process restart rather than guessing recipients.
 
-Existing Start/Pause/Resume/Stop/Retry Failed/Close state-machine behavior otherwise remains unchanged. P05 changes only which execution inputs an existing Task is allowed to use.
+P07 formalizes Task actions: **Start** is first-run-only for pristine Ready Tasks; **Pause/Resume** continues the same active worker; **Resume Remaining** on a safely stopped current-session run sends only failed plus never-attempted recipients; **Retry Failed** on a Failed current-session run sends only exact failures; **Completed** cannot resend. **Close Task** remains the action that releases Account reservations.
 
 ### P05 immutable Task inputs
 
@@ -62,3 +62,17 @@ If a combination is unsupported, Invio shows **Preflight Failed** with a correct
 ## v1.0.0.1.18 provider preflight note
 
 If a packaged provider manifest is inconsistent, Invio shows no safe effective runtime capability and blocks Task execution until the provider is reinstalled. Refrens API Base URL must be exactly `https://api.refrens.com` or the same URL with a trailing slash; explicit ports are rejected.
+
+## P07 deterministic Task actions
+
+Use the action shown for the current state:
+
+- **Ready:** Start. The Task must have no prior progress.
+- **Running:** Pause or Stop.
+- **Paused:** Resume the same worker, or Stop.
+- **Stopping:** wait for the worker to reach a terminal state.
+- **Stopped:** Resume Remaining only when Invio still has the exact current-session continuation set.
+- **Failed:** Retry Failed only when Invio still has the exact current-session failed set.
+- **Completed:** Close Task; create a new Task for another full execution.
+
+A Stop does not turn the next action into a full resend. Invio retains current-session failed and never-attempted recipients separately and excludes known successes. If the app restarts, those recipient identities are intentionally not inferred from the saved counts. Close the Task and create a new Task if continuation is unavailable; P10 is the planned durable recipient-recovery phase.

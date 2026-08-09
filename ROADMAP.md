@@ -1,15 +1,15 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.18**.
+Current frozen implementation baseline: **Invio v1.0.0.1.19**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Production implementation phases: **6 / 14 complete**.
-- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**.
-- Next planned phase: **P07 - Task State Machine and Resend Safety**.
+- Production implementation phases: **7 / 14 complete**.
+- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**.
+- Next planned phase: **P08 - Worker and Network Reliability**.
 - Current status: **not production-certified**.
 
 ## Ordered Production Phases
@@ -20,7 +20,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 4. **P04 - Customer Data Contract and Import Upgrade [COMPLETE in v1.0.0.1.12; verified/corrected in v1.0.0.1.13]**: backward-compatible customer records, structured/legacy imports, schema-v3 metadata persistence and customer-aware runtime snapshots while preserving Stripe email-only semantics.
 5. **P05 - Immutable Task Execution Snapshot and Input Consistency [COMPLETE in v1.0.0.1.15; verification-corrected in v1.0.0.1.16]**: durable creation-time recipients/template/provider/account-basis snapshots, snapshot-derived totals, Start/Retry reuse, and fail-closed legacy Task migration.
 6. **P06 - Provider Capability and Preflight Validation [COMPLETE in v1.0.0.1.17; verification-corrected in v1.0.0.1.18]**: reconcile declared/executable capabilities, protect packaged runtime IDs, validate provider/account/template/customer/endpoint contracts before side effects, and show precise correction messages.
-7. **P07 - Task State Machine and Resend Safety**: deterministic Start/Retry semantics and protection against accidental successful-recipient resend.
+7. **P07 - Task State Machine and Resend Safety [COMPLETE in v1.0.0.1.19]**: deterministic First Run/Resume Remaining/Retry Failed semantics, centralized transitions, stop counter reconciliation, and current-session successful-recipient resend protection with fail-closed restart continuation.
 8. **P08 - Worker and Network Reliability**: retry/backoff/rate-limit/timeout/cancellation/shutdown hardening.
 9. **P09 - Multi-Account Scheduling, Limits and Health**: production-safe account distribution, limits and eligible failover.
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.

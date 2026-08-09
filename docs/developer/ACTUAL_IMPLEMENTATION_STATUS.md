@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.18`  
-**Completed production phases:** P01, P02, P03, P04, P05, P06  
+**Baseline:** `Invio v1.0.0.1.19`  
+**Completed production phases:** P01, P02, P03, P04, P05, P06, P07  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -23,7 +23,8 @@
 | Active-task restart recovery | WORKING | Running/Paused/Stopping recover as existing `Stopped`; no auto-resume/send |
 | Immutable Task execution inputs | WORKING | P05 freezes ordered recipients, copied template, provider ID and account-assignment basis at Task creation; Start/Retry reuse it |
 | Dedicated worker thread per active Task | WORKING | Existing one-`QThread`-per-Task WorkerManager unchanged |
-| Retry Failed after app restart | NOT IMPLEMENTED | ProviderRuntime failed-recipient set is still process memory; P10 |
+| Retry Failed / Resume Remaining in current session | WORKING | P07 uses exact ProviderRuntime failed/pending sets and immutable P05 ordering |
+| Retry Failed / Resume Remaining after app restart | NOT IMPLEMENTED | Exact recipient identities are deliberately not guessed; P10 durable ledger/recovery |
 | Recipient delivery ledger/provider IDs | NOT IMPLEMENTED | P10 |
 | Settings persistence | WORKING | Existing non-sensitive JSON remains separate from P02 storage |
 
@@ -59,7 +60,7 @@
 - Account Edit/Delete/Re-test and durable verification-health lifecycle are **WORKING in P03**. No age-based expiry/background polling is implemented.
 - Customer record name/country expansion is **WORKING in P04**; no billing/shipping/payment expansion was added.
 - Immutable Task execution snapshots are **WORKING in P05**; pre-P05 Tasks migrate as fail-closed `LegacyUnavailable` records.
-- Provider capability/preflight is **WORKING in P06**; P07 owns Task state/resend semantics.
+- Provider capability/preflight is **WORKING in P06**; P07 Task state/resend semantics are now **WORKING for exact current-session built-in continuation sets**.
 - No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
 
 
@@ -96,8 +97,8 @@
 
 - Customer Lists remain editable/importable, but P05 freezes each new Task's creation-time customer records so later changes do not affect that Task.
 - Bound Invoice Templates remain editable, but P05 Start/Retry use the Task's frozen template copy rather than the current template.
-- Completed/Failed full-Start resend semantics remain unchanged. P07.
-- Retry Failed remains process-memory only. P10.
+- Completed full resend and Failed normal Start are blocked by P07; Stopped uses Resume Remaining only when an exact safe current-session continuation set exists.
+- Retry Failed / Resume Remaining recipient identities remain process-memory only; durable restart recovery remains P10.
 
 ## Threading / Worker
 
@@ -145,7 +146,7 @@ P01-P06 unit/contract/source audits verify the implemented local contracts. Nati
 
 **MIGRATION:** pre-P05 schema-v3 Tasks remain present with status/counters/references/reservations but are marked `LegacyUnavailable`; original creation-time data is not fabricated from current list/template state. Their Start/Retry paths are disabled/gated while Close remains available.
 
-**STILL NOT IMPLEMENTED:** P06 provider preflight, P07 state-machine/resend hardening, P08/P09 network/scheduling hardening, P10 durable recipient delivery ledger/retry recovery, P11 Refrens Task enablement, P12 observability/privacy completion, P13 executable external adapters, P14 native/live production certification.
+**STILL NOT IMPLEMENTED:** P08/P09 network/scheduling hardening, P10 durable recipient delivery ledger/retry recovery, P11 Refrens Task enablement, P12 observability/privacy completion, P13 executable external adapters, and P14 native/live production certification.
 
 **Production progress:** 5/14 phases complete. Next separately approved phase: P06.
 ## v1.0.0.1.16 P05 Verification Correction
@@ -160,9 +161,17 @@ P01-P06 unit/contract/source audits verify the implemented local contracts. Nati
 
 **WORKING SECURITY BOUNDARY:** Refrens authentication accepts only the canonical `https://api.refrens.com` origin and rejects untrusted URL variants before the App ID/App Secret authentication payload is constructed.
 
-**NOT IMPLEMENTED BY P06:** P07 resend/state-machine rules, P08 retry/backoff/network reliability, P09 account scheduling/failover, P10 durable delivery ledger, P11 Refrens normal Task execution, P13 executable external adapter architecture, and P14 live/native production certification.
+**NOT IMPLEMENTED BY P07:** P08 retry/backoff/network reliability, P09 account scheduling/failover, P10 durable recipient delivery ledger/restart continuation, P11 Refrens normal Task execution, P12 observability/privacy completion, P13 executable external adapter architecture, and P14 live/native production certification.
 
 
 ## v1.0.0.1.18 P06 verification correction
 
 P06 is COMPLETE and verification-corrected. Built-in packaged manifests must match hard-coded executable contracts; Task preflight validates frozen Account ordering; Refrens uses the safe currency catalogue and exact canonical endpoint; Providers displays installed declarations with effective runtime capability.
+
+## v1.0.0.1.19 P07 status
+
+**WORKING:** formal Task transition/action policy; pristine Ready-only First Run; same-worker Pause/Resume; exact current-session built-in Stripe Resume Remaining and Retry Failed; successful-recipient exclusion; repeated retry shrinkage; stop counter/runtime-set reconciliation; Completed resend blocking; Failed normal-Start blocking; injected-runner continuation fail-close; P06 preflight before every permitted new worker attempt; Account reservation retention until Close.
+
+**INTENTIONALLY NOT DURABLE YET:** failed/pending recipient identity sets. After process restart Invio preserves aggregate status/counters but disables identity-based continuation rather than guessing. Durable recipient attempts, provider IDs, idempotency/recovery evidence remain P10.
+
+**UNCHANGED:** SQLite schema v4, P05 immutable snapshots, P06 provider capability/preflight, WorkerManager one-QThread-per-active-Task architecture, packaged provider send semantics, Refrens P11 gate, dependencies and unrelated UI.

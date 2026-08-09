@@ -90,3 +90,7 @@ P06 adds one focused module, `src/core/provider_runtime/preflight.py`, inside th
 ## v1.0.0.1.18 P06 Verification Note
 
 No folder/module/page is renamed or reorganized. Corrections remain in the existing ProviderManager/ProviderRuntime/MainWindow/ProvidersPage P06 surfaces plus regression tests and synchronized documentation. SQLite remains schema v4.
+
+## v1.0.0.1.19 P07 State-Machine Note
+
+P07 adds `src/tasks/state_machine.py` inside the existing Task package. No top-level folder, UI page, database table, worker subsystem, or provider adapter is added. Existing Task, AppState, ProviderRuntime, DomainStore, MainWindow and Tasks page modules are extended in place. SQLite remains schema v4 and WorkerManager remains one QThread per active Task.

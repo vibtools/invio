@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.18`  
+**Baseline:** `v1.0.0.1.19`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -162,7 +162,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-005 | **RESOLVED in P04; corrected in v1.0.0.1.13:** structured customer import reports row-numbered missing/invalid email, invalid country, same-file conflicts, and existing-list metadata conflicts; malformed workbook/parser failures stay inside the caught import-error boundary | False/ambiguous customer rows/files are surfaced without silently creating data | COMPLETE v1.0.0.1.12; CORRECTED v1.0.0.1.13 |
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
 | EH-007 | **RESOLVED in v1.0.0.1.17:** provider/template/customer compatibility was not validated before side effects | Unsupported invoice type/currency/tax/customer requirements could reach provider execution | COMPLETE P06: no-side-effect capability preflight |
-| EH-008 | Completed/Failed full Start resend semantics are not protected | Duplicate invoice/email risk | P07 |
+| EH-008 | Completed/Failed full Start resend semantics were ambiguous | RESOLVED in P07: Completed full resend and Failed normal Start are blocked; new full execution requires a new Task | P07 COMPLETE |
 | EH-009 | No retryable/permanent provider error taxonomy | Incorrect retry behavior | P08 |
 | EH-010 | No automatic bounded retry/backoff/jitter | Transient failures become manual failures | P08 |
 | EH-011 | No explicit 429/Retry-After handling | Rate-limit amplification | P08/P09 |
@@ -179,7 +179,7 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-022 | No live integration/recovery certification | Unknown real-environment failure modes | P14 |
 | EH-023 | **RESOLVED for packaged runtime IDs in v1.0.0.1.17:** external/installed manifest could collide with built-in runtime identity/credential/capability contract | Manifest declarations could disagree with executable Stripe/Refrens adapter | COMPLETE P06 packaged-ID reservation + manifest/runtime reconciliation; full external executable adapter architecture remains P13 |
 | EH-024 | **RESOLVED in v1.0.0.1.17:** Refrens auth accepted any HTTPS base URL | App ID/App Secret could be sent to an owner-entered untrusted HTTPS host | COMPLETE P06: canonical `https://api.refrens.com` trust validation before auth payload construction |
-| EH-025 | Stop can leave internal retry recipients not reflected in `task.failed` | Retry button/state inconsistency | P07/P10 |
+| EH-025 | Stop could leave runtime retry/remaining recipients inconsistent with aggregate counters | RESOLVED for current-session P07 continuation: counters are derived from exact failed/pending sets. Durable identity recovery after restart remains P10 | P07 COMPLETE / P10 durability pending |
 | EH-026 | CSV export is not spreadsheet-formula-safe | Spreadsheet execution risk on opened export | P12 |
 | EH-027 | Provider API acceptance is treated as Task success without inbox-delivery confirmation | Misinterpreted delivery state | P10/P12/P14 |
 | EH-028 | File import boundary still does not classify every malformed workbook/parser exception | Some malformed files may escape the intended user warning taxonomy | P12 |
@@ -326,8 +326,17 @@ Implemented in `v1.0.0.1.17`:
 - Stripe `BOS`, Automatic Tax under the current customer-location contract, and non-zero template percentage line tax under the current Stripe sender are rejected before invoice creation.
 - Refrens normal Task capability remains unavailable until P11. Refrens endpoint trust is validated before App ID/App Secret payload construction.
 - P06 does not classify network errors/retries or persist recipient attempt state; those remain P08/P10.
+- P07 now protects deterministic current-session resend/continuation semantics, but does not persist failed/pending recipient identities; restart continuation remains fail-closed until P10.
 
 
 ## v1.0.0.1.18 P06 fail-closed corrections
 
 P06 now also fail-closes packaged-manifest self-drift, preflight Account-input mismatch, Refrens unsupported currency, and any explicit Refrens port including `:443`. These failures occur before provider invoice/customer mutation.
+
+## v1.0.0.1.19 P07 state/resend handling
+
+P07 treats ambiguous resend actions as validation errors before a new worker is started. Completed Tasks cannot resend; Failed Tasks cannot normal-Start; Stopped Tasks can only Resume Remaining from an exact safe current-session continuation set; Retry Failed can only use an exact safe current-session failure set.
+
+Controlled Stop reconciliation uses the same failed/pending sets to calculate persisted/UI counts. If recipient-level continuation becomes uncertain because of an unexpected runtime exception, or if the process restarts and the in-memory sets are lost, continuation is marked unavailable rather than reconstructed from aggregate counters. This avoids an accidental successful-recipient resend while leaving durable recovery to P10.
+
+P07 does not add automatic network retry, backoff, HTTP cancellation, rate-limit behavior or provider-side reconciliation; those remain P08/P10.

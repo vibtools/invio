@@ -17,6 +17,7 @@ from ...accounts.models import Account
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
+from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..state import AppState
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
@@ -85,9 +86,31 @@ class TaskSnapshot:
         return tuple(customer.email for customer in self.customers)
 
 
+@dataclass(frozen=True, slots=True)
+class TaskDeliverySummary:
+    continuation_safe: bool
+    failed_recipients: tuple[str, ...]
+    pending_recipients: tuple[str, ...]
+    processed: int
+    success: int
+    failed: int
+    remaining: int
+
+    @property
+    def retry_failed_available(self) -> bool:
+        return self.continuation_safe and bool(self.failed_recipients) and not self.pending_recipients
+
+    @property
+    def resume_remaining_available(self) -> bool:
+        return self.continuation_safe and bool(self.failed_recipients or self.pending_recipients)
+
+
 @dataclass(slots=True)
 class _DeliveryState:
     failed_recipients: set[str] = field(default_factory=set)
+    pending_recipients: set[str] = field(default_factory=set)
+    continuation_safe: bool = False
+    execution_mode: str = ""
 
 
 def _extract_api_error(data: Any) -> str:
@@ -227,7 +250,68 @@ class ProviderRuntime:
             return "Refrens API connection verified."
         raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
 
-    def make_task_runner(self, task: Task, state: AppState, *, retry_failed: bool = False) -> Callable[[Any], None]:
+    def delivery_summary(self, task: Task) -> TaskDeliverySummary | None:
+        execution = task.execution_snapshot
+        if execution is None or execution.state != TASK_SNAPSHOT_CAPTURED:
+            return None
+        order = tuple(customer.email for customer in execution.customers)
+        known = set(order)
+        with self._state_lock:
+            state = self._delivery_state.get(task.id)
+            if state is None:
+                return None
+            failed_set = set(state.failed_recipients)
+            pending_set = set(state.pending_recipients)
+            safe = bool(state.continuation_safe)
+
+        safe = safe and failed_set.isdisjoint(pending_set)
+        safe = safe and failed_set.issubset(known) and pending_set.issubset(known)
+        ordered_failed = tuple(email for email in order if email in failed_set)
+        ordered_pending = tuple(email for email in order if email in pending_set)
+        if not safe:
+            return TaskDeliverySummary(
+                continuation_safe=False,
+                failed_recipients=ordered_failed,
+                pending_recipients=ordered_pending,
+                processed=task.processed,
+                success=task.success,
+                failed=task.failed,
+                remaining=task.remaining,
+            )
+
+        processed = task.total - len(ordered_pending)
+        failed = len(ordered_failed)
+        success = processed - failed
+        if processed < 0 or success < 0 or processed > task.total:
+            return TaskDeliverySummary(
+                continuation_safe=False,
+                failed_recipients=ordered_failed,
+                pending_recipients=ordered_pending,
+                processed=task.processed,
+                success=task.success,
+                failed=task.failed,
+                remaining=task.remaining,
+            )
+        return TaskDeliverySummary(
+            continuation_safe=True,
+            failed_recipients=ordered_failed,
+            pending_recipients=ordered_pending,
+            processed=processed,
+            success=success,
+            failed=failed,
+            remaining=len(ordered_pending),
+        )
+
+    def make_task_runner(
+        self,
+        task: Task,
+        state: AppState,
+        *,
+        retry_failed: bool = False,
+        resume_remaining: bool = False,
+    ) -> Callable[[Any], None]:
+        if retry_failed and resume_remaining:
+            raise ProviderRuntimeError("Retry Failed and Resume Remaining cannot be requested together.")
         snapshot = self._snapshot(task, state)
         if snapshot.provider_id == "refrens":
             # P04 stores explicit provider-neutral customer name/country data, but
@@ -249,16 +333,59 @@ class ProviderRuntime:
             raise ProviderRuntimeError(runtime_preflight.message)
 
         with self._state_lock:
-            delivery = self._delivery_state.setdefault(task.id, _DeliveryState())
             if retry_failed:
-                recipients = tuple(email for email in snapshot.customer_emails if email in delivery.failed_recipients)
+                if task.status != "Failed":
+                    raise ProviderRuntimeError("Retry Failed is only available for a Failed Task.")
+                delivery = self._delivery_state.get(task.id)
+                if delivery is None or not delivery.continuation_safe:
+                    raise ProviderRuntimeError(
+                        "The exact failed recipient set is not available in this application session."
+                    )
+                if delivery.pending_recipients:
+                    raise ProviderRuntimeError(
+                        "Retry Failed is unavailable while unattempted recipients remain. Use Resume Remaining."
+                    )
+                recipients = tuple(
+                    email for email in snapshot.customer_emails if email in delivery.failed_recipients
+                )
                 if not recipients:
                     raise ProviderRuntimeError("This task has no failed recipients to retry.")
+                delivery.execution_mode = TaskExecutionMode.RETRY_FAILED.value
+                mode = TaskExecutionMode.RETRY_FAILED
+            elif resume_remaining:
+                if task.status != "Stopped":
+                    raise ProviderRuntimeError("Resume Remaining is only available for a Stopped Task.")
+                delivery = self._delivery_state.get(task.id)
+                if delivery is None or not delivery.continuation_safe:
+                    raise ProviderRuntimeError(
+                        "The exact continuation recipient set is not available in this application session."
+                    )
+                eligible = delivery.failed_recipients | delivery.pending_recipients
+                recipients = tuple(email for email in snapshot.customer_emails if email in eligible)
+                if not recipients:
+                    raise ProviderRuntimeError("This task has no remaining recipients to resume.")
+                delivery.execution_mode = TaskExecutionMode.RESUME_REMAINING.value
+                mode = TaskExecutionMode.RESUME_REMAINING
             else:
-                delivery.failed_recipients.clear()
+                if task.status != "Ready" or not is_pristine_first_run(task):
+                    raise ProviderRuntimeError(
+                        "A full Start is only available for a pristine Ready Task. Create a new Task for another full execution."
+                    )
+                existing = self._delivery_state.get(task.id)
+                if existing is not None and existing.execution_mode:
+                    raise ProviderRuntimeError(
+                        "This Task already has a current-session execution state; a duplicate full Start is not allowed."
+                    )
                 recipients = snapshot.customer_emails
+                self._delivery_state[task.id] = _DeliveryState(
+                    failed_recipients=set(),
+                    pending_recipients=set(recipients),
+                    continuation_safe=True,
+                    execution_mode=TaskExecutionMode.FIRST_RUN.value,
+                )
+                mode = TaskExecutionMode.FIRST_RUN
 
-        return lambda context: self._run_stripe_batch(context, snapshot, recipients, retry_failed=retry_failed)
+        return lambda context: self._run_stripe_batch(context, snapshot, recipients, execution_mode=mode)
 
     @staticmethod
     def _snapshot(task: Task, state: AppState) -> TaskSnapshot:
@@ -307,57 +434,80 @@ class ProviderRuntime:
         snapshot: TaskSnapshot,
         recipients: tuple[str, ...],
         *,
-        retry_failed: bool,
+        execution_mode: TaskExecutionMode,
     ) -> None:
         full_index = {email: index for index, email in enumerate(snapshot.customer_emails)}
-        base_success = context.task.success if retry_failed else 0
-        original_retry_set = set(recipients) if retry_failed else set()
-        attempted: set[str] = set()
-        new_failed: set[str] = set()
-        new_success = 0
-
+        attempted = 0
+        label = {
+            TaskExecutionMode.FIRST_RUN: "Stripe batch",
+            TaskExecutionMode.RESUME_REMAINING: "Stripe continuation",
+            TaskExecutionMode.RETRY_FAILED: "Stripe failed-recipient retry",
+        }[execution_mode]
         context.log(
-            f"Stripe batch started with {len(recipients)} recipient(s) using template '{snapshot.template.name}'."
+            f"{label} started with {len(recipients)} recipient(s) using template '{snapshot.template.name}'."
         )
+
         for email in recipients:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
             account = snapshot.accounts[full_index[email] % len(snapshot.accounts)]
-            attempted.add(email)
             try:
                 self._send_stripe_invoice(snapshot, account, email)
-                new_success += 1
-                context.log(f"Stripe invoice sent to {email} via account '{account.name}'.")
             except ProviderRuntimeError as exc:
-                new_failed.add(email)
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The Task continuation state became unavailable during execution."
+                        ) from exc
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.add(email)
                 context.log(f"Stripe send failed for {email} via account '{account.name}': {exc}")
-
-            if retry_failed:
-                unresolved = original_retry_set - attempted
-                success_count = base_success + new_success
-                failed_count = len(unresolved) + len(new_failed)
-                processed = context.task.total
-                message = f"Retry processed {len(attempted)}/{len(recipients)} failed recipient(s)."
+            except Exception:
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is not None:
+                        delivery.continuation_safe = False
+                raise
             else:
-                success_count = new_success
-                failed_count = len(new_failed)
-                processed = len(attempted)
-                message = f"Processed {processed}/{context.task.total} recipient(s)."
-            context.progress(processed, success_count, failed_count, message)
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError("The Task continuation state became unavailable during execution.")
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                context.log(f"Stripe invoice sent to {email} via account '{account.name}'.")
 
-        if retry_failed:
-            remaining_failed = (original_retry_set - attempted) | new_failed
-        else:
-            remaining_failed = new_failed | (set(recipients) - attempted if context.stop_flag.is_set() else set())
-        with self._state_lock:
-            self._delivery_state.setdefault(snapshot.task_id, _DeliveryState()).failed_recipients = set(remaining_failed)
+            attempted += 1
+            summary = self.delivery_summary(context.task)
+            if summary is None or not summary.continuation_safe:
+                raise ProviderRuntimeError("The Task continuation state could not be reconciled safely.")
+            if execution_mode is TaskExecutionMode.RETRY_FAILED:
+                message = f"Retry processed {attempted}/{len(recipients)} failed recipient(s)."
+            elif execution_mode is TaskExecutionMode.RESUME_REMAINING:
+                message = f"Resume processed {attempted}/{len(recipients)} remaining recipient(s)."
+            else:
+                message = f"Processed {summary.processed}/{context.task.total} recipient(s)."
+            context.progress(summary.processed, summary.success, summary.failed, message)
 
+        if not context.stop_flag.is_set() and not context.pause_gate.is_set():
+            _wait_for_resume(context)
+
+        summary = self.delivery_summary(context.task)
+        if summary is None or not summary.continuation_safe:
+            raise ProviderRuntimeError("The Task continuation state could not be reconciled safely.")
         if context.stop_flag.is_set():
             context.log("Stripe batch stopped by user request.")
             return
-        if remaining_failed:
+        if summary.pending_recipients:
+            with self._state_lock:
+                delivery = self._delivery_state.get(snapshot.task_id)
+                if delivery is not None:
+                    delivery.continuation_safe = False
+            raise ProviderRuntimeError("Task execution ended before all selected recipients were resolved safely.")
+        if summary.failed_recipients:
             raise ProviderRuntimeError(
-                f"{len(remaining_failed)} recipient(s) failed. Use Retry Failed after reviewing Live Logs."
+                f"{summary.failed} recipient(s) failed. Use Retry Failed after reviewing Live Logs."
             )
         context.log("Stripe batch completed successfully.")
 
@@ -501,7 +651,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.18 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.19 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -544,7 +694,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.18 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.19 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

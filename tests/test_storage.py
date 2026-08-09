@@ -110,6 +110,7 @@ class P02StorageTests(unittest.TestCase):
 
     def test_restart_round_trip_restores_operational_state_exactly(self):
         state, account_id, list_id, template_id, task_id = self.populate()
+        state.set_task_status(task_id, "Running", "Running for restart test")
         state.set_task_progress(task_id, processed=1, success=1, failed=0)
         state.set_task_status(task_id, "Paused", "Paused for restart test")
 
@@ -829,6 +830,52 @@ class P02StorageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_p07_failed_task_restart_preserves_status_but_disables_identity_based_retry(self):
+        state, _account_id, _list_id, _template_id, task_id = self.populate()
+        state.set_task_status(task_id, "Running", "Running")
+        task = state.tasks[task_id]
+        state.set_task_progress(task_id, processed=task.total, success=task.total - 1, failed=1)
+        state.set_task_status(task_id, "Failed", "One recipient failed")
+
+        loaded = self.store.load(self.credentials)
+        restored = loaded.tasks[task_id]
+        self.assertEqual(restored.status, "Failed")
+        self.assertIn("exact failed recipient set is unavailable", restored.last_message)
+        self.assertIn("Retry Failed is disabled", restored.last_message)
+
+    def test_p07_stopped_task_restart_disables_identity_based_resume(self):
+        state, _account_id, _list_id, _template_id, task_id = self.populate()
+        state.set_task_status(task_id, "Running", "Running")
+        state.set_task_progress(task_id, processed=1, success=1, failed=0)
+        state.set_task_status(task_id, "Stopping", "Stop requested")
+        state.set_task_status(task_id, "Stopped", "Stopped")
+
+        loaded = self.store.load(self.credentials)
+        restored = loaded.tasks[task_id]
+        self.assertEqual(restored.status, "Stopped")
+        self.assertIn("exact continuation recipient set is unavailable", restored.last_message)
+        self.assertIn("Resume Remaining is disabled", restored.last_message)
+
+    def test_p07_active_task_restart_recovers_as_stopped_without_fabricating_continuation(self):
+        state, _account_id, _list_id, _template_id, task_id = self.populate()
+        state.set_task_status(task_id, "Running", "Running")
+        state.set_task_progress(task_id, processed=1, success=1, failed=0)
+
+        loaded = self.store.load(self.credentials)
+        restored = loaded.tasks[task_id]
+        self.assertEqual(restored.status, "Stopped")
+        self.assertIn("exact continuation recipient set is unavailable", restored.last_message)
+        self.assertTrue(any("recovered as Stopped" in warning for warning in loaded.warnings))
+
+    def test_p07_unknown_persisted_task_status_is_corruption(self):
+        _state, _account_id, _list_id, _template_id, task_id = self.populate()
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute("UPDATE tasks SET status='Resending' WHERE id=?", (task_id,))
+            connection.commit()
+        with self.assertRaisesRegex(DomainStoreCorruptionError, "unsupported persisted status"):
+            self.store.load(self.credentials)
 
 
 class P05SnapshotStorageTests(unittest.TestCase):

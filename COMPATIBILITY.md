@@ -41,3 +41,11 @@ P06 introduces no Python/platform/dependency/SQLite-schema change. Existing `Pro
 ## v1.0.0.1.18 P06 Verification Compatibility
 
 No Python/platform/dependency/SQLite-schema/provider-manifest/WorkerManager/P05-snapshot change is introduced. Existing valid packaged provider installations behave the same. P06 now fails closed when a packaged manifest itself diverges from the built-in executable contract, when Task preflight receives Accounts different from the frozen assignment, or when Refrens uses a non-canonical explicit-port URL. Region-specific three-decimal Stripe currencies remain intentionally unsupported by the current Invio minor-unit sender.
+
+## v1.0.0.1.19 P07 Compatibility
+
+- Existing Task status names remain `Ready`, `Running`, `Paused`, `Stopping`, `Stopped`, `Failed`, and `Completed`; P07 formalizes their transitions rather than renaming them.
+- Existing button inventory and page layout remain; the existing Start button displays **Resume Remaining** for a safe Stopped continuation.
+- Existing `register_task_runner(provider_id, runner)` remains source-compatible for first runs. Retry/Resume continuation is fail-closed for injected runners because the existing callback contract cannot expose an exact safe recipient subset.
+- SQLite remains schema v4; no recipient delivery ledger is introduced. Exact failed/pending identities are current-session memory only, so restart continuation is intentionally unavailable until P10.
+- P05 immutable snapshot format, P06 preflight, Stripe/Refrens provider-send contracts, account reservation rules, and dependency versions remain unchanged.

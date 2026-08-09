@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0.1.19 - P07 Task State Machine and Resend Safety
+
+- Completed production phase **P07** on the verified `v1.0.0.1.18` P06 baseline while preserving SQLite schema v4, P05 immutable execution snapshots, P06 preflight, WorkerManager, packaged provider contracts, dependencies, and P08+ scope.
+- Added a centralized `Ready/Running/Paused/Stopping/Stopped/Failed/Completed` Task transition/action policy. `Start` is now first-run-only for pristine `Ready` Tasks.
+- Replaced unsafe Stopped full restart with **Resume Remaining**, using only the exact current-session failed-plus-never-attempted recipient set in immutable P05 order.
+- Restricted **Retry Failed** to the exact current-session failed-recipient set; successful recipients are excluded, and repeated retries shrink to only unresolved failures.
+- Blocked `Completed` resend and Failed normal Start at both UI and backend action boundaries.
+- Reconciled Stop/final counters from the same runtime failed/pending sets so `success + failed == processed` and `remaining == total - processed`.
+- Made application-restart continuation fail closed: aggregate counters remain durable, but exact recipient identities are not guessed; Retry/Resume is disabled until P10 provides a durable delivery ledger.
+- Preserved the injected runner registration API for first runs while blocking unsafe injected-runner Retry/Resume fallback.
+- Preserved Account reservations until existing **Close Task** release and retained P06 preflight before every permitted new worker attempt.
+
 ## v1.0.0.1.18 - P06 Forensic Verification & Contract Correction
 
 - Re-audited the exact v1.0.0.1.17 P06 release against its approved capability/preflight plan.

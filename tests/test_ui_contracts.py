@@ -458,3 +458,61 @@ class P06UiContractTests(unittest.TestCase):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         auth = source.split("def _refrens_auth", 1)[1].split("def _refrens_request", 1)[0]
         self.assertLess(auth.index("canonical_refrens_base_url"), auth.index('payload = {"strategy": "app-secret"'))
+
+
+class P07UiContractTests(unittest.TestCase):
+    def test_p07_tasks_page_exposes_deterministic_state_actions_without_new_page(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "tasks_page.py").read_text(encoding="utf-8")
+        self.assertIn("self.start_btn.setText(policy.start_label)", page)
+        self.assertIn("self.start_btn.setEnabled(snapshot_ready and policy.start_enabled)", page)
+        self.assertIn("self.retry_btn.setEnabled(snapshot_ready and policy.retry_enabled)", page)
+        self.assertIn("self.close_btn.setEnabled(policy.close_enabled)", page)
+        self.assertNotIn('task.status in {"Ready", "Stopped", "Failed", "Completed"}', page)
+
+    def test_p07_start_routes_stopped_task_to_resume_remaining_and_never_rewrites_blocked_status(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        start = source.split("def start_task", 1)[1].split("def pause_task", 1)[0]
+        self.assertIn('TaskAction.RESUME_REMAINING if task.status == "Stopped" else TaskAction.START', start)
+        self.assertIn("resume_remaining=resume_remaining", start)
+        self.assertNotIn('self.state.set_task_status(task_id, "Ready"', start)
+
+    def test_p07_runner_gate_blocks_duplicate_worker_before_runtime_state_mutation(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        runner = source.split("def _runner_for_task", 1)[1].split("def start_task", 1)[0]
+        self.assertIn("self.worker_manager.is_running(task_id)", runner)
+        self.assertLess(runner.index("self.worker_manager.is_running(task_id)"), runner.index("preflight_task("))
+
+    def test_p07_retry_and_resume_fail_closed_for_injected_runner(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        runner = source.split("def _runner_for_task", 1)[1].split("def start_task", 1)[0]
+        self.assertIn("if retry_failed or resume_remaining:", runner)
+        self.assertIn("EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE", runner)
+        self.assertIn("retry_failed=retry_failed", runner)
+        self.assertIn("resume_remaining=resume_remaining", runner)
+
+    def test_p07_app_state_uses_central_transition_validator(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "core" / "state" / "app_state.py").read_text(encoding="utf-8")
+        status = source.split("def set_task_status", 1)[1].split("def set_task_progress", 1)[0]
+        self.assertIn("validate_status_transition(task.status, status)", status)
+        close = source.split("def close_task", 1)[1].split("def set_task_status", 1)[0]
+        self.assertIn("require_task_action(task, TaskAction.CLOSE)", close)
+
+    def test_p07_worker_finish_reconciles_runtime_recipient_sets_before_terminal_status(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        block = source.split("def _worker_finished", 1)[1].split("# Reports / logs", 1)[0]
+        self.assertIn("summary = self.provider_runtime.delivery_summary(task)", block)
+        self.assertIn("if summary is not None and summary.continuation_safe", block)
+        self.assertLess(block.index("self.state.set_task_progress"), block.index("self.state.set_task_status"))
+
+    def test_p07_worker_manager_thread_architecture_remains_unchanged(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
+        self.assertIn("thread = QThread(self)", source)
+        self.assertIn('thread.setObjectName(f"InvioTaskThread-{task.id}")', source)
+        self.assertNotIn("ThreadPoolExecutor", source)

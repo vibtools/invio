@@ -40,7 +40,16 @@ from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_customers
-from ..tasks.models import LEGACY_SNAPSHOT_MESSAGE
+from ..tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
+from ..tasks.state_machine import (
+    CONTINUATION_UNAVAILABLE_MESSAGE,
+    EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE,
+    TaskAction,
+    TaskActionPolicy,
+    TaskExecutionMode,
+    require_task_action,
+    task_action_policy,
+)
 from .dialogs import AccountRetestDialog, AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
 from .pages import (
     AccountsPage,
@@ -94,7 +103,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.18 started.")
+        self.log("Invio v1.0.0.1.19 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -203,6 +212,7 @@ class MainWindow(QMainWindow):
             self.stop_task,
             self.retry_task,
             self.close_task,
+            self._task_action_policy,
         )
         self.providers_page = ProvidersPage(
             self.providers,
@@ -234,7 +244,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.18")
+        self.runtime_status = QLabel("Production • v1.0.0.1.19")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -808,10 +818,61 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
         self._refresh_dashboard()
 
-    def _runner_for_task(self, task_id: str, *, retry_failed: bool = False) -> tuple[object | None, TaskRunner | None, str]:
+    def _task_continuation_message(self, task: Task) -> str:
+        if task.provider_id in self.task_runners:
+            return EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE
+        return CONTINUATION_UNAVAILABLE_MESSAGE
+
+    def _task_action_policy(self, task: Task) -> TaskActionPolicy:
+        summary = self.provider_runtime.delivery_summary(task)
+        built_in_continuation = task.provider_id not in self.task_runners
+        resume_available = bool(
+            built_in_continuation and summary is not None and summary.resume_remaining_available
+        )
+        retry_available = bool(
+            built_in_continuation and summary is not None and summary.retry_failed_available
+        )
+        return task_action_policy(
+            task,
+            resume_remaining_available=resume_available,
+            retry_failed_available=retry_available,
+            continuation_unavailable_message=self._task_continuation_message(task),
+        )
+
+    def _require_task_action(self, task: Task, action: TaskAction) -> TaskExecutionMode | None:
+        summary = self.provider_runtime.delivery_summary(task)
+        built_in_continuation = task.provider_id not in self.task_runners
+        resume_available = bool(
+            built_in_continuation and summary is not None and summary.resume_remaining_available
+        )
+        retry_available = bool(
+            built_in_continuation and summary is not None and summary.retry_failed_available
+        )
+        return require_task_action(
+            task,
+            action,
+            resume_remaining_available=resume_available,
+            retry_failed_available=retry_available,
+            continuation_unavailable_message=self._task_continuation_message(task),
+        )
+
+    def _task_action_blocked(self, task: Task, action: str, message: str) -> None:
+        self.log(f"{task.name}: {action} blocked: {message}")
+        self._message("Task Action Unavailable", message, QMessageBox.Icon.Warning)
+        self.tasks_page.refresh_task(task.id)
+
+    def _runner_for_task(
+        self,
+        task_id: str,
+        *,
+        retry_failed: bool = False,
+        resume_remaining: bool = False,
+    ) -> tuple[object | None, TaskRunner | None, str]:
         task = self.state.tasks.get(task_id)
         if not task:
             return None, None, "Task was not found."
+        if self.worker_manager.is_running(task_id):
+            return task, None, "A Task worker is already active; duplicate execution is not allowed."
         if not task.has_immutable_execution_snapshot:
             return task, None, LEGACY_SNAPSHOT_MESSAGE
         try:
@@ -845,28 +906,39 @@ class MainWindow(QMainWindow):
 
         injected = self.task_runners.get(task.provider_id)
         if injected is not None:
+            if retry_failed or resume_remaining:
+                return task, None, EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE
             return task, injected, ""
         try:
-            runner = self.provider_runtime.make_task_runner(task, self.state, retry_failed=retry_failed)
+            runner = self.provider_runtime.make_task_runner(
+                task,
+                self.state,
+                retry_failed=retry_failed,
+                resume_remaining=resume_remaining,
+            )
         except ProviderRuntimeError as exc:
             return task, None, str(exc)
         return task, runner, ""
 
     def start_task(self, task_id: str) -> None:
-        task, runner, error = self._runner_for_task(task_id)
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            return
+        action = TaskAction.RESUME_REMAINING if task.status == "Stopped" else TaskAction.START
+        try:
+            mode = self._require_task_action(task, action)
+        except ValueError as exc:
+            self._task_action_blocked(task, action.value, str(exc))
+            return
+
+        resume_remaining = mode is TaskExecutionMode.RESUME_REMAINING
+        task, runner, error = self._runner_for_task(task_id, resume_remaining=resume_remaining)
         if task is None:
             return
         if runner is None:
             message = error or "No task runner is available for this provider."
-            if task.has_immutable_execution_snapshot:
-                try:
-                    self.state.set_task_status(task_id, "Ready", message)
-                except StateError as exc:
-                    self._message("Operational Storage", str(exc), QMessageBox.Icon.Warning)
-                    self.log(f"{task.name}: start block status could not be saved: {exc}")
-                    return
             self.tasks_page.refresh_task(task_id)
-            self.log(f"{task.name}: start blocked: {message}")
+            self.log(f"{task.name}: {action.value} blocked: {message}")
             title = "Provider Unavailable" if task.has_immutable_execution_snapshot else "Task Snapshot Unavailable"
             self._message(title, f"{message} No invoice was sent.", QMessageBox.Icon.Warning)
             self._refresh_dashboard()
@@ -874,15 +946,47 @@ class MainWindow(QMainWindow):
         self.worker_manager.start(task, runner)
 
     def pause_task(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            return
+        try:
+            self._require_task_action(task, TaskAction.PAUSE)
+        except ValueError as exc:
+            self._task_action_blocked(task, "Pause", str(exc))
+            return
         self.worker_manager.pause(task_id)
 
     def resume_task(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            return
+        try:
+            self._require_task_action(task, TaskAction.RESUME)
+        except ValueError as exc:
+            self._task_action_blocked(task, "Resume", str(exc))
+            return
         self.worker_manager.resume(task_id)
 
     def stop_task(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            return
+        try:
+            self._require_task_action(task, TaskAction.STOP)
+        except ValueError as exc:
+            self._task_action_blocked(task, "Stop", str(exc))
+            return
         self.worker_manager.stop(task_id)
 
     def retry_task(self, task_id: str) -> None:
+        task = self.state.tasks.get(task_id)
+        if task is None:
+            return
+        try:
+            self._require_task_action(task, TaskAction.RETRY_FAILED)
+        except ValueError as exc:
+            self._task_action_blocked(task, "Retry Failed", str(exc))
+            return
         task, runner, error = self._runner_for_task(task_id, retry_failed=True)
         if task is None:
             return
@@ -896,6 +1000,11 @@ class MainWindow(QMainWindow):
     def close_task(self, task_id: str) -> None:
         task = self.state.tasks.get(task_id)
         if not task:
+            return
+        try:
+            self._require_task_action(task, TaskAction.CLOSE)
+        except ValueError as exc:
+            self._task_action_blocked(task, "Close Task", str(exc))
             return
         if self.worker_manager.is_running(task_id):
             self._message("Task", "Stop the task before closing it.", QMessageBox.Icon.Warning)
@@ -961,11 +1070,35 @@ class MainWindow(QMainWindow):
     def _worker_finished(self, task_id: str, status: str) -> None:
         if task_id in self.state.tasks:
             task = self.state.tasks[task_id]
-            if status == "Failed" and task.failed:
-                message = f"{task.failed} recipient(s) failed. Review Live Logs and use Retry Failed."
-            else:
-                message = f"Worker finished with status: {status}"
+            summary = self.provider_runtime.delivery_summary(task)
             try:
+                if summary is not None and summary.continuation_safe:
+                    self.state.set_task_progress(
+                        task_id,
+                        processed=summary.processed,
+                        success=summary.success,
+                        failed=summary.failed,
+                    )
+                if status == "Failed":
+                    if summary is not None and summary.continuation_safe and summary.failed:
+                        message = f"{summary.failed} recipient(s) failed. Review Live Logs and use Retry Failed."
+                    else:
+                        message = (
+                            "Worker failed. The exact retry recipient set is unavailable, so Retry Failed is disabled."
+                        )
+                elif status == "Stopped":
+                    if summary is not None and summary.continuation_safe:
+                        message = (
+                            f"Stopped with {summary.failed} failed and {summary.remaining} not-yet-attempted recipient(s). "
+                            "Use Resume Remaining to continue only the unresolved set."
+                        )
+                    else:
+                        message = (
+                            "Worker stopped. The exact continuation recipient set is unavailable in this session; "
+                            "Resume Remaining is disabled."
+                        )
+                else:
+                    message = f"Worker finished with status: {status}"
                 self.state.set_task_status(task_id, status, message)
             except StateError as exc:
                 self._task_persistence_failure(task_id, exc)

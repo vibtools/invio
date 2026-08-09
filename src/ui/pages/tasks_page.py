@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QProgressBar, QScrollArea, QVBoxLayou
 
 from ...core.state import AppState
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
+from ...tasks.state_machine import TaskActionPolicy, task_action_policy
 from ..widgets import button, card, divider, label, metric_card, page_header, status_badge
 
 
@@ -20,6 +21,7 @@ class TaskCard(QWidget):
         on_stop: Callable[[str], None],
         on_retry: Callable[[str], None],
         on_close: Callable[[str], None],
+        policy_provider: Callable[[Task], TaskActionPolicy] | None = None,
     ):
         super().__init__()
         self.task = task
@@ -29,6 +31,7 @@ class TaskCard(QWidget):
         self.on_stop = on_stop
         self.on_retry = on_retry
         self.on_close = on_close
+        self.policy_provider = policy_provider
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         panel = card()
@@ -113,18 +116,18 @@ class TaskCard(QWidget):
         percent = int(task.processed * 100 / task.total) if task.total else 0
         self.progress.setValue(percent)
         self.message.setText(task.last_message)
-        running = task.status in {"Running", "Stopping"}
-        paused = task.status == "Paused"
         snapshot_ready = task.has_immutable_execution_snapshot
-        self.start_btn.setEnabled(snapshot_ready and task.status in {"Ready", "Stopped", "Failed", "Completed"})
-        self.pause_btn.setEnabled(running)
-        self.resume_btn.setEnabled(paused)
-        self.stop_btn.setEnabled(running or paused)
-        self.retry_btn.setEnabled(snapshot_ready and task.failed > 0 and task.status not in {"Running", "Stopping"})
-        self.close_btn.setEnabled(task.status not in {"Running", "Stopping"})
+        policy = self.policy_provider(task) if self.policy_provider is not None else task_action_policy(task)
+        self.start_btn.setText(policy.start_label)
+        self.start_btn.setEnabled(snapshot_ready and policy.start_enabled)
+        self.pause_btn.setEnabled(policy.pause_enabled)
+        self.resume_btn.setEnabled(policy.resume_enabled)
+        self.stop_btn.setEnabled(policy.stop_enabled)
+        self.retry_btn.setEnabled(snapshot_ready and policy.retry_enabled)
+        self.close_btn.setEnabled(policy.close_enabled)
         snapshot_tooltip = "" if snapshot_ready else LEGACY_SNAPSHOT_MESSAGE
-        self.start_btn.setToolTip(snapshot_tooltip)
-        self.retry_btn.setToolTip(snapshot_tooltip)
+        self.start_btn.setToolTip(policy.start_tooltip or snapshot_tooltip)
+        self.retry_btn.setToolTip(policy.retry_tooltip or snapshot_tooltip)
 
 
 class TasksPage(QWidget):
@@ -138,10 +141,12 @@ class TasksPage(QWidget):
         on_stop: Callable[[str], None],
         on_retry: Callable[[str], None],
         on_close: Callable[[str], None],
+        policy_provider: Callable[[Task], TaskActionPolicy] | None = None,
     ):
         super().__init__()
         self.state = state
         self.callbacks = (on_start, on_pause, on_resume, on_stop, on_retry, on_close)
+        self.policy_provider = policy_provider
         self.cards: dict[str, TaskCard] = {}
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
@@ -177,7 +182,7 @@ class TasksPage(QWidget):
                 self.cards.pop(task_id, None)
         for task in self.state.tasks.values():
             if task.id not in self.cards:
-                card_widget = TaskCard(task, *self.callbacks)
+                card_widget = TaskCard(task, *self.callbacks, self.policy_provider)
                 self.layout.insertWidget(self.layout.count() - 1, card_widget)
                 self.cards[task.id] = card_widget
             else:

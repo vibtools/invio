@@ -69,3 +69,7 @@ Refrens API credentials are sent only to `https://api.refrens.com`; host aliases
 P06 verification now fails closed if a packaged built-in manifest itself drifts from the hard-coded Stripe/Refrens executable credential, mode, or capability contract. Providers cards show the actual installed declaration and suppress effective built-in runtime capability when that declaration is inconsistent.
 
 The trusted Refrens endpoint is exact: `https://api.refrens.com` (an optional trailing `/` is normalized). Explicit ports, including `:443`, are rejected together with alternate hosts, embedded credentials, custom paths, query strings, fragments, and HTTP. Refrens Task sending remains P11 scope.
+
+## v1.0.0.1.19 P07 runner continuation boundary
+
+P07 does not change packaged provider manifests, P06 capability/preflight rules, or the public `register_task_runner(provider_id, runner)` registration API. Built-in Stripe can expose exact current-session failed/pending recipient sets for safe Retry Failed / Resume Remaining. An injected/external runner callback does not expose such a subset, so P07 allows its existing first-run path but fail-closes Retry/Resume continuation instead of rerunning the full callback. A richer executable external-provider continuation contract remains P13.

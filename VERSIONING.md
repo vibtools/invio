@@ -30,3 +30,12 @@ Future version changes require a new explicit scope lock. No unapproved feature 
 - `v1.0.0.1.17`: P06 provider capability/preflight release; adds packaged manifest/runtime reconciliation, reserved built-in provider-ID collision protection, no-side-effect New Task/Start/Retry preflight, strict account/template/customer checks, Stripe INVOICE/tax safety gates, canonical Refrens endpoint trust, and runtime-capability visibility. SQLite remains schema v4.
 
 - `v1.0.0.1.18`: P06 forensic verification/correction; hardens executable manifest truth, frozen Account binding, Refrens currency/endpoint validation and installed-provider capability reporting without changing schema v4 or advancing to P07.
+
+## v1.0.0.1.19
+
+- Completes P07 Task State Machine and Resend Safety.
+- Adds formal Task transition/action validation and deterministic First Run / Resume Remaining / Retry Failed semantics.
+- Prevents Completed full resend and Failed normal Start; successful recipients are excluded from current-session continuation/retry sets.
+- Reconciles stopped/failed counters from the exact runtime failed/pending sets.
+- Keeps exact continuation identities process-local and fails closed after restart; durable recipient recovery remains P10.
+- Preserves SQLite schema v4, P05 snapshots, P06 preflight, WorkerManager, provider manifests/send semantics, dependencies, and P08+ scope.

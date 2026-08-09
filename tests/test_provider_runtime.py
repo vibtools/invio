@@ -194,6 +194,7 @@ class ProviderRuntimeTests(unittest.TestCase):
         task.success = 1
         task.failed = 1
         task.processed = 2
+        task.status = "Failed"
         runtime.make_task_runner(task, state, retry_failed=True)(_Context(task))
         self.assertEqual(send_emails, ["good@example.com", "bad@example.com", "bad@example.com"])
 
@@ -438,3 +439,211 @@ class P05ProviderRuntimeSnapshotTests(unittest.TestCase):
         task.total += 1
         with self.assertRaisesRegex(ProviderRuntimeError, "task total"):
             ProviderRuntime._snapshot(task, state)
+
+
+class P07ProviderRuntimeResendSafetyTests(unittest.TestCase):
+    def _stripe_state(self, emails: list[str]):
+        state = AppState()
+        account = state.add_account(
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_p07"}, status="Verified"
+        )
+        customer_list = state.create_customer_list("Customers")
+        state.add_emails(customer_list.id, emails)
+        template = state.save_invoice_template(
+            template_id=None,
+            name="P07",
+            currency="usd",
+            days_until_due=30,
+            memo="",
+            footer="",
+            automatic_tax=False,
+            reuse_customer=True,
+            items=[("Service", "1", "10", "0")],
+        )
+        task = state.create_task("stripe", "Stripe", [account.id], customer_list.id, template.id)
+        return state, task
+
+    @staticmethod
+    def _transport(send_handler):
+        customer_by_id: dict[str, str] = {}
+        current_email = {"value": ""}
+
+        def transport(method, url, headers, body, timeout):
+            path = urlparse(url).path
+            form = parse_qs((body or b"").decode("utf-8"))
+            if method == "GET" and path.endswith("/customers"):
+                return {"data": []}
+            if method == "POST" and path.endswith("/customers"):
+                email = form["email"][0]
+                current_email["value"] = email
+                customer_id = f"cus_{len(customer_by_id) + 1}"
+                customer_by_id[customer_id] = email
+                return {"id": customer_id}
+            if method == "POST" and path.endswith("/invoices"):
+                current_email["value"] = customer_by_id[form["customer"][0]]
+                return {"id": "in_1"}
+            if method == "POST" and path.endswith("/invoiceitems"):
+                return {"id": "ii_1"}
+            if method == "POST" and path.endswith("/finalize"):
+                return {"id": "in_1"}
+            if method == "POST" and path.endswith("/send"):
+                return send_handler(current_email["value"])
+            raise AssertionError(f"Unexpected request: {method} {url}")
+
+        return transport
+
+    @staticmethod
+    def _apply_summary(task, summary, status: str) -> None:
+        task.processed = summary.processed
+        task.success = summary.success
+        task.failed = summary.failed
+        task.status = status
+
+    def test_stopped_resume_remaining_excludes_successful_recipients(self):
+        state, task = self._stripe_state(["a@example.com", "b@example.com", "c@example.com", "d@example.com"])
+        sent: list[str] = []
+        attempts: dict[str, int] = {}
+        context = _Context(task)
+
+        def on_send(email: str):
+            sent.append(email)
+            attempts[email] = attempts.get(email, 0) + 1
+            if email == "b@example.com" and attempts[email] == 1:
+                raise ProviderRuntimeError("temporary failure")
+            if email == "c@example.com" and attempts[email] == 1:
+                context.stop_flag.set()
+            return {"id": "in_1"}
+
+        runtime = ProviderRuntime(transport=self._transport(on_send))
+        runtime.make_task_runner(task, state)(context)
+        summary = runtime.delivery_summary(task)
+        self.assertIsNotNone(summary)
+        self.assertTrue(summary.continuation_safe)
+        self.assertEqual(summary.failed_recipients, ("b@example.com",))
+        self.assertEqual(summary.pending_recipients, ("d@example.com",))
+        self.assertEqual((summary.processed, summary.success, summary.failed, summary.remaining), (3, 2, 1, 1))
+
+        self._apply_summary(task, summary, "Stopped")
+        resume_context = _Context(task)
+        runtime.make_task_runner(task, state, resume_remaining=True)(resume_context)
+        self.assertEqual(
+            sent,
+            ["a@example.com", "b@example.com", "c@example.com", "b@example.com", "d@example.com"],
+        )
+        self.assertEqual(sent.count("a@example.com"), 1)
+        self.assertEqual(sent.count("c@example.com"), 1)
+        final = runtime.delivery_summary(task)
+        self.assertTrue(final.continuation_safe)
+        self.assertEqual((final.processed, final.success, final.failed, final.remaining), (4, 4, 0, 0))
+
+    def test_repeated_retry_failed_shrinks_to_unresolved_failure_set(self):
+        state, task = self._stripe_state(["a@example.com", "b@example.com", "c@example.com"])
+        sent: list[str] = []
+        attempts: dict[str, int] = {}
+
+        def on_send(email: str):
+            sent.append(email)
+            attempts[email] = attempts.get(email, 0) + 1
+            if email == "b@example.com" and attempts[email] == 1:
+                raise ProviderRuntimeError("b first failure")
+            if email == "c@example.com" and attempts[email] <= 2:
+                raise ProviderRuntimeError("c remains failed")
+            return {"id": "in_1"}
+
+        runtime = ProviderRuntime(transport=self._transport(on_send))
+        with self.assertRaises(ProviderRuntimeError):
+            runtime.make_task_runner(task, state)(_Context(task))
+        first = runtime.delivery_summary(task)
+        self.assertEqual(first.failed_recipients, ("b@example.com", "c@example.com"))
+        self._apply_summary(task, first, "Failed")
+
+        with self.assertRaises(ProviderRuntimeError):
+            runtime.make_task_runner(task, state, retry_failed=True)(_Context(task))
+        second = runtime.delivery_summary(task)
+        self.assertEqual(second.failed_recipients, ("c@example.com",))
+        self.assertEqual((second.processed, second.success, second.failed), (3, 2, 1))
+        self._apply_summary(task, second, "Failed")
+
+        runtime.make_task_runner(task, state, retry_failed=True)(_Context(task))
+        third = runtime.delivery_summary(task)
+        self.assertEqual(third.failed_recipients, ())
+        self.assertEqual((third.processed, third.success, third.failed), (3, 3, 0))
+        self.assertEqual(
+            sent,
+            ["a@example.com", "b@example.com", "c@example.com", "b@example.com", "c@example.com", "c@example.com"],
+        )
+
+    def test_retry_failed_is_fail_closed_after_runtime_restart(self):
+        state, task = self._stripe_state(["a@example.com", "b@example.com"])
+
+        def on_send(email: str):
+            if email == "b@example.com":
+                raise ProviderRuntimeError("failure")
+            return {"id": "in_1"}
+
+        first_runtime = ProviderRuntime(transport=self._transport(on_send))
+        with self.assertRaises(ProviderRuntimeError):
+            first_runtime.make_task_runner(task, state)(_Context(task))
+        summary = first_runtime.delivery_summary(task)
+        self._apply_summary(task, summary, "Failed")
+
+        calls: list[object] = []
+        restarted_runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "exact failed recipient set"):
+            restarted_runtime.make_task_runner(task, state, retry_failed=True)
+        self.assertEqual(calls, [])
+
+    def test_resume_remaining_is_fail_closed_after_runtime_restart(self):
+        state, task = self._stripe_state(["a@example.com", "b@example.com"])
+        context = _Context(task)
+
+        def on_send(email: str):
+            if email == "a@example.com":
+                context.stop_flag.set()
+            return {"id": "in_1"}
+
+        first_runtime = ProviderRuntime(transport=self._transport(on_send))
+        first_runtime.make_task_runner(task, state)(context)
+        summary = first_runtime.delivery_summary(task)
+        self.assertEqual(summary.pending_recipients, ("b@example.com",))
+        self._apply_summary(task, summary, "Stopped")
+
+        calls: list[object] = []
+        restarted_runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "exact continuation recipient set"):
+            restarted_runtime.make_task_runner(task, state, resume_remaining=True)
+        self.assertEqual(calls, [])
+
+    def test_unexpected_runtime_exception_marks_continuation_unsafe(self):
+        state, task = self._stripe_state(["a@example.com", "b@example.com"])
+
+        def on_send(_email: str):
+            raise RuntimeError("unexpected execution defect")
+
+        runtime = ProviderRuntime(transport=self._transport(on_send))
+        with self.assertRaisesRegex(RuntimeError, "unexpected execution defect"):
+            runtime.make_task_runner(task, state)(_Context(task))
+        summary = runtime.delivery_summary(task)
+        self.assertIsNotNone(summary)
+        self.assertFalse(summary.continuation_safe)
+        task.status = "Failed"
+        with self.assertRaisesRegex(ProviderRuntimeError, "exact failed recipient set"):
+            runtime.make_task_runner(task, state, retry_failed=True)
+
+    def test_full_start_is_rejected_for_non_pristine_or_terminal_task(self):
+        state, task = self._stripe_state(["a@example.com"])
+        runtime = ProviderRuntime(transport=lambda *_args: {})
+        task.status = "Completed"
+        task.processed = 1
+        task.success = 1
+        with self.assertRaisesRegex(ProviderRuntimeError, "pristine Ready Task"):
+            runtime.make_task_runner(task, state)
+
+    def test_duplicate_full_runner_creation_is_blocked_before_network(self):
+        state, task = self._stripe_state(["a@example.com"])
+        calls: list[object] = []
+        runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {})
+        runtime.make_task_runner(task, state)
+        with self.assertRaisesRegex(ProviderRuntimeError, "duplicate full Start"):
+            runtime.make_task_runner(task, state)
+        self.assertEqual(calls, [])

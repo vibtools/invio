@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.18` preserves the verified P01-P05 architecture and completes P06 with a no-side-effect provider capability/preflight boundary. No new UI page, executable external-provider architecture, Task thread architecture, database schema, Refrens production Task runner, or dependency is introduced.
+Invio `v1.0.0.1.19` preserves the verified P01-P06 architecture and completes P07 with a formal Task state/action boundary and current-session resend-safe continuation sets. No new UI page, worker architecture, database schema, Refrens production Task runner, external-provider architecture, or dependency is introduced.
 
 ## 2. Core Responsibilities
 
@@ -147,7 +147,7 @@ The ordered `task_accounts` rows remain the durable account-assignment basis, an
 
 Schema-v3 Tasks migrate with snapshot state `LegacyUnavailable`. Because pre-P05 releases never persisted creation-time recipients/template copies, migration does not fabricate them from current state. Legacy Tasks keep metadata/counters/reservations and can be closed, but Start/Retry fail closed in both UI and backend.
 
-`Task.id` is the canonical logical run identity. Starting, pausing, stopping or retrying the same Task does not create another run identity. A materially different execution requires a new Task and therefore a new Task ID/snapshot. P05 does not implement P07 resend-state policy or P10 delivery-ledger recovery.
+`Task.id` is the canonical logical run identity. Starting, pausing, stopping or retrying the same Task does not create another run identity. A materially different full execution requires a new Task and therefore a new Task ID/snapshot. P07 now formalizes resend-state policy; P10 still owns the durable recipient delivery ledger and restart recovery.
 ## 16. v1.0.0.1.16 P05 verification correction
 
 The P05 architecture remains unchanged: Task creation captures immutable input, schema v4 persists it, and ProviderRuntime consumes that snapshot. The correction tightens invariants at the existing boundaries: `DomainStore.create_task_with_reservations()` rejects missing/legacy snapshots for new Tasks, captured progress must agree with processed recipients, and `DomainStore.update_task()` no longer updates the immutable `total` column after Task creation. No new table/module/page is introduced.
@@ -164,3 +164,13 @@ ProviderManager remains manifest-only. P06 adds packaged-manifest lookup and res
 ## v1.0.0.1.18 P06 contract boundary
 
 Provider preflight remains a pure validation layer. The executable built-in manifest contract is now independent of mutable packaged JSON, while valid provider execution architecture and WorkerManager boundaries are unchanged.
+
+## v1.0.0.1.19 P07 execution-state architecture
+
+P07 adds `src/tasks/state_machine.py` as the single transition/action-policy contract for the existing Task statuses. AppState enforces status transitions; MainWindow uses the same policy before actions; TasksPage renders button labels/enabled state from that policy. WorkerManager remains unchanged.
+
+ProviderRuntime extends its process-local delivery state with failed and pending recipient sets. For built-in Stripe, all continuation/retry recipients are projected back into the immutable P05 recipient ordering before execution. Runtime progress is derived from those same sets, preventing UI/database counts from describing a different continuation set.
+
+A fresh First Run initializes `pending` to every frozen recipient and `failed` to empty. A controlled recipient success removes that address from pending/failed; a controlled provider failure moves it from pending to failed. Stop leaves both sets intact, so Resume Remaining is exactly their union. Retry Failed executes only the failed set. Unexpected exceptions mark continuation unsafe rather than guessing.
+
+These sets are deliberately not added to SQLite in P07. Startup recovery therefore preserves aggregate Task metadata but marks exact continuation unavailable; no recipient list is reconstructed from counters. Schema remains v4, and P10 remains the durable delivery/recovery phase.

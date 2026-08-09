@@ -8,6 +8,7 @@ from ...accounts.models import Account
 from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
 from ...tasks.models import Task, TaskExecutionSnapshot
+from ...tasks.state_machine import TaskAction, require_task_action, validate_status_transition
 from ..storage import CredentialStore, CredentialStoreError, DomainStore, DomainStoreError, LoadedDomain
 
 
@@ -591,6 +592,10 @@ class AppState:
         task = self.tasks.get(task_id)
         if task is None:
             return
+        try:
+            require_task_action(task, TaskAction.CLOSE)
+        except ValueError as exc:
+            raise StateError(str(exc)) from exc
         if self._domain_store is not None:
             try:
                 self._domain_store.delete_task_and_release(task_id)
@@ -603,6 +608,10 @@ class AppState:
 
     def set_task_status(self, task_id: str, status: str, message: str | None = None) -> Task:
         task = self.tasks[task_id]
+        try:
+            validate_status_transition(task.status, status)
+        except ValueError as exc:
+            raise StateError(str(exc)) from exc
         previous_status = task.status
         previous_message = task.last_message
         task.status = status

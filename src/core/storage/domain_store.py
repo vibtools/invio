@@ -18,6 +18,7 @@ from ...tasks.models import (
     TaskInvoiceItemSnapshot,
     TaskInvoiceTemplateSnapshot,
 )
+from ...tasks.state_machine import TASK_STATUSES
 from .credential_store import CredentialStore, CredentialStoreError
 from .schema import (
     DOMAIN_SCHEMA_VERSION,
@@ -443,11 +444,29 @@ class DomainStore:
                     ).fetchall()
                     status = str(row["status"])
                     last_message = str(row["last_message"])
+                    processed_value = int(row["processed"])
+                    failed_value = int(row["failed"])
+                    total_value = int(row["total"])
                     if status in {"Running", "Paused", "Stopping"}:
                         status = "Stopped"
-                        last_message = "Recovered after application restart; task was not automatically resumed."
+                        last_message = (
+                            "Recovered after application restart; the exact continuation recipient set is unavailable, "
+                            "so Resume Remaining is disabled."
+                        )
                         recovery_updates.append((status, last_message, task_id))
                         loaded.warnings.append(f"{row['name']} was active when Invio last stopped and was recovered as Stopped.")
+                    elif status == "Stopped" and (failed_value > 0 or processed_value < total_value):
+                        last_message = (
+                            "Recovered after application restart; the exact continuation recipient set is unavailable, "
+                            "so Resume Remaining is disabled."
+                        )
+                        recovery_updates.append((status, last_message, task_id))
+                    elif status == "Failed" and failed_value > 0:
+                        last_message = (
+                            "Recovered after application restart; the exact failed recipient set is unavailable, "
+                            "so Retry Failed is disabled."
+                        )
+                        recovery_updates.append((status, last_message, task_id))
                     account_ids_for_task = [str(account_row["account_id"]) for account_row in account_rows_for_task]
                     execution_snapshot = self._load_task_execution_snapshot(
                         connection,
@@ -510,6 +529,10 @@ class DomainStore:
     def _validate_loaded(loaded: LoadedDomain) -> None:
         expected_reservations: dict[str, str] = {}
         for task in loaded.tasks.values():
+            if task.status not in TASK_STATUSES:
+                raise DomainStoreCorruptionError(
+                    f"Task '{task.name}' has unsupported persisted status '{task.status}'."
+                )
             if task.customer_list_id not in loaded.customer_lists:
                 raise DomainStoreCorruptionError(f"Task '{task.name}' references a missing customer list.")
             if task.invoice_template_id not in loaded.invoice_templates:

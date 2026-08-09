@@ -68,3 +68,9 @@ For a packaged manifest mismatch, uninstall the provider from **Providers** and 
 ## v1.0.0.1.18 P06 verification corrections
 
 For packaged-manifest/runtime mismatch, uninstall and reinstall the packaged provider. For Refrens endpoint failures, use exactly `https://api.refrens.com` without an explicit port. Region-specific three-decimal Stripe currencies remain unsupported by the current sender and are blocked before invoice creation.
+
+## Resume Remaining or Retry Failed is disabled after restarting Invio
+
+This is expected in v1.0.0.1.19. P07 keeps exact failed/pending recipient identities in the current ProviderRuntime process so successful recipients are never guessed or resent. SQLite still stores aggregate Task counters only; P10 is the planned durable recipient ledger/recovery phase.
+
+If Invio was restarted, the Task remains visible and its Account reservation is preserved, but **Resume Remaining** / **Retry Failed** is disabled when the exact recipient set cannot be proven. Close the Task to release its Accounts, then create a new Task for a deliberate new full execution. Do not interpret a disabled continuation button as data loss from the immutable P05 snapshot; it is a resend-safety gate.
