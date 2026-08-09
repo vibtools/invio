@@ -1,5 +1,36 @@
 # Changelog
 
+
+## v1.0.0.1.9 - P02 verification corrective release
+
+- Re-audited the exact `Invio_v1.0.0.1.8.zip` P02 baseline against the approved P02 implementation plan.
+- Fixed a re-entrant persistence-failure path in `MainWindow._task_persistence_failure()` by recording the task fault before requesting WorkerManager Stop, preventing recursive Stop/status persistence handling while storage remains unavailable.
+- Hardened startup domain validation so persisted Task account selections and `account_reservations` must match exactly; missing or conflicting reservation state now fails closed instead of restoring a task/account exclusivity mismatch.
+- Added regression coverage for both corrections while retaining every pre-existing test method under the no-removal baseline contract.
+- Corrected stale production-roadmap summary metadata that still reported P01-only progress after P02 completion.
+- Corrected `vibproject.ygit` P02 dependency/release metadata so the approved `keyring>=25.7,<26` dependency and current release version are represented consistently with `requirements.txt` and `pyproject.toml`.
+- No P03-or-later feature, UI redesign, provider behavior, WorkerManager architecture, domain model field, provider manifest, or credential-storage technology change is included.
+
+## 1.0.0.1.8 - 2026-08-08
+
+### P02 - Durable Domain Storage and Protected Credentials
+- Added SQLite-backed durable operational storage for Accounts metadata, Customer Lists/emails, Invoice Templates/items/terms, Tasks, task-account ordering, task counters/messages, and account reservations.
+- Added schema version 1 with foreign-key enforcement, WAL journal mode, synchronous FULL durability, transactional writes, ordered migration handling, pre-migration backup, future-schema rejection, and corruption-safe startup that does not overwrite an unsafe database.
+- Added protected provider credential storage through the owner-approved `keyring` mechanism. Operational SQLite/settings data stores only an opaque credential reference; there is no plaintext-file fallback.
+- Added compensation handling so an Account is not committed to memory/database if protected credential persistence or Account metadata persistence fails. If automatic protected-secret cleanup also fails, the failure is surfaced rather than silently ignored.
+- Added startup recovery. Persisted Accounts/Lists/Templates/Tasks/Reservations are reconstructed before pages are built; missing/unreadable protected credentials restore the Account as `Not Verified`, and previously active Tasks recover as existing status `Stopped` without automatic sending.
+- Integrated transactional persistence into approved AppState mutations and task status/progress updates. An active Task receives a stop request if its operational-state persistence fails.
+- Kept P01 verification gates, provider runtimes, provider manifests, one-QThread-per-active-Task WorkerManager architecture, existing pages, and invoice/customer/task domain behavior unchanged outside the P02 persistence boundary.
+
+### Security / dependencies
+- Added approved dependency `keyring>=25.7,<26`. Production credential access fails closed unless an approved OS-protected keyring backend is active; injected test backends are used only by deterministic unit tests.
+- Provider secret values are not persisted in `domain.sqlite3`, `settings.json`, project files, or P02 logs.
+
+### Verification boundary
+- Added P02 storage/migration/rollback/recovery/secret-boundary tests.
+- Full native PySide6 launch and native OS-keyring integration are not claimed in the audit container where those runtime packages/backends are unavailable; final live/native certification remains P14.
+- P02 does not implement the P10 recipient-level delivery ledger or provider-side crash reconciliation.
+
 ## Production Readiness Documentation - 2026-08-08 (runtime remained v1.0.0.1.5)
 
 ### Documentation

@@ -7,6 +7,7 @@ from ...accounts.models import Account
 from ...customers.models import CustomerList
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
 from ...tasks.models import Task
+from ..storage import CredentialStore, CredentialStoreError, DomainStore, DomainStoreError, LoadedDomain
 
 
 class StateError(ValueError):
@@ -14,14 +15,28 @@ class StateError(ValueError):
 
 
 class AppState:
-    """In-memory application state for the current application session."""
+    """Application domain state with optional durable P02 persistence services."""
 
-    def __init__(self) -> None:
-        self.accounts: dict[str, Account] = {}
-        self.customer_lists: dict[str, CustomerList] = {}
-        self.invoice_templates: dict[str, InvoiceTemplate] = {}
-        self.tasks: dict[str, Task] = {}
-        self.account_reservations: dict[str, str] = {}
+    def __init__(
+        self,
+        *,
+        domain_store: DomainStore | None = None,
+        credential_store: CredentialStore | None = None,
+        loaded: LoadedDomain | None = None,
+    ) -> None:
+        self._domain_store = domain_store
+        self._credential_store = credential_store
+        source = loaded or LoadedDomain()
+        self.accounts: dict[str, Account] = dict(source.accounts)
+        self.customer_lists: dict[str, CustomerList] = dict(source.customer_lists)
+        self.invoice_templates: dict[str, InvoiceTemplate] = dict(source.invoice_templates)
+        self.tasks: dict[str, Task] = dict(source.tasks)
+        self.account_reservations: dict[str, str] = dict(source.account_reservations)
+        self.recovery_warnings: list[str] = list(source.warnings)
+
+    @staticmethod
+    def _persistence_error(exc: Exception) -> StateError:
+        return StateError(str(exc))
 
     @staticmethod
     def _id(prefix: str) -> str:
@@ -47,6 +62,29 @@ class AppState:
             status=status,
             credentials=dict(credentials),
         )
+        credential_ref = ""
+        if self._credential_store is not None:
+            try:
+                credential_ref = self._credential_store.set_credentials(account.id, account.credentials)
+            except CredentialStoreError as exc:
+                raise self._persistence_error(exc) from exc
+        if self._domain_store is not None:
+            try:
+                if not credential_ref:
+                    raise DomainStoreError("Protected credential storage is required before an account can be persisted.")
+                self._domain_store.save_account(account, credential_ref)
+            except DomainStoreError as exc:
+                cleanup_error: CredentialStoreError | None = None
+                if credential_ref and self._credential_store is not None:
+                    try:
+                        self._credential_store.delete_credentials(credential_ref)
+                    except CredentialStoreError as cleanup_exc:
+                        cleanup_error = cleanup_exc
+                if cleanup_error is not None:
+                    raise StateError(
+                        f"{exc} Protected credential cleanup also failed; no plaintext fallback was written."
+                    ) from exc
+                raise self._persistence_error(exc) from exc
         self.accounts[account.id] = account
         return account
 
@@ -60,6 +98,11 @@ class AppState:
         if not name.strip():
             raise StateError("Customer list name is required.")
         item = CustomerList(id=self._id("list"), name=name.strip())
+        if self._domain_store is not None:
+            try:
+                self._domain_store.create_customer_list(item)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
         self.customer_lists[item.id] = item
         return item
 
@@ -68,18 +111,31 @@ class AppState:
         if customer_list is None:
             raise StateError("Customer list was not found.")
         existing = set(customer_list.emails)
+        updated_emails = list(customer_list.emails)
         added = 0
         for email in emails:
             normalized = email.strip().lower()
             if normalized and normalized not in existing:
-                customer_list.emails.append(normalized)
+                updated_emails.append(normalized)
                 existing.add(normalized)
                 added += 1
+        if added and self._domain_store is not None:
+            candidate = CustomerList(id=customer_list.id, name=customer_list.name, emails=updated_emails)
+            try:
+                self._domain_store.replace_customer_emails(candidate)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
+        customer_list.emails = updated_emails
         return added
 
     def delete_customer_list(self, list_id: str) -> None:
         if any(task.customer_list_id == list_id for task in self.tasks.values()):
             raise StateError("This customer list is currently used by a task.")
+        if self._domain_store is not None:
+            try:
+                self._domain_store.delete_customer_list(list_id)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
         self.customer_lists.pop(list_id, None)
 
     def save_invoice_template(
@@ -163,12 +219,22 @@ class AppState:
             customer_note=customer_note.strip(),
             terms=clean_terms,
         )
+        if self._domain_store is not None:
+            try:
+                self._domain_store.save_invoice_template(template)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
         self.invoice_templates[identifier] = template
         return template
 
     def delete_invoice_template(self, template_id: str) -> None:
         if any(task.invoice_template_id == template_id for task in self.tasks.values()):
             raise StateError("This invoice template is currently used by a task.")
+        if self._domain_store is not None:
+            try:
+                self._domain_store.delete_invoice_template(template_id)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
         self.invoice_templates.pop(template_id, None)
 
     def create_task(
@@ -219,29 +285,56 @@ class AppState:
             invoice_template_name=invoice_template.name,
             total=customer_list.count,
         )
+        if self._domain_store is not None:
+            try:
+                self._domain_store.create_task_with_reservations(task)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
         self.tasks[task.id] = task
         for account in accounts:
             self.account_reservations[account.id] = task.id
         return task
 
     def close_task(self, task_id: str) -> None:
-        task = self.tasks.pop(task_id, None)
+        task = self.tasks.get(task_id)
         if task is None:
             return
+        if self._domain_store is not None:
+            try:
+                self._domain_store.delete_task_and_release(task_id)
+            except DomainStoreError as exc:
+                raise self._persistence_error(exc) from exc
+        self.tasks.pop(task_id, None)
         for account_id in task.account_ids:
             if self.account_reservations.get(account_id) == task_id:
                 self.account_reservations.pop(account_id, None)
 
     def set_task_status(self, task_id: str, status: str, message: str | None = None) -> Task:
         task = self.tasks[task_id]
+        previous_status = task.status
+        previous_message = task.last_message
         task.status = status
         if message is not None:
             task.last_message = message
+        if self._domain_store is not None:
+            try:
+                self._domain_store.update_task(task)
+            except DomainStoreError as exc:
+                task.status = previous_status
+                task.last_message = previous_message
+                raise self._persistence_error(exc) from exc
         return task
 
     def set_task_progress(self, task_id: str, *, processed: int, success: int, failed: int) -> Task:
         task = self.tasks[task_id]
+        previous = (task.processed, task.success, task.failed)
         task.processed = max(0, min(processed, task.total))
         task.success = max(0, success)
         task.failed = max(0, failed)
+        if self._domain_store is not None:
+            try:
+                self._domain_store.update_task(task)
+            except DomainStoreError as exc:
+                task.processed, task.success, task.failed = previous
+                raise self._persistence_error(exc) from exc
         return task

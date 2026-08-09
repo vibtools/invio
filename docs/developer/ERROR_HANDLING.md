@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.7`  
+**Baseline:** `v1.0.0.1.9`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -71,6 +71,26 @@ Currently handled:
 - atomic temporary-file write + `os.replace`;
 - best-effort runtime convenience state does not interrupt normal app work if saving fails.
 
+
+### P02 durable-storage and credential errors
+
+**Files:** `src/core/storage/`, `src/core/state/app_state.py`, `src/ui/main_window.py`, `src/app.py`
+
+P02 now handles:
+
+- SQLite open/integrity/schema failures with fail-closed startup; corrupt/unsupported storage is not silently replaced;
+- schema version 0 -> 1 migration with pre-migration backup for an existing empty v0 database;
+- unsupported future schema and unknown unversioned schema rejection;
+- explicit SQLite transactions for customer-email replacement, template+children saves, Task+reservation creation, Task close/release and Task metadata updates;
+- prior valid transaction preservation when a write fails;
+- protected credential dependency/backend/read/write/delete failures without a plaintext-file fallback;
+- compensation if Account metadata commit fails after protected credential write; a cleanup failure is surfaced rather than silently swallowed;
+- missing/unreadable protected credential recovery by loading Account metadata as `Not Verified`;
+- active Task restart recovery to the existing `Stopped` state without auto-resume;
+- active-worker persistence failure by requesting Task stop and showing/logging a storage warning.
+
+P02 does **not** claim provider-side crash reconciliation. A provider request may succeed immediately before a process/disk failure prevents the corresponding local progress update; persistent recipient attempts/provider IDs/idempotency reconciliation remain P10.
+
 ### Provider HTTP/response errors
 
 **File:** `src/core/provider_runtime/runtime.py`  
@@ -136,8 +156,8 @@ Known state/provider/import errors are normally converted to compact message box
 | EH ID | Missing/incomplete handling | Risk | Planned phase |
 |---|---|---|---|
 | EH-001 | **RESOLVED in P01:** Add Account executes real provider API verification on a dedicated `QThread` and fails closed | Invalid/revoked/unavailable credentials cannot become Task-ready | COMPLETE v1.0.0.1.6; re-verified v1.0.0.1.7 |
-| EH-002 | No persistent storage/migration error model for operational data | Restart/data-loss/corruption risk | P02 |
-| EH-003 | No protected credential-store error/recovery handling | Secret availability/security risk | P02 |
+| EH-002 | **RESOLVED in P02:** transactional SQLite domain storage, schema checks, migration backup, corruption/future-schema fail-closed startup | Operational state now restart-durable by local contract | COMPLETE v1.0.0.1.8 |
+| EH-003 | **RESOLVED in P02:** provider credentials use approved protected keyring storage with no plaintext fallback; missing secret restores Account as `Not Verified` | Native OS backend certification remains P14 | COMPLETE v1.0.0.1.8 |
 | EH-004 | No verified-account health/retest lifecycle | Stale/revoked credentials fail during send | P03 |
 | EH-005 | Customer import does not provide complete row-level diagnostics | Partial/ambiguous bulk import | P04 |
 | EH-006 | Stale/mutable Task inputs are not treated as an error | Wrong recipient/template run | P05 |
@@ -208,3 +228,22 @@ Implemented in `v1.0.0.1.6`:
 - Task selection, creation, Start, and Retry reject accounts whose current-session status is not `Verified`.
 
 Automatic retry/backoff, durable verification health, and persistent secret storage remain later phases and are not introduced by P01.
+
+
+## P02 verification handling
+
+Implemented in `v1.0.0.1.8`:
+
+- operational state commits are transaction-bounded and schema-versioned;
+- provider credentials are outside normal SQLite/settings/log storage;
+- unavailable protected credentials fail closed to `Not Verified`;
+- corrupt/future/unknown storage does not trigger silent database recreation;
+- startup-active Tasks are recovered without sending;
+- task persistence failure requests stop rather than allowing an unbounded unsaved run;
+- exact recipient-level remote reconciliation remains intentionally deferred to P10.
+
+## v1.0.0.1.9 P02 corrective handling
+
+- **Persistence-stop re-entrancy:** the faulted-task guard is now set before `WorkerManager.stop()` is called, preventing recursive storage-failure handling if Stop emits `Stopping` while the database remains unavailable.
+- **Reservation recovery consistency:** startup now fails closed when persisted `task_accounts` and `account_reservations` are not an exact one-to-one match. This prevents restored Tasks from losing account exclusivity silently.
+- These are corrections to P02 failure/recovery handling only; no P03 lifecycle behavior is introduced.

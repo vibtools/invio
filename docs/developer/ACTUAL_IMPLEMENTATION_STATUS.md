@@ -1,243 +1,103 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.7`  
-**Purpose:** Record only behavior that exists in the frozen source, plus explicit production gaps.  
+**Baseline:** `Invio v1.0.0.1.9`  
+**Completed production phases:** P01, P02  
+**Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
 ## Current Summary
 
 | Area | Status | Current reality |
 |---|---|---|
-| Vib Tools desktop shell/pages | WORKING | Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, Settings exist |
-| Provider manifest install/load/uninstall | WORKING | Validated manifests copied to/deleted from local registry |
-| Executable external provider plugin loading | NOT IMPLEMENTED | ProviderManager does not import/execute provider code |
-| Stripe built-in invoice sending | WORKING locally by contract | Real HTTP request path exists; live provider certification still pending |
-| Refrens API helper contract | PARTIAL | Auth/payload/create/email helper exists |
-| Refrens normal Task sending | BLOCKED | Current email-only Customer List cannot supply country required by current adapter gate |
-| Add Account API Test | WORKING | Stripe/Refrens real connection/permission verification runs in a dedicated Add Account `QThread` |
-| Account persistence | NOT IMPLEMENTED | Accounts/credentials are current-session memory only |
-| Customer List persistence | NOT IMPLEMENTED | Lists/emails are current-session memory only |
-| Invoice Template persistence | NOT IMPLEMENTED | Templates are current-session memory only |
-| Task persistence/recovery | NOT IMPLEMENTED | Tasks/reservations/progress lost at restart |
-| Dedicated worker thread per active Task | WORKING | One `QThread` per active Task |
-| Multiple accounts per Task | WORKING | Deterministic sequential round-robin assignment |
-| Parallel account workers inside one Task | NOT IMPLEMENTED | One Task runner processes recipients sequentially |
-| Pause/Resume/Stop | WORKING with limitation | Cooperative; in-flight blocking request is not interrupted |
-| Retry Failed | PARTIAL | Works from process-memory failed set; not restart-safe |
-| Recipient delivery ledger | NOT IMPLEMENTED | No persistent per-recipient attempts/customer ID/invoice ID/status |
-| Reports | PARTIAL | Aggregate task report + CSV export only |
-| Logs | PARTIAL | Live/export logs; Stripe key masking only; emails remain visible |
-| Settings persistence | WORKING | Non-sensitive per-user JSON with atomic write/fallback |
+| Vib Tools desktop shell/pages | WORKING | Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, Settings |
+| Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
+| Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute provider code |
+| Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
+| Refrens normal Task sending | BLOCKED | Current email-only customer contract cannot supply required country |
+| Real Add Account API Test | WORKING | P01 real Stripe/Refrens verification on a dedicated dialog `QThread` |
+| Durable Accounts metadata | WORKING | SQLite schema v1 restores IDs/provider/name/mode/status/credential reference |
+| Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
+| Durable Customer Lists | WORKING | Lists and ordered email addresses restore after restart |
+| Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
+| Durable Tasks/reservations | WORKING | Task metadata, ordered accounts, counters/message and reservations restore |
+| Active-task restart recovery | WORKING | Running/Paused/Stopping recover as existing `Stopped`; no auto-resume/send |
+| Dedicated worker thread per active Task | WORKING | Existing one-`QThread`-per-Task WorkerManager unchanged |
+| Retry Failed after app restart | NOT IMPLEMENTED | ProviderRuntime failed-recipient set is still process memory; P10 |
+| Recipient delivery ledger/provider IDs | NOT IMPLEMENTED | P10 |
+| Settings persistence | WORKING | Existing non-sensitive JSON remains separate from P02 storage |
 
-## Provider System
+## P02 Durable Storage
 
-### WORKING
+### v1.0.0.1.9 P02 verification corrections
 
-**Files:** `src/core/provider_manager/manager.py`, `providers/packages/*/provider.json`
+- Persistence-failure handling now records the task fault before requesting Stop, so a synchronous `Stopping` status signal cannot recursively re-enter the same failing persistence path.
+- Startup validation now requires every persisted Task account selection to have exactly one matching reservation and rejects conflicting/missing reservation state as unsafe operational storage.
+- P02 scope remains otherwise unchanged; production progress stays 2/14 and P03 remains next.
 
-- Bundled provider discovery.
-- Manifest validation.
-- Install packaged provider.
-- Load external manifest.
-- Uninstall installed manifest.
-- Installed-provider visibility for Accounts/New Task selection.
 
-### PARTIAL / NOT IMPLEMENTED
-
-- Manifest install does not install executable Python adapter code.
-- Unknown/external providers need a runner manually registered through `MainWindow.register_task_runner()`.
-- Task start does not currently re-check that a built-in provider is still installed.
-- An external manifest can reuse a built-in provider ID and change visible credential/capability declarations while dispatch still selects the hard-coded runtime by ID.
-
-## Accounts
+**Files:** `src/core/storage/schema.py`, `domain_store.py`, `credential_store.py`, `src/core/state/app_state.py`, `src/ui/main_window.py`, `src/app.py`
 
 ### WORKING
 
-- Add account from installed provider manifest fields.
-- Provider mode selection.
-- Password-style fields visually hide secret entry.
-- Accounts grouped by provider.
-- API Test validates required fields, then executes the provider runtime adapter on a dedicated background `QThread`.
-- Stripe API Test receives and enforces the selected Test/Live mode before network requests.
-- Refrens API Test performs authentication and invoice-list access verification.
-- Successful Add Account verification saves current-session status `Verified`; credential/provider/mode changes reset verification.
-- Providers without an executable API-test adapter cannot be treated as verified.
-- New Task selection, backend Task creation, Start and Retry all reject unverified accounts.
-- Account reservation prevents one account from being assigned to two open Tasks.
+- Per-user `domain.sqlite3` is created beside the existing per-user `settings.json`.
+- SQLite schema version is tracked with `PRAGMA user_version`.
+- `foreign_keys=ON`, `journal_mode=WAL`, and `synchronous=FULL` are part of the storage contract.
+- Account metadata stores only an opaque `credential_ref`; credential values are not columns in the database.
+- Customer email order, template item/term order, and Task account order are persisted explicitly.
+- Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
+- Template parent/items/terms and customer email replacement are committed transactionally.
+- Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
+- Existing empty schema-v0 databases are backed up before migration to schema v1.
+- Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
+- Previously active Tasks are not automatically resumed after process restart.
+- Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
 
-### PARTIAL / MISSING
+### DELIBERATELY NOT P02
 
-- No edit/delete/re-test workflow.
-- Verification health/last-verified metadata is not persisted.
-- No durable storage.
-- No protected credential store.
+- No per-recipient delivery ledger, remote provider reconciliation, persisted provider customer/invoice IDs or persistent Retry Failed recipient set. These remain P10.
+- No account edit/delete/re-test/verification-age lifecycle. P03.
+- No Customer model name/country expansion. P04.
+- No immutable Task execution snapshot. P05.
+- No provider capability preflight. P06.
+- No task-state-machine redesign, retry/backoff/rate-limit engine, multi-account concurrency/failover, report/privacy redesign, or external executable adapter system.
 
-## Customer Lists
-
-### WORKING
-
-- Create independent named lists.
-- Import `.csv`, `.tsv`, `.xlsx`, `.xlsm`, `.txt`.
-- Extract, lowercase and de-duplicate email addresses.
-- Delete list if not referenced by a Task.
-
-### PARTIAL / MISSING
-
-- Email only; no name/country/provider metadata.
-- No durable storage.
-- No per-recipient edit/delete workflow.
-- List can still be expanded after Task creation, which can make runtime recipient count differ from Task total.
-
-## Invoice Templates
+## Provider / Accounts
 
 ### WORKING
 
-- Reusable content-only template.
-- Currency validation/catalog.
-- Due days 1-365.
-- Invoice title/subtitle/type.
-- Invoice note/memo.
-- Customer note.
-- Footer and terms.
-- Automatic-tax and customer-reuse options.
-- One or more invoice items with description/quantity/unit amount/tax rate.
-- Bound template cannot be deleted while referenced by a Task.
-- Current UI geometry/searchable currency behavior from v1.0.0.1.5.
+- Provider manifest discovery/install/uninstall behavior is unchanged.
+- Stripe/Refrens P01 API Test remains real and non-blocking.
+- Successful Add Account persists its verified Account metadata and credentials only after protected credential storage succeeds.
+- Database failure after credential write triggers compensating protected-credential deletion; cleanup failure is surfaced.
+- Unverified/restored-without-secret Accounts cannot create/start/retry a Task.
 
-### PARTIAL / MISSING
+### REMAINING
 
-- No durable storage.
-- Bound template can still be edited.
-- Task runtime snapshots the current template at Start/Retry, so post-Task edits can change execution.
-- No provider-specific template capability preflight.
-- Stripe sender does not use template line `tax_rate` or `invoice_type` in its current mapping.
+- Account edit/delete/re-test and verification health metadata are P03.
+- Provider-uninstall consistency for existing Tasks is P03.
+- External executable provider adapters are P13.
 
-## Tasks
+## Customer Lists / Invoice Templates / Tasks
 
 ### WORKING
 
-- Requires installed provider during task creation UI.
-- Requires account(s), Customer List and Invoice Template.
-- Rejects mixed-provider accounts.
-- Reserves each selected account until Task close.
-- Shows provider/template/accounts/customer-list summary.
-- Start/Pause/Resume/Stop/Retry Failed/Close actions.
+- Existing create/import/save/delete workflows now write durable state before mutating the authoritative in-memory collection.
+- Restart reconstructs the same non-sensitive IDs, labels, ordering and Task relationships.
+- Task status/progress/message updates are persisted.
 
-### PARTIAL / MISSING
+### REMAINING
 
-- No persistent Task/run state.
-- No immutable stored execution snapshot.
-- No recipient-level status.
-- Completed and Failed Task cards still allow normal Start.
-- Normal Start is a full current-list run, not a protected continuation.
-- Stop can leave unattempted emails in the runtime failed set without a matching final `task.failed` update, so Retry Failed can be disabled even when internal retry recipients exist.
+- Customer Lists remain email-only and live-mutable after Task creation. P04/P05.
+- Bound Invoice Templates remain editable and runtime uses current template at Start/Retry. P05.
+- Completed/Failed full-Start resend semantics remain unchanged. P07.
+- Retry Failed remains process-memory only. P10.
 
 ## Threading / Worker
 
-### WORKING
+The existing WorkerManager is unchanged: one active Task owns one `QThread`; provider work stays out of the GUI thread. P02 adds local persistence calls around existing UI/state events but does not introduce a new sending worker model.
 
-**File:** `src/core/worker_manager/manager.py`
+Remaining worker reliability work is P08/P09/P10.
 
-- Separate `QThread` per active Task.
-- Worker object moves to task thread.
-- Worker signals return status/progress/log events to UI.
-- Pause/Resume/Stop control flags are thread-safe events.
-- Uncaught task-runner exceptions are isolated from GUI thread.
+## Current Certification Boundary
 
-### PARTIAL / MISSING
-
-- Provider calls inside a Task are sequential.
-- No automatic transient retry/backoff/rate limiting.
-- No per-account health/failover.
-- Stop is cooperative and does not interrupt current `urlopen()`.
-- Shutdown wait (1500 ms) is shorter than provider HTTP timeout (30 s).
-
-## Stripe Runtime
-
-### WORKING
-
-**File:** `src/core/provider_runtime/runtime.py`
-
-- Validate key prefix and Test/Live mode.
-- Optional exact-email customer lookup.
-- Customer creation sends uploaded email only: `email=<address>`; no derived username/name field is sent.
-- Draft send-invoice creation.
-- Invoice line item creation.
-- Currency normalization/minor-unit handling.
-- Finalize invoice.
-- Send invoice.
-- Deterministic task/email/stage idempotency key generation.
-- Per-recipient `ProviderRuntimeError` handling and in-memory failed set.
-- Retry Failed selects only failed recipient emails retained for the current process/task.
-
-### PARTIAL / MISSING
-
-- No live certification recorded in baseline.
-- No automatic network retry/backoff/rate-limit handling.
-- No persistent provider customer/invoice IDs.
-- No persistent idempotency/delivery ledger.
-- Idempotency keys are based on Task ID/email/stage without a separate run ID, while the UI currently allows rerunning the same Task.
-- Line template `tax_rate` is not applied by the current Stripe sender.
-- Template `invoice_type` is not applied by the current Stripe sender.
-
-## Refrens Runtime
-
-### WORKING/PARTIAL
-
-- Authentication helper.
-- API connection-test helper.
-- Invoice payload builder.
-- Customer country validation in helper.
-- Customer name fallback is the **full email address** when name is blank.
-- Invoice create request plus create-time email payload.
-- Refrens base URL is user-entered and currently checked only for an `https://` prefix before authentication credentials are sent.
-- Contract tests with injected transport.
-
-### BLOCKED
-
-Normal Refrens Task runner is blocked before create/send because current Customer Lists do not provide `billedTo.country`. No country is guessed.
-
-## Reports and Logs
-
-### WORKING
-
-- Aggregate report page from current Task state.
-- CSV report export.
-- Live Logs page.
-- Text log export.
-- Optional timestamps, auto-scroll and line retention.
-- Stripe-shaped secret/restricted key masking.
-
-### PARTIAL / MISSING
-
-- No recipient-level delivery report.
-- No provider customer/invoice IDs.
-- No attempt/error taxonomy columns.
-- Email addresses appear in execution logs.
-- Export write errors are not converted to user-facing warnings.
-- CSV export is not neutralized against spreadsheet formula injection in user/provider-controlled text fields.
-- `Success` represents successful provider API send/create acceptance in the current runner; the app does not independently confirm inbox delivery.
-
-## Settings
-
-### WORKING
-
-- Startup page/last page.
-- Optional window geometry memory.
-- confirmations.
-- Live Log display/retention options.
-- default/last file folder.
-- JSON validation, corruption fallback and atomic writes.
-- Settings payload excludes account credentials.
-
-## Baseline Test Status
-
-- Compile: PASS.
-- Unit/contract suite: 55/55 PASS.
-- Repository audit: PASS.
-- Native PySide6 runtime test in current audit container: unavailable because PySide6 is not installed.
-- Live provider API certification: not recorded by the baseline test suite.
-
-## Update Rule
-
-After every production phase, update this file by moving only genuinely implemented/verified behavior from PARTIAL/NOT IMPLEMENTED/BLOCKED to WORKING and recording any remaining limitation. Do not mark a feature WORKING based only on UI presence or a mock/injected-transport test when live certification is required by the claim.
+P01/P02 unit/contract/source audits verify the implemented local contracts. Native Qt launch, native OS keyring behavior and live provider/restart failure certification are not represented as complete until P14.

@@ -36,17 +36,39 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "src" / "core" / "settings" / "manager.py").is_file())
         self.assertTrue((ROOT / "src" / "core" / "settings" / "__init__.py").is_file())
 
-    def test_release_metadata_is_v10017(self):
+    def test_release_metadata_is_v10019(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.7"', pyproject)
-        self.assertIn('"version": "1.0.0.1.7"', project_meta)
-        self.assertIn('Production • v1.0.0.1.7', main_window)
+        runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        self.assertIn('version = "1.0.0.1.9"', pyproject)
+        self.assertIn('"version": "1.0.0.1.9"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.9"', project_meta)
+        self.assertIn('"keyring>=25.7,<26"', project_meta)
+        self.assertIn('Production • v1.0.0.1.9', main_window)
+        self.assertIn('Invio/1.0.0.1.9', runtime)
+
+    def test_release_metadata_is_v10018(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v10019()
+
+    def test_release_metadata_is_v10017(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v10019()
 
     def test_release_metadata_is_v10014(self):
         """Compatibility alias retained under the no-removal baseline contract."""
-        self.test_release_metadata_is_v10017()
+        self.test_release_metadata_is_v10019()
+
+    def test_p02_storage_package_and_keyring_dependency_exist(self):
+        storage_dir = ROOT / "src" / "core" / "storage"
+        self.assertTrue((storage_dir / "domain_store.py").is_file())
+        self.assertTrue((storage_dir / "credential_store.py").is_file())
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+        self.assertIn('"src.core.storage"', pyproject)
+        self.assertIn('keyring>=25.7,<26', pyproject)
+        self.assertIn('keyring>=25.7,<26', requirements)
 
     def test_builtin_provider_runtime_package_exists(self):
         self.assertTrue((ROOT / "src" / "core" / "provider_runtime" / "runtime.py").is_file())

@@ -1,28 +1,31 @@
 # Provider Guide
 
-Providers are manifest-based plugins. Bundled packages appear on **Providers** as Available until installed. Installed providers become selectable in Accounts and Tasks. **Uninstall** removes the local installed manifest but keeps a bundled package available for reinstall.
+Providers are manifest-based registrations. Bundled packages appear on **Providers** as Available until installed. Installed providers become selectable in Accounts and Tasks. **Uninstall** removes the local installed manifest but keeps a bundled package available for reinstall.
+
+## Real API Verification
+
+Add Account requires an executable provider API-test adapter. Bundled Stripe and Refrens runtimes provide one. API Test runs outside the GUI thread and only a successful test creates a `Verified` Account. Stripe verification enforces selected Test/Live mode; Refrens authenticates and checks invoice-list access.
+
+## P02 Credential Protection
+
+After successful API Test and account acceptance:
+
+1. provider credential values are written to the approved OS-protected keyring;
+2. SQLite receives non-sensitive account metadata plus an opaque credential reference;
+3. the Account becomes durable only after both operations succeed.
+
+If the database write fails after a new protected secret is written, Invio performs a compensating protected-store deletion and does not add the account to application state. There is no plaintext fallback.
+
+At restart, Account metadata is restored from SQLite and credentials are retrieved from protected storage. Missing/unavailable credentials downgrade only the runtime account state to **Not Verified** and are logged without secret values.
 
 ## Stripe
 
-Credential: secret/restricted key. Modes: Test and Live.
-
-The built-in runtime implements customer lookup/create, draft invoice creation, invoice items, finalize, send-invoice, deterministic idempotency keys, stable multi-account assignment, and failed-recipient retry state. Template currency is converted to Stripe's lowercase API code and monetary values are converted to provider minor-unit rules.
+Credential: secret/restricted key. Modes: Test and Live. The existing built-in runtime remains unchanged by P02.
 
 ## Refrens
 
-Credentials: API Base URL, URL Key, App ID, App Secret.
+Credentials: API Base URL, URL Key, App ID, App Secret. P02 protects the credential dictionary but does not change the current required-country Task block.
 
-The built-in runtime implements app-secret authentication, invoice payload construction, invoice creation, and the documented create-time email-delivery payload. Refrens requires `billedTo.name` and `billedTo.country`; the approved Invio Customer List currently supplies email only. Invio does not invent billing country, so normal Refrens task execution is blocked before network invoice creation until that required data is available through an owner-approved customer-data extension.
+## External Providers
 
-## External providers
-
-The existing `register_task_runner(provider_id, runner)` extension point remains available. Loading a manifest alone declares provider metadata; executable behavior still requires a corresponding runner/adapter.
-
-
-## Real API verification
-
-Add Account requires an executable provider API-test adapter. The bundled Stripe and Refrens runtimes provide one. API Test runs outside the GUI thread, returns provider-specific success/failure, and never logs the credential values supplied by the form. Stripe verification enforces the selected Test/Live mode before provider requests; Refrens authenticates and checks invoice-list access. A successful test creates the account with current-session status `Verified`. If the provider has no executable API-test adapter, API Test is unavailable and the account cannot become Task-ready.
-
-## Visibility
-
-Only installed providers are exposed to Accounts/Tasks. Existing in-memory accounts/tasks are not silently deleted when a provider is uninstalled.
+Loading a manifest alone declares provider metadata; executable behavior still requires a corresponding built-in/injected runner. P02 does not create a new external runtime-plugin system.

@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 
 @dataclass(slots=True)
 class Account:
-    """Provider account held in memory for the current application session.
+    """Provider account used by the current application session.
 
-    Credentials deliberately remain runtime-only under the current storage
-    contract.
+    P02 persists non-sensitive account metadata in SQLite while credentials
+    are restored from the approved protected credential store into memory.
     """
 
     id: str

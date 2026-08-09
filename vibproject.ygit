@@ -9,7 +9,7 @@
     "displayName": "Invio",
     "description": "Vib Tools desktop application for provider-based invoice automation workflows with provider-managed accounts, invoice templates, named customer lists, and isolated task execution.",
     "summary": "Vib Tools desktop application defining provider, account, customer-list, invoice-template, task, report, log, settings, and per-task worker architecture.",
-    "version": "1.0.0.1.7",
+    "version": "1.0.0.1.9",
     "status": "development",
     "visibility": "public",
     "category": "desktop-application",
@@ -88,12 +88,15 @@
       "PySide6"
     ],
     "libraries": [
-      "openpyxl"
+      "openpyxl",
+      "keyring"
     ],
     "packageManagers": [
       "pip"
     ],
-    "databases": [],
+    "databases": [
+      "SQLite"
+    ],
     "apis": []
   },
   "platform": {
@@ -139,7 +142,8 @@
   "dependencies": {
     "required": [
       "PySide6>=6.7,<7",
-      "openpyxl>=3.1,<4"
+      "openpyxl>=3.1,<4",
+      "keyring>=25.7,<26"
     ],
     "optional": [],
     "externalServices": []
@@ -174,7 +178,7 @@
   "release": {
     "strategy": "manual",
     "versioning": "Vib Tools release versioning",
-    "latestVersion": "1.0.0.1.7",
+    "latestVersion": "1.0.0.1.9",
     "releaseNotes": "docs/release-notes/"
   },
   "distribution": {

@@ -2,65 +2,97 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.7` preserves the P01 PySide6/AppState/WorkerManager/provider-runtime architecture from `v1.0.0.1.6` and re-verifies the existing Add Account verification `QThread`, real provider API-test wiring, and verified-account Task gates. Provider invoice-send execution and the existing per-Task worker architecture remain unchanged.
+Invio `v1.0.0.1.9` preserves the P01 PySide6/provider-runtime/WorkerManager behavior and adds P02 durable operational storage plus protected provider credentials. No new UI page, provider execution workflow, Task thread architecture, or Customer/Invoice domain field is introduced.
 
-## 2. Core responsibilities
+## 2. Core Responsibilities
 
-- `src/core/provider_manager/`: validates provider manifests and handles packaged install, external load, and uninstall.
-- `src/core/provider_runtime/`: snapshots task inputs and implements packaged-provider API execution.
-- `src/core/settings/`: persistent non-sensitive user preferences.
-- `src/core/state/`: runtime Accounts, Customer Lists, Invoice Templates, Tasks, and reservation invariants.
-- `src/core/worker_manager/`: one `QThread` per active task and signal isolation.
-- `src/invoices/templates/`: reusable invoice content and supported-currency normalization.
-- `src/ui/`: frozen Vib Tools shell plus Dashboard/pages/dialogs.
+- `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
+- `src/core/provider_runtime/`: packaged-provider API verification and invoice execution.
+- `src/core/settings/`: non-sensitive per-user JSON preferences.
+- `src/core/state/`: domain invariants plus persistence coordination for state mutations.
+- `src/core/storage/schema.py`: SQLite schema version and DDL.
+- `src/core/storage/domain_store.py`: durable non-sensitive state, transactions, migration, validation and recovery.
+- `src/core/storage/credential_store.py`: approved OS-protected credential access through Python `keyring`; no plaintext fallback.
+- `src/core/worker_manager/`: one `QThread` per active Task.
 
-## 3. Domain data flow
+## 3. Startup Data Flow
 
-Provider installation controls provider visibility. Account creation uses that provider's manifest fields and requires a successful executable API Test before the account is saved as `Verified`. Invoice Templates remain customer-independent. Customer Lists remain email-only. Task creation validates all inputs, binds the selected template, and reserves selected accounts.
+```text
+QApplication
+  -> SettingsManager
+  -> DomainStore(domain.sqlite3)
+       -> integrity/schema check
+       -> migration if supported
+  -> CredentialStore(keyring)
+  -> DomainStore.load(CredentialStore)
+       -> Accounts metadata + protected credentials
+       -> Customer Lists/emails
+       -> Invoice Templates/items/terms
+       -> Tasks/account selections/reservations
+       -> active-state recovery to Stopped
+  -> AppState(restored domain)
+  -> existing MainWindow pages
+```
 
-A bound template cannot be deleted while an open task references it. A selected account cannot be reserved by two tasks.
+Corrupt/newer/unrecognized domain storage aborts startup through a user-facing critical error and is not silently recreated.
 
-## 4. Execution flow
+## 4. Write/Transaction Flow
 
-1. UI creates a Task in `AppState`.
-2. Start asks `MainWindow._runner_for_task()` for either an explicitly injected provider runner or `ProviderRuntime.make_task_runner()`.
-3. `ProviderRuntime` snapshots account credentials, customer emails, and a deep copy of the template before worker execution.
-4. `WorkerManager.start()` creates a distinct `InvioTaskThread-<task id>` and moves the worker into it.
-5. Provider HTTPS calls execute inside the worker runner.
-6. Progress/status/log signals update task state, Reports, Dashboard, and Live Logs.
-7. Closing the task releases reservations and clears runtime retry state.
+`AppState` remains the application domain API. With P02 stores attached, approved mutations commit their durable representation before the in-memory mutation is finalized.
 
-No provider network operation is intentionally executed in the task GUI callback path. Add Account API verification likewise executes in its own dialog-owned `QThread`.
+Examples:
 
-## 5. Stripe adapter
+- Add Account: protected credential write -> SQLite account metadata transaction -> in-memory account.
+- Customer email import: complete ordered email replacement in one transaction -> in-memory list update.
+- Invoice Template save: template + items + terms in one transaction -> in-memory template.
+- Task create: Task + ordered selected accounts + account reservations in one transaction -> in-memory Task/reservations.
+- Task close: reservation release + Task deletion in one transaction -> in-memory removal.
+- Worker status/progress: Task metadata update transaction; a storage failure requests Task stop instead of silently continuing without durable state.
 
-The built-in Stripe adapter uses HTTPS form requests without adding the Stripe SDK. It performs customer lookup/create, draft invoice creation with `collection_method=send_invoice`, invoice item creation, finalize, and send. Template currency is stored uppercase but sent lowercase. Amounts are converted to minor units with zero-decimal and ISK/UGX handling. Invoice item decimal quantity uses Stripe's decimal quantity field when required.
+## 5. Credential Boundary
 
-Stable recipient-to-account assignment prevents a Retry Failed operation from changing accounts merely because the retry set is smaller. Deterministic per-stage idempotency keys reduce accidental duplicate operations when a network call is retried by the user/task flow.
+SQLite table `accounts` stores `credential_ref`, not credential values. `CredentialStore` stores the provider credential dictionary under service `Vib Tools Invio` and username/reference `account:<account-id>`.
 
-## 6. Refrens adapter and current data boundary
+Production backend acceptance is fail-closed: only the approved core OS-protected backend families or a chainer composed only of those families are accepted. Test code injects an in-memory fake backend so tests never modify a developer's personal keyring.
 
-The adapter includes app-secret authentication, invoice payload construction, invoice creation, and the documented create-time email-delivery payload. Refrens requires `billedTo.name` and `billedTo.country`. Current Customer Lists provide only email. The task runner therefore rejects Refrens execution before the create call instead of inventing billing country. This preserves the approved template/customer scope.
+## 6. Schema / Migration
 
-## 7. UI flow
+P02 schema version: **1**, tracked by `PRAGMA user_version`.
 
-Dashboard is a read-only operational overview backed by current state. Invoice Template uses compact two-column sections and a scroll-safe item editor. Its scroll/content host is explicitly dark, compact cards are top-aligned and non-stretching, and Currency uses editable bounded completion against the existing catalog. Settings keeps its existing controls and now uses an explicit dark scroll/content backdrop. Live Logs and Reports are unchanged in this release.
+Core tables:
 
-## 8. Dependencies
+- `accounts`
+- `customer_lists`, `customer_emails`
+- `invoice_templates`, `invoice_template_items`, `invoice_template_terms`
+- `tasks`, `task_accounts`
+- `account_reservations`
+
+Foreign keys are enabled. Connections use `synchronous=FULL`; initialized storage uses WAL. Existing version-0 storage is backed up before migration. Future schema versions are rejected rather than downgraded.
+
+## 7. Task Recovery Boundary
+
+P02 recovers Task-level metadata only. `Running`, `Paused`, or `Stopping` is converted to existing status `Stopped` with a recovery message. P02 intentionally does not auto-resume external side effects.
+
+Per-recipient attempts, provider customer/invoice IDs, durable idempotency evidence, failed-recipient retry records, and exact uncertain-side-effect reconciliation remain **P10**.
+
+## 8. Threading
+
+- Add Account API Test: existing dialog-owned verification `QThread`.
+- Invoice sending: existing one `QThread` per active Task.
+- P02 does not move provider network operations to the GUI thread and does not change WorkerManager.
+
+## 9. Dependencies
 
 - Python 3.12+
-- PySide6 6.7+
-- openpyxl 3.1+
-- Python standard library for provider HTTP/JSON/form operations
+- PySide6 >=6.7,<7
+- openpyxl >=3.1,<4
+- keyring >=25.7,<26
+- stdlib `sqlite3` for domain persistence
 
-No dependency change was made in `v1.0.0.1.7`.
+## 10. Current Extension Boundary
 
-## 9. Extension points
+External provider manifest loading remains metadata-only unless a runner is registered. P02 does not change that provider architecture.
 
-`MainWindow.register_task_runner(provider_id, runner)` remains the explicit custom-provider execution hook. Future customer-data expansion, credential persistence, or additional provider-specific fields require separate owner approval and are not silently introduced through provider manifests.
+## v1.0.0.1.9 P02 verification correction
 
-## v1.0.0.1.7 verified P01 account-verification path
-
-`AddAccountDialog` receives the existing `MainWindow.provider_runtime`. Pressing API Test snapshots provider ID, mode, and credential values and moves an `_AccountVerificationWorker` to a dialog-owned `QThread`. The worker calls `ProviderRuntime.test_account()` and emits only success/failure text back to the GUI thread. Successful verification produces account status `Verified`; any provider/mode/credential change invalidates that state. `NewTaskDialog`, `AppState.create_task()`, and `MainWindow._runner_for_task()` all enforce `Verified` status, so UI bypass or later state mutation cannot start an unverified account. Task invoice sending continues to use the existing separate `WorkerManager` task-owned QThreads.
-
-No new dependency, provider manifest, provider credential field, account mode, storage mechanism, or task-worker architecture is introduced by P01.
+The storage architecture is unchanged from P02. The corrective release only hardens two boundaries: persistence-failure Stop handling is re-entrancy-safe, and loaded Task/account reservation state must be an exact match before `AppState` is constructed.

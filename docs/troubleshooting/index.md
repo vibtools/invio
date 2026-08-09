@@ -4,42 +4,34 @@
 
 Install it from **Providers**. Bundled packages can be Available without being installed.
 
-## A bundled provider remains on Providers after Uninstall
+## Account cannot be saved after a successful API Test
 
-Expected. Uninstall removes its installed registry copy and returns the bundled provider to Available status so it can be installed again.
+P02 requires an approved OS-protected credential backend. If protected storage is unavailable/locked/unsupported, Invio fails closed and does not save provider secrets to a plaintext file. Restore the OS credential service and retry Add Account.
 
-## Account cannot be selected for a new task
+## A restored account shows Not Verified
 
-The account must have current-session status `Verified` and must not be reserved by another open task. Run a successful **API Test** in Add Account before creating the account. If it is already verified but reserved, stop/close the owning task to release it.
+Its non-sensitive metadata was loaded from SQLite but the protected credential entry could not be read or was missing. No plaintext fallback is used. The account remains blocked by the existing P01 Task gates.
 
-## New Task says an invoice template is required
+## Invio reports an operational-storage startup error
 
-Create at least one template first. Every `v1.0.0.1.3` task must bind to an invoice template.
+Invio does not silently replace a corrupt, unsupported, or newer `domain.sqlite3`. Keep the database file for forensic/recovery work. Correct the underlying file/storage/version issue before reopening. An existing v0 database is backed up before the supported v0->v1 migration.
+
+## A Task was Running before restart but is now Stopped
+
+Expected P02 behavior. Worker threads do not survive process restart, so `Running`, `Paused`, and `Stopping` tasks are recovered as **Stopped** and are not automatically resumed.
+
+## Account remains reserved after restart
+
+Expected while the owning Task remains open. P02 restores reservations. Close the Task through the normal workflow to release its selected accounts.
 
 ## API Test fails or is unavailable
 
-Stripe/Refrens API Test performs real provider connection/permission requests. Correct the provider credentials/mode and retry. Stripe Test/Live key mode mismatches fail before a network request. If API Test is unavailable, the installed provider manifest has no executable built-in API-test adapter in the current runtime and cannot create a Task-ready account.
+Stripe/Refrens API Test performs real provider connection/permission requests. Correct credentials/mode and retry. Providers without an executable API-test adapter cannot become Task-ready.
 
-## Stripe task fails
+## Refrens Task is blocked with `billedTo.country`
 
-Open Live Logs for the provider response. Common causes include key/mode mismatch, API permissions, unsupported account/currency combinations, automatic-tax configuration, invalid invoice values, or network failure. Failed recipients remain available to **Retry Failed** while the task remains open.
-
-## Refrens task is blocked with `billedTo.country`
-
-This is deliberate data-integrity protection. Refrens requires a customer name and ISO country for invoice creation, while the approved Customer List model currently stores email only. Invio does not guess a billing country and sends no create request in this state.
+Expected. P02 does not change the email-only Customer List contract or guess required billing country.
 
 ## Invoice Template dialog does not fit the display
 
-The editor is compact and internally scrollable. Resize the main window if needed; the dialog is bounded relative to the application window.
-
-## Settings checkbox looks unchecked after patching
-
-Confirm `assets/icons/checkmark.svg` and the updated `src/ui/styles.py` are both present. The checked indicator references that bundled asset.
-
-## Settings do not save
-
-Select **Save Changes** and read the feedback. A configured default folder must exist. Invalid/corrupt settings files fall back to defaults rather than preventing startup.
-
-## Reports or Live Logs look different
-
-`v1.0.0.1.3` intentionally applies the approved compact Vib Tools reference layout. Existing report CSV export, log save/clear behavior, masking, and log settings remain.
+The editor remains compact and internally scrollable; P02 does not change its UI geometry.

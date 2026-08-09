@@ -3,14 +3,14 @@
 ```text
 .
 ├── .github/                  GitHub metadata and CI
-├── assets/                   Static UI resources, including checkbox checkmark
+├── assets/                   Static UI resources
 ├── config/                   Runtime configuration location
 ├── data/                     Runtime/import/export data location
-├── docs/                     Public user and developer documentation, including implementation/error inventories
+├── docs/                     Public user/developer documentation
 ├── examples/                 Public examples
 ├── project/                  PRIVATE development material (Git ignored)
-│   ├── planning/             Production roadmap, phase ledger and update protocol
-│   ├── research/             Forensic readiness and release verification records
+│   ├── planning/             Production roadmap, phase ledger and protocol
+│   ├── research/             Forensic/readiness/implementation records
 │   └── specifications/       Baseline/scope freeze records
 ├── providers/
 │   ├── packages/             Bundled Stripe/Refrens provider manifests
@@ -22,41 +22,33 @@
 │   │   ├── provider_manager/ Provider manifest validation/install/load/uninstall
 │   │   ├── provider_runtime/ Built-in provider API/task execution adapters
 │   │   ├── settings/         Persistent non-sensitive preferences
-│   │   ├── state/            Runtime domain state and account reservations
+│   │   ├── state/            Domain invariants plus P02 persistence coordination
+│   │   ├── storage/          SQLite domain store + protected credential store
 │   │   └── worker_manager/   One QThread per active task
 │   ├── customers/            Customer-list model and email importers
 │   ├── invoices/templates/   Invoice template/currency models
 │   ├── tasks/                Task model including template binding
-│   └── ui/                   Step-40J shell, dialogs, Dashboard and pages
-├── tests/                    Unit/contract tests
+│   └── ui/                   Vib Tools shell, dialogs, Dashboard and pages
+├── tests/                    Unit/contract tests, including P02 storage tests
 ├── main.py
 ├── requirements.txt
 └── pyproject.toml
 ```
 
-## Execution Flow
+## P02 Runtime Data Flow
 
 1. `main.py` calls `src.app.main()`.
-2. `MainWindow` loads Settings, builds the shell, state, provider manager, provider runtime, and worker manager.
-3. Installed provider manifests control provider visibility.
-4. Accounts, invoice templates, customer lists, tasks, and reservations are held in `AppState` for the current session.
-5. A task binds one installed provider, one or more unreserved accounts, one invoice template, and one customer list.
-6. `ProviderRuntime` snapshots task inputs before execution and returns the applicable provider runner.
-7. `WorkerManager` owns a separate `QThread` for each active task. Provider network work executes inside that task worker.
-8. Worker signals update Tasks, Reports, Dashboard, and Live Logs on the UI side.
+2. `MainWindow` loads Settings, opens `domain.sqlite3`, validates/migrates its schema, restores protected account credentials, and reconstructs `AppState`.
+3. Existing pages read the restored `AppState`; no new P02 page is added.
+4. Approved state mutations are committed transactionally to SQLite before becoming durable application state.
+5. Account secrets are stored through `CredentialStore` in the approved OS keyring; SQLite stores only a credential reference.
+6. Existing provider visibility, ProviderRuntime, and one-QThread-per-active-Task WorkerManager behavior remain unchanged.
+7. Task status/progress signals update both `AppState` and durable task metadata. A persistence failure requests Task stop rather than silently continuing without durable state.
 
 ## Privacy
 
-`project/` remains private internal material and is locked by `/project/` in `.gitignore`.
+`project/` remains private internal material. Provider secrets are excluded from the operational database and Settings JSON.
 
-## Production Planning Records
+## v1.0.0.1.9 P02 Verification Correction
 
-The `v1.0.0.1.7` baseline preserves the P01 real account API verification architecture and corrects the exact shipped verification/release-state inconsistencies found in `v1.0.0.1.6`. The Add Account verification thread is separate from task sending threads. The current production planning records are:
-
-- `docs/developer/ACTUAL_IMPLEMENTATION_STATUS.md`
-- `docs/developer/ERROR_HANDLING.md`
-- `project/specifications/BASELINE_FREEZE_v1.0.0.1.7.md`
-- `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.7.md`
-- `project/planning/PRODUCTION_ROADMAP.md`
-- `project/planning/PHASE_COMPLETION_LOG.md`
-- `project/planning/PRODUCTION_UPDATE_PROTOCOL.md`
+No directory or module is renamed/reorganized. The corrective release changes only P02 recovery/failure-path logic, release tests/metadata, and synchronized documentation.

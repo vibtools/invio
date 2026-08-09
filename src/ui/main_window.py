@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from ..core.provider_manager import ProviderManager, ProviderManifestError
 from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
 from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowState
+from ..core.storage import CredentialStore, DomainStore
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_emails
@@ -56,7 +57,14 @@ class MainWindow(QMainWindow):
         self.project_root = Path(project_root)
         self.settings_manager = SettingsManager()
         self.app_settings = self.settings_manager.settings
-        self.state = AppState()
+        self.domain_store = DomainStore(self.settings_manager.path.with_name("domain.sqlite3"))
+        self.credential_store = CredentialStore()
+        loaded_domain = self.domain_store.load(self.credential_store)
+        self.state = AppState(
+            domain_store=self.domain_store,
+            credential_store=self.credential_store,
+            loaded=loaded_domain,
+        )
         self.providers = ProviderManager(self.project_root)
         self.provider_runtime = ProviderRuntime()
         self.worker_manager = WorkerManager(self)
@@ -64,6 +72,7 @@ class MainWindow(QMainWindow):
         self.pages: dict[str, QWidget] = {}
         self.page_indexes: dict[str, int] = {}
         self.nav_buttons: dict[str, QPushButton] = {}
+        self._persistence_faulted_tasks: set[str] = set()
 
         self.setWindowTitle("Invio — Vib Tools")
         self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
@@ -76,9 +85,11 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.7 started.")
+        self.log("Invio v1.0.0.1.9 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
+        for warning in self.state.recovery_warnings:
+            self.log(warning)
 
     def register_task_runner(self, provider_id: str, runner: TaskRunner) -> None:
         """Backend integration point: inject a provider task runner by provider id."""
@@ -206,7 +217,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.7")
+        self.runtime_status = QLabel("Production • v1.0.0.1.9")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -473,7 +484,7 @@ class MainWindow(QMainWindow):
         try:
             emails, warnings = import_emails(path)
             added = self.state.add_emails(list_id, emails)
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, StateError) as exc:
             self._message("Customer List", f"Import failed: {exc}", QMessageBox.Icon.Warning)
             return
         self.log(f"Imported {added} email(s) into customer list '{customer_list.name}'.")
@@ -556,7 +567,12 @@ class MainWindow(QMainWindow):
             return
         if runner is None:
             message = error or "No task runner is available for this provider."
-            self.state.set_task_status(task_id, "Ready", message)
+            try:
+                self.state.set_task_status(task_id, "Ready", message)
+            except StateError as exc:
+                self._message("Operational Storage", str(exc), QMessageBox.Icon.Warning)
+                self.log(f"{task.name}: start block status could not be saved: {exc}")
+                return
             self.tasks_page.refresh_task(task_id)
             self.log(f"{task.name}: start blocked: {message}")
             self._message("Provider Unavailable", f"{message} No invoice was sent.", QMessageBox.Icon.Warning)
@@ -595,7 +611,12 @@ class MainWindow(QMainWindow):
             answer = self._question("Close Task", f"Close {task.name} and release its selected accounts?")
             if answer != QMessageBox.StandardButton.Yes:
                 return
-        self.state.close_task(task_id)
+        try:
+            self.state.close_task(task_id)
+        except StateError as exc:
+            self._message("Task", str(exc), QMessageBox.Icon.Warning)
+            self.log(f"{task.name}: close blocked because operational state could not be saved: {exc}")
+            return
         self.provider_runtime.clear_task(task_id)
         self.log(f"{task.name} closed; reserved accounts released.")
         self.tasks_page.refresh()
@@ -603,17 +624,43 @@ class MainWindow(QMainWindow):
         self.reports_page.refresh()
         self._refresh_dashboard()
 
+    def _task_persistence_failure(self, task_id: str, exc: StateError) -> None:
+        # Mark the fault before requesting Stop. WorkerManager.stop() emits a
+        # status signal synchronously when invoked from the GUI thread, which
+        # can re-enter this handler if persistence is still unavailable.
+        # Registering the fault first makes that re-entrant path idempotent.
+        if task_id in self._persistence_faulted_tasks:
+            return
+        self._persistence_faulted_tasks.add(task_id)
+        self.worker_manager.stop(task_id)
+        task = self.state.tasks.get(task_id)
+        name = task.name if task is not None else task_id
+        self.log(f"{name}: operational state persistence failed; stop requested. {exc}")
+        self._message(
+            "Operational Storage",
+            f"{name} was stopped because its operational state could not be saved. The prior valid database transaction was retained.\n\n{exc}",
+            QMessageBox.Icon.Warning,
+        )
+
     def _worker_status(self, task_id: str, status: str, message: str) -> None:
         if task_id in self.state.tasks:
-            self.state.set_task_status(task_id, status, message)
+            try:
+                self.state.set_task_status(task_id, status, message)
+            except StateError as exc:
+                self._task_persistence_failure(task_id, exc)
+                return
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
             self._refresh_dashboard()
 
     def _worker_progress(self, task_id: str, processed: int, success: int, failed: int, message: str) -> None:
         if task_id in self.state.tasks:
-            self.state.set_task_progress(task_id, processed=processed, success=success, failed=failed)
-            self.state.set_task_status(task_id, self.state.tasks[task_id].status, message)
+            try:
+                self.state.set_task_progress(task_id, processed=processed, success=success, failed=failed)
+                self.state.set_task_status(task_id, self.state.tasks[task_id].status, message)
+            except StateError as exc:
+                self._task_persistence_failure(task_id, exc)
+                return
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
             self._refresh_dashboard()
@@ -625,7 +672,12 @@ class MainWindow(QMainWindow):
                 message = f"{task.failed} recipient(s) failed. Review Live Logs and use Retry Failed."
             else:
                 message = f"Worker finished with status: {status}"
-            self.state.set_task_status(task_id, status, message)
+            try:
+                self.state.set_task_status(task_id, status, message)
+            except StateError as exc:
+                self._task_persistence_failure(task_id, exc)
+                return
+            self._persistence_faulted_tasks.discard(task_id)
             self.tasks_page.refresh_task(task_id)
             self.reports_page.refresh()
             self._refresh_dashboard()

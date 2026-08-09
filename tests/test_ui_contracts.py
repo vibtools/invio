@@ -291,6 +291,31 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)', window)
         self.assertIn('if account.status != "Verified"', window)
 
+    def test_p02_durable_storage_is_wired_without_changing_task_thread_boundary(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        app = (root / "src" / "app.py").read_text(encoding="utf-8")
+        state = (root / "src" / "core" / "state" / "app_state.py").read_text(encoding="utf-8")
+        self.assertIn('DomainStore(self.settings_manager.path.with_name("domain.sqlite3"))', window)
+        self.assertIn("loaded_domain = self.domain_store.load(self.credential_store)", window)
+        self.assertIn("domain_store=self.domain_store", window)
+        self.assertIn("credential_store=self.credential_store", window)
+        self.assertIn("except (OSError, ValueError, StateError) as exc", window)
+        self.assertIn("self.worker_manager.stop(task_id)", window)
+        self.assertIn("except DomainStoreError as exc", app)
+        self.assertIn("self._domain_store.create_task_with_reservations(task)", state)
+        self.assertIn("self._domain_store.update_task(task)", state)
+
+
+    def test_p02_persistence_failure_marks_fault_before_stop_request(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        method = window.split("def _task_persistence_failure", 1)[1].split("def _worker_status", 1)[0]
+        self.assertLess(
+            method.index("self._persistence_faulted_tasks.add(task_id)"),
+            method.index("self.worker_manager.stop(task_id)"),
+        )
+
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
         self.assertIn("self._slots: dict[str, _WorkerSlot]", source)

@@ -1,25 +1,39 @@
 # Configuration
 
-Invio `v1.0.0.1.3` keeps application preferences separate from provider credentials and runtime domain data.
+Invio `v1.0.0.1.9` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
 ## Settings
 
-Settings includes Startup & Window, Confirmations, Live Logs, and File Locations. Startup choices now include Dashboard plus the existing pages and **Last page used**. The default remains Accounts.
+Settings includes Startup & Window, Confirmations, Live Logs, and File Locations. The default startup page remains Accounts.
 
-Checked controls use the Vib Tools compact checkbox treatment with a visible checkmark. Existing settings semantics are unchanged.
+The non-sensitive settings JSON uses atomic temporary-file replacement and never stores provider credential dictionaries.
 
-## Storage
-
-The non-sensitive per-user settings JSON never stores account credential dictionaries/provider secrets. Writes remain atomic and malformed settings fall back to defaults with a Live Logs warning.
-
-Typical paths:
+Typical settings paths:
 
 - Windows: `%APPDATA%\\Vib Tools\\Invio\\settings.json`
 - macOS: `~/Library/Application Support/Vib Tools/Invio/settings.json`
 - Linux: `$XDG_CONFIG_HOME/Vib Tools/Invio/settings.json`, otherwise `~/.config/Vib Tools/Invio/settings.json`
 
-## Provider runtime
+## Durable Operational Storage
 
-Packaged manifests are under `providers/packages/`; installed manifests are under ignored `providers/registry/`. Built-in provider execution code is in `src/core/provider_runtime/` and uses standard-library HTTPS requests, so `v1.0.0.1.3` adds no dependency.
+P02 uses SQLite for non-sensitive operational state:
 
-Account credentials remain in memory for the active session.
+- Accounts metadata/status and credential reference;
+- Customer Lists and ordered emails;
+- Invoice Templates/items/terms;
+- Tasks, account selection, counters/status/message;
+- account reservations.
+
+Typical database filename: `domain.sqlite3` in the same per-user Invio directory as `settings.json`.
+
+The database uses schema version `1`, foreign keys, transactional writes, WAL journaling, and `synchronous=FULL`. Corrupt, newer, or unrecognized storage is not silently replaced.
+
+## Protected Credentials
+
+Provider credential values are stored with Python `keyring` through approved OS-protected backend families only. SQLite stores only `account:<account-id>` references. Invio has no plaintext credential fallback.
+
+If the protected credential entry/backend is unavailable at startup, the Account metadata is still restored for visibility but its runtime status becomes **Not Verified**, so P01 Task gates block execution.
+
+## Provider Registry
+
+Bundled manifests remain under `providers/packages/`; installed manifests remain under ignored `providers/registry/`. P02 does not change ProviderManager behavior.
