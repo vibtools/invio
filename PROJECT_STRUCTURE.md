@@ -51,12 +51,12 @@
 
 ## Production Planning Records
 
-The `v1.0.0.1.5` production-hardening planning delta adds documentation only. Runtime architecture remains unchanged. The current production planning records are:
+The `v1.0.0.1.7` baseline preserves the P01 real account API verification architecture and corrects the exact shipped verification/release-state inconsistencies found in `v1.0.0.1.6`. The Add Account verification thread is separate from task sending threads. The current production planning records are:
 
 - `docs/developer/ACTUAL_IMPLEMENTATION_STATUS.md`
 - `docs/developer/ERROR_HANDLING.md`
-- `project/specifications/BASELINE_FREEZE_v1.0.0.1.5.md`
-- `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.5.md`
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.7.md`
+- `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.7.md`
 - `project/planning/PRODUCTION_ROADMAP.md`
 - `project/planning/PHASE_COMPLETION_LOG.md`
 - `project/planning/PRODUCTION_UPDATE_PROTOCOL.md`

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.5**.
+Current version: **v1.0.0.1.7**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Its current workflow is:
 
@@ -16,7 +16,7 @@ Use these documents:
 - `configuration/index.md` - Settings and runtime configuration.
 - `developer/architecture.md` - modules, data flow, threading and provider adapters.
 - `troubleshooting/index.md` - operational issues and provider constraints.
-- `release-notes/1.0.0.1.5.md` - this release.
+- `release-notes/1.0.0.1.7.md` - this release.
 
 ## Production Readiness References
 

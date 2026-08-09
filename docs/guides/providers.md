@@ -18,6 +18,11 @@ The built-in runtime implements app-secret authentication, invoice payload const
 
 The existing `register_task_runner(provider_id, runner)` extension point remains available. Loading a manifest alone declares provider metadata; executable behavior still requires a corresponding runner/adapter.
 
+
+## Real API verification
+
+Add Account requires an executable provider API-test adapter. The bundled Stripe and Refrens runtimes provide one. API Test runs outside the GUI thread, returns provider-specific success/failure, and never logs the credential values supplied by the form. Stripe verification enforces the selected Test/Live mode before provider requests; Refrens authenticates and checks invoice-list access. A successful test creates the account with current-session status `Verified`. If the provider has no executable API-test adapter, API Test is unavailable and the account cannot become Task-ready.
+
 ## Visibility
 
 Only installed providers are exposed to Accounts/Tasks. Existing in-memory accounts/tasks are not silently deleted when a provider is uninstalled.

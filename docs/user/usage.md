@@ -10,7 +10,7 @@ Open **Providers**, then Install Stripe/Refrens or load an approved external man
 
 ## 3. Accounts
 
-Open **Accounts**, choose **Add Account**, select an installed provider/mode and enter the provider-defined credentials. Accounts are grouped by provider. An account reserved by an open task cannot be assigned to another task.
+Open **Accounts**, choose **Add Account**, select an installed provider/mode and enter the provider-defined credentials. Run **API Test**. Stripe/Refrens verification performs real provider connection/permission requests on a background `QThread`; only a successful test creates a current-session `Verified` account. Providers without an executable API-test adapter show API Test as unavailable. Accounts are grouped by provider, and an account reserved by an open task cannot be assigned to another task.
 
 ## 4. Invoice Templates
 
@@ -22,7 +22,7 @@ Create independent named lists and import email data from CSV, TSV, XLSX, XLSM, 
 
 ## 6. Tasks
 
-Choose **New Task** and select Provider, Account(s), Invoice Template, and Customer List. Start uses the provider execution layer in a task-owned thread. Pause/Resume/Stop remain per task. **Retry Failed** retries failed Stripe recipients retained by the provider runtime. Close releases the accounts.
+Choose **New Task** and select Provider, **Verified** Account(s), Invoice Template, and Customer List. Unverified accounts are disabled and backend Task creation/Start/Retry also fail closed if verification is missing. Start uses the provider execution layer in a task-owned thread. Pause/Resume/Stop remain per task. **Retry Failed** retries failed Stripe recipients retained by the provider runtime. Close releases the accounts.
 
 Stripe can create/finalize/send invoices with the built-in runtime. Refrens task execution currently blocks before creation because Refrens requires customer country while Customer Lists contain email only; Invio does not guess that billing data.
 

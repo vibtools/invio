@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.5`  
+**Baseline:** `Invio v1.0.0.1.7`  
 **Purpose:** Record only behavior that exists in the frozen source, plus explicit production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -14,7 +14,7 @@
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP request path exists; live provider certification still pending |
 | Refrens API helper contract | PARTIAL | Auth/payload/create/email helper exists |
 | Refrens normal Task sending | BLOCKED | Current email-only Customer List cannot supply country required by current adapter gate |
-| Add Account API Test | PARTIAL | Required-field validation only; real `ProviderRuntime.test_account()` is not wired to UI |
+| Add Account API Test | WORKING | Stripe/Refrens real connection/permission verification runs in a dedicated Add Account `QThread` |
 | Account persistence | NOT IMPLEMENTED | Accounts/credentials are current-session memory only |
 | Customer List persistence | NOT IMPLEMENTED | Lists/emails are current-session memory only |
 | Invoice Template persistence | NOT IMPLEMENTED | Templates are current-session memory only |
@@ -57,18 +57,20 @@
 - Provider mode selection.
 - Password-style fields visually hide secret entry.
 - Accounts grouped by provider.
+- API Test validates required fields, then executes the provider runtime adapter on a dedicated background `QThread`.
+- Stripe API Test receives and enforces the selected Test/Live mode before network requests.
+- Refrens API Test performs authentication and invoice-list access verification.
+- Successful Add Account verification saves current-session status `Verified`; credential/provider/mode changes reset verification.
+- Providers without an executable API-test adapter cannot be treated as verified.
+- New Task selection, backend Task creation, Start and Retry all reject unverified accounts.
 - Account reservation prevents one account from being assigned to two open Tasks.
 
 ### PARTIAL / MISSING
 
-- UI `API Test` validates field presence only.
-- Real `ProviderRuntime.test_account()` is not connected to Add Account.
-- Existing Stripe `test_account()` does not receive the selected Test/Live mode, so current mode consistency validation remains send-time logic.
-- Saved status is `API Test Pending`.
 - No edit/delete/re-test workflow.
+- Verification health/last-verified metadata is not persisted.
 - No durable storage.
 - No protected credential store.
-- No verified-account Task gate.
 
 ## Customer Lists
 
@@ -129,7 +131,6 @@
 - Completed and Failed Task cards still allow normal Start.
 - Normal Start is a full current-list run, not a protected continuation.
 - Stop can leave unattempted emails in the runtime failed set without a matching final `task.failed` update, so Retry Failed can be disabled even when internal retry recipients exist.
-- No verified-account gate.
 
 ## Threading / Worker
 

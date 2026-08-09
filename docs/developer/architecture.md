@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.5` uses the same PySide6/AppState/WorkerManager/provider-runtime architecture as `v1.0.0.1.4`. This release changes only Invoice Template presentation geometry plus release metadata/tests/documentation; provider/task execution semantics are unchanged.
+Invio `v1.0.0.1.7` preserves the P01 PySide6/AppState/WorkerManager/provider-runtime architecture from `v1.0.0.1.6` and re-verifies the existing Add Account verification `QThread`, real provider API-test wiring, and verified-account Task gates. Provider invoice-send execution and the existing per-Task worker architecture remain unchanged.
 
 ## 2. Core responsibilities
 
@@ -16,7 +16,7 @@ Invio `v1.0.0.1.5` uses the same PySide6/AppState/WorkerManager/provider-runtime
 
 ## 3. Domain data flow
 
-Provider installation controls provider visibility. Account creation uses that provider's manifest fields. Invoice Templates remain customer-independent. Customer Lists remain email-only. Task creation validates all inputs, binds the selected template, and reserves selected accounts.
+Provider installation controls provider visibility. Account creation uses that provider's manifest fields and requires a successful executable API Test before the account is saved as `Verified`. Invoice Templates remain customer-independent. Customer Lists remain email-only. Task creation validates all inputs, binds the selected template, and reserves selected accounts.
 
 A bound template cannot be deleted while an open task references it. A selected account cannot be reserved by two tasks.
 
@@ -30,7 +30,7 @@ A bound template cannot be deleted while an open task references it. A selected 
 6. Progress/status/log signals update task state, Reports, Dashboard, and Live Logs.
 7. Closing the task releases reservations and clears runtime retry state.
 
-No provider network operation is intentionally executed in the task GUI callback path.
+No provider network operation is intentionally executed in the task GUI callback path. Add Account API verification likewise executes in its own dialog-owned `QThread`.
 
 ## 5. Stripe adapter
 
@@ -53,8 +53,14 @@ Dashboard is a read-only operational overview backed by current state. Invoice T
 - openpyxl 3.1+
 - Python standard library for provider HTTP/JSON/form operations
 
-No dependency change was made in `v1.0.0.1.5`.
+No dependency change was made in `v1.0.0.1.7`.
 
 ## 9. Extension points
 
 `MainWindow.register_task_runner(provider_id, runner)` remains the explicit custom-provider execution hook. Future customer-data expansion, credential persistence, or additional provider-specific fields require separate owner approval and are not silently introduced through provider manifests.
+
+## v1.0.0.1.7 verified P01 account-verification path
+
+`AddAccountDialog` receives the existing `MainWindow.provider_runtime`. Pressing API Test snapshots provider ID, mode, and credential values and moves an `_AccountVerificationWorker` to a dialog-owned `QThread`. The worker calls `ProviderRuntime.test_account()` and emits only success/failure text back to the GUI thread. Successful verification produces account status `Verified`; any provider/mode/credential change invalidates that state. `NewTaskDialog`, `AppState.create_task()`, and `MainWindow._runner_for_task()` all enforce `Verified` status, so UI bypass or later state mutation cannot start an unverified account. Task invoice sending continues to use the existing separate `WorkerManager` task-owned QThreads.
+
+No new dependency, provider manifest, provider credential field, account mode, storage mechanism, or task-worker architecture is introduced by P01.

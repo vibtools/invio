@@ -36,13 +36,17 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "src" / "core" / "settings" / "manager.py").is_file())
         self.assertTrue((ROOT / "src" / "core" / "settings" / "__init__.py").is_file())
 
-    def test_release_metadata_is_v10014(self):
+    def test_release_metadata_is_v10017(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.5"', pyproject)
-        self.assertIn('"version": "1.0.0.1.5"', project_meta)
-        self.assertIn('Production • v1.0.0.1.5', main_window)
+        self.assertIn('version = "1.0.0.1.7"', pyproject)
+        self.assertIn('"version": "1.0.0.1.7"', project_meta)
+        self.assertIn('Production • v1.0.0.1.7', main_window)
+
+    def test_release_metadata_is_v10014(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v10017()
 
     def test_builtin_provider_runtime_package_exists(self):
         self.assertTrue((ROOT / "src" / "core" / "provider_runtime" / "runtime.py").is_file())

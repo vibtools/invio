@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.5 started.")
+        self.log("Invio v1.0.0.1.7 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
 
@@ -206,7 +206,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.5")
+        self.runtime_status = QLabel("Production • v1.0.0.1.7")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -386,7 +386,7 @@ class MainWindow(QMainWindow):
         if not providers:
             self._message("Accounts", "Install or load a provider from the Providers page first.", QMessageBox.Icon.Warning)
             return
-        dialog = AddAccountDialog(providers, self)
+        dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
         try:
@@ -535,6 +535,12 @@ class MainWindow(QMainWindow):
         task = self.state.tasks.get(task_id)
         if not task:
             return None, None, "Task was not found."
+        for account_id in task.account_ids:
+            account = self.state.accounts.get(account_id)
+            if account is None:
+                return task, None, "A provider account assigned to this task no longer exists."
+            if account.status != "Verified":
+                return task, None, f"Account '{account.name}' is not verified. Run a successful API Test before starting this task."
         injected = self.task_runners.get(task.provider_id)
         if injected is not None:
             return task, injected, ""

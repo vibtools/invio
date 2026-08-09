@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.5`  
+**Baseline:** `v1.0.0.1.7`  
 **Status:** Forensic inventory. No runtime code is changed by this document.
 
 ## 1. Current Error-Handling Layers
@@ -39,9 +39,24 @@ Currently handled:
 - deleting customer list/template while referenced by a Task;
 - missing task account/list/template;
 - mixed-provider account selection;
-- duplicate account reservation.
+- duplicate account reservation;
+- unverified account selection during Task creation.
 
 Relevant MainWindow actions catch `StateError` and display a warning.
+
+### Account API verification errors
+
+**Files:** `src/ui/dialogs.py`, `src/core/provider_runtime/runtime.py`, `src/core/state/app_state.py`, `src/ui/main_window.py`
+
+P01 now handles:
+
+- missing required account/credential fields before network access;
+- Stripe key-format and selected Test/Live mode mismatch before provider requests;
+- Stripe/Refrens provider/network/permission failures without marking the account verified;
+- providers without an executable API-test adapter as unavailable;
+- credential-value scrubbing from provider error text before API-test display/logging;
+- safe Add Account verification-thread lifetime by preventing dialog close while its `QThread` is active;
+- unverified account rejection in New Task, backend Task creation, Start, and Retry.
 
 ### Settings load/save errors
 
@@ -120,7 +135,7 @@ Known state/provider/import errors are normally converted to compact message box
 
 | EH ID | Missing/incomplete handling | Risk | Planned phase |
 |---|---|---|---|
-| EH-001 | Add Account API Test does not execute network verification | Invalid account reaches Task setup | P01 |
+| EH-001 | **RESOLVED in P01:** Add Account executes real provider API verification on a dedicated `QThread` and fails closed | Invalid/revoked/unavailable credentials cannot become Task-ready | COMPLETE v1.0.0.1.6; re-verified v1.0.0.1.7 |
 | EH-002 | No persistent storage/migration error model for operational data | Restart/data-loss/corruption risk | P02 |
 | EH-003 | No protected credential-store error/recovery handling | Secret availability/security risk | P02 |
 | EH-004 | No verified-account health/retest lifecycle | Stale/revoked credentials fail during send | P03 |
@@ -178,3 +193,18 @@ A production phase is not complete until every new external operation defines:
 6. what persistent state is written;
 7. whether any provider-side side effect may already have occurred;
 8. how restart/retry reconciles the uncertain state.
+
+
+## P01 verification handling
+
+Implemented in `v1.0.0.1.6`:
+
+- missing required credential fields fail locally before network access;
+- Stripe Test/Live mode mismatch fails before provider requests;
+- Stripe/Refrens provider/network failures are returned to the user without marking the account verified;
+- provider credential values are not included in Invio API-test log messages, and any returned error text is scrubbed against the submitted credential values before display/logging;
+- providers without an executable API-test adapter fail closed as unavailable;
+- Add Account cannot be closed while its verification thread is running, avoiding destruction of an active dialog-owned `QThread`;
+- Task selection, creation, Start, and Retry reject accounts whose current-session status is not `Verified`.
+
+Automatic retry/backoff, durable verification health, and persistent secret storage remain later phases and are not introduced by P01.

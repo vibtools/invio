@@ -44,3 +44,8 @@ Provider manifests are validated JSON files describing provider identity, creden
 Manifest installation and executable provider behavior remain separate concerns. `MainWindow` first checks the existing explicitly registered task-runner extension point; when none is registered, packaged Stripe/Refrens behavior is resolved by `src.core.provider_runtime.ProviderRuntime`.
 
 A manifest capability therefore describes supported intent but does not make arbitrary external provider code executable by itself. Custom/external providers still require an owner-approved runner implementation.
+
+
+## Executable API-test capability
+
+A manifest capability named `api_test` is declarative metadata only. In `v1.0.0.1.6`, Add Account treats API Test as available only when `ProviderRuntime.supports_api_test(provider_id)` confirms an executable built-in adapter. A loaded manifest alone cannot turn required-field validation into a successful provider verification.

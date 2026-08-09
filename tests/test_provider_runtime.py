@@ -29,10 +29,64 @@ class _Context:
 
 
 class ProviderRuntimeTests(unittest.TestCase):
+    def test_api_test_support_is_executable_adapter_based(self):
+        runtime = ProviderRuntime(transport=lambda *_args: {})
+        self.assertTrue(runtime.supports_api_test("stripe"))
+        self.assertTrue(runtime.supports_api_test("refrens"))
+        self.assertFalse(runtime.supports_api_test("external-provider"))
+
+    def test_stripe_api_test_is_mode_aware_and_uses_real_permission_requests(self):
+        calls: list[tuple[str, str]] = []
+
+        def transport(method, url, headers, body, timeout):
+            calls.append((method, urlparse(url).path))
+            return {"data": []}
+
+        runtime = ProviderRuntime(transport=transport)
+        message = runtime.test_account(
+            "stripe",
+            {"secret_key": "sk_test_contractkey"},
+            mode="Test",
+        )
+        self.assertEqual(message, "Stripe API connection verified.")
+        self.assertEqual(calls, [("GET", "/v1/customers"), ("GET", "/v1/invoices")])
+
+    def test_stripe_api_test_rejects_mode_mismatch_before_network(self):
+        calls = []
+        runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "mode is Live"):
+            runtime.test_account("stripe", {"secret_key": "sk_test_contractkey"}, mode="Live")
+        self.assertEqual(calls, [])
+
+    def test_refrens_api_test_authenticates_and_checks_invoice_access(self):
+        calls: list[tuple[str, str]] = []
+
+        def transport(method, url, headers, body, timeout):
+            calls.append((method, urlparse(url).path))
+            if urlparse(url).path == "/authentication":
+                return {"accessToken": "token"}
+            if urlparse(url).path == "/businesses/biz/invoices":
+                return {"data": []}
+            raise AssertionError(f"Unexpected request: {method} {url}")
+
+        runtime = ProviderRuntime(transport=transport)
+        message = runtime.test_account(
+            "refrens",
+            {"base_url": "https://api.refrens.com", "url_key": "biz", "app_id": "app", "app_secret": "secret"},
+            mode="Default",
+        )
+        self.assertEqual(message, "Refrens API connection verified.")
+        self.assertEqual(calls, [("POST", "/authentication"), ("GET", "/businesses/biz/invoices")])
+
+    def test_api_test_without_runtime_adapter_fails_closed(self):
+        runtime = ProviderRuntime(transport=lambda *_args: {})
+        with self.assertRaisesRegex(ProviderRuntimeError, "No built-in API-test adapter"):
+            runtime.test_account("external-provider", {"token": "secret"}, mode="Default")
+
     def _stripe_state(self, emails: list[str] | None = None):
         state = AppState()
         account = state.add_account(
-            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_contractkey"}
+            "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_contractkey"}, status="Verified"
         )
         customer_list = state.create_customer_list("Customers")
         state.add_emails(customer_list.id, emails or ["customer@example.com"])
@@ -192,6 +246,7 @@ class ProviderRuntimeTests(unittest.TestCase):
             "Primary",
             "Live",
             {"base_url": "https://api.refrens.com", "url_key": "biz", "app_id": "app", "app_secret": "secret"},
+            status="Verified",
         )
         customer_list = state.create_customer_list("Customers")
         state.add_emails(customer_list.id, ["a@example.com"])

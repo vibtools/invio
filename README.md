@@ -1,11 +1,11 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release `v1.0.0.1.5` is a scope-locked Invoice Template UI geometry repair over `v1.0.0.1.4`. The template editor now preserves the real height required by wrapped descriptions, captions, fields, and multiline controls inside its compact scroll area, so Currency/Invoice Type help text cannot overlap adjacent controls and surplus viewport height no longer breaks spacing between cards. Existing template data, validation, provider/task invoice creation and sending behavior are unchanged.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release `v1.0.0.1.7` is the verified P01 corrective baseline over `v1.0.0.1.6`. P01 - Real Account API Verification remains the completed production phase; this corrective release fixes verification/release-state inconsistencies found by re-auditing the exact uploaded `v1.0.0.1.6` artifact. Add Account now runs the existing Stripe/Refrens provider verification adapters on a dedicated `QThread`, Stripe verification enforces the selected Test/Live mode before network access, successful verification stores the current-session account status as `Verified`, and unverified accounts are blocked from Task selection, Task creation, Start, and Retry. Provider credential fields, provider IDs/modes, invoice sending behavior, task worker architecture, persistence model, and unrelated UI remain unchanged.
 
 ## Current Application Scope
 
 - **Dashboard**: live state summary for installed providers, accounts, templates, customer emails, task activity, account reservations, and the next required setup/action.
-- **Accounts**: provider-grouped runtime accounts with provider-defined credential forms and strict account reservation.
+- **Accounts**: provider-grouped runtime accounts with provider-defined credential forms, real non-blocking provider API verification, current-session `Verified` status, and strict account reservation.
 - **Invoice Templates**: reusable invoice-only content containing currency, due period, invoice title/subtitle/type, invoice note, customer note, footer, terms, provider options, and line items with quantity, unit amount, and optional tax rate. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-email lists with CSV, TSV, XLSX, XLSM, and TXT import.
 - **Tasks**: installed provider -> one or more available provider accounts -> invoice template -> customer list. One account cannot belong to two open tasks.
@@ -69,7 +69,7 @@ Settings remain non-sensitive per-user JSON preferences. Available controls cove
 - PySide6 6.7+
 - openpyxl 3.1+
 
-No new dependency was introduced in `v1.0.0.1.5`; provider HTTP calls continue to use Python's standard library.
+No new dependency is introduced in `v1.0.0.1.7`; provider HTTP calls continue to use Python's standard library and API verification uses PySide6 `QThread`, which is already part of the frozen desktop stack.
 
 ## Run
 
@@ -98,7 +98,7 @@ The test suite covers provider management, settings, account reservation, invoic
 - Architecture: `docs/developer/architecture.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.5.md`
+- Release notes: `docs/release-notes/1.0.0.1.7.md`
 
 ## Private Project Material
 
@@ -106,19 +106,19 @@ The test suite covers provider management, settings, account reservation, invoic
 
 ## Production Readiness Program
 
-`v1.0.0.1.5` is the frozen implementation baseline for the production-hardening program. The current source contains real Stripe invoice execution and a partial Refrens adapter, but it is not yet production-certified for durable bulk sending. The production roadmap is documentation-only until each phase receives a separate owner scope lock.
+`v1.0.0.1.7` is the current verified production-hardening implementation baseline after P01 correction. The current source contains real Stripe invoice execution and a partial Refrens adapter, but it is not yet production-certified for durable bulk sending. P01 is complete. P02 and every later production phase remain separately scope-locked and require explicit owner approval before implementation.
 
 Authoritative planning/status documents:
 
 - Actual implementation status: `docs/developer/ACTUAL_IMPLEMENTATION_STATUS.md`
 - Error-handling inventory: `docs/developer/ERROR_HANDLING.md`
-- Private baseline freeze: `project/specifications/BASELINE_FREEZE_v1.0.0.1.5.md`
-- Private forensic readiness report: `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.5.md`
+- Private baseline freeze: `project/specifications/BASELINE_FREEZE_v1.0.0.1.7.md`
+- Private forensic readiness report: `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.7.md`
 - Private detailed roadmap: `project/planning/PRODUCTION_ROADMAP.md`
 - Private phase completion log: `project/planning/PHASE_COMPLETION_LOG.md`
 - Private update protocol: `project/planning/PRODUCTION_UPDATE_PROTOCOL.md`
 
-Current production implementation progress is **0/14 phases complete**; governance/documentation phase `G0` is complete. The next implementation phase is `P01 - Real Account API Verification`, but no P01 code change is authorized by this documentation delta.
+Current production implementation progress is **1/14 phases complete**; governance/documentation phase `G0` and production phase `P01` are complete. The next implementation phase is `P02 - Durable Domain Storage and Protected Credentials`, which requires a separate owner-approved scope and credential-storage technology decision before code changes.
 
 ## License
 

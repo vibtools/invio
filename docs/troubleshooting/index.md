@@ -10,11 +10,15 @@ Expected. Uninstall removes its installed registry copy and returns the bundled 
 
 ## Account cannot be selected for a new task
 
-It is reserved by another open task. Stop/close the owning task to release it.
+The account must have current-session status `Verified` and must not be reserved by another open task. Run a successful **API Test** in Add Account before creating the account. If it is already verified but reserved, stop/close the owning task to release it.
 
 ## New Task says an invoice template is required
 
 Create at least one template first. Every `v1.0.0.1.3` task must bind to an invoice template.
+
+## API Test fails or is unavailable
+
+Stripe/Refrens API Test performs real provider connection/permission requests. Correct the provider credentials/mode and retry. Stripe Test/Live key mode mismatches fail before a network request. If API Test is unavailable, the installed provider manifest has no executable built-in API-test adapter in the current runtime and cannot create a Task-ready account.
 
 ## Stripe task fails
 

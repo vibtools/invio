@@ -1,20 +1,20 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.5**.
+Current frozen implementation baseline: **Invio v1.0.0.1.7**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Production implementation phases: **0 / 14 complete**.
-- Next planned phase: **P01 - Real Account API Verification**.
+- Production implementation phases: **1 / 14 complete**.
+- Next planned phase: **P02 - Durable Domain Storage and Protected Credentials**.
 - Current status: **not production-certified**.
 
 ## Ordered Production Phases
 
-1. **P01 - Real Account API Verification**: wire the existing provider test logic to a non-blocking real API Test and gate Task use to verified accounts.
-2. **P02 - Durable Domain Storage and Protected Credentials**: persist operational state and use an owner-approved protected secret-storage mechanism.
+1. **P01 - Real Account API Verification [COMPLETE in v1.0.0.1.6; verification-corrected in v1.0.0.1.7]**: wire the existing provider test logic to a non-blocking real API Test and gate Task use to verified accounts.
+2. **P02 - Durable Domain Storage and Protected Credentials [NEXT]**: persist operational state and use an owner-approved protected secret-storage mechanism.
 3. **P03 - Account Lifecycle, Verification Health and Provider-Install Consistency**: edit/delete/retest/health and deterministic uninstall behavior.
 4. **P04 - Customer Data Contract and Import Upgrade**: preserve email-only Stripe use while adding explicit provider-required customer data such as Refrens country.
 5. **P05 - Immutable Task Execution Snapshot and Input Consistency**: freeze recipients/template/account basis and eliminate list/template drift.
@@ -33,7 +33,7 @@ The detailed dependency graph, acceptance criteria and owner-decision gates are 
 - `project/planning/PRODUCTION_ROADMAP.md`
 - `project/planning/PHASE_COMPLETION_LOG.md`
 - `project/planning/PRODUCTION_UPDATE_PROTOCOL.md`
-- `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.5.md`
+- `project/research/PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.7.md`
 
 Public developer inventories:
 

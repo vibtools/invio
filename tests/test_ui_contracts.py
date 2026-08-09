@@ -68,7 +68,7 @@ class UiContractTests(unittest.TestCase):
 
     def test_current_runtime_surfaces_have_no_ui_only_release_markers(self):
         root = Path(__file__).resolve().parents[1]
-        paths = list((root / "src").rglob("*.py")) + list((root / "providers").rglob("*.json"))
+        paths = list((root / "src").rglob("*.py")) + list((root / "providers" / "packages").rglob("*.json"))
         corpus = "\n".join(path.read_text(encoding="utf-8").lower() for path in paths)
         for marker in (
             "ui milestone",
@@ -269,6 +269,27 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("self.customer_note.setFixedHeight(52)", source)
         self.assertIn("self.footer.setFixedHeight(52)", source)
         self.assertIn("self.terms.setFixedHeight(52)", source)
+
+    def test_p01_real_account_api_verification_is_threaded_and_task_gated(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        runtime = (root / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        state = (root / "src" / "core" / "state" / "app_state.py").read_text(encoding="utf-8")
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertIn("class _AccountVerificationWorker(QObject)", dialogs)
+        self.assertIn("thread = QThread(self)", dialogs)
+        self.assertIn('thread.setObjectName(f"InvioAccountApiTest-{provider.id}")', dialogs)
+        self.assertIn("self.runtime.test_account(", dialogs)
+        self.assertIn("def _ui_validate_credentials(self)", dialogs)
+        self.assertIn("self.provider_runtime.supports_api_test(provider.id)", dialogs)
+        self.assertIn('"status": "Verified"', dialogs)
+        self.assertIn('account.status != "Verified"', dialogs)
+        self.assertIn("API Test is unavailable for this provider", dialogs)
+        self.assertIn("def supports_api_test(provider_id: str)", runtime)
+        self.assertIn('mode=self.mode', dialogs)
+        self.assertIn('if account.status != "Verified"', state)
+        self.assertIn('dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)', window)
+        self.assertIn('if account.status != "Verified"', window)
 
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")

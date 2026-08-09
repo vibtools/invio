@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Production Readiness Documentation
+## Production Readiness Documentation - 2026-08-08 (runtime remained v1.0.0.1.5)
 
 ### Documentation
 - Frozen `v1.0.0.1.5` as the production-hardening planning baseline without changing runtime code or the application version.
@@ -12,6 +12,42 @@
 ### Scope protection
 - Documentation-only delta: no file under `src/`, `providers/`, `tests/`, `assets/`, `requirements.txt`, `pyproject.toml`, or runtime metadata is changed.
 - No production phase is authorized by these planning documents; each phase still requires a separate explicit owner scope lock.
+
+## 1.0.0.1.7 - 2026-08-08
+
+### P01 verification correction
+- Re-audited the exact uploaded `v1.0.0.1.6` full artifact against the approved P01 plan.
+- Confirmed the P01 runtime implementation itself is present: real Stripe/Refrens API Test adapters, Stripe Test/Live mode check, dedicated Add Account verification `QThread`, current-session `Verified` state, and New Task/create/start/retry gates.
+- Fixed stale shipped Refrens installed-registry metadata that still exposed `1.0.3-ui` and deferred-backend wording even though the bundled provider manifest was already production-clean.
+- Corrected the runtime-surface production-marker test to exclude mutable Git-ignored provider registry state while retaining source and bundled-provider checks.
+- Corrected the stale release-metadata test name and synchronized release metadata/documentation to `v1.0.0.1.7`.
+- Added truthful post-release errata to the `v1.0.0.1.6` verification records: the exact uploaded full artifact initially ran 61/62 tests because of the stale registry state.
+
+### Scope protection
+- No P01 provider API behavior, credential field, provider ID/mode, task-worker architecture, invoice-send workflow, Customer List/Invoice Template model, persistence mechanism, page design, or dependency was expanded or replaced.
+- Production phase count remains 1/14; P02 remains the next separately approved phase.
+
+## 1.0.0.1.6 - 2026-08-08
+
+### Added / Changed
+- Completed production phase **P01 - Real Account API Verification**.
+- Wired the existing `ProviderRuntime.test_account()` adapter into Add Account instead of treating required-field presence as a successful API test.
+- Added executable API-test capability detection for built-in Stripe/Refrens adapters; providers without a real test adapter now show API Test as unavailable.
+- Added a dedicated dialog-owned `QThread` for account API verification so network calls do not execute on the GUI thread.
+- Made Stripe API verification mode-aware: Test mode accepts test keys and Live mode accepts live keys before provider requests are attempted.
+- Successful API verification now creates the account with current-session status `Verified`; changing provider/mode/credential input invalidates the prior verification.
+- Added verified-account gates to New Task selection, backend Task creation, and Start/Retry preparation.
+- Added secret-safe API-test success/failure logging and user-facing provider/network failure messages.
+
+### Tests / Verification
+- Added provider-runtime tests for executable API-test support, Stripe real permission-request flow, Stripe mode mismatch fail-closed behavior, Refrens auth/access verification, and unsupported adapter rejection.
+- Added state regression coverage proving unverified accounts cannot create Tasks.
+- Added UI source contracts for threaded Add Account verification and selection/start gating.
+- Existing provider sending, Invoice Template, Settings, provider registry, account reservation, and per-task worker contracts remain covered.
+
+### Scope protection
+- No provider credential fields, provider IDs, account modes, provider manifests, Customer List schema, Invoice Template behavior, persistence mechanism, task worker architecture, or third-party dependency was changed.
+- P02 and later production phases remain pending and require separate owner approval.
 
 ## 1.0.0.1.5 - 2026-08-08
 

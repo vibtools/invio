@@ -197,6 +197,8 @@ class AppState:
                 raise StateError("One of the selected accounts no longer exists.")
             if account.provider_id != provider_id:
                 raise StateError("All selected accounts must belong to the selected provider.")
+            if account.status != "Verified":
+                raise StateError(f"Account '{account.name}' is not verified. Run a successful API Test before creating a task.")
             reserved_by = self.account_reservations.get(account_id)
             if reserved_by:
                 task_name = self.tasks.get(reserved_by).name if reserved_by in self.tasks else reserved_by

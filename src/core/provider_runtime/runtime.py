@@ -159,11 +159,18 @@ class ProviderRuntime:
         with self._state_lock:
             self._delivery_state.pop(task_id, None)
 
-    def test_account(self, provider_id: str, credentials: dict[str, str]) -> str:
+    @staticmethod
+    def supports_api_test(provider_id: str) -> bool:
+        """Return whether Invio has an executable built-in API-test adapter."""
+        return provider_id.strip().lower() in {"stripe", "refrens"}
+
+    def test_account(self, provider_id: str, credentials: dict[str, str], *, mode: str = "") -> str:
         provider_id = provider_id.strip().lower()
         if provider_id == "stripe":
             key = credentials.get("secret_key", "").strip()
             self._validate_stripe_key(key)
+            if mode.strip():
+                self._validate_stripe_mode_value(mode, key)
             self._stripe_request("GET", "/customers", key, query={"limit": 1})
             self._stripe_request("GET", "/invoices", key, query={"limit": 1})
             return "Stripe API connection verified."
@@ -177,7 +184,7 @@ class ProviderRuntime:
                 query={"$limit": 1, "$skip": 0, "$sort[createdAt]": -1},
             )
             return "Refrens API connection verified."
-        raise ProviderRuntimeError("No built-in API adapter is available for this provider.")
+        raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
 
     def make_task_runner(self, task: Task, state: AppState, *, retry_failed: bool = False) -> Callable[[Any], None]:
         snapshot = self._snapshot(task, state)
@@ -303,12 +310,16 @@ class ProviderRuntime:
             raise ProviderRuntimeError("Stripe secret/restricted key format is invalid.")
 
     @staticmethod
-    def _validate_stripe_mode(account: AccountSnapshot, secret_key: str) -> None:
-        mode = account.mode.strip().lower()
-        if mode == "test" and "_test_" not in secret_key:
+    def _validate_stripe_mode_value(mode: str, secret_key: str) -> None:
+        normalized = mode.strip().lower()
+        if normalized == "test" and "_test_" not in secret_key:
             raise ProviderRuntimeError("Stripe account mode is Test but the configured key is not a test key.")
-        if mode == "live" and "_live_" not in secret_key:
+        if normalized == "live" and "_live_" not in secret_key:
             raise ProviderRuntimeError("Stripe account mode is Live but the configured key is not a live key.")
+
+    @staticmethod
+    def _validate_stripe_mode(account: AccountSnapshot, secret_key: str) -> None:
+        ProviderRuntime._validate_stripe_mode_value(account.mode, secret_key)
 
     def _send_stripe_invoice(self, snapshot: TaskSnapshot, account: AccountSnapshot, email: str) -> dict[str, Any]:
         key = account.credentials.get("secret_key", "").strip()
@@ -432,7 +443,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.5 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.7 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -471,7 +482,7 @@ class ProviderRuntime:
         url = f"{base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.5 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.7 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

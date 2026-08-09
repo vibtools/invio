@@ -8,9 +8,9 @@ from src.core.state import AppState, StateError
 class AppStateTests(unittest.TestCase):
     def setUp(self):
         self.state = AppState()
-        self.account_a = self.state.add_account("stripe", "Stripe", "A", "Test", {"secret_key": "x"})
-        self.account_b = self.state.add_account("stripe", "Stripe", "B", "Test", {"secret_key": "y"})
-        self.account_other = self.state.add_account("other", "Other", "C", "Test", {"token": "z"})
+        self.account_a = self.state.add_account("stripe", "Stripe", "A", "Test", {"secret_key": "x"}, status="Verified")
+        self.account_b = self.state.add_account("stripe", "Stripe", "B", "Test", {"secret_key": "y"}, status="Verified")
+        self.account_other = self.state.add_account("other", "Other", "C", "Test", {"token": "z"}, status="Verified")
         self.customer_list = self.state.create_customer_list("List 1")
         self.state.add_emails(self.customer_list.id, ["a@example.com", "b@example.com"])
         self.template = self.state.save_invoice_template(
@@ -33,6 +33,13 @@ class AppStateTests(unittest.TestCase):
             self.customer_list.id,
             self.template.id,
         )
+
+    def test_unverified_account_cannot_create_task(self):
+        unverified = self.state.add_account(
+            "stripe", "Stripe", "Pending", "Test", {"secret_key": "sk_test_pending"}, status="Not Verified"
+        )
+        with self.assertRaisesRegex(StateError, "not verified"):
+            self.create_task([unverified.id])
 
     def test_accounts_are_filtered_by_provider(self):
         ids = {item.id for item in self.state.accounts_for_provider("stripe")}
