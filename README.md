@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.37`** is the owner-frozen P14 source/build correction baseline derived from `v1.0.0.1.36` and scoped only to the WiX Toolset version-verification false failure observed in GitHub Actions run `31374749523`. The existing pinned WiX `6.0.2` install, Nuitka OneDir, portable ZIP, MSI, wheel and tag-release architecture are preserved; only the workflow guard now compares the canonical WiX core version while tolerating the CLI's SemVer build metadata suffix. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.0.0.1.37 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.38`** is the owner-frozen P14 source/build correction baseline derived from `v1.0.0.1.37` and scoped only to the release-inventory failure observed in GitHub Actions run `31386258538`. The existing pinned WiX `6.0.2`, canonical version guard, Nuitka OneDir, portable ZIP, MSI, wheel, checksum audit and tag-release architecture are preserved; the WiX build now suppresses its default `.wixpdb` debug sidecar so `dist/release` contains only the approved release payloads. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.0.0.1.38 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.37.md`
+- Release notes: `docs/release-notes/1.0.0.1.38.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.37` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. GitHub run `31374749523` proved that the pinned WiX `6.0.2` tool installed successfully but its CLI reported `6.0.2+b3f3403`, causing the prior raw exact-string guard to fail before MSI generation. v1.37 preserves the pinned tool and distribution architecture while verifying the canonical core version before continuing. P14 remains **CERTIFICATION PENDING** because the exact v1.0.0.1.37 Windows MSI/distribution workflow and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
+`v1.0.0.1.38` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. GitHub run `31386258538` proved the v1.37 Windows pipeline passes regression, wheel/native smoke, Nuitka build/startup, WiX setup, MSI build and MSI clean install/run/uninstall. Final checksum inventory then failed because WiX emitted a default `.wixpdb` debug-symbol sidecar into `dist/release`. v1.38 preserves the release contract and suppresses only that sidecar with `-pdbtype none`. P14 remains **CERTIFICATION PENDING** because the exact v1.0.0.1.38 checksum/artifact stages and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -317,3 +317,10 @@ Windows also exposed file-handle ownership defects during regression cleanup. Th
 GitHub Actions run `31374749523` / Windows job `93411358955` reached the WiX setup stage after the full 381-test audit, wheel build/install, native PySide6/keyring/resource smoke, Nuitka OneDir build, portable preparation and compiled startup smoke all passed. `dotnet tool install --global wix --version 6.0.2` succeeded, but `wix --version` returned `6.0.2+b3f3403`. The v1.36 workflow compared that informational string directly with `6.0.2` and incorrectly raised a stale-version error.
 
 v1.37 keeps WiX pinned at `6.0.2` and strips only the optional `+build-metadata` suffix for the verification comparison; a different canonical core version still fails closed. No installer architecture, provider behavior, runtime dependency, schema, Task/WorkerManager contract, UI/UX or release topology changes are introduced. P11 remains live-acceptance pending and P14 remains certification pending until the exact v1.37 Windows workflow completes successfully.
+
+
+## v1.0.0.1.38 P14 WiX Debug-Symbol Release Inventory Correction
+
+GitHub Actions run `31386258538` / Windows job `93447256779` passed the full 383-test audit, wheel/native smoke, Nuitka OneDir build/startup, WiX installation, MSI build and MSI install/run/uninstall smoke. The next release-assembly step failed because WiX emitted its default sibling `.wixpdb` debug-symbol file beside the MSI. The existing checksum writer correctly checksummed every file in `dist/release`, while the release auditor correctly allows only the approved portable ZIP, MSI and wheel payloads plus `SHA256SUMS.txt`.
+
+v1.38 preserves both fail-closed contracts and adds WiX's documented `-pdbtype none` switch to the existing MSI build command. The approved release topology remains portable ZIP + MSI + wheel + checksums; no debug-symbol artifact is published. P11 and P14 acceptance status remains unchanged until the exact v1.38 external workflow and owner-controlled live-provider gates pass.

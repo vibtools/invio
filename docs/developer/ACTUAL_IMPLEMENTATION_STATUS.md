@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Current source/build baseline:** `Invio v1.0.0.1.37 — P14 CERTIFICATION PENDING`
+**Current source/build baseline:** `Invio v1.0.0.1.38 — P14 CERTIFICATION PENDING`
 **Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
@@ -287,3 +287,8 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## P14 WiX version verification correction - v1.0.0.1.37
 
 **WORKING LOCALLY / EXTERNAL WINDOWS RE-RUN PENDING:** the Windows workflow still installs the exact pinned WiX Toolset `6.0.2`, but its verification now compares the canonical core version after removing only an optional `+build-metadata` suffix. The source correction directly addresses the `6.0.2+b3f3403` false-negative from GitHub run `31374749523`. MSI generation/install/uninstall and final artifact upload were skipped in that failed v1.36 run, so P14 remains certification pending until the exact v1.37 workflow supplies successful external evidence.
+
+
+## P14 release inventory correction - v1.0.0.1.38
+
+**WORKING LOCALLY / EXTERNAL WINDOWS RE-RUN PENDING:** run `31386258538` passed regression, native wheel smoke, Nuitka OneDir build/startup, WiX setup, MSI build and MSI install/run/uninstall. Final assembly failed only because WiX's default `.wixpdb` sidecar expanded `dist/release` beyond the approved payload set. v1.38 adds `-pdbtype none` to the existing WiX build. P14 remains certification pending until the exact v1.38 workflow and live-provider gates pass.

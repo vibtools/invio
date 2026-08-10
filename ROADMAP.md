@@ -1,12 +1,12 @@
 # Roadmap
 
-Current Official source/build baseline: **Invio v1.0.0.1.37 — P14 CERTIFICATION PENDING**.
+Current Official source/build baseline: **Invio v1.0.0.1.38 — P14 CERTIFICATION PENDING**.
 
 Owner-frozen parent baseline: **Invio v1.0.0.1.36**. Production certification remains pending.
 
 Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is verification-corrected through `v1.0.0.1.37`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is verification-corrected through `v1.0.0.1.38`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -115,3 +115,8 @@ The first pushed v1.35 distribution workflow correctly failed before packaging. 
 ## P14 WiX version verification correction - v1.0.0.1.37
 
 GitHub run `31374749523` proved the v1.36 Windows pipeline reaches the pinned WiX installation stage after all preceding regression/wheel/native/Nuitka/portable gates pass. WiX `6.0.2` installs correctly but reports `6.0.2+b3f3403`; the v1.36 raw exact-string guard therefore fails falsely. v1.37 normalizes only the optional `+build-metadata` portion for the pinned-version comparison. P14 phase count does not advance: P11 live Refrens acceptance and a successful exact v1.37 Windows MSI/distribution run remain required.
+
+
+## P14 release-inventory correction - v1.0.0.1.38
+
+GitHub run `31386258538` proved the v1.37 Windows pipeline now passes the prior WiX-version guard and proceeds successfully through MSI build and MSI clean install/run/uninstall smoke. Final release assembly then exposed a deterministic inventory mismatch because WiX emitted a default `.wixpdb` sidecar into `dist/release`, while the approved release contract remains portable ZIP + MSI + wheel + checksums. v1.38 suppresses only that debug-symbol output with `-pdbtype none`; P14 phase count remains unchanged pending the exact v1.38 external run and live-provider acceptance.

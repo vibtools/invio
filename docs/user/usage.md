@@ -156,7 +156,7 @@ A broken executable adapter that fails while exposing its declared runtime metad
 `v1.0.0.1.34` is not yet production-certified. Stripe and Refrens executable paths remain available under their existing safety gates, but production certification requires owner-controlled live-provider evidence and native Windows acceptance. Do not interpret this candidate label as confirmation that a provider accepted or delivered any specific invoice/email.
 
 
-## Using the v1.0.0.1.37 Windows builds
+## Using the v1.0.0.1.38 Windows builds
 
 For the portable build, extract the complete `Invio` folder and keep all DLLs, `assets/`, and `providers/` beside `Invio.exe`; do not copy only the EXE. For the MSI build, install normally and launch the installed Invio executable. The MSI is intentionally per-user so the existing Providers Load/Install/Uninstall workflow can continue writing its registry files without administrator elevation.
 
@@ -165,3 +165,8 @@ Portable/MSI availability does not mean P14 production certification passed. Che
 ### Portable ZIP state behavior
 
 The portable ZIP is *installer-free distribution*, not a portable-data mode. Invio continues to use the existing per-user Settings/SQLite locations and OS-protected keyring. Moving the OneDir folder does not move or duplicate those per-user records. The provider registry remains beside the application because that is the frozen P13 behavior.
+
+
+### v1.0.0.1.38 release inventory note
+
+End-user distribution remains unchanged: use either the complete portable ZIP or the per-user MSI. The `.wixpdb` file is a WiX build-debug artifact and is not part of the supported Invio release.

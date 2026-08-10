@@ -282,3 +282,8 @@ The v1.35 Windows distribution architecture is unchanged. `scripts/build/` is co
 ## v1.0.0.1.37 P14 WiX verification boundary
 
 The Windows distribution architecture remains `wheel/native smoke -> Nuitka OneDir -> portable ZIP -> WiX MSI -> MSI smoke -> checksums/artifact upload`. WiX remains a build-only pinned dependency at `6.0.2`. The setup guard now separates the CLI informational version from its canonical core version before equality validation, because WiX v6 may report the pinned package as `6.0.2+<build-metadata>`. This is a CI verification correction only; no application architecture boundary changes.
+
+
+## v1.0.0.1.38 P14 release inventory boundary
+
+The distribution pipeline remains `wheel/native smoke -> Nuitka OneDir -> portable ZIP -> WiX MSI -> MSI smoke -> checksums/artifact upload`. The WiX build now explicitly sets `-pdbtype none` so build debug symbols do not enter the release directory. No runtime architecture, installer destination, checksum algorithm, or release payload topology changes.

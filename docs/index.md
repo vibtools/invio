@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.37**.
+Current version: **v1.0.0.1.38**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,7 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.37.md` - current P14 WiX version-verification correction release.
+- `release-notes/1.0.0.1.38.md` - current P14 WiX release-inventory correction release.
 - `release-notes/1.0.0.1.27.md` - original P10 completion release.
 - `release-notes/1.0.0.1.26.md` - P09 CI verification correction.
 - `release-notes/1.0.0.1.25.md` - P09 production release.
@@ -120,3 +120,8 @@ The v1.35 distribution design is retained. v1.36 corrects the Git publication om
 ## v1.0.0.1.37 WiX version verification correction
 
 The current source/build baseline fixes the GitHub Windows pipeline's false WiX stale-version failure. WiX stays pinned at `6.0.2`; the guard accepts the same canonical version when `wix --version` appends informational build metadata such as `+b3f3403`. P14 remains certification pending until the exact v1.37 Windows workflow completes and the separate owner-controlled live-provider gates are satisfied.
+
+
+## v1.0.0.1.38 WiX release inventory correction
+
+v1.38 preserves the existing Windows distribution design and suppresses WiX's default `.wixpdb` debug sidecar so the checksum manifest and distribution audit operate on the same approved portable/MSI/wheel payload set. P14 remains certification pending.

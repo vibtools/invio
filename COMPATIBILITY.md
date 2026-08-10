@@ -156,3 +156,8 @@ No platform target, Python/PySide6/openpyxl/keyring runtime requirement, provide
 ## v1.0.0.1.37 P14 WiX Verification Compatibility
 
 No supported platform, Python/PySide6/openpyxl/keyring range, runtime dependency, provider ID/manifest/API/send contract, SQLite schema/table, P10 ledger behavior, P13 interface, WorkerManager/Task/customer/template model, UI page, Settings, Reports/Logs, Nuitka configuration, WiX package pin or MSI layout changes are introduced. The workflow only treats an optional WiX `+build-metadata` suffix as informational when checking that the installed canonical tool version is the pinned `6.0.2`; mismatched core versions still fail closed.
+
+
+## v1.0.0.1.38 P14 Release Inventory Compatibility
+
+The Windows release contract remains portable ZIP + MSI + wheel + `SHA256SUMS.txt`. WiX `6.0.2` and Nuitka `4.1.3` remain build-only pins. v1.38 suppresses the default WiX `.wixpdb` debug-symbol sidecar with `-pdbtype none`; no application/runtime/provider/schema/thread/UI compatibility boundary changes.

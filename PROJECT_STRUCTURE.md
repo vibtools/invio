@@ -194,3 +194,8 @@ No new runtime package tree, application page, provider package, schema table or
 ## v1.0.0.1.37 P14 WiX verification correction
 
 No project path, module, package, page or runtime structure changes are introduced. The only executable configuration change is inside `.github/workflows/ci.yml`; the related P14 workflow contract test and version/error-fix records are synchronized in their existing locations.
+
+
+## v1.0.0.1.38 P14 release inventory correction
+
+No folder/module reorganization is introduced. The existing WiX build still consumes `build/Invio.wxs` and writes the MSI to `dist/release`; v1.38 prevents the default sibling `.wixpdb` from being generated there so the frozen release payload inventory remains exact.

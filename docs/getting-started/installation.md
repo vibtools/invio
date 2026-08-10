@@ -75,15 +75,20 @@ python scripts/test/p14_wheel_audit.py dist/*.whl
 Install the resulting wheel into a clean Python 3.12 environment with normal dependency resolution. The wheel now includes `src.core.settings`, the packaged Stripe/Refrens/Agiled manifests and `assets/icons/checkmark.svg`. Source checkout execution remains supported. The clean Windows/native PySide6/keyring certification job is defined in GitHub Actions but must actually pass before this candidate can be called production-ready.
 
 
-## Windows portable and MSI distribution (v1.0.0.1.37)
+## Windows portable and MSI distribution (v1.0.0.1.38)
 
 The approved GitHub Windows build creates two end-user forms from the same Nuitka OneDir payload:
 
-- `Invio_v1.0.0.1.37_windows_x64_portable.zip` — extract the `Invio/` folder to a writable location and launch `Invio.exe`.
-- `Invio_v1.0.0.1.37_windows_x64_setup.msi` — per-user install under `%LOCALAPPDATA%\Vib Tools\Invio`, requiring no system-wide Program Files write access.
+- `Invio_v1.0.0.1.38_windows_x64_portable.zip` — extract the `Invio/` folder to a writable location and launch `Invio.exe`.
+- `Invio_v1.0.0.1.38_windows_x64_setup.msi` — per-user install under `%LOCALAPPDATA%\Vib Tools\Invio`, requiring no system-wide Program Files write access.
 
 The wheel remains available for Python/packaging verification and advanced Python-environment installation. End users do not need Python when using the Nuitka portable/MSI distributions.
 
-GitHub release tags must exactly match the application version, e.g. `v1.0.0.1.37`. A tag mismatch fails before release publication. Build outputs are currently unsigned; Windows may therefore show normal unsigned-application reputation warnings. No code-signing capability is included in this approved scope.
+GitHub release tags must exactly match the application version, e.g. `v1.0.0.1.38`. A tag mismatch fails before release publication. Build outputs are currently unsigned; Windows may therefore show normal unsigned-application reputation warnings. No code-signing capability is included in this approved scope.
 
 > **Portable naming:** the portable ZIP means no MSI installation is required. It does not relocate Invio's existing per-user SQLite/settings/keyring state into the executable folder.
+
+
+### v1.0.0.1.38 release inventory note
+
+The supported Windows release payloads remain the versioned portable ZIP and per-user MSI, with the Python wheel and `SHA256SUMS.txt` retained for packaging verification. WiX debug-symbol `.wixpdb` files are build diagnostics and are intentionally not produced in the release directory by v1.38.

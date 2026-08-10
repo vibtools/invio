@@ -470,3 +470,5 @@ These build-time gates do not alter runtime provider/network error handling.
 ## v1.0.0.1.37 WiX version guard correction
 
 GitHub Actions run `31374749523` showed a false-positive build guard rather than a WiX installation failure. The package manager installed pinned WiX `6.0.2`, while `wix --version` returned informational version `6.0.2+b3f3403`. The previous raw `-ne` string comparison treated the build metadata as a different tool version and aborted the pipeline. v1.37 trims the command output, removes only the optional `+build-metadata` portion for canonical comparison, and retains fail-closed behavior for a genuinely different core version. No runtime exception handling or application error path changes.
+
+| EH-042 | WiX emits default `.wixpdb` beside the MSI, expanding the frozen release payload inventory | WiX build uses `-pdbtype none`; checksum/audit contracts remain fail-closed | IMPLEMENTED v1.0.0.1.38 |

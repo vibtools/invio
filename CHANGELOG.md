@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0.1.38 - P14 WiX Debug-Symbol Release Inventory Correction
+
+- Audited GitHub Actions run `31386258538` / Windows job `93447256779`; all gates through MSI install/run/uninstall passed before release checksum inventory validation failed.
+- Confirmed WiX 6.0.2 emits a sibling `.wixpdb` by default; this extra debug-symbol file was correctly included by the checksum writer but correctly rejected by the frozen release-payload audit.
+- Added the documented `-pdbtype none` option to the existing WiX build command so `dist/release` contains only the approved portable ZIP, MSI and wheel before `SHA256SUMS.txt` is generated.
+- Checksum writer, distribution auditor, MSI layout, WiX/Nuitka pins, provider behavior, SQLite schema, Task/WorkerManager architecture, runtime dependencies and UI/UX remain unchanged.
+- P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING until the exact v1.38 workflow and owner-controlled live-provider gates pass.
+
 ## v1.0.0.1.37 - P14 WiX Version Verification Correction
 
 - Audited GitHub Actions run `31374749523`, Windows job `93411358955`.
