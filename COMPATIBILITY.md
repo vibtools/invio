@@ -1,8 +1,8 @@
 # Compatibility
 
-## v1.0.0.1.40.2 provider-contract compatibility correction
+## v1.0.0.1.40.2 production compatibility
 
-`v1.0.0.1.40.2` keeps the existing provider IDs, credential fields, account modes, SQLite schema v5, dependencies, Task model, WorkerManager and UI page inventory. Agiled retains its single protected `api_key` credential; only the executable API Test capability is enabled, using the exact current `https://api.agiled.ai/public/v1/me` Bearer safe-read. Agiled Task sending remains unavailable. Refrens request endpoints/payloads remain unchanged; only HTTP status visibility is added for provider rejections. Five-part version mappings remain unchanged, and this six-part hotfix maps to PE `1.0.1.4002` / MSI `1.1.4002`.
+`v1.0.0.1.40.2` is the first owner-accepted production baseline. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, WorkerManager/QThread behavior, P05/P07/P10 execution contracts, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. Odoo Provider v1.0.0 is distributed as a P13 interface-v1 external plugin under `providers/plugins/odoo/`; it is not converted into a packaged provider and still requires explicit trusted-code installation. The release makes no compatibility claim that Refrens API mail is enabled or that Agiled Task sending is executable.
 
 ## v1.0.0.1.39 compiled protected-credential compatibility correction
 

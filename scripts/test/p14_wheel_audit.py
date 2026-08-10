@@ -12,6 +12,8 @@ REQUIRED_RESOURCES = {
     "providers/packages/stripe/provider.json",
     "providers/packages/refrens/provider.json",
     "providers/packages/agiled/provider.json",
+    "providers/plugins/odoo/provider.json",
+    "providers/plugins/odoo/adapter.py",
 }
 
 

@@ -1,0 +1,43 @@
+{
+  "id": "odoo",
+  "name": "Odoo",
+  "version": "1.0.0",
+  "description": "Trusted external Odoo invoice provider for Invio using Odoo JSON-RPC with API-key authentication, customer resolution, invoice creation/posting, headless Send & Print email execution, and provider-side mail evidence checks.",
+  "credential_fields": [
+    {
+      "key": "base_url",
+      "label": "Odoo Base URL",
+      "kind": "text",
+      "required": true,
+      "placeholder": "https://your-company.odoo.com"
+    },
+    {
+      "key": "database",
+      "label": "Database",
+      "kind": "text",
+      "required": true,
+      "placeholder": "your-database"
+    },
+    {
+      "key": "username",
+      "label": "Username / Email",
+      "kind": "text",
+      "required": true,
+      "placeholder": "user@example.com"
+    },
+    {
+      "key": "api_key",
+      "label": "API Key",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Odoo API key"
+    }
+  ],
+  "account_modes": ["Default"],
+  "capabilities": ["invoice", "send_invoice", "api_test"],
+  "runtime_adapter": {
+    "interface_version": 1,
+    "adapter_version": "1.0.0",
+    "entrypoint": "create_adapter"
+  }
+}

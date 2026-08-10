@@ -188,3 +188,8 @@ A Refrens Task now treats invoice creation and invoice-email triggering as separ
 
 - **Agiled:** Add Account/Re-test can now verify an Agiled API key with the current Bearer-authenticated `/public/v1/me` safe-read. A verified Agiled account still cannot create/run an Invio Task because the supplied current OpenAPI does not publish the invoice field mapping or invoice email/send operation required for safe execution.
 - **Refrens:** if Live Logs show `Not allowed to send mail` followed by `CODE 400`, the invoice was created but Refrens rejected the API email operation. Do not repeatedly Retry Failed or create replacement Tasks to work around that rejection. Resolve API mail permission/capability with Refrens first, then retry only the preserved failed recipient using Invio's existing duplicate-invoice-safe flow.
+
+
+## Odoo production provider — v1.0.0.1.40.2
+
+The first production release ships Odoo Provider v1.0.0 under `providers/plugins/odoo/`. Load it explicitly from **Providers → Load Provider**, review the trusted-code warning, add an Odoo account and run API Test. Start live use with one controlled recipient. The owner has accepted a real Odoo end-to-end invoice send as the production provider path for this release.

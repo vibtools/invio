@@ -107,3 +107,8 @@ The application/runtime dependency set is unchanged. For the Windows CI build, p
 ## v1.0.0.1.40.2 provider credential note
 
 Agiled still uses the existing single protected `API Key` credential field. A successful Agiled API Test requires the key to be valid for the current Agiled Public API and the `GET https://api.agiled.ai/public/v1/me` scope. No Agiled base URL is user-configured in Invio; the verified endpoint is fixed by the built-in adapter. Agiled Task sending remains unavailable in this candidate.
+
+
+## Bundled Odoo external provider — v1.0.0.1.40.2 production release
+
+The production release includes the validated Odoo Provider v1.0.0 under `providers/plugins/odoo/`. It is deliberately not auto-installed because P13 requires explicit trusted-code approval for executable external adapters. After Invio is installed, use **Providers → Load Provider** and select the bundled `provider.json`, then approve the sibling `adapter.py` only if the bundle is trusted.

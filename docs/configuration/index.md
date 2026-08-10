@@ -72,3 +72,8 @@ Settings values and persistence semantics are unchanged from v1.40. The correcti
 ## v1.0.0.1.40.2 provider configuration boundary
 
 No new Settings key or provider credential field is added. Agiled continues to store only its protected `api_key` through the existing CredentialStore. The built-in API Test uses the fixed current Public API endpoint `https://api.agiled.ai/public/v1/me`; there is no configurable Agiled endpoint override. Refrens configuration remains API Base URL, URL Key, App ID and App Secret.
+
+
+## Odoo Provider v1.0.0 configuration
+
+The bundled external Odoo plugin requires four protected Account fields: Odoo Base URL, Database, Username / Email, and API Key. The Base URL is the instance origin only; the plugin adds `/jsonrpc`. Credentials are stored through the same protected credential store as other providers. The plugin remains external trusted code and must be explicitly loaded before its Account type is available.

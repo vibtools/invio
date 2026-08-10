@@ -199,3 +199,10 @@ This is intentional. The owner-supplied current Agiled OpenAPI verifies Bearer a
 ## Refrens `HTTP 400: Not allowed to send mail` — v1.0.0.1.40.2
 
 The explicit Refrens invoice email endpoint is documented and the current Invio request shape matches that contract. If the provider returns `Not allowed to send mail`, v1.40.2 logs the message plus a separate `CODE 400` provider line. This is a Refrens-side API mail permission/capability rejection. Manual sending from the Refrens web dashboard does not prove that API mail permission is enabled. Resolve the provider-side permission before another live acceptance attempt; Invio does not bypass the rejection or falsely mark it successful.
+
+
+## Odoo provider does not appear in Accounts
+
+The production Odoo integration is shipped as an external trusted plugin, not an auto-installed packaged provider. Open **Providers → Load Provider**, select `providers/plugins/odoo/provider.json`, approve the trusted executable adapter, then add the Odoo Account. If API Test fails, verify Base URL, database technical name, username/email, API key, and that the Odoo user can access Accounting/invoice models.
+
+If an Odoo Task becomes **Uncertain**, do not blindly create a new full Task for the same recipient. Inspect Odoo for an already-created/posted invoice or already-triggered email first; the P13/P10 non-idempotent safety boundary intentionally blocks assumptions after ambiguous external writes.

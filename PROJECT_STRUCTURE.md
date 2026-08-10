@@ -212,12 +212,13 @@ No folder/module reorganization is introduced. The existing WiX build still cons
 - `docs/api/refrens-runtime.md` — scoped Refrens request mapping note for the v1.40 live correction.
 - `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.md` — private root-cause record.
 
-### v1.0.0.1.40.2 provider-contract records
 
-- `docs/api/agiled-runtime.md` — current Agiled Bearer API Test boundary and exact Task-send fail-closed rationale.
-- `docs/release-notes/1.0.0.1.40.2.md` — current local correction-candidate release note.
-- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.2.md` — Refrens/Agiled forensic root-cause record.
-- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.40.2.md` — final scoped verification record.
-- `project/specifications/BASELINE_FREEZE_v1.0.0.1.40.2.md` — next-baseline candidate record.
-- `project/specifications/P11_LIVE_ACCEPTANCE_PENDING_v1.0.0.1.40.2.md` — Refrens external live-mail gate.
-- `project/specifications/P14_CERTIFICATION_PENDING_v1.0.0.1.40.2.md` — compiled/release certification gate.
+## v1.0.0.1.40.2 production Odoo plugin distribution
+
+- `providers/plugins/odoo/provider.json` — canonical Odoo external-provider manifest shipped with the project.
+- `providers/plugins/odoo/adapter.py` — validated P13 interface-v1 executable adapter.
+- `providers/plugins/odoo/README.md`, `CHANGELOG.md`, `LICENSE`, `SHA256SUMS.txt`, `docs/` — plugin-local documentation, provenance and integrity records.
+- The `providers/plugins/` tree is **distribution source**, not `providers/packages/`; therefore Odoo does not become a reserved packaged provider ID and is not auto-installed. The existing Providers → Load Provider trusted-code flow remains authoritative.
+- `pyproject.toml` includes this tree in wheel packaging, while the existing Nuitka `providers=providers` data inclusion carries it into Windows OneDir/MSI distributions.
+
+No core runtime module, page, schema table, WorkerManager subsystem, dependency or P13 interface is added or renamed by this production finalization.

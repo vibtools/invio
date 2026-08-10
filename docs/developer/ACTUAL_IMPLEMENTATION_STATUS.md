@@ -1,11 +1,19 @@
 # Actual Implementation Status
 
-**Owner-frozen parent baseline for current correction:** `Invio v1.0.0.1.40.1`  
-**Current local source/live correction candidate:** `Invio v1.0.0.1.40.2 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
-**Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
-**Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
-**Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
-**Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
+**Official Production Baseline:** `Invio v1.0.0.1.40.2`  
+**Production status:** **ACCEPTED / FIRST PRODUCTION RELEASE**  
+**P14:** **COMPLETE BY EXPLICIT OWNER PRODUCTION ACCEPTANCE**  
+**P11 Refrens:** **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED — NON-BLOCKING FOR v1.0.0.1.40.2**  
+**Completed acceptance phases:** **13 / 14**  
+
+## v1.0.0.1.40.2 production acceptance
+
+- Owner live Odoo sending: **PASS**.
+- Odoo external adapter v1.0.0: shipped at `providers/plugins/odoo/`, P13 interface v1, explicit trusted-code load remains required.
+- Windows distribution pipeline: **green evidence accepted for P14**; final plugin-inclusion commit must be green before tag.
+- Refrens: API Test/invoice create evidence exists, but API email is provider-rejected with `HTTP 400: Not allowed to send mail`; Refrens email delivery is not certified.
+- Agiled: API Test only; Task send remains fail-closed.
+- Core schema/runtime/WorkerManager/Task contracts unchanged.
 
 ## Current Summary
 
@@ -14,11 +22,12 @@
 | Vib Tools desktop shell/pages | WORKING | Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, Settings |
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
 | Executable external provider adapter loading | WORKING by P13 contract | Optional interface-v1 `provider.json` + fixed sibling `adapter.py`; explicit trusted-code confirmation, truthful Executable/Manifest-only/Missing/Incompatible state, and fail-closed version/capability validation |
-| Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
-| Refrens normal Task sending | BLOCKED externally / LIVE ACCEPTANCE PENDING | Authentication and invoice creation succeed live; the documented API email endpoint currently returns HTTP 400 `Not allowed to send mail`, so provider-side API mail permission/capability must be resolved before live acceptance |
-| Real Add Account API Test | WORKING by built-in provider | Stripe/Refrens verification remains real; Agiled now performs the verified Bearer safe-read `GET https://api.agiled.ai/public/v1/me` on the existing dedicated dialog `QThread` |
+| Stripe built-in invoice sending | WORKING by contract | Real HTTP path exists; this production release makes no owner-live Stripe delivery claim |
+| Refrens normal Task sending | BLOCKED externally / LIVE ACCEPTANCE DEFERRED | Authentication and invoice creation succeed live; the documented API email endpoint currently returns HTTP 400 `Not allowed to send mail`, so provider-side API mail permission/capability must be resolved before live acceptance |
+| Odoo external provider invoice sending | LIVE PRODUCTION ACCEPTED | Owner-confirmed Odoo Provider v1.0.0 end-to-end invoice creation/posting/email send through P13 |
+| Real Add Account API Test | WORKING by built-in/external providers | Stripe/Refrens verification remains real; Agiled now performs the verified Bearer safe-read `GET https://api.agiled.ai/public/v1/me` on the existing dedicated dialog `QThread` |
 | Durable Accounts metadata | WORKING | Current SQLite schema v5 retains IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
-| Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
+| Protected provider credentials | WORKING / NATIVE DISTRIBUTION ACCEPTED | `keyring` only; no plaintext fallback; Windows compiled credential smoke is part of the accepted P14 distribution evidence |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
 | Durable Tasks/reservations | WORKING | Task metadata, ordered accounts, counters/message, reservations and P05 immutable execution snapshots restore |

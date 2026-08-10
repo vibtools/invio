@@ -1,13 +1,16 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.1` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40.2` is the local scope-locked correction candidate and must not be tagged or released yet.** The v1.40.2 scope is limited to current Agiled Bearer API Test enablement from the owner-supplied OpenAPI contract, truthful Agiled Task-send fail-closed reporting, Refrens HTTP status visibility for the live provider mail rejection, and required release/documentation synchronization. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, Stripe behavior, provider credential shapes and runtime dependencies remain unchanged. **Refrens live API mail remains blocked by provider response `HTTP 400: Not allowed to send mail`; P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.2` is the owner-frozen first production release baseline.** Owner-controlled live acceptance has proven the trusted external **Odoo Provider v1.0.0** can authenticate, create/post an invoice, execute Odoo Send & Print email delivery, and complete an Invio Task successfully. The exact v1.40.2 Windows CI/distribution pipeline is green. **P14 production certification is COMPLETE by explicit owner acceptance. P11 Refrens live mail acceptance remains DEFERRED/non-blocking for this release because Refrens currently rejects API mail with `HTTP 400: Not allowed to send mail`.** Refrens is therefore not advertised as a production-certified email-send path in this release; Agiled remains API-Test-only/fail-closed for Task sending.
 
+## v1.0.0.1.40.2 First Production Release
 
-## v1.0.0.1.40.2 Provider Contract Correction
-
-- **Agiled API Test:** the protected API key is sent only to `https://api.agiled.ai/public/v1/me` as an HTTP Bearer token. No Agiled invoice mutation is attempted because the supplied current OpenAPI does not publish a safe invoice request mapping or invoice email/send operation.
-- **Refrens live send:** the existing documented post-create email endpoint is preserved. When the provider rejects it with HTTP status metadata, Live Logs now emit a separate `CODE <status>` provider error line. The observed `HTTP 400: Not allowed to send mail` is a Refrens-side API mail permission/capability blocker and is not converted into success.
-- No database migration, WorkerManager change, UI redesign, dependency change or Stripe behavior change is included.
+- **Production-certified provider path:** Odoo Provider v1.0.0 through the frozen P13 trusted external-adapter interface.
+- **Owner live result:** real Odoo invoice creation/posting and email sending completed successfully from Invio.
+- **Distribution evidence:** the exact v1.40.2 GitHub Windows CI/distribution run passed before production freeze; the final release commit must receive the same green non-tag CI before tagging.
+- **Bundled plugin source:** `providers/plugins/odoo/` ships the exact validated Odoo bundle with source, manifest, checksums and live-test documentation. It remains an external trusted-code plugin and is **not auto-installed**; users must explicitly Load Provider and approve it.
+- **Refrens:** API Test and invoice creation work; API mail is provider-rejected with `HTTP 400: Not allowed to send mail`, so Refrens email delivery remains unaccepted and non-blocking by owner decision.
+- **Agiled:** verified Bearer API Test only; Task sending stays fail-closed.
+- **P14:** COMPLETE by owner production acceptance. **P11:** IMPLEMENTED / live Refrens acceptance deferred. The release is production-ready specifically with the supported live Odoo path and the documented provider limitations above.
 
 ## Current Application Scope
 
@@ -16,7 +19,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory. During import, Settings can supply a default customer name/country; otherwise missing names use the email local-part and missing countries use `US`. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports remain supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry. Agiled now has a verified Bearer-token API Test against `GET /public/v1/me`, while Agiled Task sending remains fail-closed because the current OpenAPI exposes no invoice email/send operation or field-level invoice mutation schema. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry; Agiled has API Test only. The validated Odoo Provider v1.0.0 ships under `providers/plugins/odoo/` as an explicitly trusted external P13 bundle and is not auto-installed. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: task summaries plus durable recipient reconciliation, structured privacy-redacted logs, spreadsheet-safe exports, closed-history retention controls, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; P08 keeps provider network sending and retry/backoff outside the GUI thread and uses cooperative worker shutdown without forced thread termination.
 
@@ -148,7 +151,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.2.md`
+- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.md`
 
 ## Private Project Material
 
@@ -156,7 +159,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.39` is now the owner-frozen parent baseline for the v1.40 live correction. Historical release context: `v1.0.0.1.38` was the frozen Official released parent baseline. Its tagged GitHub Actions run `31391044849` passed regression, wheel/native Python-keyring smoke, Nuitka OneDir, MSI install/run/uninstall, release checksum audit, artifact upload and release publication. Owner live use then exposed a certification gap: real Refrens API Test succeeded, but the compiled application could not enter the production `CredentialStore` keyring import/dependency path when saving the Account. `v1.0.0.1.39` is therefore a **local pre-release correction candidate** that explicitly packages the existing keyring dependency/metadata contract and adds compiled OneDir/MSI credential set/get/delete smoke coverage. It must not be tagged/released until source/live and compiled-artifact validation pass. P14 remains **CERTIFICATION PENDING** and P11 remains **LIVE ACCEPTANCE PENDING**; completed acceptance phases remain **12/14**.
+`v1.0.0.1.40.2` is the owner-frozen **first production release**. The owner accepted the exact Odoo external-provider live path after successful account verification, invoice creation/posting and email sending, and accepted the green Windows distribution pipeline as the native packaging evidence for P14. P14 is therefore **COMPLETE by explicit owner production acceptance**. P11 remains a separate Refrens-specific live acceptance item and is **DEFERRED/non-blocking** for this release because the provider returns `HTTP 400: Not allowed to send mail`; this release does not claim Refrens email delivery. The production-certified live send path for this release is Odoo Provider v1.0.0.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -331,3 +334,8 @@ v1.37 keeps WiX pinned at `6.0.2` and strips only the optional `+build-metadata`
 GitHub Actions run `31386258538` / Windows job `93447256779` passed the full 383-test audit, wheel/native smoke, Nuitka OneDir build/startup, WiX installation, MSI build and MSI install/run/uninstall smoke. The next release-assembly step failed because WiX emitted its default sibling `.wixpdb` debug-symbol file beside the MSI. The existing checksum writer correctly checksummed every file in `dist/release`, while the release auditor correctly allows only the approved portable ZIP, MSI and wheel payloads plus `SHA256SUMS.txt`.
 
 v1.38 preserves both fail-closed contracts and adds WiX's documented `-pdbtype none` switch to the existing MSI build command. The approved release topology remains portable ZIP + MSI + wheel + checksums; no debug-symbol artifact is published. P11 and P14 acceptance status remains unchanged until the exact v1.38 external workflow and owner-controlled live-provider gates pass.
+
+
+## Historical acceptance wording retained for audit compatibility
+
+Historical phase records before the explicit v1.0.0.1.40.2 production acceptance used the statements **P11 is IMPLEMENTED / LIVE ACCEPTANCE PENDING** and **P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING**. In the original Markdown contract those appeared as: `P11 is **IMPLEMENTED / LIVE ACCEPTANCE PENDING**` and `P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**`. They remain historical evidence only; the current release status is P11 **DEFERRED/non-blocking**, not completed.

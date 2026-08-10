@@ -52,6 +52,8 @@ packages = [
   "providers.packages.stripe",
   "providers.packages.refrens",
   "providers.packages.agiled",
+  "providers.plugins",
+  "providers.plugins.odoo",
   "assets",
   "assets.icons",
 ]
@@ -60,4 +62,5 @@ packages = [
 "providers.packages.stripe" = ["provider.json"]
 "providers.packages.refrens" = ["provider.json"]
 "providers.packages.agiled" = ["provider.json"]
+"providers.plugins.odoo" = ["provider.json", "adapter.py", "README.md", "CHANGELOG.md", "LICENSE", "SHA256SUMS.txt", "docs/*.md"]
 "assets.icons" = ["checkmark.svg", "app.png", "app.ico"]

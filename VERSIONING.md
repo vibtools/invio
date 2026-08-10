@@ -1,15 +1,18 @@
 # Versioning
 
-## v1.0.0.1.40.2 Local Provider-Contract Correction Candidate
+## v1.0.0.1.40.2 First Production Release
 
 - Application/source version: `1.0.0.1.40.2`
 - Windows PE file/product version: `1.0.1.4002`
 - MSI product version: `1.1.4002`
-- Reserved future exact tag: `v1.0.0.1.40.2` — **not authorized yet**
-- Parent Official Baseline for this correction: `v1.0.0.1.40.1`
-- P11: LIVE ACCEPTANCE PENDING — Refrens provider currently rejects API mail with HTTP 400 `Not allowed to send mail`
-- P14: CERTIFICATION PENDING
-- Production-ready: NO
+- Exact production tag: `v1.0.0.1.40.2`
+- Status: **FIRST PRODUCTION RELEASE — OWNER ACCEPTED**
+- P14: **COMPLETE by explicit owner production acceptance**
+- P11 Refrens: **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED — non-blocking for this production release**
+- Production-certified live provider path: **Odoo Provider v1.0.0** through the frozen P13 external-adapter interface.
+- Agiled remains API-Test-only/fail-closed for Task sending; Refrens API mail remains provider-rejected with `HTTP 400: Not allowed to send mail`.
+
+The Odoo plugin ships in the project under `providers/plugins/odoo/` and retains the existing explicit trusted-code Load Provider workflow. No core runtime version bump or architecture change is introduced by production finalization.
 
 ## v1.0.0.1.40 Local Live-Correction Candidate
 

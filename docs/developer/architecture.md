@@ -304,3 +304,8 @@ The provider/runtime architecture is unchanged. Refrens now expresses its existi
 The built-in adapter registry architecture is unchanged. Agiled now binds only `_test_agiled_account`; it still has no Task batch handler. The API-test handler sends the protected key as an HTTP Bearer token to the exact current `https://api.agiled.ai/public/v1/me` safe-read. Declared Agiled manifest capabilities remain separate from effective executable capabilities, so only `api_test` is effective. No new scheduling policy, Task runner, schema, thread, dependency or external-adapter mechanism is introduced.
 
 Refrens keeps its existing authentication -> invoice-create -> explicit invoice-email operation chain and durable invoice-reference reuse. v1.40.2 adds only HTTP status visibility at the provider logging boundary.
+
+
+## v1.0.0.1.40.2 production Odoo plugin distribution
+
+The production release adds no provider runtime interface or WorkerManager architecture. The validated Odoo adapter is stored as distribution source at `providers/plugins/odoo/` and is loaded through the existing P13 registry workflow. It is not placed under `providers/packages/`, so packaged-provider reservation/reconciliation semantics remain unchanged. Wheel metadata includes the plugin files, while the existing Nuitka `providers=providers` data inclusion carries the same tree into Windows distributions.

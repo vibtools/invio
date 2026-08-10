@@ -87,3 +87,8 @@ External manifests may optionally declare:
 ```
 
 The source bundle must contain fixed sibling `adapter.py`. Invio stages both files, validates the staged bytes before registry replacement, rejects validation-time staged-byte mutation, and validates adapter import plus `create_adapter()` without allowing a persistent `sys.path` change. The adapter must report the same provider ID and adapter version, expose interface version 1, return a `ProviderCapabilityProfile` whose executable capabilities exactly match the manifest declaration, and provide required API-Test/Task callables. Sending providers must also expose executable `api_test`, whose success requires a host-managed `SAFE_READ`. Omitting `runtime_adapter` preserves manifest-only loading but grants no executable capability.
+
+
+## Bundled external provider source — Odoo v1.0.0
+
+Invio v1.0.0.1.40.2 ships a validated external P13 bundle under `providers/plugins/odoo/`. This directory is intentionally **not** part of `providers/packages/`; therefore the `odoo` provider ID is not reserved as a packaged provider and the bundle is not auto-installed. Its `provider.json` + sibling `adapter.py` continue to use external adapter interface v1 and the existing explicit trusted-code installation path.

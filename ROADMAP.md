@@ -1,23 +1,22 @@
 # Roadmap
 
-Current owner-frozen Official Baseline: **Invio v1.0.0.1.40.1**. Current local correction candidate: **Invio v1.0.0.1.40.2 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED**.
+Current owner-frozen Official Production Baseline: **Invio v1.0.0.1.40.2 — FIRST PRODUCTION RELEASE**.
 
-Owner-frozen parent baseline for the current correction: **Invio v1.0.0.1.40.1**. Production certification remains pending.
+Owner acceptance on 2026-08-10 records a successful real Odoo end-to-end invoice delivery path through the frozen P13 external-provider contract and accepts the green Windows distribution pipeline as the P14 native packaging gate. **P14 is COMPLETE by explicit owner production acceptance.** P11 remains the separate Refrens-specific live acceptance phase and is **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED (non-blocking for v1.0.0.1.40.2)** because Refrens API mail is rejected by the provider with `HTTP 400: Not allowed to send mail`.
 
-Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. Odoo Provider v1.0.0 is the first owner-live-certified send path and ships as a trusted external plugin under `providers/plugins/odoo/`.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. Owner live v1.40.1 evidence confirms Refrens authentication and invoice creation but the provider rejects API mail with `HTTP 400: Not allowed to send mail`. v1.40.2 is the scope-locked provider-contract correction candidate; P14 is **not COMPLETE** until the corrected candidate is built and owner live/native acceptance passes.
-
-Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
+Roadmap entries are planning records. Future UI/UX, Settings, or additional provider work remains separately owner-approved and does not alter this frozen production baseline.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Completed acceptance phases: **12 / 14** (P01-P10, P12 and P13).
-- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**, **P09**, **P10**, **P12**, **P13**.
-- Outstanding acceptance gate: **P11 - Refrens End-to-End Task Enablement — IMPLEMENTED / LIVE ACCEPTANCE PENDING**.
-- Owner explicitly froze `v1.0.0.1.29` and unlocked P12 despite the separate P11 live gate; that exception is recorded rather than retroactively marking P11 complete.
-- Current status: **not production-certified**.
+- Completed acceptance phases: **13 / 14** (P01-P10, P12, P13, P14).
+- Deferred non-blocking provider-specific phase: **P11 - Refrens End-to-End Task Enablement — IMPLEMENTED / LIVE ACCEPTANCE DEFERRED**.
+- Production status: **PRODUCTION RELEASE ACCEPTED — v1.0.0.1.40.2**.
+- Production-certified live provider path: **Odoo Provider v1.0.0**.
+- Refrens email-send certification: **not accepted**; provider returns `HTTP 400: Not allowed to send mail`.
+- Agiled Task sending: **not enabled**; API Test only.
 
 ## Ordered Production Phases
 
@@ -31,10 +30,10 @@ Roadmap entries are planning records, not implementation approval. Every product
 8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23; verification-corrected in v1.0.0.1.24]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
 9. **P09 - Multi-Account Scheduling, Limits and Health [COMPLETE in v1.0.0.1.25; CI verification-corrected in v1.0.0.1.26]**: deterministic primary assignment, provider-safe per-account request pacing, runtime-only health/cooldown, and eligible pre-attempt failover without cross-account replay.
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27; verification-corrected in v1.0.0.1.28]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
-11. **P11 - Refrens End-to-End Task Enablement [IMPLEMENTED in v1.0.0.1.29; LIVE ACCEPTANCE PENDING]**: built-in Refrens Task execution using explicit required customer data; phase completion remains gated on owner-supplied live API Test, real invoice creation and recipient email delivery.
+11. **P11 - Refrens End-to-End Task Enablement [IMPLEMENTED in v1.0.0.1.29; LIVE ACCEPTANCE DEFERRED / NON-BLOCKING FOR v1.0.0.1.40.2]**: built-in Refrens Task execution using explicit required customer data; phase completion remains gated on owner-supplied live API Test, real invoice creation and recipient email delivery.
 12. **P12 - Reports, Logs, Privacy and Operational Observability [COMPLETE in v1.0.0.1.30]**: recipient-level ledger reconciliation, structured/generalized redaction, safe export and closed-history retention controls.
 13. **P13 - Executable External Provider Adapter Contract [COMPLETE in v1.0.0.1.32; verification-corrected in v1.0.0.1.33]**: versioned trusted external adapter bundles, truthful executable capability, fail-closed loading/lifecycle handling and P06/P08/P10 host integration.
-14. **P14 - Live Integration, Recovery, Packaging and Production Certification**: real provider/environment tests and final production gate.
+14. **P14 - Live Integration, Recovery, Packaging and Production Certification [COMPLETE in v1.0.0.1.40.2 by explicit owner production acceptance]**: green Windows distribution evidence plus owner-confirmed live Odoo invoice delivery satisfy the first production-release gate; provider-specific Refrens P11 remains separately deferred.
 
 Detailed dependency graph and acceptance criteria remain in `project/planning/PRODUCTION_ROADMAP.md`.
 
@@ -128,6 +127,7 @@ The v1.38 tagged release pipeline completed successfully, but owner live use dem
 
 This candidate does not add a new production phase. It corrects only the owner-observed v1.39 UI/customer-default/Refrens payload/icon issues. P11 remains LIVE ACCEPTANCE PENDING until real Refrens invoice creation plus mailbox receipt succeed. P14 remains CERTIFICATION PENDING until the corrected non-tagged compiled artifacts are also accepted. No tag/release before both gates.
 
-## v1.0.0.1.40.2 owner provider-contract gate
 
-Agiled API Test is now safely executable from the owner-supplied current OpenAPI via `GET /public/v1/me` with Bearer authentication. Agiled Task sending remains fail-closed because that OpenAPI provides no invoice email/send operation and no field-level invoice mutation schema. Refrens continues to use the documented explicit email endpoint; the live `HTTP 400: Not allowed to send mail` result is an external provider permission/capability blocker and is surfaced with explicit HTTP status logging. P11/P14 remain pending and production-ready remains NO.
+## Historical pre-production acceptance markers
+
+The v1.0.0.1.29 through pre-production v1.0.0.1.40.2 records used the exact status **P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING**; historical Markdown: `P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**`. Owner explicitly froze `v1.0.0.1.29` and unlocked P12 while that separate gate remained open. Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**. At that checkpoint, `Completed acceptance phases: **12 / 14**`. These are retained as historical audit facts; the current production status is 13/14 with P11 deferred/non-blocking and P14 complete by owner acceptance.

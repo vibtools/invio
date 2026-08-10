@@ -118,3 +118,19 @@ Agiled invoice CRUD is declared by the same OpenAPI, but Task sending remains un
 ## v1.0.0.1.40.2 Refrens live mail rejection
 
 Refrens continues to use the documented explicit post-create invoice `/email` endpoint and durable invoice-ID reuse on Retry Failed. If Refrens returns a deterministic HTTP rejection, Live Logs now include `CODE <status>`. The observed `HTTP 400: Not allowed to send mail` requires provider-side API mail permission/capability resolution and is not treated as a successful send.
+
+
+## Odoo Provider v1.0.0 — production-certified external plugin
+
+Invio v1.0.0.1.40.2 ships the owner-live-accepted Odoo plugin at `providers/plugins/odoo/`. It remains an external P13 trusted-code bundle and is not automatically installed.
+
+To use it:
+
+1. Open **Providers → Load Provider**.
+2. Select `providers/plugins/odoo/provider.json` from the Invio installation/source tree.
+3. Review and approve the trusted executable `adapter.py` warning.
+4. Add an Odoo account using Base URL, Database, Username/Email and API Key.
+5. Run API Test before creating a Task.
+6. Begin with one controlled recipient.
+
+Owner live acceptance confirms the plugin can create/post an Odoo invoice and execute invoice email sending. Invio Reports still distinguish provider acceptance from independently confirmed mailbox delivery. For partial/ambiguous non-idempotent operations, inspect Odoo before replay because the frozen P13/P10 uncertainty rules intentionally prevent blind duplicate writes.

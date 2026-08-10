@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current correction candidate: **v1.0.0.1.40.2**; owner-frozen parent baseline: **v1.0.0.1.40.1**.
+Official Production Baseline: **v1.0.0.1.40.2 — FIRST PRODUCTION RELEASE**. Owner-confirmed Odoo Provider v1.0.0 end-to-end invoice sending is the production-certified live provider path. P14 is complete by explicit owner acceptance; Refrens P11 live email acceptance is deferred/non-blocking.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,7 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.40.2.md` - current Agiled API-test/Refrens provider-error correction candidate.
+- `release-notes/1.0.0.1.40.2.md` - first production release, Odoo live acceptance, and provider certification boundaries.
 - `api/agiled-runtime.md` - verified Agiled Bearer API Test boundary and Task-send fail-closed rationale.
 - `release-notes/1.0.0.1.38.md` - historical P14 WiX release-inventory correction release.
 - `release-notes/1.0.0.1.27.md` - original P10 completion release.
@@ -142,3 +142,8 @@ The owner-frozen v1.40 baseline now proves real Refrens invoice creation but exp
 ## v1.0.0.1.40.2 provider note
 
 Agiled Account API Test is now executable against the exact current `GET https://api.agiled.ai/public/v1/me` Bearer endpoint. Agiled Task sending is still unavailable because the supplied OpenAPI does not define an invoice email/send operation or field-level invoice mutation schema. Refrens live API mail remains blocked by the provider response `HTTP 400: Not allowed to send mail`; Invio logs the provider HTTP status explicitly and does not convert the rejection into success.
+
+
+## Current production baseline
+
+**Invio v1.0.0.1.40.2** is the first owner-accepted production release. Odoo Provider v1.0.0 is the live end-to-end accepted invoice-send path. P14 is complete by explicit owner production acceptance; Refrens P11 live mail acceptance remains deferred/non-blocking and is not claimed as certified delivery.

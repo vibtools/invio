@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.40.2 - First Production Release Finalization
+
+- Owner live acceptance proves the trusted Odoo Provider v1.0.0 completes the end-to-end Invio workflow through Odoo authentication, customer/invoice processing, posting and invoice email sending.
+- Ships the exact validated Odoo external-provider bundle under `providers/plugins/odoo/` without changing P13 interface v1, auto-installing trusted code, or modifying core provider/runtime architecture.
+- Adds wheel-content verification and repository regression coverage so the Odoo bundle is present and P13-compatible in the final v1.40.2 distribution source.
+- Marks P14 **COMPLETE by explicit owner production acceptance** using the green v1.40.2 Windows distribution pipeline plus successful live Odoo delivery evidence.
+- Keeps P11 Refrens live acceptance **DEFERRED/non-blocking** for this production release; Refrens API mail remains provider-rejected with `HTTP 400: Not allowed to send mail` and is not represented as a production-certified send path.
+- Agiled remains API-Test-only/fail-closed for Task sending. Stripe behavior is unchanged and no unsupported provider behavior is fabricated.
+- No application version bump is made: this is the final release certification/inclusion state for `v1.0.0.1.40.2`.
+
 ## v1.0.0.1.40.2 - Agiled API-Test Contract and Refrens Provider-Error Visibility Candidate
 
 - Freezes owner-approved `v1.0.0.1.40.1` as the parent Official Baseline for this correction.
