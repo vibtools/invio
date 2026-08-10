@@ -47,6 +47,23 @@ class DeliveryRunRecord:
     finished_at: str = ""
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class RecipientDeliveryReportRecord:
+    task_id: str
+    task_name: str
+    recipient_email: str
+    provider_id: str
+    safe_status: str
+    attempts: int
+    account_reference: str
+    provider_invoice_reference: str
+    last_stage: str
+    error_code: str
+    provider_send_acceptance: str
+    email_delivery: str
+
 @dataclass(frozen=True, slots=True)
 class DeliveryLedgerSummary:
     task_id: str

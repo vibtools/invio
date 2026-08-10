@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -25,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..core.observability import StructuredLogEvent, atomic_write_csv, atomic_write_text, redact_sensitive_text
 from ..core.provider_manager import ProviderManager, ProviderManifest, ProviderManifestError
 from ..core.provider_runtime import (
     ProviderRuntime,
@@ -36,7 +36,7 @@ from ..core.provider_runtime import (
     preflight_task,
 )
 from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowState
-from ..core.storage import CredentialStore, DomainStore
+from ..core.storage import CredentialStore, DomainStore, DomainStoreError
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
 from ..customers.importers import import_customers
@@ -70,8 +70,6 @@ from .styles import app_qss
 from .tokens import CONST, NAV_ITEMS
 from .widgets import hbox, label, status_badge, token_chip, vbox
 
-_KEY_MASK = re.compile(r"\b(?:sk|rk)_(?:test|live)_[A-Za-z0-9_\-]+\b", re.I)
-
 
 class MainWindow(QMainWindow):
     def __init__(self, project_root: Path):
@@ -96,6 +94,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons: dict[str, QPushButton] = {}
         self._persistence_faulted_tasks: set[str] = set()
         self._shutdown_pending = False
+        self._last_report_load_error = ""
 
         self.setWindowTitle("Invio — Vib Tools")
         self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
@@ -108,7 +107,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.29 started.")
+        self.log("Invio v1.0.0.1.30 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -226,7 +225,13 @@ class MainWindow(QMainWindow):
             self.load_provider,
             self._runtime_capabilities_for_provider,
         )
-        self.reports_page = ReportsPage(self.state, self.export_report)
+        self.reports_page = ReportsPage(
+            self.state,
+            self.export_report,
+            self._load_recipient_report,
+            self.export_recipient_report,
+            self.clear_delivery_history,
+        )
         self.logs_page = LogsPage(self.clear_logs, self.export_logs)
         self.settings_page = SettingsPage(self.app_settings, self.save_app_settings)
 
@@ -249,13 +254,14 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.29")
+        self.runtime_status = QLabel("Production • v1.0.0.1.30")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
         self.worker_manager.progress_changed.connect(self._worker_progress)
         self.worker_manager.status_changed.connect(self._worker_status)
-        self.worker_manager.log_message.connect(lambda task_id, message: self.log(f"{task_id}: {message}"))
+        self.worker_manager.log_message.connect(self._worker_plain_log)
+        self.worker_manager.structured_log_message.connect(self._worker_structured_log)
         self.worker_manager.finished.connect(self._worker_finished)
         self.worker_manager.all_stopped.connect(self._complete_pending_shutdown)
 
@@ -363,14 +369,72 @@ class MainWindow(QMainWindow):
             default_button=QMessageBox.StandardButton.No,
         )
 
-    def log(self, message: str) -> None:
-        safe = _KEY_MASK.sub(lambda match: f"{match.group(0)[:10]}…***MASKED***", str(message))
-        if self.app_settings.show_log_timestamps:
-            rendered = f"{datetime.now().strftime('%H:%M:%S')} | {safe}"
-        else:
-            rendered = safe
+    def _provider_secret_values(self) -> tuple[str, ...]:
+        values: set[str] = set()
+        sensitive_keys = {"secret_key", "app_secret", "api_key", "access_token", "token", "password"}
+        for account in self.state.accounts.values():
+            manifest = None
+            try:
+                manifest = self.providers.get_installed(account.provider_id) or self.providers.get_packaged(account.provider_id)
+            except ProviderManifestError:
+                manifest = None
+            password_fields = {
+                field.key for field in manifest.credential_fields if field.kind == "password"
+            } if manifest is not None else set()
+            for key, value in account.credentials.items():
+                if value and (key in sensitive_keys or key in password_fields):
+                    values.add(str(value))
+        return tuple(sorted(values, key=len, reverse=True))
+
+    def log(
+        self,
+        message: str,
+        *,
+        severity: str = "INFO",
+        category: str = "APPLICATION",
+        task_id: str = "",
+        extra_secrets: tuple[str, ...] = (),
+    ) -> None:
+        event = StructuredLogEvent(severity=severity, category=category, message=str(message), task_id=task_id)
+        safe_message = redact_sensitive_text(
+            event.message,
+            secret_values=(*self._provider_secret_values(), *extra_secrets),
+            mask_emails=True,
+        )
+        safe_event = StructuredLogEvent(
+            severity=event.severity,
+            category=event.category,
+            message=safe_message,
+            task_id=event.task_id,
+        )
+        task_ref = safe_event.task_id or "-"
+        body = f"{safe_event.severity:<7} | {safe_event.category:<8} | {task_ref} | {safe_event.message}"
+        rendered = f"{datetime.now().strftime('%H:%M:%S')} | {body}" if self.app_settings.show_log_timestamps else body
         if hasattr(self, "logs_page"):
-            self.logs_page.append(rendered)
+            self.logs_page.append_event(safe_event, rendered)
+
+    def _worker_plain_log(self, task_id: str, message: str) -> None:
+        severity = "ERROR" if str(message).startswith("Worker error:") else "INFO"
+        self.log(message, severity=severity, category="TASK", task_id=task_id)
+
+    def _worker_structured_log(self, task_id: str, severity: str, category: str, message: str) -> None:
+        self.log(message, severity=severity, category=category, task_id=task_id)
+
+    def _load_recipient_report(self):
+        try:
+            records = self.domain_store.recipient_delivery_report()
+        except DomainStoreError as exc:
+            message = str(exc)
+            if message != self._last_report_load_error:
+                self._last_report_load_error = message
+                self.log(
+                    f"Recipient delivery history could not be read: {message}",
+                    severity="ERROR",
+                    category="STORAGE",
+                )
+            return ()
+        self._last_report_load_error = ""
+        return records
 
     def _refresh_dashboard(self) -> None:
         if hasattr(self, "dashboard_page"):
@@ -1183,45 +1247,135 @@ class MainWindow(QMainWindow):
             self.log(f"{task.name}: worker finished with {effective_status}.")
 
     # Reports / logs ---------------------------------------------------
+    def _export_failure(self, label: str, exc: BaseException) -> None:
+        self.log(f"{label} could not be saved: {exc}", severity="ERROR", category="EXPORT")
+        self._message(
+            "Export Failed",
+            f"{label} could not be saved. No completed export was reported.\n\n{exc}",
+            QMessageBox.Icon.Warning,
+        )
+
     def export_report(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export Task Report", self._save_dialog_path("invio_task_report.csv"), "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Task Report", self._save_dialog_path("invio_task_report.csv"), "CSV (*.csv)"
+        )
         if not path:
             return
+        rows: list[list[object]] = [[
+            "Task", "Provider", "Invoice Template", "Accounts", "Customer List",
+            "Total", "Success", "Failed", "Remaining", "Status",
+        ]]
+        rows.extend(
+            [
+                task.name,
+                task.provider_name,
+                task.invoice_template_name,
+                "; ".join(task.account_names),
+                task.customer_list_name,
+                task.total,
+                task.success,
+                task.failed,
+                task.remaining,
+                task.status,
+            ]
+            for task in self.state.tasks.values()
+        )
+        try:
+            atomic_write_csv(path, rows)
+        except (PermissionError, OSError, UnicodeError, csv.Error) as exc:
+            self._export_failure("Task report", exc)
+            return
+        except Exception as exc:
+            self._export_failure("Task report", exc)
+            return
         self._remember_dialog_path(path)
-        with Path(path).open("w", encoding="utf-8-sig", newline="") as handle:
-            writer = csv.writer(handle)
-            writer.writerow(["Task", "Provider", "Invoice Template", "Accounts", "Customer List", "Total", "Success", "Failed", "Remaining", "Status"])
-            for task in self.state.tasks.values():
-                writer.writerow(
-                    [
-                        task.name,
-                        task.provider_name,
-                        task.invoice_template_name,
-                        "; ".join(task.account_names),
-                        task.customer_list_name,
-                        task.total,
-                        task.success,
-                        task.failed,
-                        task.remaining,
-                        task.status,
-                    ]
-                )
-        self.log(f"Report exported: {Path(path).name}")
+        self.log(f"Task report exported: {Path(path).name}", category="EXPORT")
+
+    def export_recipient_report(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Recipient Report", self._save_dialog_path("invio_recipient_report.csv"), "CSV (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            records = self.domain_store.recipient_delivery_report()
+            rows: list[list[object]] = [[
+                "Task", "Recipient", "Provider", "Safe Status", "Attempts", "Account Reference",
+                "Provider Invoice", "Last Stage", "Error Code", "Provider Send Acceptance", "Email Delivery",
+            ]]
+            rows.extend(
+                [
+                    f"{record.task_name} ({record.task_id})",
+                    record.recipient_email,
+                    record.provider_id,
+                    record.safe_status,
+                    record.attempts,
+                    record.account_reference,
+                    record.provider_invoice_reference,
+                    record.last_stage,
+                    record.error_code,
+                    record.provider_send_acceptance,
+                    record.email_delivery,
+                ]
+                for record in records
+            )
+            atomic_write_csv(path, rows)
+        except (DomainStoreError, PermissionError, OSError, UnicodeError, csv.Error) as exc:
+            self._export_failure("Recipient report", exc)
+            return
+        except Exception as exc:
+            self._export_failure("Recipient report", exc)
+            return
+        self._remember_dialog_path(path)
+        self.log(f"Recipient report exported: {Path(path).name}", category="EXPORT")
+
+    def clear_delivery_history(self) -> None:
+        answer = self._question(
+            "Clear Delivery History",
+            "Delete persisted delivery history only for Tasks that are already closed? "
+            "Open Task recovery records will be preserved.",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            task_count, run_count = self.domain_store.clear_closed_delivery_history()
+        except DomainStoreError as exc:
+            self.log(f"Delivery history could not be cleared: {exc}", severity="ERROR", category="STORAGE")
+            self._message("Clear Delivery History", f"Delivery history could not be cleared.\n\n{exc}", QMessageBox.Icon.Warning)
+            return
+        self.reports_page.refresh()
+        self.log(
+            f"Cleared delivery history for {task_count} closed Task(s) across {run_count} run(s); open Task recovery data was preserved.",
+            category="PRIVACY",
+        )
 
     def clear_logs(self) -> None:
         if self.app_settings.confirm_clear_logs:
-            answer = self._question("Clear Live Logs", "Clear all log entries currently shown?")
+            answer = self._question(
+                "Clear Live Logs",
+                "Clear only the current in-memory Live Logs view? Persisted delivery history will be retained.",
+            )
             if answer != QMessageBox.StandardButton.Yes:
                 return
         self.logs_page.clear()
-        self.log("Log view cleared.")
+        self.log("Current Live Logs view cleared; persisted delivery history was retained.", category="PRIVACY")
 
     def export_logs(self) -> None:
-        path, _ = QFileDialog.getSaveFileName(self, "Export Logs", self._save_dialog_path("invio_logs.txt"), "Text (*.txt)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Logs", self._save_dialog_path("invio_logs.txt"), "Text (*.txt)"
+        )
         if not path:
             return
+        try:
+            atomic_write_text(path, self.logs_page.viewer.toPlainText(), encoding="utf-8")
+        except (PermissionError, OSError, UnicodeError) as exc:
+            self._export_failure("Live Logs", exc)
+            return
+        except Exception as exc:
+            self._export_failure("Live Logs", exc)
+            return
         self._remember_dialog_path(path)
-        Path(path).write_text(self.logs_page.viewer.toPlainText(), encoding="utf-8")
+        self.log(f"Live Logs exported: {Path(path).name}", category="EXPORT")
 
     def _complete_pending_shutdown(self) -> None:
         if not self._shutdown_pending or self.worker_manager.has_active_workers():

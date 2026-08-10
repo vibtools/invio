@@ -1,7 +1,7 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.28`  
-**Status:** Forensic inventory. No runtime code is changed by this document.
+**Baseline:** `v1.0.0.1.30`  
+**Status:** Current error-handling inventory including P12 export/privacy behavior.
 
 ## 1. Current Error-Handling Layers
 
@@ -408,3 +408,7 @@ At startup, unfinished `Running` ledger runs become `Interrupted`; unresolved mu
 - Refrens 429/network/timeout/408/5xx enter provider-wide P09 cooldown; no speculative account hopping is introduced.
 - A successful create response without `_id` is treated as uncertain rather than falsely reported as delivered.
 - Durable `Uncertain` Refrens recipients are excluded from automatic Resume/Retry.
+
+## P12 Export/Privacy Error Handling - v1.0.0.1.30
+
+Task/recipient/log exports catch file/encoding/CSV failures at the UI boundary, emit a structured `ERROR/EXPORT` event and show a user-facing failure dialog instead of allowing the Qt handler to fail. Atomic sibling-temp writes protect an existing target from partial replacement. New durable provider error messages use centralized secret redaction before persistence. Historical ledger rows are not rewritten.

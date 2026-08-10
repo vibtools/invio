@@ -137,3 +137,7 @@ No folder/module/page/schema/dependency structure is added, removed, renamed or 
 ## v1.0.0.1.29 P11 Structure Note
 
 P11 adds no application folder, runtime package, UI page, customer field, database table, dependency or worker subsystem. Refrens adapter capability/scheduling stays in `src/core/provider_runtime/adapters.py`; provider/customer/host preflight stays in `preflight.py`; the batch/auth/invoice Task flow stays in `runtime.py`; existing schema-v5 ledger interpretation is extended in `src/tasks/delivery_ledger.py` and `src/core/storage/domain_store.py`; existing MainWindow action messaging prevents uncertain-only Refrens automatic Resume. `tests/test_p11_refrens_task.py` adds focused regression coverage.
+
+## v1.0.0.1.30 P12 Structure Note
+
+P12 adds `src/core/observability.py` as a focused non-persistent observability/privacy/export helper. Existing Reports and Live Logs pages are extended in place; no new application page, database table, provider package, Settings control or dependency is added.

@@ -125,3 +125,9 @@ After restart or a retry/resume, Invio keeps a recipient `Uncertain` when an ear
 Refrens Task execution requires a successfully API-tested Refrens account using the exact API Base URL `https://api.refrens.com`, plus Customer List records with explicit Email, Name and two-letter Country. Do not leave Name or Country blank. Indian recipients are currently blocked because Invio's approved customer model does not contain the Refrens-required GST State field. Automatic Tax and Customer Reuse remain unsupported by the current Refrens Task contract. If a Refrens invoice-create/email request has an uncertain network outcome, Invio keeps that recipient uncertain and does not automatically send it again.
 
 This release is an implementation candidate: owner live API Test, real invoice creation and recipient email delivery must still be verified before P11 is marked complete.
+
+## Reports, Logs and Privacy - v1.0.0.1.30
+
+**Reports** keeps the Task summary and adds **Recipient Delivery History**. A `Provider Accepted` result means the provider accepted the send/create request; it does not prove mailbox delivery unless an independent delivery-confirmation event exists. Use **Export Recipient CSV** for the same privacy-bounded fields. CSV exports are written safely for spreadsheet opening.
+
+**Live Logs** show severity/category metadata and mask recipient email addresses plus provider secrets. **Clear Logs** clears only the current view. **Clear Delivery History** is separate and deletes only history for Tasks already closed; open Task recovery history is protected.

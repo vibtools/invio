@@ -2,12 +2,13 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.28` is the P10 verification-corrected Persistent Delivery Ledger, Idempotency and Recovery baseline on the verified P09 baseline. P01-P07 behavior and provider contracts remain preserved. P08 changes reliability behavior inside the existing ProviderRuntime/WorkerManager/MainWindow boundaries without adding a UI page, database schema, dependency, Refrens production Task runner, Agiled execution, or dynamic external-provider loading architecture.
+Invio `v1.0.0.1.30` is the owner-approved P12 observability baseline built on the explicitly frozen `v1.0.0.1.29` P11 implementation. P12 extends the existing Reports/Live Logs and schema-v5 ledger read/retention surfaces without changing provider send semantics, database schema, dependencies, Task state machine, customer model or one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
 
 ## 2. Core Responsibilities
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
-- `src/core/provider_runtime/`: internal packaged-provider adapter registry, existing API verification/invoice execution, plus P06 capability/preflight validation.
+- `src/core/provider_runtime/`: internal packaged-provider adapter registry, Stripe/Refrens API verification/invoice execution, P06 preflight and structured provider log emission.
+- `src/core/observability.py`: non-persistent structured-log validation, provider-neutral secret/email redaction, spreadsheet-safe text handling and atomic export helpers.
 - `src/core/settings/`: non-sensitive per-user JSON preferences.
 - `src/core/state/`: domain invariants plus persistence coordination for state mutations.
 - `src/core/storage/schema.py`: SQLite schema version and DDL.
@@ -225,3 +226,7 @@ The schema-v5 architecture is unchanged. `DomainStore` now reconstructs uncertai
 ## P11 Refrens Task pipeline - v1.0.0.1.29
 
 P11 enables the existing packaged Refrens adapter without adding a subsystem. The flow is `P06 preflight -> P10 begin_delivery_run -> existing task QThread -> Refrens auth -> invoice-create/email -> P10 operation/result reconciliation`. Customer data comes only from the immutable P05 `CustomerRecord` snapshot. P09 pacing is 1 request/second/account with burst 1 for Refrens, while provider-wide health suppresses speculative account hopping. Authentication can use P08 bounded retry; the invoice mutation is single-shot because the approved/current Refrens contract has no provider idempotency key in Invio. The ledger stores no JWT/App Secret and records the returned invoice `_id` as provider invoice/reference evidence. Schema remains v5 and WorkerManager is unchanged.
+
+## P12 Observability Architecture - v1.0.0.1.30
+
+`src/core/observability.py` provides structured log metadata validation, provider-neutral secret redaction, recipient-email masking, spreadsheet-safe text conversion and atomic text/CSV writes. `DomainStore.recipient_delivery_report()` derives support rows directly from the schema-v5 P10 ledger; `clear_closed_delivery_history()` transactionally removes only runs whose Task row no longer exists. `WorkerManager` keeps one QThread per Task and preserves `TaskExecutionContext.log`, adding only an optional structured-log callback/signal. No persistent log store is introduced.

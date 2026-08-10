@@ -98,3 +98,7 @@ No storage schema, table, provider API, dependency, page, Task action/status, Wo
 ## v1.0.0.1.29 P11 compatibility
 
 The P11 implementation candidate keeps Python/PySide6/keyring/openpyxl requirements unchanged, preserves SQLite schema v5, one Task = one QThread, the existing Task state machine and customer model, and does not alter Stripe or Agiled packaged provider manifests. Refrens Task execution requires explicit email/name/country, rejects India under the current model because GST State is unavailable, and uses only the canonical `https://api.refrens.com` endpoint. P11 remains live-acceptance pending.
+
+## v1.0.0.1.30 P12 compatibility
+
+No dependency, provider ID, credential field, Task/customer/template model, provider manifest, scheduling policy or SQLite schema change is introduced. SQLite remains schema v5 with exactly three P10 delivery-ledger tables. Existing task CSV remains available; recipient CSV and structured logs are additive. WorkerManager retains one QThread per Task and plain `TaskExecutionContext.log` compatibility while adding optional structured log metadata transport.

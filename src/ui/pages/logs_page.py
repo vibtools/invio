@@ -5,6 +5,7 @@ from collections.abc import Callable
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QPlainTextEdit, QVBoxLayout, QWidget
 
+from ...core.observability import StructuredLogEvent
 from ..widgets import button, label, page_header
 
 
@@ -12,6 +13,8 @@ class LogsPage(QWidget):
     def __init__(self, on_clear: Callable[[], None], on_export: Callable[[], None]):
         super().__init__()
         self._auto_scroll = True
+        self._max_entries = 0
+        self.events: list[StructuredLogEvent] = []
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
@@ -48,10 +51,18 @@ class LogsPage(QWidget):
 
     def configure(self, *, auto_scroll: bool, max_entries: int) -> None:
         self._auto_scroll = bool(auto_scroll)
+        self._max_entries = max(0, int(max_entries))
         self.auto_scroll_status.setText("Auto-scroll: On" if self._auto_scroll else "Auto-scroll: Off")
-        self.viewer.document().setMaximumBlockCount(max(0, int(max_entries)))
+        self.viewer.document().setMaximumBlockCount(self._max_entries)
+
+    def append_event(self, event: StructuredLogEvent, rendered: str) -> None:
+        self.events.append(event)
+        if self._max_entries > 0 and len(self.events) > self._max_entries:
+            del self.events[: len(self.events) - self._max_entries]
+        self.append(rendered)
 
     def append(self, message: str) -> None:
+        """Backward-compatible plain text append for existing callers/tests."""
         scroll_bar = self.viewer.verticalScrollBar()
         previous_value = scroll_bar.value()
         self.viewer.appendPlainText(message)
@@ -61,4 +72,5 @@ class LogsPage(QWidget):
             scroll_bar.setValue(min(previous_value, scroll_bar.maximum()))
 
     def clear(self) -> None:
+        self.events.clear()
         self.viewer.clear()

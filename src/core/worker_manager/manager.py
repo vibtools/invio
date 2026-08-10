@@ -16,6 +16,7 @@ class TaskExecutionContext:
     stop_flag: threading.Event
     progress: Callable[[int, int, int, str], None]
     log: Callable[[str], None]
+    structured_log: Callable[[str, str, str], None] | None = None
 
 
 class TaskRunner(Protocol):
@@ -26,6 +27,7 @@ class _TaskWorker(QObject):
     progress_changed = Signal(str, int, int, int, str)
     status_changed = Signal(str, str, str)
     log_message = Signal(str, str)
+    structured_log_message = Signal(str, str, str, str)
     finished = Signal(str, str)
 
     def __init__(self, task: Task, runner: TaskRunner):
@@ -47,6 +49,9 @@ class _TaskWorker(QObject):
                 self.task.id, processed, success, failed, message
             ),
             log=lambda message: self.log_message.emit(self.task.id, message),
+            structured_log=lambda severity, category, message: self.structured_log_message.emit(
+                self.task.id, severity, category, message
+            ),
         )
         final_status = "Completed"
         try:
@@ -89,6 +94,7 @@ class WorkerManager(QObject):
     progress_changed = Signal(str, int, int, int, str)
     status_changed = Signal(str, str, str)
     log_message = Signal(str, str)
+    structured_log_message = Signal(str, str, str, str)
     finished = Signal(str, str)
     all_stopped = Signal()
 
@@ -111,6 +117,7 @@ class WorkerManager(QObject):
         worker.progress_changed.connect(self.progress_changed)
         worker.status_changed.connect(self.status_changed)
         worker.log_message.connect(self.log_message)
+        worker.structured_log_message.connect(self.structured_log_message)
         worker.finished.connect(self._forward_finished)
         worker.finished.connect(thread.quit)
         worker.finished.connect(worker.deleteLater)

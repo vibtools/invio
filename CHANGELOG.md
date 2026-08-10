@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.0.1.30 - P12 Reports, Logs, Privacy and Operational Observability
+
+- Adds recipient-level reconciliation backed exclusively by the existing P10 delivery ledger, including safe status, distinct attempts, account reference, provider invoice reference, last stage/error code, provider-send acceptance and independent email-delivery state.
+- Presents successful provider send evidence as **Provider Accepted** and never as independently confirmed email delivery without a separate delivery event.
+- Adds structured `INFO/WARNING/ERROR` logs with bounded operational categories and preserves plain TaskExecutionContext log compatibility.
+- Generalizes provider-secret redaction and masks recipient email in Live Logs while retaining full email only in explicit Reports/recipient exports.
+- Preserves Task CSV export, adds Recipient CSV export, uses atomic writes, handles export failures without crashing Qt event handlers, and neutralizes spreadsheet formula injection in CSV text cells.
+- Defines delivery-ledger retention as indefinite by default and adds confirmed clearing of only already-closed Task history; open Task recovery rows remain protected.
+- Keeps SQLite schema v5, exactly three P10 ledger tables, provider manifests, dependencies, provider send semantics, P09 scheduling and P10 idempotency/recovery unchanged.
+- P12 is COMPLETE. P11 live Refrens acceptance remains pending; completed acceptance phases are 11/14.
+
 ## v1.0.0.1.29 - P11 Refrens End-to-End Task Implementation Candidate
 
 - Enables the built-in Refrens adapter for Task invoice/send execution using the existing immutable customer email/name/country records; all three values are required and no customer data is guessed.

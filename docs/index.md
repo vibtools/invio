@@ -83,3 +83,7 @@ P10 remains complete and schema remains v5. This verification correction ensures
 ## v1.0.0.1.29 P11 implementation candidate
 
 Refrens Task execution is implemented behind explicit customer-data, canonical-host, scheduling, retry/no-replay and durable-ledger safety rules. Live owner acceptance has not yet been executed, so P11 remains live-acceptance pending and production progress remains 10/14.
+
+## v1.0.0.1.30 P12 observability
+
+P12 adds durable recipient reconciliation, provider-acceptance vs independent-email-delivery distinction, structured privacy-redacted logs, atomic spreadsheet-safe report exports and closed-history retention controls. P11 live Refrens acceptance remains separately pending.

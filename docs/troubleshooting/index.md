@@ -121,3 +121,9 @@ This is intentional when an earlier side-effecting provider operation still has 
 - **Untrusted endpoint:** set API Base URL exactly to `https://api.refrens.com` and re-test the account; credentials are not sent to other hosts.
 - **Uncertain delivery:** do not manually assume failure and re-run the same recipient. An ambiguous invoice-create/email outcome is retained as `Uncertain` to avoid duplicate delivery; automatic Refrens replay is disabled for that recipient.
 - **Live acceptance:** P11 remains live-acceptance pending until an owner-controlled Refrens environment confirms API Test, invoice creation and recipient email delivery.
+
+## Report or log export fails
+
+Invio reports export write/permission/encoding failures in a dialog and keeps the application running. Choose a writable destination and retry. Exports use a temporary sibling file and only replace the final target after a complete write.
+
+If recipient history appears `Provider Accepted`, remember that this means provider acceptance, not independently confirmed mailbox delivery. `Uncertain` means the durable ledger cannot safely prove the provider-side result and must not be interpreted as success or definitive failure.

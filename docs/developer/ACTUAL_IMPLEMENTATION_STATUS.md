@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.28`  
-**Completed production phases:** P01, P02, P03, P04, P05, P06, P07, P08  
+**Baseline:** `Invio v1.0.0.1.30`  
+**Completed acceptance phases:** P01-P10 and P12 (11/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -13,7 +13,7 @@
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
 | Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute arbitrary provider code; v1.0.0.1.21 adds only an internal packaged-provider adapter registry |
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
-| Refrens normal Task sending | BLOCKED | P04 can store explicit name/country, but the production Refrens Task runner remains P11 |
+| Refrens normal Task sending | WORKING by automated contract / LIVE ACCEPTANCE PENDING | P11 runner is implemented with explicit name/country/host/no-replay/P10-ledger safeguards; owner live API/invoice/email acceptance remains outstanding |
 | Real Add Account API Test | WORKING/PARTIAL by provider | Stripe/Refrens verification is real on a dedicated dialog `QThread`; Agiled intentionally fails closed pending contract revalidation |
 | Durable Accounts metadata | WORKING | Current SQLite schema v5 retains IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
@@ -27,6 +27,7 @@
 | Retry Failed / Resume Remaining in current session | WORKING | P07 uses exact ProviderRuntime failed/pending sets and immutable P05 ordering |
 | Retry Failed / Resume Remaining after app restart | WORKING | P10 uses durable latest recipient outcomes and exact attempted-account binding; unsupported historical evidence fails closed |
 | Recipient delivery ledger/provider IDs | WORKING | Schema v5 stores runs, per-run recipients, operations, attempts, idempotency evidence, provider customer/invoice IDs and sanitized errors |
+| Recipient reports / structured logs / safe exports | WORKING | P12 uses the P10 ledger for recipient support rows, structured privacy-redacted Live Logs, atomic formula-safe CSV/text exports and closed-history retention controls |
 | Settings persistence | WORKING | Existing non-sensitive JSON remains separate from P02 storage |
 
 ## P02 Durable Storage
@@ -243,3 +244,7 @@ P10 remains COMPLETE. Durable summary reconstruction now distinguishes **resolve
 ## P11 implementation candidate - v1.0.0.1.29
 
 Status: **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. The built-in Refrens adapter now exposes invoice/send/API-test execution and `_run_refrens_batch` uses the existing Task worker, immutable snapshots, deterministic account order, P09 pacing/health and P10 durable run/recipient/operation ledger. Required customer email/name/country are explicit; India is blocked because GST State is outside the approved customer model. Authentication is the only automatically retried Refrens stage; ambiguous invoice-create/email transport outcomes remain `Uncertain` and are never automatically replayed. Schema remains v5, production progress remains 10/14, and the completed-phase baseline remains v1.0.0.1.28 until live acceptance.
+
+## P12 completion - v1.0.0.1.30
+
+P12 is COMPLETE: Reports include ledger-backed recipient reconciliation, Live Logs have structured severity/category with privacy redaction, CSV/log exports are atomic and formula-injection-safe, and closed historical ledger rows can be explicitly cleared while active recovery data is protected. Schema remains v5. P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING; completed acceptance phases are 11/14.

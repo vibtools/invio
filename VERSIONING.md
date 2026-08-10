@@ -86,3 +86,7 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.29 - P11 implementation candidate
 
 `v1.0.0.1.29` contains the approved P11 Refrens Task implementation but is **not a completed-phase baseline** until the live acceptance gate passes. The application/package version advances so the implementation candidate is uniquely identifiable, while roadmap completion remains 10/14 and `v1.0.0.1.28` remains the latest completed-phase Official Baseline. No schema change occurs; SQLite remains v5 with exactly three P10 ledger tables.
+
+## v1.0.0.1.30 - P12 observability release
+
+`v1.0.0.1.30` is the owner-approved P12 release based on the explicitly frozen `v1.0.0.1.29` baseline. It adds ledger-backed recipient reporting, structured/privacy-safe logs, export hardening and closed-history retention controls without a schema or provider-send change. P12 is COMPLETE; P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING. Completed acceptance phases are 11/14.

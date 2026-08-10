@@ -8,19 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v100129(self):
+    def test_release_metadata_is_v100130(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.29"', pyproject)
-        self.assertIn('"version": "1.0.0.1.29"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.29"', project_meta)
-        self.assertIn('"current": "1.0.0.1.29"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.29"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.29', main_window)
-        self.assertIn('Invio/1.0.0.1.29', runtime)
+        self.assertIn('version = "1.0.0.1.30"', pyproject)
+        self.assertIn('"version": "1.0.0.1.30"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.30"', project_meta)
+        self.assertIn('"current": "1.0.0.1.30"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.30"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.30', main_window)
+        self.assertIn('Invio/1.0.0.1.30', runtime)
+
+    def test_release_metadata_is_v100129(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100130()
 
     def test_release_metadata_is_v100128(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -79,12 +83,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.29"', pyproject)
-        self.assertIn('"version": "1.0.0.1.29"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.29"', project_meta)
+        self.assertIn('version = "1.0.0.1.30"', pyproject)
+        self.assertIn('"version": "1.0.0.1.30"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.30"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.29', main_window)
-        self.assertIn('Invio/1.0.0.1.29', runtime)
+        self.assertIn('Production • v1.0.0.1.30', main_window)
+        self.assertIn('Invio/1.0.0.1.30', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -221,9 +225,7 @@ class RepositoryContractTests(unittest.TestCase):
             phase_log = (project_root / "planning" / "PHASE_COMPLETION_LOG.md").read_text(encoding="utf-8")
             roadmap = (project_root / "planning" / "PRODUCTION_ROADMAP.md").read_text(encoding="utf-8")
             project_readme = (project_root / "README.md").read_text(encoding="utf-8")
-            self.assertIn("**Current frozen baseline:** `v1.0.0.1.28`", phase_log)
-            self.assertIn("Production implementation phases complete: **10 / 14**", phase_log)
-            self.assertIn("Production implementation phases remaining: **4 / 14**", phase_log)
+            self.assertIn("## 2026-08-09 - P10 verification correction - v1.0.0.1.28", phase_log)
             self.assertIn("P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE - v1.0.0.1.27; verification-corrected v1.0.0.1.28]", roadmap)
             self.assertIn("## v1.0.0.1.28 P10 verification-correction records", project_readme)
 
@@ -234,9 +236,9 @@ class RepositoryContractTests(unittest.TestCase):
         adapters = (ROOT / "src" / "core" / "provider_runtime" / "adapters.py").read_text(encoding="utf-8")
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
 
-        self.assertIn("Current P11 implementation candidate: **Invio v1.0.0.1.29 - IMPLEMENTED / LIVE ACCEPTANCE PENDING**", public_roadmap)
-        self.assertIn("Production implementation phases: **10 / 14 complete**", public_roadmap)
-        self.assertIn("P12 is **not** unlocked", public_roadmap)
+        self.assertIn("P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**", public_roadmap)
+        self.assertIn("Completed acceptance phases: **11 / 14**", public_roadmap)
+        self.assertIn("Owner explicitly froze `v1.0.0.1.29` and unlocked P12", public_roadmap)
         self.assertIn("P11 is **IMPLEMENTED / LIVE ACCEPTANCE PENDING**", public_readme)
         self.assertIn("**P11 IMPLEMENTED / LIVE ACCEPTANCE PENDING.**", public_release)
         self.assertIn("Production progress remains **10/14**", public_release)
@@ -254,10 +256,35 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertTrue((project_root / "research" / "PRODUCTION_READINESS_FORENSIC_REPORT_v1.0.0.1.29.md").is_file())
             self.assertTrue((project_root / "research" / "FINAL_FORENSIC_VERIFICATION_v1.0.0.1.29.md").is_file())
             self.assertIn("P11 Refrens End-to-End | **IMPLEMENTED / LIVE ACCEPTANCE PENDING**", phase_log)
-            self.assertIn("Production implementation phases complete: **10 / 14**", phase_log)
+            self.assertIn("## 2026-08-09 - P11 Refrens End-to-End Task implementation candidate - v1.0.0.1.29", phase_log)
             self.assertIn("**Status:** IMPLEMENTED in `v1.0.0.1.29`; LIVE ACCEPTANCE PENDING", roadmap)
             self.assertIn("P11: IMPLEMENTED / LIVE ACCEPTANCE PENDING", project_readme)
             self.assertIn("not a completed-phase Official Baseline", pending)
+
+    def test_p12_completion_records_are_synchronized(self):
+        public_roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+        public_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        public_release = (ROOT / "docs" / "release-notes" / "1.0.0.1.30.md").read_text(encoding="utf-8")
+        schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
+        reports = (ROOT / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+        observability = (ROOT / "src" / "core" / "observability.py").read_text(encoding="utf-8")
+
+        self.assertIn("Current Official Baseline: **Invio v1.0.0.1.30**", public_roadmap)
+        self.assertIn("Completed acceptance phases: **11 / 14**", public_roadmap)
+        self.assertIn("P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**", public_readme)
+        self.assertIn("P12 COMPLETE", public_release)
+        self.assertIn("Recipient Delivery History", reports)
+        self.assertIn("StructuredLogEvent", observability)
+        self.assertIn("DOMAIN_SCHEMA_VERSION = 5", schema)
+        self.assertEqual(schema.count("CREATE TABLE task_delivery_"), 3)
+
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            phase_log = (project_root / "planning" / "PHASE_COMPLETION_LOG.md").read_text(encoding="utf-8")
+            baseline = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.30.md")
+            self.assertIn("P12 Reports/Logs/Privacy | **COMPLETE**", phase_log)
+            self.assertIn("Completed acceptance phases: **11 / 14**", phase_log)
+            self.assertTrue(baseline.is_file())
 
     def test_p05_schema_v4_and_task_snapshot_contract_exist(self):
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")

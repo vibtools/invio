@@ -35,6 +35,7 @@ from ...tasks.delivery_ledger import (
 )
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
 from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
+from ..observability import redact_sensitive_text
 from ..state import AppState
 from ..storage import DomainStore, DomainStoreError
 from .adapters import ProviderSchedulingPolicy, provider_adapter_contract
@@ -49,6 +50,21 @@ MAX_TOTAL_ATTEMPTS = 3
 RETRY_BASE_DELAY_SECONDS = 0.5
 RETRY_BACKOFF_CAP_SECONDS = 8.0
 RETRY_JITTER_RATIO = 0.25
+
+
+def _context_log(context: Any, message: str, *, severity: str = "INFO", category: str = "PROVIDER") -> None:
+    normalized = str(message).casefold()
+    effective_severity = severity
+    if severity == "INFO":
+        if "failed" in normalized or "worker error" in normalized:
+            effective_severity = "ERROR"
+        elif any(token in normalized for token in ("retry", "cooldown", "stopped", "uncertain", "blocked")):
+            effective_severity = "WARNING"
+    structured = getattr(context, "structured_log", None)
+    if callable(structured):
+        structured(effective_severity, category, message)
+    else:
+        context.log(message)
 
 
 class ProviderRuntimeError(RuntimeError):
@@ -714,7 +730,7 @@ class ProviderRuntime:
                         retryable=False,
                     ) from exc
                 run_id = run.run_id
-                context.log(f"Durable delivery run {run.run_id} started (run {run.run_number}).")
+                _context_log(context, f"Durable delivery run {run.run_id} started (run {run.run_number}).", category="TASK")
             try:
                 batch_handler(
                     context,
@@ -843,7 +859,7 @@ class ProviderRuntime:
             if remaining <= 0:
                 return not context.stop_flag.is_set() and _wait_for_resume(context)
             suffix = f" before {email}" if email else ""
-            context.log(
+            _context_log(context, 
                 f"{provider_id.title()} provider cooldown active; waiting {remaining:.2f}s{suffix}."
             )
             if not _cooperative_retry_wait(context, remaining):
@@ -868,7 +884,7 @@ class ProviderRuntime:
                 )
             if remaining <= 0:
                 return not context.stop_flag.is_set() and _wait_for_resume(context)
-            context.log(
+            _context_log(context, 
                 f"{provider_id.title()} account '{account.name}' is cooling down; "
                 f"waiting {remaining:.2f}s before {email}."
             )
@@ -925,7 +941,7 @@ class ProviderRuntime:
                 if candidate_blocked:
                     continue
                 if candidate_remaining <= 0:
-                    context.log(
+                    _context_log(context, 
                         f"Stripe primary account '{primary.name}' is temporarily unavailable; "
                         f"routing unattempted recipient {email} to account '{candidate.name}'."
                     )
@@ -933,7 +949,7 @@ class ProviderRuntime:
                 cooling_waits.append(candidate_remaining)
 
             wait_seconds = min(cooling_waits)
-            context.log(
+            _context_log(context, 
                 f"All eligible Stripe accounts are cooling down; waiting {wait_seconds:.2f}s before {email}."
             )
             if not _cooperative_retry_wait(context, wait_seconds):
@@ -992,10 +1008,11 @@ class ProviderRuntime:
 
     @staticmethod
     def _safe_delivery_error(account: AccountSnapshot, exc: BaseException) -> tuple[str, str, str]:
-        message = str(exc).strip()
-        for secret in sorted((value for value in account.credentials.values() if value), key=len, reverse=True):
-            message = message.replace(secret, "***REDACTED***")
-        message = message[:2000]
+        message = redact_sensitive_text(
+            str(exc).strip(),
+            secret_values=account.credentials.values(),
+            mask_emails=False,
+        )[:2000]
         if isinstance(exc, ProviderRuntimeError):
             code = f"HTTP_{exc.http_status}" if exc.http_status is not None else (exc.category or "provider")
         else:
@@ -1166,7 +1183,7 @@ class ProviderRuntime:
                     raise
                 retry_number = attempt
                 delay = self._retry_delay_seconds(retry_number, exc)
-                context.log(
+                _context_log(context, 
                     f"Stripe transient failure for {email} via account '{account.name}' "
                     f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. "
                     f"Retrying in {delay:.2f}s."
@@ -1206,7 +1223,7 @@ class ProviderRuntime:
             TaskExecutionMode.RESUME_REMAINING: "Stripe continuation",
             TaskExecutionMode.RETRY_FAILED: "Stripe failed-recipient retry",
         }[execution_mode]
-        context.log(
+        _context_log(context, 
             f"{label} started with {len(recipients)} recipient(s) using template '{snapshot.template.name}'."
         )
 
@@ -1266,7 +1283,7 @@ class ProviderRuntime:
                 if exc.category == "storage":
                     raise
                 for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
-                    context.log(message)
+                    _context_log(context, message)
                 final_result = DELIVERY_RESULT_FAILED
                 if self._domain_store is not None and run_id:
                     try:
@@ -1303,7 +1320,7 @@ class ProviderRuntime:
                         delivery.uncertain_recipients.add(email)
                     else:
                         delivery.failed_recipients.add(email)
-                context.log(f"Stripe send failed for {email} via account '{account.name}': {exc}")
+                _context_log(context, f"Stripe send failed for {email} via account '{account.name}': {exc}")
             except Exception as exc:
                 attempt_number = int(getattr(exc, "attempt_number", attempt_number))
                 final_result = DELIVERY_RESULT_FAILED
@@ -1342,7 +1359,7 @@ class ProviderRuntime:
                         delivery.uncertain_recipients.add(email)
                     else:
                         delivery.failed_recipients.add(email)
-                context.log(
+                _context_log(context, 
                     f"Stripe send failed unexpectedly for {email} via account '{account.name}': "
                     f"{type(exc).__name__}: {exc}"
                 )
@@ -1364,7 +1381,7 @@ class ProviderRuntime:
                     delivery.pending_recipients.discard(email)
                     delivery.failed_recipients.discard(email)
                     delivery.uncertain_recipients.discard(email)
-                context.log(f"Stripe invoice sent to {email} via account '{account.name}'.")
+                _context_log(context, f"Stripe invoice sent to {email} via account '{account.name}'.")
 
             attempted += 1
             summary = self.delivery_summary(context.task)
@@ -1385,7 +1402,7 @@ class ProviderRuntime:
         if summary is None or not summary.continuation_safe:
             raise ProviderRuntimeError("The Task continuation state could not be reconciled safely.")
         if context.stop_flag.is_set():
-            context.log("Stripe batch stopped by user request.")
+            _context_log(context, "Stripe batch stopped by user request.", category="TASK")
             return
         if summary.pending_recipients:
             raise ProviderRuntimeError("Task execution ended before all selected recipients were resolved safely.")
@@ -1398,7 +1415,7 @@ class ProviderRuntime:
             raise ProviderRuntimeError(
                 f"{summary.failed} recipient(s) failed. Use Retry Failed after reviewing Live Logs."
             )
-        context.log("Stripe batch completed successfully.")
+        _context_log(context, "Stripe batch completed successfully.", category="TASK")
 
     @staticmethod
     def _validate_stripe_key(secret_key: str) -> None:
@@ -1584,7 +1601,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.29 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.30 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -1767,7 +1784,7 @@ class ProviderRuntime:
                     setattr(exc, "attempt_number", attempt)
                     raise
                 delay = self._retry_delay_seconds(attempt, exc)
-                context.log(
+                _context_log(context, 
                     f"Refrens authentication transient failure for {email} via account '{account.name}' "
                     f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. Retrying in {delay:.2f}s."
                 )
@@ -1815,7 +1832,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.29 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.30 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -1971,7 +1988,7 @@ class ProviderRuntime:
             TaskExecutionMode.RESUME_REMAINING: "Refrens continuation",
             TaskExecutionMode.RETRY_FAILED: "Refrens failed-recipient retry",
         }[execution_mode]
-        context.log(
+        _context_log(context, 
             f"{label} started with {len(recipients)} recipient(s) using template '{snapshot.template.name}'."
         )
 
@@ -2058,7 +2075,7 @@ class ProviderRuntime:
                 if exc.category == "storage":
                     raise
                 for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
-                    context.log(message)
+                    _context_log(context, message)
                 final_result = DELIVERY_RESULT_FAILED
                 if self._domain_store is not None and run_id:
                     try:
@@ -2095,7 +2112,7 @@ class ProviderRuntime:
                         delivery.uncertain_recipients.add(email)
                     else:
                         delivery.failed_recipients.add(email)
-                context.log(f"Refrens send failed for {email} via account '{account.name}': {exc}")
+                _context_log(context, f"Refrens send failed for {email} via account '{account.name}': {exc}")
             except Exception as exc:
                 attempt_number = int(getattr(exc, "attempt_number", attempt_number))
                 final_result = DELIVERY_RESULT_FAILED
@@ -2134,7 +2151,7 @@ class ProviderRuntime:
                         delivery.uncertain_recipients.add(email)
                     else:
                         delivery.failed_recipients.add(email)
-                context.log(
+                _context_log(context, 
                     f"Refrens send failed unexpectedly for {email} via account '{account.name}': "
                     f"{type(exc).__name__}: {exc}"
                 )
@@ -2156,7 +2173,7 @@ class ProviderRuntime:
                     delivery.pending_recipients.discard(email)
                     delivery.failed_recipients.discard(email)
                     delivery.uncertain_recipients.discard(email)
-                context.log(f"Refrens invoice created and email requested for {email} via account '{account.name}'.")
+                _context_log(context, f"Refrens invoice created and email requested for {email} via account '{account.name}'.")
 
             attempted += 1
             summary = self.delivery_summary(context.task)
@@ -2177,7 +2194,7 @@ class ProviderRuntime:
         if summary is None or not summary.continuation_safe:
             raise ProviderRuntimeError("The Refrens Task continuation state could not be reconciled safely.")
         if context.stop_flag.is_set():
-            context.log("Refrens batch stopped by user request.")
+            _context_log(context, "Refrens batch stopped by user request.", category="TASK")
             return
         if summary.pending_recipients:
             raise ProviderRuntimeError("Refrens execution ended before all selected safe recipients were resolved.")
@@ -2190,7 +2207,7 @@ class ProviderRuntime:
             raise ProviderRuntimeError(
                 f"{summary.failed} Refrens recipient(s) failed. Use Retry Failed after reviewing Live Logs."
             )
-        context.log("Refrens batch completed successfully.")
+        _context_log(context, "Refrens batch completed successfully.", category="TASK")
 
     def build_refrens_invoice_payload(
         self,

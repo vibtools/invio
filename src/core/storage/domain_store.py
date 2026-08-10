@@ -27,6 +27,7 @@ from ...tasks.delivery_ledger import (
     DELIVERY_RUN_STOPPED,
     DeliveryLedgerSummary,
     DeliveryRunRecord,
+    RecipientDeliveryReportRecord,
     is_mutating_delivery_stage,
 )
 from ...tasks.models import (
@@ -872,6 +873,208 @@ class DomainStore:
                 raise sqlite3.IntegrityError("Delivery recipient row is missing.")
 
         self._transaction(write)
+
+    @staticmethod
+    def _delivery_send_stage(provider_id: str) -> str:
+        normalized = str(provider_id).strip().lower()
+        if normalized == "stripe":
+            return "invoice_send"
+        if normalized == "refrens":
+            return "refrens_invoice_create_email"
+        return ""
+
+    def recipient_delivery_report(self) -> tuple[RecipientDeliveryReportRecord, ...]:
+        """Return privacy-bounded recipient reconciliation rows from the P10 ledger.
+
+        The report deliberately uses only durable delivery evidence. Customer
+        names/countries and credentials are not selected into this support view.
+        """
+        try:
+            with self._connection() as connection:
+                recipient_rows = connection.execute(
+                    """SELECT r.task_id, r.task_name, r.run_number, r.provider_id AS run_provider_id, d.*
+                       FROM task_delivery_recipients AS d
+                       JOIN task_delivery_runs AS r ON r.run_id=d.run_id
+                       ORDER BY r.task_id, d.recipient_ordinal, r.run_number"""
+                ).fetchall()
+                if not recipient_rows:
+                    return ()
+
+                operation_rows = connection.execute(
+                    """SELECT r.task_id, r.run_number, o.run_id, o.recipient_ordinal, o.attempt_number,
+                              o.stage, o.status, o.idempotency_key, o.provider_reference, o.error_code, o.rowid AS operation_rowid
+                       FROM task_delivery_operations AS o
+                       JOIN task_delivery_runs AS r ON r.run_id=o.run_id
+                       ORDER BY r.task_id, o.recipient_ordinal, r.run_number, o.attempt_number, o.rowid"""
+                ).fetchall()
+
+                grouped_recipients: dict[tuple[str, int], list[sqlite3.Row]] = {}
+                for row in recipient_rows:
+                    key = (str(row["task_id"]), int(row["recipient_ordinal"]))
+                    grouped_recipients.setdefault(key, []).append(row)
+
+                grouped_operations: dict[tuple[str, int], list[sqlite3.Row]] = {}
+                for row in operation_rows:
+                    key = (str(row["task_id"]), int(row["recipient_ordinal"]))
+                    grouped_operations.setdefault(key, []).append(row)
+
+                report: list[RecipientDeliveryReportRecord] = []
+                for key, history in grouped_recipients.items():
+                    latest = history[-1]
+                    task_id, _ordinal = key
+                    email = str(latest["recipient_email"])
+                    provider_id = str(latest["provider_id"])
+                    if any(str(row["recipient_email"]) != email or str(row["provider_id"]) != provider_id for row in history):
+                        raise sqlite3.IntegrityError(
+                            "Delivery report history contains conflicting recipient/provider identity."
+                        )
+
+                    operations = grouped_operations.get(key, [])
+                    attempts = {
+                        (str(row["run_id"]), int(row["attempt_number"]))
+                        for row in operations
+                        if int(row["attempt_number"]) > 0
+                    }
+
+                    unresolved: dict[tuple[str, str], sqlite3.Row] = {}
+                    for operation in operations:
+                        stage = str(operation["stage"])
+                        if not is_mutating_delivery_stage(stage):
+                            continue
+                        status = str(operation["status"])
+                        idempotency_key = str(operation["idempotency_key"])
+                        identity = (stage, idempotency_key)
+                        if status in {DELIVERY_OPERATION_STARTED, DELIVERY_OPERATION_UNCERTAIN}:
+                            unresolved[identity] = operation
+                        elif status == DELIVERY_OPERATION_SUCCEEDED and idempotency_key:
+                            unresolved.pop(identity, None)
+
+                    final_result = str(latest["final_result"])
+                    if final_result != DELIVERY_RESULT_SUCCEEDED and unresolved:
+                        final_result = DELIVERY_RESULT_UNCERTAIN
+                    safe_status = {
+                        DELIVERY_RESULT_PENDING: "Pending",
+                        DELIVERY_RESULT_SUCCEEDED: "Provider Accepted",
+                        DELIVERY_RESULT_FAILED: "Failed",
+                        DELIVERY_RESULT_UNCERTAIN: "Uncertain",
+                    }.get(final_result, "Uncertain")
+
+                    assigned = next(
+                        (
+                            row
+                            for row in reversed(history)
+                            if str(row["assigned_account_id"]).strip()
+                        ),
+                        None,
+                    )
+                    if assigned is not None:
+                        account_id = str(assigned["assigned_account_id"])
+                        account_name = str(assigned["assigned_account_name"])
+                        account_reference = f"{account_name} ({account_id})" if account_name else account_id
+                    else:
+                        account_id = str(latest["primary_account_id"])
+                        account_name = str(latest["primary_account_name"])
+                        base = f"{account_name} ({account_id})" if account_name else account_id
+                        account_reference = f"{base} [planned]"
+
+                    provider_invoice_reference = ""
+                    for row in reversed(history):
+                        value = str(row["provider_invoice_id"]).strip()
+                        if value:
+                            provider_invoice_reference = value
+                            break
+
+                    last_stage = str(latest["stage"])
+                    error_code = str(latest["error_code"])
+                    if safe_status == "Uncertain" and unresolved:
+                        uncertain_operation = max(
+                            unresolved.values(),
+                            key=lambda row: (
+                                int(row["run_number"]),
+                                int(row["attempt_number"]),
+                                int(row["operation_rowid"]),
+                            ),
+                        )
+                        last_stage = str(uncertain_operation["stage"])
+                        error_code = str(uncertain_operation["error_code"])
+
+                    send_stage = self._delivery_send_stage(provider_id)
+                    send_operations = [row for row in operations if str(row["stage"]) == send_stage] if send_stage else []
+                    send_unresolved: dict[tuple[str, str], sqlite3.Row] = {}
+                    send_succeeded = False
+                    send_failed = False
+                    for operation in send_operations:
+                        status = str(operation["status"])
+                        idempotency_key = str(operation["idempotency_key"])
+                        identity = (str(operation["stage"]), idempotency_key)
+                        if status in {DELIVERY_OPERATION_STARTED, DELIVERY_OPERATION_UNCERTAIN}:
+                            send_unresolved[identity] = operation
+                        elif status == DELIVERY_OPERATION_SUCCEEDED:
+                            send_succeeded = True
+                            if idempotency_key:
+                                send_unresolved.pop(identity, None)
+                        elif status == DELIVERY_OPERATION_FAILED:
+                            send_failed = True
+
+                    if final_result == DELIVERY_RESULT_SUCCEEDED or (send_succeeded and not send_unresolved):
+                        provider_send_acceptance = "Accepted"
+                    elif send_unresolved:
+                        provider_send_acceptance = "Uncertain"
+                    elif send_failed:
+                        provider_send_acceptance = "Failed"
+                    else:
+                        provider_send_acceptance = "Not Reached"
+
+                    email_delivery = (
+                        "Not independently confirmed"
+                        if provider_send_acceptance in {"Accepted", "Uncertain"}
+                        else "Not confirmed"
+                    )
+                    report.append(
+                        RecipientDeliveryReportRecord(
+                            task_id=task_id,
+                            task_name=str(latest["task_name"]),
+                            recipient_email=email,
+                            provider_id=provider_id,
+                            safe_status=safe_status,
+                            attempts=len(attempts),
+                            account_reference=account_reference,
+                            provider_invoice_reference=provider_invoice_reference,
+                            last_stage=last_stage,
+                            error_code=error_code,
+                            provider_send_acceptance=provider_send_acceptance,
+                            email_delivery=email_delivery,
+                        )
+                    )
+                return tuple(report)
+        except DomainStoreError:
+            raise
+        except (sqlite3.Error, ValueError, TypeError, KeyError) as exc:
+            raise DomainStoreError(f"Recipient delivery report could not be read safely: {exc}") from exc
+
+    def clear_closed_delivery_history(self) -> tuple[int, int]:
+        """Delete only ledger history whose Task no longer exists.
+
+        Active/open Task rows remain protected because restart/recovery depends on
+        them. Child recipient/operation rows are removed by the existing schema-v5
+        ON DELETE CASCADE relationships.
+        """
+        result: dict[str, int] = {"tasks": 0, "runs": 0}
+
+        def write(connection: sqlite3.Connection) -> None:
+            row = connection.execute(
+                """SELECT COUNT(DISTINCT task_id) AS task_count, COUNT(*) AS run_count
+                   FROM task_delivery_runs
+                   WHERE task_id NOT IN (SELECT id FROM tasks)"""
+            ).fetchone()
+            result["tasks"] = int(row["task_count"] if row is not None else 0)
+            result["runs"] = int(row["run_count"] if row is not None else 0)
+            connection.execute(
+                "DELETE FROM task_delivery_runs WHERE task_id NOT IN (SELECT id FROM tasks)"
+            )
+
+        self._transaction(write)
+        return result["tasks"], result["runs"]
 
     def delivery_summary(self, task: Task) -> DeliveryLedgerSummary | None:
         try:
