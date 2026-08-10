@@ -141,3 +141,8 @@ P11 adds no application folder, runtime package, UI page, customer field, databa
 ## v1.0.0.1.30 P12 Structure Note
 
 P12 adds `src/core/observability.py` as a focused non-persistent observability/privacy/export helper. Existing Reports and Live Logs pages are extended in place; no new application page, database table, provider package, Settings control or dependency is added.
+
+
+## v1.0.0.1.31 P12 verification correction
+
+No folders or runtime modules are renamed/reorganized. `src/core/observability.py` and `src/core/storage/domain_store.py` remain in their existing P12 locations; the correction only tightens their redaction/report interpretation behavior. No new application page, storage table, provider package or dependency is introduced.

@@ -924,9 +924,28 @@ class DomainStore:
                     task_id, _ordinal = key
                     email = str(latest["recipient_email"])
                     provider_id = str(latest["provider_id"])
-                    if any(str(row["recipient_email"]) != email or str(row["provider_id"]) != provider_id for row in history):
+                    if any(
+                        str(row["recipient_email"]) != email
+                        or str(row["provider_id"]) != provider_id
+                        or str(row["run_provider_id"]) != provider_id
+                        for row in history
+                    ):
                         raise sqlite3.IntegrityError(
                             "Delivery report history contains conflicting recipient/provider identity."
+                        )
+                    primary_account_ids = {
+                        str(row["primary_account_id"])
+                        for row in history
+                        if str(row["primary_account_id"]).strip()
+                    }
+                    assigned_account_ids = {
+                        str(row["assigned_account_id"])
+                        for row in history
+                        if str(row["assigned_account_id"]).strip()
+                    }
+                    if len(primary_account_ids) > 1 or len(assigned_account_ids) > 1:
+                        raise sqlite3.IntegrityError(
+                            "Delivery report history contains conflicting account assignment evidence."
                         )
 
                     operations = grouped_operations.get(key, [])
@@ -950,7 +969,12 @@ class DomainStore:
                             unresolved.pop(identity, None)
 
                     final_result = str(latest["final_result"])
-                    if final_result != DELIVERY_RESULT_SUCCEEDED and unresolved:
+                    if unresolved:
+                        # P12 support reporting must fail closed when any mutating
+                        # provider outcome remains unresolved. A later recipient
+                        # row marked Succeeded cannot prove an earlier ambiguous
+                        # mutation safe unless the matching stage/idempotency
+                        # operation already reconciled and removed it above.
                         final_result = DELIVERY_RESULT_UNCERTAIN
                     safe_status = {
                         DELIVERY_RESULT_PENDING: "Pending",
@@ -1016,14 +1040,19 @@ class DomainStore:
                         elif status == DELIVERY_OPERATION_FAILED:
                             send_failed = True
 
-                    if final_result == DELIVERY_RESULT_SUCCEEDED or (send_succeeded and not send_unresolved):
-                        provider_send_acceptance = "Accepted"
-                    elif send_unresolved:
+                    if send_unresolved:
                         provider_send_acceptance = "Uncertain"
+                    elif send_succeeded:
+                        provider_send_acceptance = "Accepted"
                     elif send_failed:
                         provider_send_acceptance = "Failed"
                     else:
                         provider_send_acceptance = "Not Reached"
+
+                    if safe_status == "Provider Accepted" and provider_send_acceptance != "Accepted":
+                        safe_status = "Uncertain"
+                    elif provider_send_acceptance == "Accepted" and safe_status == "Failed":
+                        safe_status = "Uncertain"
 
                     email_delivery = (
                         "Not independently confirmed"

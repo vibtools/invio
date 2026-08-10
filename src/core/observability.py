@@ -17,8 +17,8 @@ _AUTH_HEADER_RE = re.compile(r"(?i)(\bauthorization\s*[:=]\s*)(?:bearer|basic)\s
 _BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=\-]+")
 _BASIC_RE = re.compile(r"(?i)\bbasic\s+[A-Za-z0-9+/=]+")
 _NAMED_SECRET_RE = re.compile(
-    r"(?i)(\b(?:app[_ -]?secret|api[_ -]?key|secret[_ -]?key|access[_ -]?token|accessToken|authorization|token)\b\s*[:=]\s*)"
-    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+    r"(?i)((?:[\"']?)(?:app[_ -]?secret|api[_ -]?key|secret[_ -]?key|access[_ -]?token|accessToken|authorization|token)(?:[\"']?)\s*[:=]\s*)"
+    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;}\]]+)"
 )
 
 

@@ -90,3 +90,8 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.30 - P12 observability release
 
 `v1.0.0.1.30` is the owner-approved P12 release based on the explicitly frozen `v1.0.0.1.29` baseline. It adds ledger-backed recipient reporting, structured/privacy-safe logs, export hardening and closed-history retention controls without a schema or provider-send change. P12 is COMPLETE; P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING. Completed acceptance phases are 11/14.
+
+
+## v1.0.0.1.31 - P12 verification correction
+
+`v1.0.0.1.31` is a scope-locked correction to the v1.0.0.1.30 P12 observability release. It changes no schema, provider-send flow, Task state, concurrency architecture, dependency or provider manifest. It tightens current P12 redaction and recipient-report evidence interpretation only. P12 remains COMPLETE; P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING; completed acceptance phases remain 11/14.

@@ -87,3 +87,8 @@ Refrens Task execution is implemented behind explicit customer-data, canonical-h
 ## v1.0.0.1.30 P12 observability
 
 P12 adds durable recipient reconciliation, provider-acceptance vs independent-email-delivery distinction, structured privacy-redacted logs, atomic spreadsheet-safe report exports and closed-history retention controls. P11 live Refrens acceptance remains separately pending.
+
+
+## v1.0.0.1.31 P12 verification correction
+
+P12 reporting/privacy was re-audited. Quoted JSON-style named secrets are now redacted centrally, and recipient support status can only claim provider acceptance when durable send-stage success proves it. Unresolved ambiguity and conflicting historical account evidence remain fail-closed/observable. Schema stays v5 and P11 live acceptance remains pending.

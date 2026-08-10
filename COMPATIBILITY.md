@@ -102,3 +102,8 @@ The P11 implementation candidate keeps Python/PySide6/keyring/openpyxl requireme
 ## v1.0.0.1.30 P12 compatibility
 
 No dependency, provider ID, credential field, Task/customer/template model, provider manifest, scheduling policy or SQLite schema change is introduced. SQLite remains schema v5 with exactly three P10 delivery-ledger tables. Existing task CSV remains available; recipient CSV and structured logs are additive. WorkerManager retains one QThread per Task and plain `TaskExecutionContext.log` compatibility while adding optional structured log metadata transport.
+
+
+## v1.0.0.1.31 P12 Verification-Correction Compatibility
+
+No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provider API request, Task/customer/template model, scheduling policy, WorkerManager interface, page inventory or SQLite schema changes from v1.0.0.1.30. Existing schema-v5 databases remain directly compatible. The correction only strengthens non-persistent/durable diagnostic redaction and ledger-backed report interpretation.

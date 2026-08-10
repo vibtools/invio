@@ -131,3 +131,8 @@ This release is an implementation candidate: owner live API Test, real invoice c
 **Reports** keeps the Task summary and adds **Recipient Delivery History**. A `Provider Accepted` result means the provider accepted the send/create request; it does not prove mailbox delivery unless an independent delivery-confirmation event exists. Use **Export Recipient CSV** for the same privacy-bounded fields. CSV exports are written safely for spreadsheet opening.
 
 **Live Logs** show severity/category metadata and mask recipient email addresses plus provider secrets. **Clear Logs** clears only the current view. **Clear Delivery History** is separate and deletes only history for Tasks already closed; open Task recovery history is protected.
+
+
+## P12 support-report correction - v1.0.0.1.31
+
+Recipient Delivery History remains the support surface for full recipient email, account reference and provider invoice reference. A row shows **Provider Accepted** only when the durable ledger contains successful provider send-stage evidence. If the stored history is contradictory or a side-effecting outcome remains unresolved, Invio reports `Uncertain` or fails the report read safely rather than guessing. Live Logs continue to mask recipient email and provider secrets, including quoted JSON-style token/secret fields.

@@ -1,8 +1,8 @@
 # Roadmap
 
-Current Official Baseline: **Invio v1.0.0.1.30**.
+Current Official Baseline: **Invio v1.0.0.1.31**.
 
-P12 is **COMPLETE**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
+P12 is **COMPLETE / verification-corrected in v1.0.0.1.31**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -78,3 +78,8 @@ Production progress remains **10/14**. The latest completed-phase Official Basel
 ## P12 Completion - v1.0.0.1.30
 
 P12 is complete. Reports now reconcile recipients from the existing P10 ledger; provider acceptance is distinguished from independently confirmed email delivery; logs have structured severity/category metadata with centralized secret/PII redaction; Task/recipient/log exports are atomic, formula-injection-safe and user-error-safe; and closed delivery history can be explicitly cleared without deleting open Task recovery data. Schema remains v5 and provider-send behavior is unchanged. Completed acceptance phases are 11/14 (P01-P10 plus P12). P11 remains implemented with live acceptance pending.
+
+
+## P12 Verification Correction - v1.0.0.1.31
+
+The exact uploaded v1.0.0.1.30 P12 baseline was re-audited. v1.0.0.1.31 closes only P12 observability/privacy correctness gaps: quoted JSON-style provider/token fields are centrally redacted, provider-send acceptance is derived from durable send-stage evidence rather than a recipient result flag alone, unresolved mutating ambiguity stays observable, and conflicting historical account evidence fails closed in recipient reporting. P12 remains complete, production acceptance progress remains 11/14, P11 live acceptance remains pending, and P13/P14 remain separately approval-gated.

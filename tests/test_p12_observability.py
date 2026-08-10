@@ -20,7 +20,7 @@ from src.core.observability import (
 )
 from src.core.provider_runtime import ProviderRuntime
 from src.core.state import AppState
-from src.core.storage import CredentialStore, DomainStore
+from src.core.storage import CredentialStore, DomainStore, DomainStoreError
 
 
 class _Keyring:
@@ -142,6 +142,84 @@ class P12ObservabilityTests(unittest.TestCase):
         self.assertNotIn("QWxhZGRpbjpvcGVuIHNlc2FtZQ==", safe)
         self.assertIn("***REDACTED***", safe)
         self.assertEqual(mask_email("a@example.com"), "a***@example.com")
+
+
+    def test_json_style_secret_fields_are_redacted_without_known_secret_values(self):
+        text = (
+            '{"accessToken":"runtime.jwt.value","token":"opaque-token",'
+            '"appSecret":"refrens-secret","api_key":"agiled-secret",'
+            '"secret_key":"provider-secret"}'
+        )
+        safe = redact_sensitive_text(text)
+        for secret in (
+            "runtime.jwt.value",
+            "opaque-token",
+            "refrens-secret",
+            "agiled-secret",
+            "provider-secret",
+        ):
+            self.assertNotIn(secret, safe)
+        self.assertGreaterEqual(safe.count("***REDACTED***"), 5)
+
+    def test_provider_acceptance_requires_durable_send_stage_evidence(self):
+        state, task, _account = self._stripe_task(["evidence@example.com"])
+        run = self.store.begin_delivery_run(
+            task,
+            execution_mode="First Run",
+            recipients=("evidence@example.com",),
+        )
+        self.store.finish_delivery_recipient(
+            run_id=run.run_id,
+            recipient_ordinal=0,
+            final_result="Succeeded",
+            stage="invoice_create",
+            attempt_number=1,
+        )
+        self.store.finish_delivery_run(run.run_id, status="Completed")
+
+        record = self.store.recipient_delivery_report()[0]
+        self.assertEqual(record.provider_send_acceptance, "Not Reached")
+        self.assertNotEqual(record.safe_status, "Provider Accepted")
+        self.assertEqual(record.email_delivery, "Not confirmed")
+
+    def test_recipient_report_fails_closed_on_conflicting_historical_account_evidence(self):
+        state, task, account1 = self._stripe_task(["conflict@example.com"])
+        account2 = state.add_account(
+            "stripe",
+            "Stripe",
+            "Second Support Account",
+            "Test",
+            {"secret_key": "sk_test_P12_SECOND_SECRET"},
+            status="Verified",
+        )
+        # This test deliberately simulates corrupted historical P10 evidence.
+        run1 = self.store.begin_delivery_run(
+            task,
+            execution_mode="First Run",
+            recipients=("conflict@example.com",),
+        )
+        self.store.finish_delivery_run(run1.run_id, status="Stopped")
+        run2 = self.store.begin_delivery_run(
+            task,
+            execution_mode="Resume Remaining",
+            recipients=("conflict@example.com",),
+        )
+        self.store.finish_delivery_run(run2.run_id, status="Stopped")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            connection.execute(
+                "UPDATE task_delivery_recipients SET assigned_account_id=?, assigned_account_name=? "
+                "WHERE run_id=? AND recipient_ordinal=0",
+                (account1.id, account1.name, run1.run_id),
+            )
+            connection.execute(
+                "UPDATE task_delivery_recipients SET assigned_account_id=?, assigned_account_name=? "
+                "WHERE run_id=? AND recipient_ordinal=0",
+                (account2.id, account2.name, run2.run_id),
+            )
+            connection.commit()
+
+        with self.assertRaises(DomainStoreError):
+            self.store.recipient_delivery_report()
 
     def test_structured_log_contract_accepts_only_approved_severity_and_category(self):
         event = StructuredLogEvent("warning", "provider", "retry", "task_1")

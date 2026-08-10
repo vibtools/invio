@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.30`  
+**Baseline:** `v1.0.0.1.31`  
 **Status:** Current error-handling inventory including P12 export/privacy behavior.
 
 ## 1. Current Error-Handling Layers
@@ -172,16 +172,16 @@ Known state/provider/import errors are normally converted to compact message box
 | EH-015 | No account-health/failover error rules | Repeated failures on unhealthy account | P09 |
 | EH-016 | Retry/idempotency/delivery state is not durable | Duplicate/unknown results after restart | P10 |
 | EH-017 | Refrens Task runner remains disabled even though P04 can now store explicit required customer data | Provider unavailable for normal bulk task | P11 |
-| EH-018 | Export report/log writes lack user-facing `OSError` handling | Event-handler error on disk/path failure | P12 |
-| EH-019 | Emails/PII are logged in clear | Privacy/support risk | P12 |
-| EH-020 | Secret masking is Stripe-pattern-specific | Other provider secrets may appear in error text | P12 |
+| EH-018 | **RESOLVED in P12:** Task/recipient/log exports use atomic writes and user-facing failure handling | Export failures no longer escape the Qt event handler or partially replace an existing target | COMPLETE P12 |
+| EH-019 | **RESOLVED in P12:** recipient email is masked in Live Logs while full email is reserved for explicit support reports/exports | Diagnostic logs no longer expose full recipient email | COMPLETE P12 |
+| EH-020 | **RESOLVED in P12; verification-corrected in v1.0.0.1.31:** centralized provider-neutral redaction covers known credential values plus named/auth token patterns, including quoted JSON-style fields | Provider diagnostic text is redacted before display/new durable error persistence | COMPLETE P12 / corrected v1.0.0.1.31 |
 | EH-021 | External provider manifest may exist without executable adapter | Capability/runtime mismatch | P13 |
 | EH-022 | No live integration/recovery certification | Unknown real-environment failure modes | P14 |
 | EH-023 | **RESOLVED for packaged runtime IDs in v1.0.0.1.17:** external/installed manifest could collide with built-in runtime identity/credential/capability contract | Manifest declarations could disagree with executable Stripe/Refrens adapter | COMPLETE P06 packaged-ID reservation + manifest/runtime reconciliation; full external executable adapter architecture remains P13 |
 | EH-024 | **RESOLVED in v1.0.0.1.17:** Refrens auth accepted any HTTPS base URL | App ID/App Secret could be sent to an owner-entered untrusted HTTPS host | COMPLETE P06: canonical `https://api.refrens.com` trust validation before auth payload construction |
 | EH-025 | Stop could leave runtime retry/remaining recipients inconsistent with aggregate counters | RESOLVED for current-session P07 continuation: counters are derived from exact failed/pending sets. Durable identity recovery after restart remains P10 | P07 COMPLETE / P10 durability pending |
-| EH-026 | CSV export is not spreadsheet-formula-safe | Spreadsheet execution risk on opened export | P12 |
-| EH-027 | Provider API acceptance is treated as Task success without inbox-delivery confirmation | Misinterpreted delivery state | P10/P12/P14 |
+| EH-026 | **RESOLVED in P12:** CSV text cells are formula-neutralized before atomic export | Spreadsheet formula injection is prevented for user/provider-controlled text | COMPLETE P12 |
+| EH-027 | **RESOLVED for P12 support reporting; verification-corrected in v1.0.0.1.31:** provider send acceptance is separate from independent email delivery and now requires durable send-stage success evidence | Inbox delivery remains unconfirmed without an independent provider delivery event; live certification remains P14 | COMPLETE P12 / P14 live evidence pending |
 | EH-028 | File import boundary still does not classify every malformed workbook/parser exception | Some malformed files may escape the intended user warning taxonomy | P12 |
 | EH-029 | **RESOLVED in v1.0.0.1.14:** migration-backup destination connection remained open across atomic rename on Windows | `WinError 32` could block application startup during supported schema migration | COMPLETE v1.0.0.1.14 |
 | EH-030 | **RESOLVED in v1.0.0.1.15:** existing Task execution re-read live Customer List/Invoice Template at Start/Retry | Recipient/template drift could silently change an approved run and disagree with `Task.total` | COMPLETE P05 |
@@ -412,3 +412,8 @@ At startup, unfinished `Running` ledger runs become `Interrupted`; unresolved mu
 ## P12 Export/Privacy Error Handling - v1.0.0.1.30
 
 Task/recipient/log exports catch file/encoding/CSV failures at the UI boundary, emit a structured `ERROR/EXPORT` event and show a user-facing failure dialog instead of allowing the Qt handler to fail. Atomic sibling-temp writes protect an existing target from partial replacement. New durable provider error messages use centralized secret redaction before persistence. Historical ledger rows are not rewritten.
+
+
+## P12 forensic correction - v1.0.0.1.31
+
+The v1.0.0.1.30 baseline passed its existing tests but two support/privacy edge cases were reproducible. Quoted JSON-style secret fields were not matched by the named-secret regex unless the value was already known explicitly, and recipient reporting could infer provider acceptance from a recipient `Succeeded` result even with no durable send-stage success evidence. v1.0.0.1.31 corrects both paths and adds fail-closed historical account-evidence validation. No historical ledger rows are rewritten.

@@ -127,3 +127,8 @@ This is intentional when an earlier side-effecting provider operation still has 
 Invio reports export write/permission/encoding failures in a dialog and keeps the application running. Choose a writable destination and retry. Exports use a temporary sibling file and only replace the final target after a complete write.
 
 If recipient history appears `Provider Accepted`, remember that this means provider acceptance, not independently confirmed mailbox delivery. `Uncertain` means the durable ledger cannot safely prove the provider-side result and must not be interpreted as success or definitive failure.
+
+
+## Recipient Delivery History reports an error or Uncertain status
+
+P12 reporting fails closed when durable history contains conflicting account-assignment evidence or unresolved side-effecting provider operations. Do not infer delivery from aggregate Task counters alone. Review the durable recipient status/provider reference and reconcile the provider-side invoice state before retrying an uncertain operation. `Provider Accepted` means Invio has durable send-stage success evidence; it is still not independent mailbox-delivery confirmation.

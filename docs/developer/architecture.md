@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.30` is the owner-approved P12 observability baseline built on the explicitly frozen `v1.0.0.1.29` P11 implementation. P12 extends the existing Reports/Live Logs and schema-v5 ledger read/retention surfaces without changing provider send semantics, database schema, dependencies, Task state machine, customer model or one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
+Invio `v1.0.0.1.31` is the P12 forensic verification-correction baseline built directly on `v1.0.0.1.30`. P12 extends the existing Reports/Live Logs and schema-v5 ledger read/retention surfaces without changing provider send semantics, database schema, dependencies, Task state machine, customer model or one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
 
 ## 2. Core Responsibilities
 
@@ -230,3 +230,8 @@ P11 enables the existing packaged Refrens adapter without adding a subsystem. Th
 ## P12 Observability Architecture - v1.0.0.1.30
 
 `src/core/observability.py` provides structured log metadata validation, provider-neutral secret redaction, recipient-email masking, spreadsheet-safe text conversion and atomic text/CSV writes. `DomainStore.recipient_delivery_report()` derives support rows directly from the schema-v5 P10 ledger; `clear_closed_delivery_history()` transactionally removes only runs whose Task row no longer exists. `WorkerManager` keeps one QThread per Task and preserves `TaskExecutionContext.log`, adding only an optional structured-log callback/signal. No persistent log store is introduced.
+
+
+## P12 verification correction - v1.0.0.1.31
+
+The P12 architecture is unchanged. Central observability remains in `src/core/observability.py`; ledger-backed reporting remains in `DomainStore`; Reports and Live Logs remain the only affected UI surfaces. The correction expands named-secret parsing to quoted JSON-style fields and tightens recipient report evidence rules so provider acceptance requires a successful provider send stage. Historical account-assignment conflicts fail closed. No schema, thread ownership, provider-send path, dependency or page architecture changes are introduced.

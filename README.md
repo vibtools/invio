@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.30`** is the owner-approved **P12 - Reports, Logs, Privacy and Operational Observability** release built on the explicitly frozen **`v1.0.0.1.29`** baseline. P12 is complete after automated private/public regression and fresh-overlay verification. The separate P11 live Refrens API/invoice/email acceptance gate remains pending and is not represented as passed. Completed acceptance phases are therefore **11/14**: P01-P10 plus P12.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.31`** is the P12 forensic verification-correction baseline built directly on the uploaded **`v1.0.0.1.30`** P12 release. The correction closes two observability/privacy defects without changing provider sending, SQLite schema v5, WorkerManager, Task state, customer/template models, dependencies, or page inventory. P12 remains complete; the separate P11 live Refrens API/invoice/email acceptance gate remains pending and is not represented as passed. Completed acceptance phases remain **11/14**: P01-P10 plus P12.
 
 ## Current Application Scope
 
@@ -274,3 +274,8 @@ No new page, customer field, schema migration, dependency, WorkerManager archite
 - Delivery history is retained indefinitely by default. **Clear Delivery History** deletes only already-closed Task ledger history; open Task recovery data is never deleted. **Clear Logs** clears only the in-memory view.
 - SQLite remains schema v5 with exactly the existing three P10 delivery-ledger tables. Provider send semantics, P09 scheduling and P10 idempotency/recovery are unchanged.
 - P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**; P12 completion does not fabricate live Refrens acceptance.
+
+
+## v1.0.0.1.31 P12 Verification Correction
+
+The v1.0.0.1.30 P12 release was re-audited against its approved privacy and support-reconciliation contract. v1.0.0.1.31 fixes JSON-style named secret redaction (for example quoted `accessToken`, `appSecret`, `api_key`, `secret_key` and `token` fields) and makes recipient report acceptance fail closed unless durable provider send-stage evidence actually proves acceptance. Unresolved mutating operation history remains `Uncertain`, and conflicting historical account assignment evidence causes recipient reporting to fail closed instead of selecting a misleading latest value. P12 remains complete; P11 live Refrens acceptance remains pending.

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.31 - P12 Forensic Verification Correction
+
+- Corrected centralized secret redaction so quoted JSON-style named secrets such as `accessToken`, `appSecret`, `api_key`, `secret_key`, `authorization` and `token` are masked even when their values are not already known account credentials.
+- Corrected recipient support reporting so `Provider Accepted`/`Accepted` requires durable send-stage success evidence; a contradictory recipient `Succeeded` row without send evidence fails closed as `Uncertain`.
+- Recipient reporting now preserves unresolved mutating ambiguity even if a later recipient row claims success, and fails closed on conflicting historical primary/assigned account evidence.
+- Added focused regression coverage for all three forensic cases.
+- SQLite remains schema v5 with exactly three P10 ledger tables; provider send semantics, P09 scheduling, P10 recovery/idempotency, WorkerManager, Task/customer/template models, provider manifests, dependencies and page layout are unchanged.
+- P12 remains COMPLETE. P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING. Completed acceptance phases remain 11/14.
+
 ## v1.0.0.1.30 - P12 Reports, Logs, Privacy and Operational Observability
 
 - Adds recipient-level reconciliation backed exclusively by the existing P10 delivery ledger, including safe status, distinct attempts, account reference, provider invoice reference, last stage/error code, provider-send acceptance and independent email-delivery state.

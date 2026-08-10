@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.30`  
+**Baseline:** `Invio v1.0.0.1.31`  
 **Completed acceptance phases:** P01-P10 and P12 (11/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -248,3 +248,8 @@ Status: **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. The built-in Refrens adapter 
 ## P12 completion - v1.0.0.1.30
 
 P12 is COMPLETE: Reports include ledger-backed recipient reconciliation, Live Logs have structured severity/category with privacy redaction, CSV/log exports are atomic and formula-injection-safe, and closed historical ledger rows can be explicitly cleared while active recovery data is protected. Schema remains v5. P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING; completed acceptance phases are 11/14.
+
+
+## P12 verification correction - v1.0.0.1.31
+
+**WORKING / VERIFIED:** centralized redaction now masks quoted JSON-style named provider/token secrets without relying on the secret already being known from an Account. Recipient delivery support rows require durable provider send-stage success before displaying provider acceptance, preserve unresolved mutating ambiguity as `Uncertain`, and reject conflicting historical account-assignment evidence. P12 remains COMPLETE; P11 live Refrens acceptance remains pending.
