@@ -115,3 +115,12 @@ No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provide
 - Existing `register_task_runner()` injection API remains available with its historical continuation limitations.
 - Existing SQLite schema v5 and P10 ledger tables are unchanged.
 - External adapter code is trusted in-process Python and receives no automatic dependency installation or remote download support.
+
+## v1.0.0.1.33 P13 Verification-Correction Compatibility
+
+- External adapter interface remains version 1; existing valid v1.0.0.1.32 adapter bundles remain compatible.
+- Manifest-only, Missing, Incompatible and Executable runtime states are unchanged.
+- Packaged Stripe/Refrens adapters and Agiled fail-close are unchanged.
+- Provider Task/API Test execution, P06/P08/P10 semantics, SQLite schema v5 and the three P10 ledger tables are unchanged.
+- External uninstall now uses rollback-safe registry moves; successful uninstall remains user-visible behavior-compatible while partial filesystem failure leaves the original provider installed instead of half-uninstalled.
+- No dependency, page, Settings, provider manifest, Task/customer/template or WorkerManager interface changes are introduced.

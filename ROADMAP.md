@@ -1,8 +1,8 @@
 # Roadmap
 
-Current Official Baseline: **Invio v1.0.0.1.32**.
+Current Official Baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 is **COMPLETE in v1.0.0.1.32**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33** after its v1.0.0.1.32 implementation. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -29,7 +29,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27; verification-corrected in v1.0.0.1.28]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
 11. **P11 - Refrens End-to-End Task Enablement [IMPLEMENTED in v1.0.0.1.29; LIVE ACCEPTANCE PENDING]**: built-in Refrens Task execution using explicit required customer data; phase completion remains gated on owner-supplied live API Test, real invoice creation and recipient email delivery.
 12. **P12 - Reports, Logs, Privacy and Operational Observability [COMPLETE in v1.0.0.1.30]**: recipient-level ledger reconciliation, structured/generalized redaction, safe export and closed-history retention controls.
-13. **P13 - Executable External Provider Adapter Contract [COMPLETE in v1.0.0.1.32]**: versioned trusted external adapter bundles, truthful executable capability, fail-closed loading and P06/P08/P10 host integration.
+13. **P13 - Executable External Provider Adapter Contract [COMPLETE in v1.0.0.1.32; verification-corrected in v1.0.0.1.33]**: versioned trusted external adapter bundles, truthful executable capability, fail-closed loading/lifecycle handling and P06/P08/P10 host integration.
 14. **P14 - Live Integration, Recovery, Packaging and Production Certification**: real provider/environment tests and final production gate.
 
 Detailed dependency graph and acceptance criteria remain in `project/planning/PRODUCTION_ROADMAP.md`.
@@ -87,3 +87,7 @@ The exact uploaded v1.0.0.1.30 P12 baseline was re-audited. v1.0.0.1.31 closes o
 ## P13 Completion - v1.0.0.1.32
 
 P13 is complete. External `Load Provider` now supports an optional explicit interface-v1 executable adapter bundle while preserving manifest-only compatibility. Executable code requires owner confirmation and is treated as trusted in-process Python, not sandboxed code. Provider ID/interface/version/profile/capability mismatches, missing adapter files and import failures remain visible but non-executable. External API Test and Task operations execute through existing verification, immutable snapshot, preflight, reliability, scheduling and durable-ledger boundaries. Packaged Stripe/Refrens remain on the built-in registry and Agiled remains fail-closed. Completed acceptance phases are 12/14; P11 live acceptance and P14 production certification remain outstanding.
+
+## P13 Verification Correction - v1.0.0.1.33
+
+The exact v1.0.0.1.32 P13 baseline was re-audited. v1.0.0.1.33 closes two P13 lifecycle/containment gaps only: exceptions raised while reading adapter metadata after `create_adapter()` are converted to `Incompatible` instead of being able to escape startup, and external-provider uninstall now stages active registry names and restores the manifest if moving the adapter fails. No interface/capability/schema/dependency/provider-send/WorkerManager/UI-page behavior is expanded. P13 remains complete, completed acceptance phases remain 12/14, P11 live acceptance remains pending, and P14 remains the final certification phase.

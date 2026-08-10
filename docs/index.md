@@ -96,3 +96,7 @@ P12 reporting/privacy was re-audited. Quoted JSON-style named secrets are now re
 ## v1.0.0.1.32 P13 executable external providers
 
 P13 extends the existing Load Provider workflow with an optional executable `adapter.py` contract. Manifest-only providers remain visible but non-executable. Executable adapters require explicit trusted-code confirmation and exact interface/version/capability validation, and run through existing account verification, Task worker, preflight, retry and durable-ledger boundaries. See `guides/providers.md` and `api/provider-manifest.md`.
+
+## v1.0.0.1.33 P13 verification correction
+
+P13 remains complete. The correction contains adapter metadata failures that previously could escape startup and makes executable external-provider uninstall rollback-safe if its second registry move fails. External adapter interface v1, schema v5, provider behavior, dependencies and page inventory remain unchanged.

@@ -99,3 +99,7 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.32 - P13 external executable adapter contract
 
 `v1.0.0.1.32` is the owner-approved P13 architecture release. It adds an optional trusted external runtime-adapter contract to the existing manifest workflow without changing schema v5, packaged provider business logic, Task/customer/template persistence, WorkerManager threading or dependency versions. P13 is complete; P11 live acceptance remains pending.
+
+## v1.0.0.1.33 - P13 verification correction
+
+`v1.0.0.1.33` is a scope-locked forensic correction to the v1.0.0.1.32 P13 architecture release. It changes no external adapter interface version, provider capability contract, storage schema, packaged provider behavior, Task/customer/template model, dependency or WorkerManager boundary. It only hardens post-entrypoint adapter metadata failure containment and atomic external-provider uninstall rollback. P13 remains COMPLETE; P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING; completed acceptance phases remain 12/14.

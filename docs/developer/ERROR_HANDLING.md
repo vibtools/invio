@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.32`  
+**Baseline:** `v1.0.0.1.33`  
 **Status:** Current error-handling inventory including P12 export/privacy behavior.
 
 ## 1. Current Error-Handling Layers
@@ -434,3 +434,9 @@ P13 contains adapter discovery/import/entrypoint/identity/version/profile/capabi
 | EH-P13-05 | Successful non-idempotent provider mutation followed by adapter/finalization interruption | Persist/recover recipient as `Uncertain`; never blind replay |
 
 These rules introduce no schema migration and do not alter packaged Stripe/Refrens send behavior.
+
+## P13 verification-correction failure boundaries - v1.0.0.1.33
+
+- Adapter import and `create_adapter()` were already contained; v1.0.0.1.33 extends that boundary through adapter metadata/profile/scheduling/callable validation so `SystemExit`, `KeyboardInterrupt`-class `BaseException` or hostile conversion access cannot terminate startup. The provider becomes `Incompatible` with a diagnostic instead.
+- External-provider uninstall now has an active-name rollback boundary. If the manifest move succeeds but the external adapter move fails, the manifest is restored before the error reaches the UI. Invio no longer reports an uninstall failure after silently losing the provider manifest.
+- Temporary detached uninstall files are cleanup-only; cleanup failure does not convert a completed logical uninstall into a half-installed active provider.

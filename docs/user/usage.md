@@ -145,3 +145,7 @@ To load an executable external provider, select its `provider.json` through the 
 ## Trusted external provider adapters (P13)
 
 `Load Provider` still starts from `provider.json`. A provider may be manifest-only, or it may declare an executable runtime and include a fixed sibling `adapter.py`. Before executable Python is installed, Invio asks for explicit confirmation because the adapter runs in-process with Invio permissions and is not sandboxed. Load only provider code you trust. A provider card reports Executable, Manifest only, Missing or Incompatible separately from the manifest's declared capabilities. Invalid or unavailable executable adapters cannot API Test or run Tasks.
+
+## External provider lifecycle safety - v1.0.0.1.33
+
+A broken executable adapter that fails while exposing its declared runtime metadata is now shown as **Incompatible** instead of being able to terminate application startup. Uninstalling an executable external provider remains blocked while Tasks reference it; if a filesystem error occurs while detaching the provider's adapter file, Invio restores the provider manifest and reports the uninstall failure rather than leaving a partial uninstall.

@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.32`  
+**Baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -262,3 +262,7 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## P13 forensic hardening — v1.0.0.1.32
 
 **WORKING / VERIFIED:** staged immutable external-adapter validation, explicit trusted-code confirmation, interface/version/profile/capability checks, startup-safe import/entrypoint containment, `sys.path` integrity enforcement, host-evidence API Test, isolated Task inputs, host-managed mutation/final-stage proof, and P10 fail-closed recovery for interrupted non-idempotent external mutations. Manifest-only/Missing/Incompatible providers remain non-executable. Packaged Stripe/Refrens behavior is unchanged and Agiled remains fail-closed.
+
+## P13 verification correction - v1.0.0.1.33
+
+**Status: COMPLETE / VERIFICATION-CORRECTED.** The interface-v1 external adapter contract remains unchanged. Post-entrypoint adapter metadata failures are startup-contained as incompatible registrations, and executable external-provider uninstall is rollback-safe across manifest/adapter active registry moves. No P14 behavior is implemented. P11 live Refrens acceptance remains pending.

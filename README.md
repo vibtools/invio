@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.32`** completes P13, adding a versioned, explicitly trusted executable external-provider adapter contract to the existing Load Provider workflow while preserving packaged Stripe/Refrens behavior, Agiled fail-close, SQLite schema v5, P05-P12 execution contracts and one-QThread-per-Task ownership. Manifest-only external providers remain loadable but non-executable, and missing/incompatible adapters fail closed. P11 live Refrens API/invoice/email acceptance remains separately pending. Completed acceptance phases are **12/14**: P01-P10, P12 and P13.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.33`** is the P13 forensic verification-correction baseline built directly on `v1.0.0.1.32`. It preserves the interface-v1 trusted external-provider architecture while closing two lifecycle/failure-containment defects: post-entrypoint adapter metadata exceptions can no longer escape startup, and executable external-provider uninstall now rolls back atomically if the adapter registry move fails. Packaged Stripe/Refrens behavior, Agiled fail-close, SQLite schema v5, P05-P12 contracts and one-QThread-per-Task ownership remain unchanged. P11 live Refrens API/invoice/email acceptance remains separately pending. Completed acceptance phases remain **12/14**: P01-P10, P12 and P13.
 
 ## Current Application Scope
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.32` is the current P13-complete baseline. Completed acceptance phases are **12/14** (P01-P10, P12 and P13). P11 live Refrens acceptance remains separately pending, and P14 remains the final production-certification phase.
+`v1.0.0.1.33` is the current P13 verification-corrected baseline. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13). P11 live Refrens acceptance remains separately pending, and P14 remains the final production-certification phase.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -283,3 +283,7 @@ The v1.0.0.1.30 P12 release was re-audited against its approved privacy and supp
 ## v1.0.0.1.32 P13 Executable External Provider Adapter Contract
 
 P13 makes `Load Provider` truthful for future executable integrations. An external manifest may optionally declare a `runtime_adapter` interface-v1 contract and ship a fixed sibling `adapter.py`. Invio requires explicit trusted-code confirmation before installation, validates staged adapter bytes before atomic registry replacement, rejects validation-time byte mutation, validates provider/interface/adapter/profile/capability identity, contains import/entrypoint failures, rejects/restores persistent `sys.path` mutation, and reports `Executable`, `Manifest only`, `Missing`, or `Incompatible` runtime state. External API Test and Task execution stay inside the existing P01/P05/P06/P08/P10/WorkerManager contracts: API Test must complete a host-managed `SAFE_READ`; adapter task inputs are isolated from mutable application template state; and recipient success requires a successful host-managed mutation with a matching final stage. Host-managed `SAFE_READ`, `IDEMPOTENT_MUTATION`, and `NON_IDEMPOTENT_MUTATION` requests enforce retry/idempotency/uncertainty behavior, including durable `Uncertain` recovery after successful non-idempotent provider mutation when final recipient state was not safely committed. No dependency is auto-installed and this in-process model is explicitly **not a sandbox**. SQLite remains schema v5 with exactly the existing three P10 ledger tables. P11 live Refrens acceptance remains pending.
+
+## v1.0.0.1.33 P13 Verification Correction
+
+The uploaded v1.0.0.1.32 baseline was re-audited against the approved P13 executable external-provider contract. Two edge defects were reproduced and corrected without expanding P13: adapter metadata access after `create_adapter()` could raise a `BaseException` such as `SystemExit` outside the existing import/entrypoint containment boundary, and external-provider uninstall could remove the manifest before a later adapter-file failure, leaving a half-uninstalled registry. v1.0.0.1.33 converts post-entrypoint metadata failures into fail-closed `Incompatible` adapter state and uses active-name staging plus rollback for uninstall. P13 remains COMPLETE; P11 live Refrens acceptance remains pending.

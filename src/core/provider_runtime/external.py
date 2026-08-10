@@ -193,26 +193,33 @@ class ExternalAdapterRegistry:
             sys.path[:] = previous_sys_path
             sys.modules.pop(module_name, None)
 
-        if int(getattr(adapter, "interface_version", -1)) != EXTERNAL_ADAPTER_INTERFACE_VERSION:
-            raise ExternalAdapterError("Adapter-reported interface_version does not match Invio interface v1.")
-        if str(getattr(adapter, "provider_id", "")).strip().lower() != manifest.id:
-            raise ExternalAdapterError("Adapter provider_id does not match manifest provider id.")
-        if str(getattr(adapter, "adapter_version", "")).strip() != declaration.adapter_version:
-            raise ExternalAdapterError("Adapter version does not match runtime_adapter.adapter_version.")
-        profile = cls._validate_profile(manifest, adapter)
-        scheduling = getattr(adapter, "scheduling_policy", None)
-        if scheduling is not None and not isinstance(scheduling, ProviderSchedulingPolicy):
-            raise ExternalAdapterError("Adapter scheduling_policy must be ProviderSchedulingPolicy or None.")
-        if scheduling is not None and scheduling.burst_capacity != 1:
-            raise ExternalAdapterError("External scheduling_policy burst_capacity must be 1.")
+        try:
+            if int(getattr(adapter, "interface_version", -1)) != EXTERNAL_ADAPTER_INTERFACE_VERSION:
+                raise ExternalAdapterError("Adapter-reported interface_version does not match Invio interface v1.")
+            if str(getattr(adapter, "provider_id", "")).strip().lower() != manifest.id:
+                raise ExternalAdapterError("Adapter provider_id does not match manifest provider id.")
+            if str(getattr(adapter, "adapter_version", "")).strip() != declaration.adapter_version:
+                raise ExternalAdapterError("Adapter version does not match runtime_adapter.adapter_version.")
+            profile = cls._validate_profile(manifest, adapter)
+            scheduling = getattr(adapter, "scheduling_policy", None)
+            if scheduling is not None and not isinstance(scheduling, ProviderSchedulingPolicy):
+                raise ExternalAdapterError("Adapter scheduling_policy must be ProviderSchedulingPolicy or None.")
+            if scheduling is not None and scheduling.burst_capacity != 1:
+                raise ExternalAdapterError("External scheduling_policy burst_capacity must be 1.")
 
-        if "api_test" in profile.executable_capabilities and not callable(getattr(adapter, "test_account", None)):
-            raise ExternalAdapterError("Adapter declares api_test but test_account is not callable.")
-        if profile.task_execution_enabled:
-            if not callable(getattr(adapter, "validate_task", None)):
-                raise ExternalAdapterError("Executable Task adapter validate_task is not callable.")
-            if not callable(getattr(adapter, "execute_recipient", None)):
-                raise ExternalAdapterError("Executable Task adapter execute_recipient is not callable.")
+            if "api_test" in profile.executable_capabilities and not callable(getattr(adapter, "test_account", None)):
+                raise ExternalAdapterError("Adapter declares api_test but test_account is not callable.")
+            if profile.task_execution_enabled:
+                if not callable(getattr(adapter, "validate_task", None)):
+                    raise ExternalAdapterError("Executable Task adapter validate_task is not callable.")
+                if not callable(getattr(adapter, "execute_recipient", None)):
+                    raise ExternalAdapterError("Executable Task adapter execute_recipient is not callable.")
+        except ExternalAdapterError:
+            raise
+        except BaseException as exc:
+            raise ExternalAdapterError(
+                f"External adapter metadata validation failed: {type(exc).__name__}: {exc}"
+            ) from exc
         return adapter
 
     def validate_source(self, manifest: ProviderManifest, adapter_path: Path) -> None:

@@ -155,3 +155,7 @@ No folders or runtime modules are renamed/reorganized. `src/core/observability.p
 - `tests/test_p13_external_adapters.py` — P13 executable/manifest-only/fail-closed/API-test/Task/P10 integration and external-code containment contracts.
 
 No new application page, schema table, dependency or provider-package folder was introduced.
+
+## v1.0.0.1.33 P13 verification correction
+
+No folder/module/page/schema/dependency structure is added, removed, renamed or reorganized. The correction remains inside existing `src/core/provider_runtime/external.py` adapter validation and `src/core/provider_manager/manager.py` uninstall lifecycle handling, plus focused tests and release/documentation records. External adapter installation location, provider registry layout and UI page inventory remain unchanged.

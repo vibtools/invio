@@ -141,3 +141,7 @@ Check the Providers card runtime-adapter state. `Manifest only` means no executa
 ## External provider adapter is Incompatible
 
 Confirm the bundle contains the selected `provider.json` plus sibling `adapter.py`, uses interface version 1, matching provider/adapter versions and matching declared/executable capabilities. Invio does not auto-install missing Python dependencies. Import/entrypoint failures or persistent `sys.path` mutation are contained and the provider remains non-executable; correct the trusted adapter bundle and load it again.
+
+## External provider reports Incompatible or uninstall fails - v1.0.0.1.33
+
+If an external provider is shown as **Incompatible**, replace it with an adapter whose interface/provider/version/profile/capability metadata can be read safely and matches its manifest. If uninstall reports a filesystem error, the active provider registry is rolled back when possible; close software that may be locking files and retry. Do not manually delete only the manifest or only the adapter file.

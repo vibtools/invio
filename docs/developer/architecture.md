@@ -2,7 +2,7 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.32` is the P13 executable external-provider adapter baseline built directly on `v1.0.0.1.31`. P13 adds a versioned trusted in-process adapter contract to the existing Load Provider workflow while preserving packaged provider business behavior, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
+Invio `v1.0.0.1.33` is the P13 verification-corrected external-provider adapter baseline built directly on `v1.0.0.1.32`. P13 adds a versioned trusted in-process adapter contract to the existing Load Provider workflow while preserving packaged provider business behavior, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
 
 ## 2. Core Responsibilities
 
@@ -248,3 +248,7 @@ Because the P05 snapshot does not persist an external adapter version, replaceme
 ### P13 forensic safety invariants
 
 External executable bundle installation validates staged immutable bytes before atomic registry replacement. Adapter import and `create_adapter()` failures, including `SystemExit`, are contained and a persistent `sys.path` mutation is restored/rejected. External API Test is accepted only after a successful host-managed `SAFE_READ`. Task validation/execution receives isolated template data, and recipient success requires successful host-managed mutation evidence whose final stage exactly matches the adapter result. Successful non-idempotent mutation followed by adapter failure or interrupted recipient finalization remains durable `Uncertain` when replay safety cannot be proven. This external-stage recovery interpretation uses the existing schema-v5 P10 ledger and does not change built-in Stripe/Refrens semantics.
+
+## P13 verification correction - v1.0.0.1.33
+
+Architecture remains frozen. `ExternalAdapterRegistry.validate_adapter()` now treats all post-entrypoint metadata/callable validation as a fail-closed boundary: `BaseException` from adapter attribute access/conversion becomes `ExternalAdapterError` and therefore `Incompatible` during discovery instead of escaping startup. `ProviderManager.uninstall()` now removes active registry names by staged `os.replace` operations and rolls the manifest back if the adapter move fails; cleanup of already-detached temporary files is best-effort. No external interface version, registry location, execution context, schema, QThread ownership or packaged-provider architecture changes.

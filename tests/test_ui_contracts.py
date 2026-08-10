@@ -132,7 +132,8 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("def uninstall_provider(self, provider_id: str)", window_source)
         self.assertIn("removed = self.providers.uninstall(provider_id)", window_source)
         self.assertIn("def uninstall(self, provider_id: str)", manager_source)
-        self.assertIn("target.unlink()", manager_source)
+        self.assertIn("os.replace(target, staged_manifest)", manager_source)
+        self.assertIn("os.replace(staged_manifest, target)", manager_source)
 
     def test_application_owned_modals_use_compact_geometry(self):
         root = Path(__file__).resolve().parents[1]

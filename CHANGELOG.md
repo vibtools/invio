@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0.1.33 - P13 Forensic Verification Correction
+
+- Contained `BaseException` raised while reading/validating the object returned by external `create_adapter()`, so hostile/broken metadata such as `interface_version` cannot terminate Invio startup and is reported as an incompatible adapter instead.
+- Made provider uninstall fail-closed/rollback-safe by staging active manifest/adapter registry names with `os.replace`; if the second move fails, the original manifest is restored and the provider remains installed instead of becoming half-uninstalled.
+- Added focused P13 regressions for post-entrypoint metadata `SystemExit` containment and uninstall rollback after adapter-move failure.
+- Preserved interface version 1, provider capability semantics, P06/P08/P10 integration, packaged Stripe/Refrens behavior, Agiled fail-close, SQLite schema v5, dependencies, page inventory and one-QThread-per-Task ownership.
+- P13 remains COMPLETE; completed acceptance phases remain 12/14. P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING and P14 remains the final production-certification phase.
+
 ## v1.0.0.1.32 - P13 Executable External Provider Adapter Contract
 
 - Added explicit `ExternalProviderAdapterV1` interface version 1 and optional `provider.json` + sibling `adapter.py` executable bundle support through the existing Load Provider workflow.

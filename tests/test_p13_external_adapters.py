@@ -411,6 +411,28 @@ def create_adapter(): return Adapter()
         runtime.reload_external_adapters()
         self.assertEqual(runtime.external_adapter_status("external_demo")[0], ADAPTER_STATUS_MANIFEST_ONLY)
 
+    def test_external_uninstall_rolls_back_manifest_if_adapter_move_fails(self):
+        manager, _runtime = self._install_executable()
+        manifest_path = manager.registry_dir / "external_demo.json"
+        adapter_path = manager.external_adapter_path("external_demo")
+        original_manifest = manifest_path.read_bytes()
+        original_adapter = adapter_path.read_bytes()
+        real_replace = os.replace
+        calls = {"count": 0}
+
+        def fail_adapter_move(source, target):
+            calls["count"] += 1
+            if calls["count"] == 2:
+                raise OSError("simulated adapter move failure")
+            return real_replace(source, target)
+
+        with patch("src.core.provider_manager.manager.os.replace", side_effect=fail_adapter_move):
+            with self.assertRaisesRegex(ProviderManifestError, "Could not uninstall provider"):
+                manager.uninstall("external_demo")
+        self.assertEqual(manifest_path.read_bytes(), original_manifest)
+        self.assertEqual(adapter_path.read_bytes(), original_adapter)
+        self.assertIsNotNone(manager.get_installed("external_demo"))
+
     def test_executable_validation_uses_staged_adapter_bytes(self):
         manager = ProviderManager(self.root)
         runtime = ProviderRuntime(project_root=self.root)
@@ -466,6 +488,28 @@ def create_adapter(): return Adapter()
         runtime = ProviderRuntime(project_root=self.root)
         status, message = runtime.external_adapter_status("external_demo")
         self.assertEqual(status, ADAPTER_STATUS_INCOMPATIBLE)
+        self.assertIn("SystemExit", message)
+
+    def test_system_exit_during_adapter_metadata_validation_is_contained_at_startup(self):
+        manager = ProviderManager(self.root)
+        manifest = self._bundle()
+        installed_manifest = manager.registry_dir / "external_demo.json"
+        installed_manifest.write_bytes(manifest.read_bytes())
+        manager.external_adapter_path("external_demo").write_text(
+            """class Adapter:
+    def __getattribute__(self, name):
+        if name == 'interface_version':
+            raise SystemExit('metadata crash')
+        return object.__getattribute__(self, name)
+def create_adapter():
+    return Adapter()
+""",
+            encoding="utf-8",
+        )
+        runtime = ProviderRuntime(project_root=self.root)
+        status, message = runtime.external_adapter_status("external_demo")
+        self.assertEqual(status, ADAPTER_STATUS_INCOMPATIBLE)
+        self.assertIn("metadata validation failed", message)
         self.assertIn("SystemExit", message)
 
     def test_external_api_test_requires_successful_host_managed_safe_read(self):

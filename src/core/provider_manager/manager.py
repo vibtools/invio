@@ -284,10 +284,37 @@ class ProviderManager:
             raise ProviderManifestError(f"Provider '{provider_id}' is not installed.")
         target = self.registry_dir / f"{manifest.id}.json"
         adapter = self.external_adapter_path(manifest.id)
+        external = self.get_packaged(manifest.id) is None
+        token = uuid.uuid4().hex
+        staged_manifest = self.registry_dir / f".{manifest.id}.{token}.uninstall.json.tmp"
+        staged_adapter = self.registry_dir / f".{manifest.id}.{token}.uninstall_adapter.py.tmp"
+        manifest_moved = False
+        adapter_moved = False
         try:
-            target.unlink()
-            if self.get_packaged(manifest.id) is None:
-                adapter.unlink(missing_ok=True)
+            os.replace(target, staged_manifest)
+            manifest_moved = True
+            if external and adapter.exists():
+                os.replace(adapter, staged_adapter)
+                adapter_moved = True
         except OSError as exc:
+            try:
+                if adapter_moved and staged_adapter.exists():
+                    os.replace(staged_adapter, adapter)
+                if manifest_moved and staged_manifest.exists():
+                    os.replace(staged_manifest, target)
+            except OSError as rollback_exc:
+                raise ProviderManifestError(
+                    f"Could not uninstall provider '{manifest.name}', and rollback could not be completed safely: "
+                    f"{rollback_exc}"
+                ) from exc
             raise ProviderManifestError(f"Could not uninstall provider '{manifest.name}'.") from exc
+        finally:
+            # Once both active registry names have been moved away successfully,
+            # cleanup is best-effort. A transient filesystem lock must not turn
+            # a completed logical uninstall into a half-installed provider.
+            for temporary in (staged_adapter, staged_manifest):
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
         return manifest
