@@ -640,11 +640,21 @@ class ProviderRuntime:
                     else "The exact continuation recipient set is not available in this application session."
                 )
                 raise ProviderRuntimeError(message)
-            eligible = (
-                set(existing_summary.failed_recipients)
-                | set(existing_summary.pending_recipients)
-                | set(existing_summary.uncertain_recipients)
-            )
+            if snapshot.provider_id == "refrens":
+                # Refrens does not document a provider idempotency contract for
+                # invoice creation. Never replay a durable uncertain mutation.
+                eligible = set(existing_summary.failed_recipients) | set(existing_summary.pending_recipients)
+                if not eligible and existing_summary.uncertain_recipients:
+                    raise ProviderRuntimeError(
+                        "Refrens Resume Remaining is unavailable because only uncertain provider outcomes remain. "
+                        "Automatic replay is disabled to prevent duplicate invoice/email delivery."
+                    )
+            else:
+                eligible = (
+                    set(existing_summary.failed_recipients)
+                    | set(existing_summary.pending_recipients)
+                    | set(existing_summary.uncertain_recipients)
+                )
             recipients = tuple(email for email in snapshot.customer_emails if email in eligible)
             if not recipients:
                 raise ProviderRuntimeError("This task has no remaining recipients to resume.")
@@ -1074,7 +1084,11 @@ class ProviderRuntime:
             )
             return tuple(messages)
 
-        provider_transient = exc.category in {"timeout", "network"} or exc.http_status in {408, 500, 502, 503, 504}
+        provider_transient = (
+            exc.category in {"timeout", "network"}
+            or exc.http_status in {408, 500, 502, 503, 504}
+            or (normalized == "refrens" and exc.http_status == 429)
+        )
         if provider_transient:
             with self._scheduler_lock:
                 state = self._provider_health.setdefault(normalized, _SchedulerHealthState())
@@ -1570,7 +1584,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.28 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.29 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -1695,6 +1709,85 @@ class ProviderRuntime:
             raise ProviderRuntimeError("Refrens authentication response did not contain accessToken.")
         return token, base_url, url_key
 
+    def _refrens_auth_with_retry(
+        self,
+        context: Any,
+        account: AccountSnapshot,
+        email: str,
+        *,
+        task_id: str,
+        run_id: str,
+        recipient_ordinal: int,
+    ) -> tuple[str, str, str, int]:
+        raw_base_url = account.credentials.get("base_url", "").strip()
+        url_key = account.credentials.get("url_key", "").strip()
+        app_id = account.credentials.get("app_id", "").strip()
+        app_secret = account.credentials.get("app_secret", "").strip()
+        try:
+            base_url = canonical_refrens_base_url(raw_base_url)
+        except ValueError as exc:
+            raise ProviderRuntimeError(str(exc)) from exc
+        if not all((url_key, app_id, app_secret)):
+            raise ProviderRuntimeError("Refrens URL Key, App ID and App Secret are required.")
+
+        # Construct the secret-bearing payload only after the destination has
+        # passed the exact canonical-host trust policy.
+        payload = {"strategy": "app-secret", "appId": app_id, "appSecret": app_secret}
+        attempt = 1
+        while True:
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                raise ProviderRuntimeError(
+                    "Refrens authentication stopped before the next attempt.",
+                    category="stopped",
+                    retryable=False,
+                )
+            try:
+                response = self._refrens_request(
+                    "POST",
+                    base_url,
+                    "/authentication",
+                    token=None,
+                    json_data=payload,
+                    context=context,
+                    account=account,
+                    task_id=task_id,
+                    recipient_email=email,
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                    attempt_number=attempt,
+                    operation_stage="refrens_authentication",
+                    mutating=False,
+                )
+                token = str(response.get("accessToken", "")).strip()
+                if not token:
+                    raise ProviderRuntimeError("Refrens authentication response did not contain accessToken.")
+                return token, base_url, url_key, attempt
+            except ProviderRuntimeError as exc:
+                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                    setattr(exc, "attempt_number", attempt)
+                    raise
+                delay = self._retry_delay_seconds(attempt, exc)
+                context.log(
+                    f"Refrens authentication transient failure for {email} via account '{account.name}' "
+                    f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. Retrying in {delay:.2f}s."
+                )
+                if not _cooperative_retry_wait(context, delay):
+                    raise ProviderRuntimeError(
+                        "Refrens authentication retry stopped by user request.",
+                        category="stopped",
+                        retryable=False,
+                    ) from exc
+                attempt += 1
+            except Exception as exc:
+                setattr(exc, "attempt_number", attempt)
+                raise
+
+    @staticmethod
+    def _refrens_mutation_is_ambiguous(exc: BaseException) -> bool:
+        if not isinstance(exc, ProviderRuntimeError):
+            return True
+        return exc.category in {"timeout", "network"} or exc.http_status in {408, 500, 502, 503, 504}
+
     def _refrens_request(
         self,
         method: str,
@@ -1704,18 +1797,400 @@ class ProviderRuntime:
         token: str | None,
         json_data: dict[str, Any] | None = None,
         query: dict[str, Any] | None = None,
+        context: Any | None = None,
+        account: AccountSnapshot | None = None,
+        task_id: str = "",
+        recipient_email: str = "",
+        run_id: str = "",
+        recipient_ordinal: int = -1,
+        attempt_number: int = 1,
+        operation_stage: str = "",
+        mutating: bool = False,
+        required_reference_key: str = "",
     ) -> dict[str, Any]:
-        url = f"{base_url.rstrip('/')}{path}"
+        try:
+            trusted_base_url = canonical_refrens_base_url(base_url)
+        except ValueError as exc:
+            raise ProviderRuntimeError(str(exc)) from exc
+        url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.28 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.29 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
             body = _json_body(json_data)
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        return self._transport(method.upper(), url, headers, body, self.timeout)
+
+        ledger_started = False
+        if context is not None and account is not None:
+            if not self._wait_for_provider_health(context, "refrens", email=recipient_email):
+                raise ProviderRuntimeError(
+                    "Refrens recipient execution stopped during provider cooldown.",
+                    category="stopped",
+                    retryable=False,
+                )
+            if not self._wait_for_account_health(context, "refrens", account, email=recipient_email):
+                raise ProviderRuntimeError(
+                    "Refrens recipient execution stopped during account cooldown.",
+                    category="stopped",
+                    retryable=False,
+                )
+            if not self._await_account_rate_slot(context, "refrens", account):
+                raise ProviderRuntimeError(
+                    "Refrens recipient execution stopped during account rate wait.",
+                    category="stopped",
+                    retryable=False,
+                )
+            if task_id and recipient_email:
+                self._mark_recipient_attempted(task_id, recipient_email, account.id)
+            if self._domain_store is not None and run_id:
+                if recipient_ordinal < 0 or not operation_stage:
+                    raise ProviderRuntimeError(
+                        "Durable Refrens operation identity is incomplete before provider execution.",
+                        category="storage",
+                        retryable=False,
+                    )
+                try:
+                    self._domain_store.begin_delivery_operation(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        stage=operation_stage,
+                        account_id=account.id,
+                        account_name=account.name,
+                        idempotency_key="",
+                    )
+                except DomainStoreError as exc:
+                    raise ProviderRuntimeError(
+                        f"Durable Started operation could not be committed before Refrens request: {exc}",
+                        category="storage",
+                        retryable=False,
+                    ) from exc
+                ledger_started = True
+
+        try:
+            result = self._transport(method.upper(), url, headers, body, self.timeout)
+        except Exception as exc:
+            if ledger_started and self._domain_store is not None and account is not None:
+                operation_status = DELIVERY_OPERATION_FAILED
+                if mutating and self._refrens_mutation_is_ambiguous(exc):
+                    operation_status = DELIVERY_OPERATION_UNCERTAIN
+                error_class, error_code, error_message = self._safe_delivery_error(account, exc)
+                try:
+                    self._domain_store.finish_delivery_operation(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        stage=operation_stage,
+                        status=operation_status,
+                        error_class=error_class,
+                        error_code=error_code,
+                        error_message=error_message,
+                    )
+                except DomainStoreError as ledger_exc:
+                    raise ProviderRuntimeError(
+                        f"Refrens request ended but its durable operation result could not be saved: {ledger_exc}",
+                        category="storage",
+                        retryable=False,
+                    ) from exc
+            raise
+
+        provider_reference = ""
+        if isinstance(result, dict) and required_reference_key:
+            provider_reference = str(result.get(required_reference_key, "")).strip()
+            if not provider_reference:
+                error = ProviderRuntimeError(
+                    f"Refrens response did not contain required provider reference '{required_reference_key}'; "
+                    "the provider-side outcome cannot be reconciled safely.",
+                    category="response",
+                    retryable=False,
+                )
+                if ledger_started and self._domain_store is not None and account is not None:
+                    error_class, error_code, error_message = self._safe_delivery_error(account, error)
+                    try:
+                        self._domain_store.finish_delivery_operation(
+                            run_id=run_id,
+                            recipient_ordinal=recipient_ordinal,
+                            attempt_number=attempt_number,
+                            stage=operation_stage,
+                            status=DELIVERY_OPERATION_UNCERTAIN if mutating else DELIVERY_OPERATION_FAILED,
+                            error_class=error_class,
+                            error_code=error_code,
+                            error_message=error_message,
+                        )
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"Refrens response was received but its durable operation result could not be saved: {ledger_exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from error
+                raise error
+        elif isinstance(result, dict):
+            provider_reference = str(result.get("_id", "")).strip()
+
+        if ledger_started and self._domain_store is not None:
+            try:
+                self._domain_store.finish_delivery_operation(
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                    attempt_number=attempt_number,
+                    stage=operation_stage,
+                    status=DELIVERY_OPERATION_SUCCEEDED,
+                    provider_reference=provider_reference,
+                )
+            except DomainStoreError as exc:
+                raise ProviderRuntimeError(
+                    f"Refrens request succeeded but its durable operation result could not be saved: {exc}",
+                    category="storage",
+                    retryable=False,
+                ) from exc
+        return result
+
+    def _run_refrens_batch(
+        self,
+        context: Any,
+        snapshot: TaskSnapshot,
+        recipients: tuple[str, ...],
+        *,
+        execution_mode: TaskExecutionMode,
+        run_id: str = "",
+    ) -> None:
+        full_index = {email: index for index, email in enumerate(snapshot.customer_emails)}
+        with self._state_lock:
+            delivery = self._delivery_state.get(snapshot.task_id)
+            if delivery is None or not delivery.continuation_safe:
+                raise ProviderRuntimeError("The Task continuation state is unavailable before Refrens execution.")
+            attempted_before_execution = set(delivery.attempted_recipients)
+            attempted_account_ids = dict(delivery.attempted_account_ids)
+
+        attempted = 0
+        label = {
+            TaskExecutionMode.FIRST_RUN: "Refrens batch",
+            TaskExecutionMode.RESUME_REMAINING: "Refrens continuation",
+            TaskExecutionMode.RETRY_FAILED: "Refrens failed-recipient retry",
+        }[execution_mode]
+        context.log(
+            f"{label} started with {len(recipients)} recipient(s) using template '{snapshot.template.name}'."
+        )
+
+        for email in recipients:
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                break
+            recipient_ordinal = full_index[email]
+            customer = snapshot.customers[recipient_ordinal]
+            primary_index = recipient_ordinal % len(snapshot.accounts)
+            bound_account_id = attempted_account_ids.get(email)
+            if email in attempted_before_execution and not bound_account_id:
+                raise ProviderRuntimeError(
+                    "The attempted Refrens recipient has no exact account binding in durable/current-session state; "
+                    "continuation is blocked to prevent cross-account replay."
+                )
+            if bound_account_id:
+                bound_index = next(
+                    (index for index, item in enumerate(snapshot.accounts) if item.id == bound_account_id),
+                    None,
+                )
+                if bound_index is None:
+                    raise ProviderRuntimeError(
+                        "The attempted Refrens recipient account is no longer present in the frozen Task account set."
+                    )
+                account = snapshot.accounts[bound_index]
+            else:
+                # P11 deliberately does not speculate across Refrens accounts.
+                # The frozen round-robin primary remains authoritative.
+                account = snapshot.accounts[primary_index]
+
+            attempt_number = 1
+            stage = ""
+            try:
+                payload = self.build_refrens_invoice_payload(
+                    snapshot.template,
+                    customer_email=customer.email,
+                    customer_country=customer.country,
+                    customer_name=customer.name,
+                )
+                token, base_url, url_key, attempt_number = self._refrens_auth_with_retry(
+                    context,
+                    account,
+                    email,
+                    task_id=snapshot.task_id,
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                )
+                stage = "refrens_invoice_create_email"
+                request_payload = copy.deepcopy(payload)
+                request_payload["email"] = {
+                    "to": {
+                        "email": customer.email,
+                        "name": customer.name,
+                    }
+                }
+                created = self._refrens_request(
+                    "POST",
+                    base_url,
+                    f"/businesses/{url_key}/invoices",
+                    token=token,
+                    json_data=request_payload,
+                    context=context,
+                    account=account,
+                    task_id=snapshot.task_id,
+                    recipient_email=email,
+                    run_id=run_id,
+                    recipient_ordinal=recipient_ordinal,
+                    attempt_number=attempt_number,
+                    operation_stage=stage,
+                    mutating=True,
+                    required_reference_key="_id",
+                )
+                invoice_id = str(created.get("_id", "")).strip()
+                if not invoice_id:
+                    raise ProviderRuntimeError(
+                        "Refrens invoice response did not contain _id; delivery cannot be confirmed safely.",
+                        category="response",
+                        retryable=False,
+                    )
+            except ProviderRuntimeError as exc:
+                attempt_number = int(getattr(exc, "attempt_number", attempt_number))
+                if exc.category == "stopped" and context.stop_flag.is_set():
+                    break
+                if exc.category == "storage":
+                    raise
+                for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
+                    context.log(message)
+                final_result = DELIVERY_RESULT_FAILED
+                if self._domain_store is not None and run_id:
+                    try:
+                        if self._domain_store.recipient_has_uncertain_mutation(
+                            run_id=run_id,
+                            recipient_ordinal=recipient_ordinal,
+                        ):
+                            final_result = DELIVERY_RESULT_UNCERTAIN
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"Durable Refrens uncertainty could not be reconciled: {ledger_exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=final_result,
+                        stage=stage,
+                        attempt_number=attempt_number,
+                        account=account,
+                        error=exc,
+                    )
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The Task continuation state became unavailable during Refrens execution."
+                        ) from exc
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                    if final_result == DELIVERY_RESULT_UNCERTAIN:
+                        delivery.uncertain_recipients.add(email)
+                    else:
+                        delivery.failed_recipients.add(email)
+                context.log(f"Refrens send failed for {email} via account '{account.name}': {exc}")
+            except Exception as exc:
+                attempt_number = int(getattr(exc, "attempt_number", attempt_number))
+                final_result = DELIVERY_RESULT_FAILED
+                if self._domain_store is not None and run_id:
+                    try:
+                        if self._domain_store.recipient_has_uncertain_mutation(
+                            run_id=run_id,
+                            recipient_ordinal=recipient_ordinal,
+                        ):
+                            final_result = DELIVERY_RESULT_UNCERTAIN
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"Durable Refrens uncertainty could not be reconciled: {ledger_exc}",
+                            category="storage",
+                            retryable=False,
+                        ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=final_result,
+                        stage=stage,
+                        attempt_number=attempt_number,
+                        account=account,
+                        error=exc,
+                    )
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError(
+                            "The Task continuation state became unavailable during Refrens execution."
+                        ) from exc
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                    if final_result == DELIVERY_RESULT_UNCERTAIN:
+                        delivery.uncertain_recipients.add(email)
+                    else:
+                        delivery.failed_recipients.add(email)
+                context.log(
+                    f"Refrens send failed unexpectedly for {email} via account '{account.name}': "
+                    f"{type(exc).__name__}: {exc}"
+                )
+            else:
+                if self._domain_store is not None and run_id:
+                    self._finish_ledger_recipient(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        result=DELIVERY_RESULT_SUCCEEDED,
+                        stage="refrens_invoice_create_email",
+                        attempt_number=attempt_number,
+                        account=account,
+                    )
+                self._record_scheduler_success(snapshot.provider_id, account)
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError("The Task continuation state became unavailable during Refrens execution.")
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                context.log(f"Refrens invoice created and email requested for {email} via account '{account.name}'.")
+
+            attempted += 1
+            summary = self.delivery_summary(context.task)
+            if summary is None or not summary.continuation_safe:
+                raise ProviderRuntimeError("The Refrens Task continuation state could not be reconciled safely.")
+            if execution_mode is TaskExecutionMode.RETRY_FAILED:
+                message = f"Retry processed {attempted}/{len(recipients)} failed Refrens recipient(s)."
+            elif execution_mode is TaskExecutionMode.RESUME_REMAINING:
+                message = f"Resume processed {attempted}/{len(recipients)} safe Refrens recipient(s)."
+            else:
+                message = f"Processed {summary.processed}/{context.task.total} Refrens recipient(s)."
+            context.progress(summary.processed, summary.success, summary.failed, message)
+
+        if not context.stop_flag.is_set() and not context.pause_gate.is_set():
+            _wait_for_resume(context)
+
+        summary = self.delivery_summary(context.task)
+        if summary is None or not summary.continuation_safe:
+            raise ProviderRuntimeError("The Refrens Task continuation state could not be reconciled safely.")
+        if context.stop_flag.is_set():
+            context.log("Refrens batch stopped by user request.")
+            return
+        if summary.pending_recipients:
+            raise ProviderRuntimeError("Refrens execution ended before all selected safe recipients were resolved.")
+        if summary.uncertain_recipients:
+            raise ProviderRuntimeError(
+                f"{len(summary.uncertain_recipients)} Refrens recipient(s) have an uncertain provider outcome. "
+                "Automatic replay is disabled because Refrens does not expose an approved idempotency contract."
+            )
+        if summary.failed_recipients:
+            raise ProviderRuntimeError(
+                f"{summary.failed} Refrens recipient(s) failed. Use Retry Failed after reviewing Live Logs."
+            )
+        context.log("Refrens batch completed successfully.")
 
     def build_refrens_invoice_payload(
         self,
@@ -1725,18 +2200,21 @@ class ProviderRuntime:
         customer_country: str,
         customer_name: str = "",
     ) -> dict[str, Any]:
-        """Build a documented Refrens payload when required customer data exists.
-
-        P04 Customer Lists can provide explicit ``customer_country`` and optional
-        name data. This helper remains contract-testable while the production
-        Refrens Task runner itself stays disabled until P11.
-        """
+        """Build a Refrens invoice payload from explicit approved customer data."""
         country = customer_country.strip().upper()
         if len(country) != 2 or not country.isascii() or not country.isalpha():
             raise ProviderRuntimeError("Refrens customer country must be an ISO 3166-1 alpha-2 code.")
+        if country == "IN":
+            raise ProviderRuntimeError(
+                "Refrens requires billedTo.gstState for Indian customers, but the current approved Invio customer "
+                "model does not contain GST State. No invoice was created."
+            )
         email = customer_email.strip().lower()
         if not email:
             raise ProviderRuntimeError("Refrens customer email is required.")
+        name = customer_name.strip()
+        if not name:
+            raise ProviderRuntimeError("Refrens customer name is required; Invio will not substitute the email address.")
         due_date = datetime.now(timezone.utc) + timedelta(days=template.days_until_due)
         terms = list(template.terms)
         if template.customer_note.strip():
@@ -1750,7 +2228,7 @@ class ProviderRuntime:
             "currency": template.currency.upper(),
             "dueDate": due_date.isoformat(),
             "billedTo": {
-                "name": customer_name.strip() or email,
+                "name": name,
                 "country": country,
                 "email": email,
             },
@@ -1778,12 +2256,18 @@ class ProviderRuntime:
         customer_email: str,
         customer_name: str = "",
     ) -> dict[str, Any]:
+        email = customer_email.strip().lower()
+        name = customer_name.strip()
+        if not email:
+            raise ProviderRuntimeError("Refrens customer email is required.")
+        if not name:
+            raise ProviderRuntimeError("Refrens customer name is required; Invio will not substitute the email address.")
         token, base_url, url_key = self._refrens_auth(credentials)
         request_payload = copy.deepcopy(payload)
         request_payload["email"] = {
             "to": {
-                "email": customer_email.strip().lower(),
-                "name": customer_name.strip() or customer_email.strip().lower(),
+                "email": email,
+                "name": name,
             }
         }
         created = self._refrens_request(

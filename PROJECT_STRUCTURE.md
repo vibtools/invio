@@ -133,3 +133,7 @@ P10 adds one focused runtime model module, `src/tasks/delivery_ledger.py`, insid
 ## v1.0.0.1.28 P10 Verification-Correction Structure Note
 
 No folder/module/page/schema/dependency structure is added, removed, renamed or reorganized. The P10 correction remains inside the existing `DomainStore` durable-summary/reconciliation boundary plus tests and release/documentation records. `src/tasks/delivery_ledger.py`, the three schema-v5 P10 tables, WorkerManager and UI page inventory are unchanged.
+
+## v1.0.0.1.29 P11 Structure Note
+
+P11 adds no application folder, runtime package, UI page, customer field, database table, dependency or worker subsystem. Refrens adapter capability/scheduling stays in `src/core/provider_runtime/adapters.py`; provider/customer/host preflight stays in `preflight.py`; the batch/auth/invoice Task flow stays in `runtime.py`; existing schema-v5 ledger interpretation is extended in `src/tasks/delivery_ledger.py` and `src/core/storage/domain_store.py`; existing MainWindow action messaging prevents uncertain-only Refrens automatic Resume. `tests/test_p11_refrens_task.py` adds focused regression coverage.

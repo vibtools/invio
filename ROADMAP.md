@@ -1,6 +1,8 @@
 # Roadmap
 
-Current frozen implementation baseline: **Invio v1.0.0.1.28**.
+Latest completed-phase Official Baseline: **Invio v1.0.0.1.28**.
+
+Current P11 implementation candidate: **Invio v1.0.0.1.29 - IMPLEMENTED / LIVE ACCEPTANCE PENDING**.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -9,7 +11,8 @@ Roadmap entries are planning records, not implementation approval. Every product
 - Documentation/governance phase `G0`: **COMPLETE**.
 - Production implementation phases: **10 / 14 complete**.
 - Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**, **P09**, **P10**.
-- Next planned phase: **P11 - Refrens End-to-End Task Enablement**.
+- Current phase: **P11 - Refrens End-to-End Task Enablement — IMPLEMENTED / LIVE ACCEPTANCE PENDING**.
+- P12 is **not** unlocked until the owner-supplied P11 live acceptance gate passes.
 - Current status: **not production-certified**.
 
 ## Ordered Production Phases
@@ -24,7 +27,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 8. **P08 - Worker and Network Reliability [COMPLETE in v1.0.0.1.23; verification-corrected in v1.0.0.1.24]**: structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy, cooperative cancellation and safe asynchronous shutdown.
 9. **P09 - Multi-Account Scheduling, Limits and Health [COMPLETE in v1.0.0.1.25; CI verification-corrected in v1.0.0.1.26]**: deterministic primary assignment, provider-safe per-account request pacing, runtime-only health/cooldown, and eligible pre-attempt failover without cross-account replay.
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27; verification-corrected in v1.0.0.1.28]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
-11. **P11 - Refrens End-to-End Task Enablement**: enable normal Refrens bulk Task execution using explicit required customer data.
+11. **P11 - Refrens End-to-End Task Enablement [IMPLEMENTED in v1.0.0.1.29; LIVE ACCEPTANCE PENDING]**: built-in Refrens Task execution using explicit required customer data; phase completion remains gated on owner-supplied live API Test, real invoice creation and recipient email delivery.
 12. **P12 - Reports, Logs, Privacy and Operational Observability**: recipient-level reconciliation, generalized secret redaction, safe export/retention.
 13. **P13 - Executable External Provider Adapter Contract**: make future loaded providers accurately represent executable capability; architecture approval required before implementation.
 14. **P14 - Live Integration, Recovery, Packaging and Production Certification**: real provider/environment tests and final production gate.
@@ -65,3 +68,9 @@ P10 is complete. SQLite schema v5 adds exactly three durable delivery-ledger tab
 ## P10 Verification Correction - v1.0.0.1.28
 
 The exact `v1.0.0.1.27` P10 release was re-audited. `v1.0.0.1.28` fixes durable ambiguity reconciliation only: an earlier mutating `Started`/`Uncertain` operation remains unresolved until a later successful operation proves the same stage with the exact same non-empty idempotency key; unrelated later failures cannot overwrite that uncertainty. Historical frozen primary-account and assigned-account consistency is also validated fail-closed. Schema remains v5 with exactly three P10 tables, P10 remains complete, production progress remains 10/14, and P11 remains the next separately approval-gated phase.
+
+## P11 Implementation Candidate - v1.0.0.1.29
+
+P11 code and automated contracts are implemented, but the phase is **not COMPLETE** because the owner-supplied live Refrens acceptance environment was not available for this implementation run. Refrens Task execution now requires explicit email/name/country, validates the exact trusted API host before credential transmission, blocks Indian recipients because the approved customer model has no GST State field, executes through the existing Task worker, uses 1 request/second/account Invio safety pacing, retries authentication only, and never blindly replays ambiguous invoice-create/email mutations. Refrens operations are write-ahead recorded in the existing schema-v5 P10 ledger and returned invoice `_id` evidence is persisted.
+
+Production progress remains **10/14**. The latest completed-phase Official Baseline remains **v1.0.0.1.28**. P11 can move to COMPLETE/11 of 14 only after live Refrens API Test, real invoice creation and recipient email-delivery acceptance pass.

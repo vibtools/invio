@@ -91,3 +91,7 @@ Agiled installation continues to use the normal Providers workflow. The package 
 ## P10 provider-operation evidence
 
 P10 does not change provider manifests or enable Refrens/Agiled Task execution. For the existing supported Stripe Task path, ProviderRuntime now persists write-ahead operation evidence and the existing Task-derived idempotency key before transport, then stores safe provider references/outcomes. The external injected-runner API remains first-run compatible but does not gain a fabricated stage-level P10 contract; its continuation remains fail-closed until the separately approved external provider architecture phase.
+
+## Refrens Task execution - v1.0.0.1.29 candidate
+
+The built-in Refrens adapter exposes API Test, invoice and send-invoice Task capabilities in the P11 implementation candidate. Credentials remain URL Key, App ID and App Secret with canonical API Base URL `https://api.refrens.com`. Invio requires explicit customer email/name/country, blocks India under the current customer model, uses 1 request/second/account internal safety pacing, retries only authentication, and records invoice-create/email as a write-ahead P10 operation. The candidate remains live-acceptance pending.

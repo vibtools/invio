@@ -239,3 +239,7 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 ## P10 verification correction - v1.0.0.1.28
 
 P10 remains COMPLETE. Durable summary reconstruction now distinguishes **resolved** versus **unresolved** historical mutating ambiguity. A successful later operation clears an earlier ambiguity only when stage and non-empty idempotency key match exactly. Unrelated later failures cannot downgrade an unresolved historical ambiguity to a definitive Failed result. Historical recipient/provider/primary-account/assigned-account drift fails closed. Schema remains v5; production progress remains 10/14 and P11 remains unimplemented.
+
+## P11 implementation candidate - v1.0.0.1.29
+
+Status: **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. The built-in Refrens adapter now exposes invoice/send/API-test execution and `_run_refrens_batch` uses the existing Task worker, immutable snapshots, deterministic account order, P09 pacing/health and P10 durable run/recipient/operation ledger. Required customer email/name/country are explicit; India is blocked because GST State is outside the approved customer model. Authentication is the only automatically retried Refrens stage; ambiguous invoice-create/email transport outcomes remain `Uncertain` and are never automatically replayed. Schema remains v5, production progress remains 10/14, and the completed-phase baseline remains v1.0.0.1.28 until live acceptance.

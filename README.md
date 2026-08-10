@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. Release **`v1.0.0.1.28`** verification-corrects the completed **P10 - Persistent Delivery Ledger, Idempotency and Recovery** implementation from `v1.0.0.1.27`. Production progress remains **10/14**; P11 is next only after separate approval.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.29`** is the approved **P11 - Refrens End-to-End Task Enablement implementation candidate** built on the completed-phase Official Baseline **`v1.0.0.1.28`**. P11 code/automated verification is implemented, but the owner-supplied live Refrens API Test, real invoice creation and recipient email-delivery acceptance gate has not been executed in this release environment. Production progress therefore remains **10/14**, and `v1.0.0.1.28` remains the latest completed-phase Official Baseline until the live gate passes.
 
 ## Current Application Scope
 
@@ -9,7 +9,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. Built-in packaged runtime binding is now resolved through one internal adapter registry. Stripe remains executable, Refrens Task sending remains P11-gated, and packaged Agiled remains fail-closed until its current official API contract is authoritative. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. Built-in packaged runtime binding is resolved through one internal adapter registry. Stripe remains executable; the P11 implementation candidate enables built-in Refrens Task execution behind strict explicit customer-data, canonical-host, retry/no-replay, scheduling and P10-ledger safety contracts; packaged Agiled remains fail-closed until its current official API contract is authoritative. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: compact reporting, masked execution logs, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; P08 keeps provider network sending and retry/backoff outside the GUI thread and uses cooperative worker shutdown without forced thread termination.
 
@@ -255,3 +255,11 @@ On restart, unfinished runs are marked interrupted and any unresolved mutating o
 ## v1.0.0.1.28 P10 Verification Correction
 
 The exact `v1.0.0.1.27` P10 baseline was re-audited against the approved durable-ledger plan. The audit reproduced a historical uncertainty-reconciliation defect: a mutating operation recorded `Uncertain` could remain incorrectly unresolved after a later successful replay of the exact same stage and non-empty deterministic idempotency key, while an unresolved uncertainty from an earlier run could also be hidden by a later unrelated deterministic failure. `v1.0.0.1.28` corrects only that P10 ledger-reconciliation boundary. A later matching successful operation now resolves the prior ambiguity; unrelated failures cannot erase unresolved mutating uncertainty. Historical recipient/account/primary-assignment consistency is also validated fail-closed. SQLite remains schema v5 with the same three P10 tables, production progress remains **10/14**, and P11 remains unimplemented.
+
+## v1.0.0.1.29 P11 Refrens implementation candidate
+
+P11 is **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. The built-in Refrens adapter now enters the same Task pipeline as Stripe while preserving the existing one-Task-one-QThread architecture, P05 immutable snapshots, P07 action semantics, P08 worker/network rules, P09 account binding/health framework and P10 schema-v5 delivery ledger.
+
+Refrens Task execution requires explicit customer `email`, `name` and two-letter `country`; Invio never substitutes the email for a missing name or infers country. The exact `https://api.refrens.com` destination is validated before App ID/App Secret payload construction or transmission. Indian billing recipients are blocked before invoice creation because the current approved customer model has no Refrens-required GST State field. The candidate uses an owner-approved Invio safety pace of 1 API request/second/account with burst 1, retries only the authentication stage under the existing P08 maximum-three-attempt policy, and never blindly replays an ambiguous invoice-create/email mutation. Such an outcome remains durable `Uncertain` evidence in the P10 ledger and is excluded from automatic Refrens replay.
+
+No new page, customer field, schema migration, dependency, WorkerManager architecture, Stripe behavior, Agiled execution or P12+ feature is included. The production phase count remains **10/14** until an owner-supplied Refrens environment proves: (1) live API Test, (2) real invoice creation, and (3) actual recipient email delivery.

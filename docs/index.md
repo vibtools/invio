@@ -79,3 +79,7 @@ P10 advances SQLite to schema v5 and adds durable execution runs, per-run recipi
 ## v1.0.0.1.28 current baseline
 
 P10 remains complete and schema remains v5. This verification correction ensures unresolved mutating ambiguity survives across attempts/runs until exact same-stage/same-idempotency successful evidence reconciles it. Production progress remains **10/14**; P11 remains the next separately approval-gated phase.
+
+## v1.0.0.1.29 P11 implementation candidate
+
+Refrens Task execution is implemented behind explicit customer-data, canonical-host, scheduling, retry/no-replay and durable-ledger safety rules. Live owner acceptance has not yet been executed, so P11 remains live-acceptance pending and production progress remains 10/14.

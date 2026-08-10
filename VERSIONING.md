@@ -82,3 +82,7 @@ Completes P10 Persistent Delivery Ledger, Idempotency and Recovery. SQLite advan
 ## v1.0.0.1.28 P10 Verification Correction
 
 Verification-only P10 correctness release. Schema stays v5 and the three-table delivery-ledger contract is unchanged. Durable uncertainty now remains until the exact mutating stage + non-empty idempotency identity is later proven successful; successful reconciliation removes only that matched ambiguity. Production phase count remains 10/14.
+
+## v1.0.0.1.29 - P11 implementation candidate
+
+`v1.0.0.1.29` contains the approved P11 Refrens Task implementation but is **not a completed-phase baseline** until the live acceptance gate passes. The application/package version advances so the implementation candidate is uniquely identifiable, while roadmap completion remains 10/14 and `v1.0.0.1.28` remains the latest completed-phase Official Baseline. No schema change occurs; SQLite remains v5 with exactly three P10 ledger tables.

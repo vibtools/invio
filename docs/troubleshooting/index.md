@@ -113,3 +113,11 @@ This was a `v1.0.0.1.25` repository-contract test defect, not a missing runtime 
 ## P10 recipient remains Uncertain after a later failure - v1.0.0.1.28+
 
 This is intentional when an earlier side-effecting provider operation still has no matching successful reconciliation record. A later failure at another stage does not prove what happened to that earlier request. Invio keeps the recipient unresolved and exposes Resume Remaining rather than incorrectly classifying it as definitively Failed. If the same stage and non-empty idempotency key later succeeds, that specific ambiguity is reconciled.
+
+## Refrens P11 Task troubleshooting
+
+- **Task blocked for missing data:** ensure every Refrens recipient has explicit Email, Name and Country in the Customer List.
+- **India/GST State warning:** the current approved customer model has no GST State field, so Indian Refrens recipients are intentionally blocked before invoice creation.
+- **Untrusted endpoint:** set API Base URL exactly to `https://api.refrens.com` and re-test the account; credentials are not sent to other hosts.
+- **Uncertain delivery:** do not manually assume failure and re-run the same recipient. An ambiguous invoice-create/email outcome is retained as `Uncertain` to avoid duplicate delivery; automatic Refrens replay is disabled for that recipient.
+- **Live acceptance:** P11 remains live-acceptance pending until an owner-controlled Refrens environment confirms API Test, invoice creation and recipient email delivery.

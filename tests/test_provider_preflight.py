@@ -95,8 +95,8 @@ class ProviderPreflightTests(unittest.TestCase):
         assert self.stripe is not None and self.refrens is not None
         self.assertEqual(executable_capabilities("stripe"), ("invoice", "send_invoice", "api_test"))
         self.assertEqual(effective_capabilities(self.stripe), ("invoice", "send_invoice", "api_test"))
-        self.assertEqual(executable_capabilities("refrens"), ("api_test",))
-        self.assertEqual(effective_capabilities(self.refrens), ("api_test",))
+        self.assertEqual(executable_capabilities("refrens"), ("invoice", "send_invoice", "api_test"))
+        self.assertEqual(effective_capabilities(self.refrens), ("invoice", "send_invoice", "api_test"))
 
     def test_packaged_manifest_contract_ignores_display_fields_but_not_execution_fields(self):
         assert self.stripe is not None
@@ -366,13 +366,12 @@ class ProviderPreflightTests(unittest.TestCase):
             customers=(CustomerRecord("a@example.com"),),
         )
         codes = [issue.code for issue in result.issues]
-        self.assertEqual(codes[0], "task-runtime-unavailable")
-        self.assertIn("customer-data-missing", codes)
+        self.assertEqual(codes[0], "customer-data-missing")
         customer_issue = next(issue for issue in result.issues if issue.code == "customer-data-missing")
         self.assertIn("name, country", customer_issue.message)
         self.assertIn("will not guess", customer_issue.correction)
 
-    def test_refrens_task_capability_remains_disabled_until_p11(self):
+    def test_refrens_task_capability_is_enabled_with_valid_explicit_customer_data(self):
         assert self.refrens is not None
         result = preflight_candidate(
             provider_id="refrens",
@@ -382,11 +381,9 @@ class ProviderPreflightTests(unittest.TestCase):
             template=invoice_template(reuse_customer=False),
             customers=(CustomerRecord("a@example.com", "Alice", "BD"),),
         )
-        self.assertFalse(result.passed)
-        self.assertEqual(result.first_issue.code, "task-runtime-unavailable")
-        self.assertIn("P11", result.message)
+        self.assertTrue(result.passed)
 
-    def test_refrens_invalid_currency_is_reported_even_while_p11_runner_is_disabled(self):
+    def test_refrens_invalid_currency_is_reported_after_p11_enablement(self):
         assert self.refrens is not None
         result = preflight_candidate(
             provider_id="refrens",
@@ -397,8 +394,7 @@ class ProviderPreflightTests(unittest.TestCase):
             customers=(CustomerRecord("a@example.com", "Alice", "BD"),),
         )
         codes = [issue.code for issue in result.issues]
-        self.assertEqual(codes[0], "task-runtime-unavailable")
-        self.assertIn("currency-unsupported", codes)
+        self.assertEqual(codes[0], "currency-unsupported")
 
     def test_refrens_endpoint_trust_accepts_only_canonical_contract(self):
         accepted = (

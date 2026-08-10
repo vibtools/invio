@@ -767,7 +767,12 @@ class DomainStore:
             if cursor.rowcount != 1:
                 raise sqlite3.IntegrityError("Started delivery operation row is missing or already finalized.")
             customer_reference = provider_reference if stage in {"customer_lookup", "customer_create"} else None
-            invoice_reference = provider_reference if stage in {"invoice_create", "invoice_finalize", "invoice_send"} else None
+            invoice_reference = provider_reference if stage in {
+                "invoice_create",
+                "invoice_finalize",
+                "invoice_send",
+                "refrens_invoice_create_email",
+            } else None
             if customer_reference is not None:
                 connection.execute(
                     """UPDATE task_delivery_recipients

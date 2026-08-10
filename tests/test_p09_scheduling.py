@@ -87,7 +87,6 @@ class P09SchedulingTests(unittest.TestCase):
         self.assertEqual(policy.account_cooldown_cap_seconds, 60.0)
         self.assertEqual(policy.provider_cooldown_base_seconds, 5.0)
         self.assertEqual(policy.provider_cooldown_cap_seconds, 60.0)
-        self.assertIsNone(provider_adapter_contract("refrens").scheduling_policy)
         self.assertIsNone(provider_adapter_contract("agiled").scheduling_policy)
 
     def test_transport_preserves_stripe_rate_limit_reason(self):

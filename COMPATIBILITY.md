@@ -94,3 +94,7 @@ SQLite advances from schema v4 to schema v5 through the existing backup/transact
 ## v1.0.0.1.28 P10 Verification Compatibility
 
 No storage schema, table, provider API, dependency, page, Task action/status, WorkerManager or Stripe business-flow compatibility boundary changes from `v1.0.0.1.27`. Existing schema-v5 databases remain directly compatible. The correction only tightens how existing P10 operation history is interpreted: exact matching successful stage/idempotency evidence resolves ambiguity, while unmatched historical mutating ambiguity remains fail-closed/observable.
+
+## v1.0.0.1.29 P11 compatibility
+
+The P11 implementation candidate keeps Python/PySide6/keyring/openpyxl requirements unchanged, preserves SQLite schema v5, one Task = one QThread, the existing Task state machine and customer model, and does not alter Stripe or Agiled packaged provider manifests. Refrens Task execution requires explicit email/name/country, rejects India under the current model because GST State is unavailable, and uses only the canonical `https://api.refrens.com` endpoint. P11 remains live-acceptance pending.

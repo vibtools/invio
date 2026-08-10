@@ -4,6 +4,7 @@ import json
 import threading
 import unittest
 from dataclasses import dataclass
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 from src.core.provider_runtime import ProviderRuntime, ProviderRuntimeError
@@ -208,6 +209,7 @@ class ProviderRuntimeTests(unittest.TestCase):
             template,
             customer_email="a@example.com",
             customer_country="BD",
+            customer_name="Alice",
         )
         self.assertEqual(payload["invoiceType"], "BOS")
         self.assertEqual(payload["currency"], "USD")
@@ -234,12 +236,13 @@ class ProviderRuntimeTests(unittest.TestCase):
         template = state.invoice_templates[task.invoice_template_id]
         runtime = ProviderRuntime(transport=transport)
         payload = runtime.build_refrens_invoice_payload(
-            template, customer_email="a@example.com", customer_country="BD"
+            template, customer_email="a@example.com", customer_country="BD", customer_name="Alice"
         )
         created = runtime.create_and_send_refrens_invoice(
             {"base_url": "https://api.refrens.com", "url_key": "biz", "app_id": "app", "app_secret": "secret"},
             payload,
             customer_email="a@example.com",
+            customer_name="Alice",
         )
         self.assertEqual(created["_id"], "inv_1")
         self.assertEqual(len(calls), 2)
@@ -265,12 +268,12 @@ class ProviderRuntimeTests(unittest.TestCase):
             memo="",
             footer="",
             automatic_tax=False,
-            reuse_customer=True,
+            reuse_customer=False,
             items=[("Service", "1", "10", "0")],
         )
         task = state.create_task("refrens", "Refrens", [account.id], customer_list.id, template.id)
         runtime = ProviderRuntime(transport=lambda *args: called.append(args) or {})
-        with self.assertRaisesRegex(ProviderRuntimeError, r"P11"):
+        with self.assertRaisesRegex(ProviderRuntimeError, r"missing provider-required data"):
             runtime.make_task_runner(task, state)
         self.assertEqual(called, [])
 
@@ -301,14 +304,14 @@ class ProviderRuntimeTests(unittest.TestCase):
         self.assertEqual(new_snapshot.customers[0].name, "Explicit Name")
         self.assertEqual(new_snapshot.customers[0].country, "US")
 
-    def test_refrens_task_runner_remains_disabled_even_when_explicit_customer_data_exists(self):
+    def test_refrens_task_runner_executes_when_explicit_customer_data_exists(self):
         called = []
         state = AppState()
         account = state.add_account(
             "refrens",
             "Refrens",
             "Primary",
-            "Live",
+            "Default",
             {"base_url": "https://api.refrens.com", "url_key": "biz", "app_id": "app", "app_secret": "secret"},
             status="Verified",
         )
@@ -322,14 +325,23 @@ class ProviderRuntimeTests(unittest.TestCase):
             memo="",
             footer="",
             automatic_tax=False,
-            reuse_customer=True,
+            reuse_customer=False,
             items=[("Service", "1", "10", "0")],
         )
         task = state.create_task("refrens", "Refrens", [account.id], customer_list.id, template.id)
-        runtime = ProviderRuntime(transport=lambda *args: called.append(args) or {})
-        with self.assertRaisesRegex(ProviderRuntimeError, r"P11"):
-            runtime.make_task_runner(task, state)
-        self.assertEqual(called, [])
+        def transport(method, url, headers, body, timeout):
+            called.append((method, url, headers, body, timeout))
+            path = urlparse(url).path
+            if path == "/authentication":
+                return {"accessToken": "token"}
+            if path == "/businesses/biz/invoices":
+                return {"_id": "inv_1"}
+            raise AssertionError(path)
+
+        runtime = ProviderRuntime(transport=transport)
+        with patch.object(runtime, "_await_account_rate_slot", return_value=True):
+            runtime.make_task_runner(task, state)(_Context(task))
+        self.assertEqual([urlparse(item[1]).path for item in called], ["/authentication", "/businesses/biz/invoices"])
 
     def test_task_snapshot_preserves_old_positional_email_constructor(self):
         from src.core.provider_runtime import AccountSnapshot, TaskSnapshot

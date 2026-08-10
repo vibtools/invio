@@ -103,3 +103,7 @@ Every supported Stripe worker invocation has a durable Run ID separate from `Tas
 ## P10 uncertainty reconciliation - v1.0.0.1.28
 
 Durable Task continuation considers the complete recipient operation history. An ambiguous mutating operation stays unresolved across runs unless later durable evidence shows `Succeeded` for the same stage and same non-empty idempotency key. This prevents a later unrelated failure from hiding duplicate-creation/send uncertainty while allowing genuine same-key reconciliation to clear stale ambiguity.
+
+## Refrens Task safety - v1.0.0.1.29 candidate
+
+Refrens uses the same frozen recipient order, deterministic account assignment, one-QThread Task worker, durable execution run and aggregate progress contracts as other built-in Task execution. Pending/Failed outcomes can participate in durable continuation under existing action rules. A Refrens `Uncertain` invoice-create/email outcome is not eligible for automatic replay; if only uncertain outcomes remain, Resume Remaining is disabled.

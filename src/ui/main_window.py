@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.28 started.")
+        self.log("Invio v1.0.0.1.29 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.28")
+        self.runtime_status = QLabel("Production • v1.0.0.1.29")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -832,6 +832,17 @@ class MainWindow(QMainWindow):
         if task.provider_id in self.task_runners:
             return EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE
         if summary is not None and summary.continuation_safe:
+            if (
+                task.provider_id == "refrens"
+                and task.status == "Stopped"
+                and summary.uncertain_recipients
+                and not summary.pending_recipients
+                and not summary.failed_recipients
+            ):
+                return (
+                    "Only uncertain Refrens provider outcomes remain. Automatic Resume is disabled because the "
+                    "approved Refrens contract does not provide a provider idempotency key for safe replay."
+                )
             if task.status == "Stopped" and not summary.resume_remaining_available:
                 return NO_REMAINING_RECIPIENTS_MESSAGE
             if task.status == "Failed" and not summary.retry_failed_available and not summary.pending_recipients:
@@ -841,8 +852,11 @@ class MainWindow(QMainWindow):
     def _task_action_policy(self, task: Task) -> TaskActionPolicy:
         summary = self.provider_runtime.delivery_summary(task)
         built_in_continuation = task.provider_id not in self.task_runners
+        safe_resume_available = bool(summary is not None and summary.resume_remaining_available)
+        if task.provider_id == "refrens" and summary is not None:
+            safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
         resume_available = bool(
-            built_in_continuation and summary is not None and summary.resume_remaining_available
+            built_in_continuation and summary is not None and safe_resume_available
         )
         retry_available = bool(
             built_in_continuation and summary is not None and summary.retry_failed_available
@@ -858,8 +872,11 @@ class MainWindow(QMainWindow):
     def _require_task_action(self, task: Task, action: TaskAction) -> TaskExecutionMode | None:
         summary = self.provider_runtime.delivery_summary(task)
         built_in_continuation = task.provider_id not in self.task_runners
+        safe_resume_available = bool(summary is not None and summary.resume_remaining_available)
+        if task.provider_id == "refrens" and summary is not None:
+            safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
         resume_available = bool(
-            built_in_continuation and summary is not None and summary.resume_remaining_available
+            built_in_continuation and summary is not None and safe_resume_available
         )
         retry_available = bool(
             built_in_continuation and summary is not None and summary.retry_failed_available
@@ -1125,11 +1142,26 @@ class MainWindow(QMainWindow):
                             "Worker failed. The exact retry recipient set is unavailable, so Retry Failed is disabled."
                         )
                 elif effective_status == "Stopped":
-                    if summary is not None and summary.continuation_safe and summary.resume_remaining_available:
+                    safe_resume_available = bool(
+                        summary is not None and summary.continuation_safe and summary.resume_remaining_available
+                    )
+                    if task.provider_id == "refrens" and summary is not None and summary.continuation_safe:
+                        safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
+                    if summary is not None and summary.continuation_safe and safe_resume_available:
                         message = (
                             f"Stopped with {summary.failed} failed, {len(summary.pending_recipients)} pending and "
                             f"{len(summary.uncertain_recipients)} uncertain recipient(s). "
-                            "Use Resume Remaining to continue only the durable unresolved set."
+                            "Use Resume Remaining to continue only the safe durable unresolved set."
+                        )
+                    elif (
+                        task.provider_id == "refrens"
+                        and summary is not None
+                        and summary.continuation_safe
+                        and summary.uncertain_recipients
+                    ):
+                        message = (
+                            f"Stopped with {len(summary.uncertain_recipients)} uncertain Refrens provider outcome(s). "
+                            "Automatic Resume is disabled to prevent duplicate invoice/email delivery."
                         )
                     elif summary is not None and summary.continuation_safe:
                         message = "Stopped after all recipients were resolved; there are no recipients remaining to resume."

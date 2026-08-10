@@ -119,3 +119,9 @@ Each supported Stripe Task execution now creates a durable execution Run ID sepa
 ## v1.0.0.1.28 P10 uncertainty correction
 
 After restart or a retry/resume, Invio keeps a recipient `Uncertain` when an earlier mutating provider operation still lacks exact reconciliation evidence. A later successful operation resolves that ambiguity only when it uses the same stage and the same persisted non-empty idempotency key. An unrelated later failure does not make the prior ambiguity disappear. Use the existing Resume Remaining flow; no new page or action is added.
+
+## Using Refrens Tasks - v1.0.0.1.29 candidate
+
+Refrens Task execution requires a successfully API-tested Refrens account using the exact API Base URL `https://api.refrens.com`, plus Customer List records with explicit Email, Name and two-letter Country. Do not leave Name or Country blank. Indian recipients are currently blocked because Invio's approved customer model does not contain the Refrens-required GST State field. Automatic Tax and Customer Reuse remain unsupported by the current Refrens Task contract. If a Refrens invoice-create/email request has an uncertain network outcome, Invio keeps that recipient uncertain and does not automatically send it again.
+
+This release is an implementation candidate: owner live API Test, real invoice creation and recipient email delivery must still be verified before P11 is marked complete.

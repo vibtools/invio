@@ -401,6 +401,15 @@ def _template_and_customer_issues(
                     "Update the Customer List with explicit required data; Invio will not guess customer information.",
                 )
             )
+        if profile.provider_id == "refrens" and str(customer.country).strip().upper() == "IN":
+            issues.append(
+                PreflightIssue(
+                    "refrens-india-gst-state-unavailable",
+                    f"Customer {index} ({customer.email}) is in India, where Refrens requires billedTo.gstState.",
+                    "The current approved Invio customer model does not contain GST State; use explicit supported "
+                    "customer data in a future separately approved customer-contract update. No invoice was created.",
+                )
+            )
     return issues
 
 

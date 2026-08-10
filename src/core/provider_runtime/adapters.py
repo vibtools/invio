@@ -90,11 +90,9 @@ _STRIPE_PROFILE = ProviderCapabilityProfile(
 
 _REFRENS_PROFILE = ProviderCapabilityProfile(
     provider_id="refrens",
-    executable_capabilities=frozenset({"api_test"}),
-    task_execution_enabled=False,
-    task_unavailable_message=(
-        "Refrens production Task sending is not enabled until P11. No invoice request was made."
-    ),
+    executable_capabilities=frozenset({"invoice", "send_invoice", "api_test"}),
+    task_execution_enabled=True,
+    task_unavailable_message="",
     invoice_types=frozenset({"INVOICE", "BOS"}),
     currencies=frozenset(SUPPORTED_INVOICE_CURRENCY_SET),
     supports_automatic_tax=False,
@@ -155,6 +153,19 @@ _STRIPE_SCHEDULING_POLICY = ProviderSchedulingPolicy(
 )
 
 
+_REFRENS_SCHEDULING_POLICY = ProviderSchedulingPolicy(
+    # Owner-approved Invio safety ceiling. Refrens does not publish a numeric
+    # API request-rate ceiling in the current official API documentation.
+    requests_per_second_per_account=1.0,
+    burst_capacity=1,
+    account_cooldown_base_seconds=5.0,
+    account_cooldown_cap_seconds=60.0,
+    provider_cooldown_base_seconds=5.0,
+    provider_cooldown_cap_seconds=60.0,
+    account_rate_limit_reasons=frozenset(),
+)
+
+
 _STRIPE_MANIFEST_CONTRACT = ProviderManifest(
     id="stripe",
     name="Stripe",
@@ -205,11 +216,9 @@ _BUILTIN_ADAPTERS = {
         manifest_contract=_REFRENS_MANIFEST_CONTRACT,
         profile=_REFRENS_PROFILE,
         api_test_handler="_test_refrens_account",
+        task_batch_handler="_run_refrens_batch",
         api_test_unavailable_message="No built-in Refrens API-test adapter is available.",
-        task_unavailable_message=(
-            "Refrens customer name/country data can be stored explicitly, but the Refrens production Task runner "
-            "is not enabled until the approved P11 pipeline is implemented. No Refrens invoice was created or sent."
-        ),
+        scheduling_policy=_REFRENS_SCHEDULING_POLICY,
     ),
     "agiled": ProviderAdapterContract(
         provider_id="agiled",

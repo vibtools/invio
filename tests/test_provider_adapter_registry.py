@@ -38,7 +38,7 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
         self.assertEqual(stripe.api_test_handler, "_test_stripe_account")
         self.assertEqual(stripe.task_batch_handler, "_run_stripe_batch")
         self.assertEqual(refrens.api_test_handler, "_test_refrens_account")
-        self.assertIsNone(refrens.task_batch_handler)
+        self.assertEqual(refrens.task_batch_handler, "_run_refrens_batch")
         self.assertIsNone(agiled.api_test_handler)
         self.assertIsNone(agiled.task_batch_handler)
 
@@ -112,13 +112,14 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
             self.assertIsNotNone(adapter)
             assert adapter is not None and adapter.api_test_handler is not None
             self.assertTrue(callable(getattr(runtime, adapter.api_test_handler, None)))
-        stripe = provider_adapter_contract("stripe")
-        assert stripe is not None and stripe.task_batch_handler is not None
-        self.assertTrue(callable(getattr(runtime, stripe.task_batch_handler, None)))
+        for provider_id in ("stripe", "refrens"):
+            adapter = provider_adapter_contract(provider_id)
+            assert adapter is not None and adapter.task_batch_handler is not None
+            self.assertTrue(callable(getattr(runtime, adapter.task_batch_handler, None)))
         refrens = provider_adapter_contract("refrens")
         agiled = provider_adapter_contract("agiled")
         assert refrens is not None and agiled is not None
-        self.assertIsNone(refrens.task_batch_handler)
+        self.assertEqual(refrens.task_batch_handler, "_run_refrens_batch")
         self.assertIsNone(agiled.api_test_handler)
         self.assertIsNone(agiled.task_batch_handler)
 

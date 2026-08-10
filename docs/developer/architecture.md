@@ -221,3 +221,7 @@ For supported Stripe Task traffic the flow is `ProviderRuntime -> durable Starte
 ## 24. P10 durable uncertainty reconciliation - v1.0.0.1.28
 
 The schema-v5 architecture is unchanged. `DomainStore` now reconstructs uncertainty across the full Task delivery history rather than trusting only the newest per-run recipient result. Mutating ambiguity is keyed by `(stage, idempotency_key)`; only later `Succeeded` evidence for the same non-empty identity resolves it. Historical primary/assigned Account consistency is validated across runs. ProviderRuntime continues to consume the same durable summary interface, so no WorkerManager, Task-state or UI architecture changes are introduced.
+
+## P11 Refrens Task pipeline - v1.0.0.1.29
+
+P11 enables the existing packaged Refrens adapter without adding a subsystem. The flow is `P06 preflight -> P10 begin_delivery_run -> existing task QThread -> Refrens auth -> invoice-create/email -> P10 operation/result reconciliation`. Customer data comes only from the immutable P05 `CustomerRecord` snapshot. P09 pacing is 1 request/second/account with burst 1 for Refrens, while provider-wide health suppresses speculative account hopping. Authentication can use P08 bounded retry; the invoice mutation is single-shot because the approved/current Refrens contract has no provider idempotency key in Invio. The ledger stores no JWT/App Secret and records the returned invoice `_id` as provider invoice/reference evidence. Schema remains v5 and WorkerManager is unchanged.

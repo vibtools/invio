@@ -398,3 +398,13 @@ At startup, unfinished `Running` ledger runs become `Interrupted`; unresolved mu
 ## 9. P10 uncertainty reconciliation correction - v1.0.0.1.28
 
 `Started`/`Uncertain` mutating operations are no longer treated as permanently ambiguous when later durable evidence proves successful execution of the exact same stage with the same non-empty idempotency key. Conversely, a later deterministic failure at a different stage/key cannot erase an earlier unresolved mutating ambiguity. Durable continuation therefore stays fail-closed until ambiguity is genuinely reconciled. This changes no P08 retry classification or Stripe request behavior.
+
+## P11 Refrens error/recovery rules - v1.0.0.1.29
+
+- Refrens credentials are never constructed/transmitted until the configured base URL validates exactly as `https://api.refrens.com`.
+- Missing email/name/country and Indian recipients without the unavailable GST State field fail before invoice creation.
+- Authentication uses existing P08 retry classification and maximum-three-attempt policy.
+- The invoice-create/email mutation is not blindly retried after timeout, disconnect, HTTP 408 or ambiguous 5xx; write-ahead P10 evidence remains `Uncertain`.
+- Refrens 429/network/timeout/408/5xx enter provider-wide P09 cooldown; no speculative account hopping is introduced.
+- A successful create response without `_id` is treated as uncertain rather than falsely reported as delivered.
+- Durable `Uncertain` Refrens recipients are excluded from automatic Resume/Retry.

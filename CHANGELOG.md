@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.0.1.29 - P11 Refrens End-to-End Task Implementation Candidate
+
+- Enables the built-in Refrens adapter for Task invoice/send execution using the existing immutable customer email/name/country records; all three values are required and no customer data is guessed.
+- Preserves the exact `https://api.refrens.com` trust boundary before App ID/App Secret construction/transmission and blocks Indian recipients before invoice creation because the approved customer model has no Refrens-required GST State field.
+- Adds the Refrens batch runner to the existing Task-owned QThread pipeline, frozen round-robin account assignment, exact attempted-account binding, 1 request/second/account burst-1 Invio safety pacing and existing P09 provider-health handling.
+- Applies P08 bounded retry only to Refrens authentication; the invoice-create/email mutation is single-shot and ambiguous timeout/disconnect/408/5xx outcomes become durable P10 `Uncertain` evidence instead of being blindly replayed.
+- Records `refrens_authentication` and `refrens_invoice_create_email` write-ahead operations in the existing schema-v5 ledger, persists returned invoice `_id` as provider invoice/reference evidence, and never persists JWT/App Secret.
+- Keeps Refrens uncertain recipients out of automatic Resume; Pending/Failed durable continuation remains restart-safe under existing action rules.
+- No UI page, customer field, schema migration, dependency, WorkerManager change, Stripe change, Agiled enablement or P12+ behavior is included.
+- **Release status:** P11 **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. Production progress remains **10/14**; `v1.0.0.1.28` remains the latest completed-phase Official Baseline until owner live API Test, real invoice creation and recipient email-delivery acceptance pass.
+
 ## v1.0.0.1.28 - P10 Verification Correction
 
 - Re-audits the exact `v1.0.0.1.27` P10 durable-ledger implementation.

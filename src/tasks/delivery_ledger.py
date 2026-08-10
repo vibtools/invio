@@ -24,6 +24,7 @@ MUTATING_DELIVERY_STAGES = frozenset(
         "invoice_create",
         "invoice_finalize",
         "invoice_send",
+        "refrens_invoice_create_email",
     }
 )
 
