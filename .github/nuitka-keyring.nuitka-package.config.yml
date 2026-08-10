@@ -1,0 +1,8 @@
+# Invio build-only Nuitka compatibility contract for Python keyring.
+# Keep protected credential storage on the existing keyring technology while
+# preserving keyring's built-in backend entry-point metadata in standalone builds.
+---
+- module-name: 'keyring'
+  data-files:
+    - include-metadata:
+        - 'keyring'

@@ -1,5 +1,11 @@
 # Compatibility
 
+## v1.0.0.1.39 compiled protected-credential compatibility correction
+
+`v1.0.0.1.39` does not change the supported Python/runtime dependency contract. `keyring>=25.7,<26` remains the approved credential technology and there is still no plaintext fallback. The correction only makes the existing Windows keyring dependency graph and keyring distribution metadata explicit in the pinned Nuitka standalone build and verifies the production CredentialStore round trip from compiled OneDir/MSI executables. Normal source/wheel compatibility, provider contracts, SQLite schema v5 and UI/UX are unchanged.
+
+The candidate is pre-release; `v1.0.0.1.38` remains the Official released parent baseline until owner validation authorizes a later release.
+
 Target runtime: Python 3.12+ with PySide6 on Windows, Linux, and macOS desktop environments. Primary desktop validation target is Windows.
 
 P02 adds `keyring>=25.7,<26` for protected credentials. Invio accepts only approved OS-protected keyring backend families: Windows Credential Locker, macOS Keychain, Freedesktop Secret Service/libsecret, or KWallet. If no approved backend is available, provider credentials fail closed and are not written to plaintext storage.
@@ -161,3 +167,7 @@ No supported platform, Python/PySide6/openpyxl/keyring range, runtime dependency
 ## v1.0.0.1.38 P14 Release Inventory Compatibility
 
 The Windows release contract remains portable ZIP + MSI + wheel + `SHA256SUMS.txt`. WiX `6.0.2` and Nuitka `4.1.3` remain build-only pins. v1.38 suppresses the default WiX `.wixpdb` debug-symbol sidecar with `-pdbtype none`; no application/runtime/provider/schema/thread/UI compatibility boundary changes.
+
+## v1.0.0.1.40 compatibility note
+
+No runtime dependency, SQLite schema, CredentialStore, Task/WorkerManager or provider-manifest compatibility contract changes. The two new Settings fields are backward-compatible because missing keys load their blank defaults. Customer defaults are materialized on future imports; existing durable customer records are not silently rewritten. Windows icon packaging depends on owner-provided `assets/icons/app.ico` and `app.png`.

@@ -42,7 +42,7 @@ class CustomerListsPage(QWidget):
         root.addWidget(
             page_header(
                 "Customer Lists",
-                "Create separate customer lists with mandatory email and optional explicit name/country data.",
+                "Create separate customer lists with mandatory email; missing name/country are filled from Settings customer defaults.",
                 [new],
             )
         )
@@ -62,7 +62,7 @@ class CustomerListsPage(QWidget):
 
         customers_card = card(
             "List Customers",
-            "Upload CSV, TSV, Excel or text files. Email is mandatory; name is optional; country is explicit only when a provider requires it.",
+            "Upload CSV, TSV, Excel or text files. Email is mandatory; missing name uses the Settings default or email username, and missing country uses the Settings default or US.",
         )
         action_row = QHBoxLayout()
         self.import_button = button("Upload Customers")

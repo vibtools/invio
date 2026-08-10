@@ -160,7 +160,28 @@ def app_qss() -> str:
     }}
     QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QTextEdit:hover, QPlainTextEdit:hover {{ border-color: #334155; }}
     QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus {{ border-color: {c['focus']}; }}
-    QComboBox QAbstractItemView {{ background: {c['surface']}; color: {c['primary_text']}; border: 1px solid {c['input_border']}; selection-background-color: {c['selection']}; }}
+    QComboBox QAbstractItemView {{
+        background: {c['surface']}; color: {c['primary_text']};
+        border: 1px solid {c['input_border']};
+        selection-background-color: {c['selection']}; selection-color: {c['primary_text']};
+    }}
+    QListWidget {{
+        background: {c['surface']}; color: {c['primary_text']};
+        border: 1px solid {c['border']}; border-radius: {CONST.common_radius}px;
+        selection-background-color: {c['selection']}; selection-color: {c['primary_text']};
+    }}
+    QListWidget::item {{ min-height: {CONST.table_row_height}px; padding: 0px 7px; color: {c['primary_text']}; }}
+    QListWidget::item:hover {{ background: {c['row_hover']}; }}
+    QListWidget::item:selected {{ background: {c['selection']}; color: {c['primary_text']}; }}
+    QListWidget::item:disabled {{ color: {c['disabled_text']}; background: {c['surface']}; }}
+    QMenu {{
+        background: {c['surface']}; color: {c['primary_text']};
+        border: 1px solid {c['border']}; padding: 4px;
+    }}
+    QMenu::item {{ background: transparent; color: {c['primary_text']}; padding: 6px 24px 6px 10px; }}
+    QMenu::item:selected {{ background: {c['primary']}; color: {c['primary_text']}; }}
+    QMenu::item:disabled {{ color: {c['disabled_text']}; }}
+    QMenu::separator {{ height: 1px; background: {c['border']}; margin: 4px 6px; }}
     QAbstractItemView#CurrencySearchResults {{
         background: {c['surface']}; color: {c['primary_text']};
         border: 1px solid {c['input_border']};
@@ -178,10 +199,10 @@ def app_qss() -> str:
         image: url("{check_icon}");
     }}
     QTreeWidget, QTableWidget {{
-        background: transparent; alternate-background-color: rgba(255,255,255,3);
+        background: {c['surface']}; alternate-background-color: rgba(255,255,255,3);
         border: 1px solid {c['border']}; border-radius: {CONST.common_radius}px;
         gridline-color: transparent; selection-background-color: {c['selection']};
-        color: {c['primary_text']};
+        selection-color: {c['primary_text']}; color: {c['primary_text']};
     }}
     QTreeWidget::item, QTableWidget::item {{ min-height: {CONST.table_row_height}px; padding: 0px 7px; border-bottom: 1px solid {c['border']}; }}
     QTreeWidget::item:hover, QTableWidget::item:hover {{ background: {c['row_hover']}; }}

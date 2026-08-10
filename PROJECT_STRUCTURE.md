@@ -199,3 +199,15 @@ No project path, module, package, page or runtime structure changes are introduc
 ## v1.0.0.1.38 P14 release inventory correction
 
 No folder/module reorganization is introduced. The existing WiX build still consumes `build/Invio.wxs` and writes the MSI to `dist/release`; v1.38 prevents the default sibling `.wixpdb` from being generated there so the frozen release payload inventory remains exact.
+### v1.0.0.1.39 build-only credential packaging contract
+
+- `.github/nuitka-keyring.nuitka-package.config.yml` preserves the existing `keyring` distribution metadata required by compiled backend discovery.
+- `.github/workflows/ci.yml` explicitly includes the existing keyring runtime dependency graph and runs protected-credential set/get/delete smoke checks from both the compiled OneDir executable and MSI-installed executable.
+- No runtime package/module/folder architecture was renamed or reorganized.
+
+### v1.0.0.1.40 owner icon and customer-default correction resources
+
+- `assets/icons/app.png` — owner-supplied runtime/application icon source.
+- `assets/icons/app.ico` — owner-supplied Windows executable icon source; required by the Nuitka build option.
+- `docs/api/refrens-runtime.md` — scoped Refrens request mapping note for the v1.40 live correction.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.md` — private root-cause record.

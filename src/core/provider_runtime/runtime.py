@@ -2156,7 +2156,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.38 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.40 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2387,7 +2387,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.38 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.40 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -2788,11 +2788,6 @@ class ProviderRuntime:
         if not name:
             raise ProviderRuntimeError("Refrens customer name is required; Invio will not substitute the email address.")
         due_date = datetime.now(timezone.utc) + timedelta(days=template.days_until_due)
-        terms = list(template.terms)
-        if template.customer_note.strip():
-            terms.append(template.customer_note.strip())
-        if template.footer.strip():
-            terms.append(template.footer.strip())
         payload: dict[str, Any] = {
             "invoiceTitle": template.invoice_title.strip() or "Invoice",
             "invoiceSubTitle": template.invoice_subtitle.strip(),
@@ -2816,8 +2811,11 @@ class ProviderRuntime:
         }
         if template.memo.strip():
             payload["notes"] = template.memo.strip()
-        if terms:
-            payload["terms"] = terms
+        # Refrens' current create-invoice API does not document a request-side
+        # ``terms`` field. Sending Invio's list[str] terms causes the live API
+        # to reject the invoice because Refrens stores terms as embedded values.
+        # Keep terms/customer-note/footer in the immutable Invio template, but
+        # do not send an unsupported representation in the create request.
         return payload
 
     def create_and_send_refrens_invoice(

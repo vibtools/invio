@@ -1,12 +1,12 @@
 # Roadmap
 
-Current Official source/build baseline: **Invio v1.0.0.1.38 — P14 CERTIFICATION PENDING**.
+Current owner-frozen Official Baseline: **Invio v1.0.0.1.39**. Current local correction candidate: **Invio v1.0.0.1.40 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED**.
 
-Owner-frozen parent baseline: **Invio v1.0.0.1.36**. Production certification remains pending.
+Owner-frozen parent baseline for the current correction: **Invio v1.0.0.1.39**. Production certification remains pending.
 
 Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is verification-corrected through `v1.0.0.1.38`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. Owner live v1.39 testing reached real Refrens Task execution and exposed the confirmed create-invoice `terms` validation failure plus the approved UI/customer-default/icon issues. v1.40 is the scope-locked correction candidate; P14 is **not COMPLETE** until owner source-live invoice/email evidence and corrected compiled OneDir/MSI artifact acceptance pass.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -120,3 +120,10 @@ GitHub run `31374749523` proved the v1.36 Windows pipeline reaches the pinned Wi
 ## P14 release-inventory correction - v1.0.0.1.38
 
 GitHub run `31386258538` proved the v1.37 Windows pipeline now passes the prior WiX-version guard and proceeds successfully through MSI build and MSI clean install/run/uninstall smoke. Final release assembly then exposed a deterministic inventory mismatch because WiX emitted a default `.wixpdb` sidecar into `dist/release`, while the approved release contract remains portable ZIP + MSI + wheel + checksums. v1.38 suppresses only that debug-symbol output with `-pdbtype none`; P14 phase count remains unchanged pending the exact v1.38 external run and live-provider acceptance.
+### P14 compiled protected-credential correction candidate - v1.0.0.1.39
+
+The v1.38 tagged release pipeline completed successfully, but owner live use demonstrated that real Refrens API verification could succeed while the subsequent compiled Account-save path failed at the initial `CredentialStore` keyring import/dependency boundary. v1.39 keeps keyring, provider logic, storage policy, schema and UI unchanged; it makes keyring code/metadata inclusion explicit in the Nuitka build and adds compiled OneDir/MSI protected-credential round-trip smoke coverage. The candidate is not authorized for tag/release until owner source/live sending and generated Windows-artifact validation pass.
+
+## v1.0.0.1.40 owner live-correction gate
+
+This candidate does not add a new production phase. It corrects only the owner-observed v1.39 UI/customer-default/Refrens payload/icon issues. P11 remains LIVE ACCEPTANCE PENDING until real Refrens invoice creation plus mailbox receipt succeed. P14 remains CERTIFICATION PENDING until the corrected non-tagged compiled artifacts are also accepted. No tag/release before both gates.

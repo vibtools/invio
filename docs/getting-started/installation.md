@@ -92,3 +92,10 @@ GitHub release tags must exactly match the application version, e.g. `v1.0.0.1.3
 ### v1.0.0.1.38 release inventory note
 
 The supported Windows release payloads remain the versioned portable ZIP and per-user MSI, with the Python wheel and `SHA256SUMS.txt` retained for packaging verification. WiX debug-symbol `.wixpdb` files are build diagnostics and are intentionally not produced in the release directory by v1.38.
+## v1.0.0.1.39 pre-release validation note
+
+For the current compiled-credential correction, keep `v1.0.0.1.38` as the installed/released reference and test the v1.39 delta from an exact v1.38 **source root** first. Use a fresh Windows Python 3.12 virtual environment, install the unchanged `requirements.txt`, and run `python main.py`. Do not tag or publish v1.39 until source/live Account persistence and a later non-tagged Windows build artifact are both accepted.
+
+## v1.0.0.1.40 application icon prerequisite
+
+The source/runtime/build contract now consumes owner branding from `assets/icons/app.png` and `assets/icons/app.ico`. Place both files at those exact paths before icon verification or a Windows build. The Windows Nuitka build specifically requires `assets/icons/app.ico`; the patch intentionally does not fabricate or replace owner branding assets.

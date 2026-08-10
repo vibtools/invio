@@ -59,7 +59,7 @@ class P14CertificationTests(unittest.TestCase):
         ):
             self.assertIn(package, packages)
         package_data = config["tool"]["setuptools"]["package-data"]
-        self.assertEqual(package_data["assets.icons"], ["checkmark.svg"])
+        self.assertEqual(package_data["assets.icons"], ["checkmark.svg", "app.png", "app.ico"])
         for provider in ("stripe", "refrens", "agiled"):
             self.assertEqual(package_data[f"providers.packages.{provider}"], ["provider.json"])
 

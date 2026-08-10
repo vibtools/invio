@@ -1,13 +1,13 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.38`** is the owner-frozen P14 source/build correction baseline derived from `v1.0.0.1.37` and scoped only to the release-inventory failure observed in GitHub Actions run `31386258538`. The existing pinned WiX `6.0.2`, canonical version guard, Nuitka OneDir, portable ZIP, MSI, wheel, checksum audit and tag-release architecture are preserved; the WiX build now suppresses its default `.wixpdb` debug sidecar so `dist/release` contains only the approved release payloads. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.0.0.1.38 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.39` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40` is a local source/live correction candidate and must not be tagged or released yet.** The v1.40 scope is limited to the owner-reported dark-theme list/menu visibility defects, email-only customer default materialization, the confirmed Refrens create-invoice `terms` HTTP 400 correction, and owner-supplied app icon wiring. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, provider manifests and runtime dependency versions remain unchanged. **P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
 
 ## Current Application Scope
 
 - **Dashboard**: live summary for installed providers, accounts, templates, customer count, task activity, account reservations, and next setup/action.
 - **Accounts**: provider-grouped accounts with Add/Edit/Re-test/Delete lifecycle controls, real non-blocking API verification, durable verification health, protected credentials, and task reservation safety.
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
-- **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
+- **Customer Lists**: independent named bulk-customer lists. Email is mandatory. During import, Settings can supply a default customer name/country; otherwise missing names use the email local-part and missing countries use `US`. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports remain supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
 - **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry; Agiled remains fail-closed. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: task summaries plus durable recipient reconciliation, structured privacy-redacted logs, spreadsheet-safe exports, closed-history retention controls, and persistent non-sensitive application preferences.
@@ -141,7 +141,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.38.md`
+- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.38` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. GitHub run `31386258538` proved the v1.37 Windows pipeline passes regression, wheel/native smoke, Nuitka build/startup, WiX setup, MSI build and MSI clean install/run/uninstall. Final checksum inventory then failed because WiX emitted a default `.wixpdb` debug-symbol sidecar into `dist/release`. v1.38 preserves the release contract and suppresses only that sidecar with `-pdbtype none`. P14 remains **CERTIFICATION PENDING** because the exact v1.0.0.1.38 checksum/artifact stages and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
+`v1.0.0.1.39` is now the owner-frozen parent baseline for the v1.40 live correction. Historical release context: `v1.0.0.1.38` was the frozen Official released parent baseline. Its tagged GitHub Actions run `31391044849` passed regression, wheel/native Python-keyring smoke, Nuitka OneDir, MSI install/run/uninstall, release checksum audit, artifact upload and release publication. Owner live use then exposed a certification gap: real Refrens API Test succeeded, but the compiled application could not enter the production `CredentialStore` keyring import/dependency path when saving the Account. `v1.0.0.1.39` is therefore a **local pre-release correction candidate** that explicitly packages the existing keyring dependency/metadata contract and adds compiled OneDir/MSI credential set/get/delete smoke coverage. It must not be tagged/released until source/live and compiled-artifact validation pass. P14 remains **CERTIFICATION PENDING** and P11 remains **LIVE ACCEPTANCE PENDING**; completed acceptance phases remain **12/14**.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 

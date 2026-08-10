@@ -1,6 +1,7 @@
 # Actual Implementation Status
 
-**Current source/build baseline:** `Invio v1.0.0.1.38 — P14 CERTIFICATION PENDING`
+**Owner-frozen parent baseline for current correction:** `Invio v1.0.0.1.39`  
+**Current local source/live correction candidate:** `Invio v1.0.0.1.40 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
 **Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
@@ -292,3 +293,14 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## P14 release inventory correction - v1.0.0.1.38
 
 **WORKING LOCALLY / EXTERNAL WINDOWS RE-RUN PENDING:** run `31386258538` passed regression, native wheel smoke, Nuitka OneDir build/startup, WiX setup, MSI build and MSI install/run/uninstall. Final assembly failed only because WiX's default `.wixpdb` sidecar expanded `dist/release` beyond the approved payload set. v1.38 adds `-pdbtype none` to the existing WiX build. P14 remains certification pending until the exact v1.38 workflow and live-provider gates pass.
+## v1.0.0.1.39 compiled credential correction boundary
+
+**OBSERVED:** owner live Refrens API verification succeeds in the released v1.38 app, then Add Account fails with `Protected credential storage is unavailable.`. The exact message places the failure in the initial compiled `CredentialStore` keyring import/dependency boundary.
+
+**CANDIDATE CORRECTION:** explicit existing keyring dependency/metadata inclusion in Nuitka plus compiled OneDir/MSI `CredentialStore` set/get/delete smoke. `CredentialStore` policy/no-plaintext-fallback behavior itself is unchanged.
+
+**STILL PENDING:** owner source/live Account persistence + Refrens send/mailbox acceptance, then non-tagged compiled artifact acceptance. P11 and P14 are not complete.
+
+## v1.0.0.1.40 correction candidate status
+
+Implemented locally: dark Task/list/menu surface contract; import-time customer defaults and Settings controls; Refrens create-request terms correction; owner app icon runtime/build wiring. Automated verification does not certify live Refrens delivery. P11 remains LIVE ACCEPTANCE PENDING and P14 remains CERTIFICATION PENDING until owner live source and compiled-artifact checks pass.

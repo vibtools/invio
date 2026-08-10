@@ -206,6 +206,7 @@ class P11RefrensTaskTests(unittest.TestCase):
         self.assertEqual(invoice_payload["billedTo"]["name"], "Alice")
         self.assertEqual(invoice_payload["billedTo"]["country"], "BD")
         self.assertEqual(invoice_payload["email"]["to"], {"email": "a@example.com", "name": "Alice"})
+        self.assertNotIn("terms", invoice_payload)
         with closing(sqlite3.connect(self.store.path)) as connection:
             connection.row_factory = sqlite3.Row
             ops = connection.execute(

@@ -1,5 +1,27 @@
 # Versioning
 
+## v1.0.0.1.40 Local Live-Correction Candidate
+
+- Application/source version: `1.0.0.1.40`
+- Windows PE file/product version: `1.0.1.40`
+- MSI product version: `1.1.40`
+- Reserved future exact tag: `v1.0.0.1.40` — **not authorized yet**
+- Parent Official Baseline for this correction: `v1.0.0.1.39`
+- P11: LIVE ACCEPTANCE PENDING
+- P14: CERTIFICATION PENDING
+- Production-ready: NO
+
+## v1.0.0.1.39 Local Correction Candidate
+
+- Parent Official released baseline: `v1.0.0.1.38`
+- Application/source version: `1.0.0.1.39`
+- Windows PE file/product version: `1.0.1.39`
+- MSI product version: `1.1.39`
+- Reserved future exact tag (not yet authorized/pushed): `v1.0.0.1.39`
+- Status: local/source/build correction candidate; P14 CERTIFICATION PENDING
+
+No tag/release may be created until owner local source/live validation and non-tagged compiled-artifact validation succeed.
+
 Invio release versions are controlled by Vib Tools. Every approved update freezes the latest verified release as the next baseline and produces a replace-ready project-root delta.
 
 - `v1.0.0`: frozen source baseline.

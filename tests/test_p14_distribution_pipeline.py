@@ -24,6 +24,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
     def _populate_resources(self, root: Path) -> None:
         for relative in (
             Path("assets/icons/checkmark.svg"),
+            Path("assets/icons/app.png"),
+            Path("assets/icons/app.ico"),
             Path("providers/packages/stripe/provider.json"),
             Path("providers/packages/refrens/provider.json"),
             Path("providers/packages/agiled/provider.json"),
@@ -33,11 +35,11 @@ class P14DistributionPipelineTests(unittest.TestCase):
             path.write_text(relative.as_posix(), encoding="utf-8")
 
     def test_release_version_maps_five_part_identity_to_pe_msi_and_tag(self):
-        release = parse_release_version("1.0.0.1.38")
-        self.assertEqual(release.application, "1.0.0.1.38")
-        self.assertEqual(release.pe_file_version, "1.0.1.38")
-        self.assertEqual(release.msi_version, "1.1.38")
-        self.assertEqual(release.tag, "v1.0.0.1.38")
+        release = parse_release_version("1.0.0.1.40")
+        self.assertEqual(release.application, "1.0.0.1.40")
+        self.assertEqual(release.pe_file_version, "1.0.1.40")
+        self.assertEqual(release.msi_version, "1.1.40")
+        self.assertEqual(release.tag, "v1.0.0.1.40")
         with self.assertRaises(ValueError):
             parse_release_version("1.0.0.1")
 
@@ -68,7 +70,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             app_dir, portable = prepare_distribution(nuitka, root / "dist" / "windows", root / "dist" / "release")
             self.assertTrue((app_dir / "Invio.exe").is_file())
             self.assertFalse((app_dir / "main.exe").exists())
-            self.assertEqual(portable.name, "Invio_v1.0.0.1.38_windows_x64_portable.zip")
+            self.assertEqual(portable.name, "Invio_v1.0.0.1.40_windows_x64_portable.zip")
             with zipfile.ZipFile(portable) as archive:
                 self.assertIsNone(archive.testzip())
                 names = set(archive.namelist())
@@ -93,7 +95,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), second.read_bytes())
             text = first.read_text(encoding="utf-8")
             self.assertIn('Scope="perUser"', text)
-            self.assertIn('Version="1.1.38"', text)
+            self.assertIn('Version="1.1.40"', text)
             self.assertIn(f'UpgradeCode="{UPGRADE_CODE}"', text)
             self.assertIn('Id="LocalAppDataFolder"', text)
             self.assertIn('Name="Vib Tools"', text)
@@ -106,8 +108,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
     def test_github_workflow_builds_wheel_nuitka_onedir_wix_msi_and_tag_release(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         required_fragments = (
-            'INVIO_VERSION: "1.0.0.1.38"',
-            'INVIO_PE_VERSION: "1.0.1.38"',
+            'INVIO_VERSION: "1.0.0.1.40"',
+            'INVIO_PE_VERSION: "1.0.1.40"',
             'NUITKA_VERSION: "4.1.3"',
             'WIX_VERSION: "6.0.2"',
             "$wixVersion = (wix --version).Trim()",
@@ -118,7 +120,17 @@ class P14DistributionPipelineTests(unittest.TestCase):
             "Nuitka/Nuitka-Action@99c9d3ab258c7008c0604617d925574101327e5d",
             "mode: standalone",
             "enable-plugins: pyside6",
-            "include-package: keyring.backends",
+            "windows-icon-from-ico: assets/icons/app.ico",
+            "keyring.backends",
+            "keyring",
+            "jaraco.classes",
+            "jaraco.context",
+            "jaraco.functools",
+            "more_itertools",
+            "win32ctypes",
+            "user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml",
+            "Smoke compiled protected credential storage",
+            "INVIO_P14_COMPILED_CREDENTIAL_SMOKE",
             "wix build build\\Invio.wxs -arch x64 -pdbtype none",
             "p14_distribution_audit.py",
             "actions/upload-artifact@v4",
@@ -136,6 +148,31 @@ class P14DistributionPipelineTests(unittest.TestCase):
         self.assertIn("-pdbtype none", workflow)
 
 
+    def test_compiled_keyring_contract_covers_code_metadata_and_real_credential_round_trip(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        app_source = (ROOT / "src" / "app.py").read_text(encoding="utf-8")
+        config = (ROOT / ".github" / "nuitka-keyring.nuitka-package.config.yml").read_text(encoding="utf-8")
+        for package in (
+            "keyring.backends",
+            "keyring",
+            "jaraco.classes",
+            "jaraco.context",
+            "jaraco.functools",
+            "more_itertools",
+            "win32ctypes",
+        ):
+            self.assertIn(package, workflow)
+        self.assertIn("include-metadata:", config)
+        self.assertIn("'keyring'", config)
+        self.assertIn("INVIO_P14_COMPILED_CREDENTIAL_SMOKE", app_source)
+        self.assertIn("store.set_credentials", app_source)
+        self.assertIn("store.get_credentials", app_source)
+        self.assertIn("store.delete_credentials", app_source)
+        self.assertIn("Smoke compiled protected credential storage", workflow)
+        self.assertIn("MSI-installed protected credential smoke failed", workflow)
+
+
+
     def test_distribution_audit_accepts_complete_structural_payload_with_exact_checksums(self):
         import subprocess
 
@@ -146,8 +183,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
             (nuitka / "main.exe").write_bytes(b"MZ-INVIO")
             self._populate_resources(nuitka)
             _app_dir, portable = prepare_distribution(nuitka, root / "windows", root / "release")
-            (root / "release" / "Invio_v1.0.0.1.38_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
-            (root / "release" / "invio-1.0.0.1.38-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "Invio_v1.0.0.1.40_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "invio-1.0.0.1.40-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "build" / "finalize_release_checksums.py"), str(root / "release")],
                 check=True,
@@ -162,7 +199,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
                     "--release-dir",
                     str(root / "release"),
                     "--version",
-                    "1.0.0.1.38",
+                    "1.0.0.1.40",
                 ],
                 check=True,
                 cwd=ROOT,

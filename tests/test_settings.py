@@ -29,6 +29,8 @@ class SettingsManagerTests(unittest.TestCase):
         self.assertEqual(settings.max_log_entries, 0)
         self.assertEqual(settings.default_file_folder, "")
         self.assertFalse(settings.remember_last_folder)
+        self.assertEqual(settings.default_customer_name, "")
+        self.assertEqual(settings.default_customer_country, "")
 
     def test_settings_round_trip(self):
         with tempfile.TemporaryDirectory() as td:
@@ -49,11 +51,15 @@ class SettingsManagerTests(unittest.TestCase):
                     max_log_entries=2500,
                     default_file_folder=str(root),
                     remember_last_folder=True,
+                    default_customer_name="Billing Customer",
+                    default_customer_country="bd",
                 )
             )
             reloaded = SettingsManager(path).settings
             self.assertEqual(reloaded, saved)
             self.assertEqual(reloaded.default_file_folder, str(root.resolve()))
+            self.assertEqual(reloaded.default_customer_name, "Billing Customer")
+            self.assertEqual(reloaded.default_customer_country, "BD")
 
     def test_last_page_is_used_only_when_selected(self):
         with tempfile.TemporaryDirectory() as td:
@@ -97,6 +103,13 @@ class SettingsManagerTests(unittest.TestCase):
             manager = SettingsManager(Path(td) / "settings.json")
             with self.assertRaises(SettingsError):
                 manager.update(AppSettings(default_file_folder=str(Path(td) / "missing")))
+
+
+    def test_invalid_default_customer_country_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            manager = SettingsManager(Path(td) / "settings.json")
+            with self.assertRaisesRegex(SettingsError, "two-letter country code"):
+                manager.update(AppSettings(default_customer_country="United States"))
 
     def test_persisted_payload_contains_preferences_not_credentials(self):
         with tempfile.TemporaryDirectory() as td:

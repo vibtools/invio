@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current version: **v1.0.0.1.38**.
+Current correction candidate: **v1.0.0.1.40**; owner-frozen parent baseline: **v1.0.0.1.39**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -125,3 +125,10 @@ The current source/build baseline fixes the GitHub Windows pipeline's false WiX 
 ## v1.0.0.1.38 WiX release inventory correction
 
 v1.38 preserves the existing Windows distribution design and suppresses WiX's default `.wixpdb` debug sidecar so the checksum manifest and distribution audit operate on the same approved portable/MSI/wheel payload set. P14 remains certification pending.
+## Current v1.0.0.1.39 correction candidate
+
+`v1.0.0.1.38` remains the Official released parent baseline. `v1.0.0.1.39` is a pre-release correction for the owner-observed compiled protected-credential storage failure after a successful Refrens API Test. It preserves the existing keyring/security/provider/storage architecture and adds explicit compiled keyring packaging plus OneDir/MSI CredentialStore round-trip verification. Do not tag/release the candidate until owner source/live and compiled-artifact validation pass.
+
+## Current v1.0.0.1.40 live-correction candidate
+
+Owner-frozen parent baseline is v1.0.0.1.39. v1.40 is limited to the live Refrens `terms` payload correction, email-only customer defaults, the reported dark list/menu/table surfaces, and owner app icon wiring. Do not tag/release until local source Refrens invoice/email acceptance and subsequent non-tagged compiled-artifact acceptance both pass.

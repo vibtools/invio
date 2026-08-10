@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  INVIO_VERSION: "1.0.0.1.38"
-  INVIO_PE_VERSION: "1.0.1.38"
+  INVIO_VERSION: "1.0.0.1.40"
+  INVIO_PE_VERSION: "1.0.1.40"
   NUITKA_VERSION: "4.1.3"
   WIX_VERSION: "6.0.2"
 
@@ -80,12 +80,21 @@ jobs:
           script-name: main.py
           mode: standalone
           enable-plugins: pyside6
-          include-package: keyring.backends
+          include-package: |
+            keyring.backends
+            keyring
+            jaraco.classes
+            jaraco.context
+            jaraco.functools
+            more_itertools
+            win32ctypes
+          user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml
           include-data-dir: |
             assets=assets
             providers=providers
           include-data-files: LICENSE=LICENSE
           windows-console-mode: disable
+          windows-icon-from-ico: assets/icons/app.ico
           company-name: Vib Tools
           product-name: Invio
           file-version: ${{ env.INVIO_PE_VERSION }}
@@ -118,6 +127,24 @@ jobs:
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
           }
 
+      - name: Smoke compiled protected credential storage
+        shell: pwsh
+        run: |
+          $smoke = Join-Path $env:RUNNER_TEMP "invio-nuitka-credential-smoke"
+          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+          $env:APPDATA = Join-Path $smoke "appdata"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE = "1"
+          $exe = (Resolve-Path "dist\windows\Invio\Invio.exe").Path
+          try {
+            $process = Start-Process -FilePath $exe -PassThru -Wait
+            if ($process.ExitCode -ne 0) { throw "Compiled protected credential smoke failed with exit code $($process.ExitCode)." }
+          }
+          finally {
+            Remove-Item Env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE -ErrorAction SilentlyContinue
+          }
+
       - name: Setup .NET for WiX
         uses: actions/setup-dotnet@v4
         with:
@@ -148,6 +175,20 @@ jobs:
           if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed with exit code $($install.ExitCode)." }
           $installedExe = Join-Path $env:LOCALAPPDATA "Vib Tools\Invio\Invio.exe"
           if (-not (Test-Path $installedExe)) { throw "MSI did not install Invio.exe at the expected per-user location." }
+
+          $credentialSmoke = Join-Path $env:RUNNER_TEMP "invio-msi-credential-smoke"
+          Remove-Item $credentialSmoke -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $credentialSmoke | Out-Null
+          $env:APPDATA = Join-Path $credentialSmoke "appdata"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE = "1"
+          try {
+            $credentialProcess = Start-Process -FilePath $installedExe -PassThru -Wait
+            if ($credentialProcess.ExitCode -ne 0) { throw "MSI-installed protected credential smoke failed with exit code $($credentialProcess.ExitCode)." }
+          }
+          finally {
+            Remove-Item Env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE -ErrorAction SilentlyContinue
+          }
 
           $smoke = Join-Path $env:RUNNER_TEMP "invio-msi-smoke"
           Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue

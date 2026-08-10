@@ -50,6 +50,9 @@ class AppSettings:
     default_file_folder: str = ""
     remember_last_folder: bool = False
 
+    default_customer_name: str = ""
+    default_customer_country: str = ""
+
 
 @dataclass(slots=True)
 class WindowState:
@@ -277,10 +280,32 @@ class SettingsManager:
             elif not strict:
                 folder_value = ""
 
+        customer_name = settings.default_customer_name
+        if not isinstance(customer_name, str):
+            if strict:
+                raise SettingsError("Default customer name must be text or left blank.")
+            customer_name = defaults.default_customer_name
+        customer_name = customer_name.strip()
+
+        customer_country = settings.default_customer_country
+        if not isinstance(customer_country, str):
+            if strict:
+                raise SettingsError("Default customer country must be a two-letter country code or left blank.")
+            customer_country = defaults.default_customer_country
+        customer_country = customer_country.strip().upper()
+        if customer_country and (
+            len(customer_country) != 2 or not customer_country.isascii() or not customer_country.isalpha()
+        ):
+            if strict:
+                raise SettingsError("Default customer country must be a two-letter country code, for example US.")
+            customer_country = defaults.default_customer_country
+
         return AppSettings(
             start_page=start_page,
             max_log_entries=max_log_entries,
             default_file_folder=folder_value,
+            default_customer_name=customer_name,
+            default_customer_country=customer_country,
             **normalized_bools,
         )
 

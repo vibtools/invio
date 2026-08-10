@@ -287,3 +287,10 @@ The Windows distribution architecture remains `wheel/native smoke -> Nuitka OneD
 ## v1.0.0.1.38 P14 release inventory boundary
 
 The distribution pipeline remains `wheel/native smoke -> Nuitka OneDir -> portable ZIP -> WiX MSI -> MSI smoke -> checksums/artifact upload`. The WiX build now explicitly sets `-pdbtype none` so build debug symbols do not enter the release directory. No runtime architecture, installer destination, checksum algorithm, or release payload topology changes.
+## v1.0.0.1.39 compiled CredentialStore certification boundary
+
+The application credential architecture is unchanged: domain storage keeps only opaque credential references and `CredentialStore` uses Python `keyring` with the existing approved OS-backend allow-list and no plaintext fallback. The v1.39 correction is build/certification-only around that architecture: Nuitka explicitly includes the existing keyring dependency graph and preserves keyring distribution metadata, while CI launches compiled OneDir/MSI executables in a dedicated smoke mode that executes the production `CredentialStore.set_credentials() -> get_credentials() -> delete_credentials()` path. Normal application execution never enters the smoke hook.
+
+## v1.0.0.1.40 correction boundaries
+
+Email-only defaults are applied between `import_customers()` and `AppState.add_customers()`: configured name/country values are applied at import, otherwise email local-part / `US` fill missing identity data. This keeps Task snapshots explicit and independent of future Settings changes. Refrens create/send remains in the existing ProviderRuntime/P10 delivery path; only unsupported request-side string-list terms are removed. Application styling is additionally installed on `QApplication` so context menus/top-level popup surfaces share the existing dark QSS. Application icon lookup is `assets/icons/app.png` then `app.ico`, with Windows AppUserModelID and Nuitka executable icon wiring.

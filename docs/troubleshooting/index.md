@@ -172,3 +172,14 @@ Confirm the tag exactly matches the five-part application version (`v1.0.0.1.38`
 ### Release checksum audit reports unexpected `.wixpdb`
 
 The approved Invio release payload set does not include WiX debug-symbol sidecars. v1.0.0.1.38 builds the MSI with `-pdbtype none`; if a `.wixpdb` appears in `dist/release`, treat the build as outside the frozen release contract rather than adding it to `SHA256SUMS.txt` or the published release.
+## `Protected credential storage is unavailable.` after a successful API Test
+
+If a provider API Test succeeds but Add Account immediately reports this exact message in released v1.0.0.1.38, the provider API test itself has already succeeded. The message is emitted by the initial `CredentialStore` keyring import/dependency boundary before credential persistence. v1.0.0.1.39 is the scope-locked pre-release compiled-packaging correction candidate. Do not work around the error by storing provider secrets in plaintext. Validate the candidate from source first, then require the compiled Windows credential smoke/artifact gate.
+
+## Refrens `terms: Cast to embedded failed` — v1.0.0.1.39 live failure
+
+If v1.39 live logs show a verified Refrens account followed by `invoices validation failed: terms: Cast to embedded failed ... at path "terms"`, the failure is in the create-invoice payload, not API authentication. v1.40 omits Invio's unsupported `terms: list[str]` request representation. Do not retry the same failed batch repeatedly before applying/testing the correction.
+
+## New Task / Customer Lists / right-click menu appears light
+
+v1.40 explicitly styles `QListWidget`, table surfaces and `QMenu`, and applies the existing Invio QSS at application scope. If a custom OS accessibility/theme layer still overrides those colors, record the exact widget/screenshot rather than changing unrelated palette behavior.

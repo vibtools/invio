@@ -39,7 +39,7 @@ from ..core.settings import AppSettings, SettingsError, SettingsManager, WindowS
 from ..core.storage import CredentialStore, DomainStore, DomainStoreError
 from ..core.state import AppState, StateError
 from ..core.worker_manager import TaskRunner, WorkerManager
-from ..customers.importers import import_customers
+from ..customers.importers import apply_customer_defaults, import_customers
 from ..tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
 from ..tasks.state_machine import (
     CONTINUATION_UNAVAILABLE_MESSAGE,
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.38 started.")
+        self.log("Invio v1.0.0.1.40 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.38")
+        self.runtime_status = QLabel("Production • v1.0.0.1.40")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -868,7 +868,12 @@ class MainWindow(QMainWindow):
         self._remember_dialog_path(path)
         try:
             imported = import_customers(path)
-            merged = self.state.add_customers(list_id, imported.records, source_rows=imported.record_rows)
+            normalized_records = apply_customer_defaults(
+                imported.records,
+                default_name=self.app_settings.default_customer_name,
+                default_country=self.app_settings.default_customer_country,
+            )
+            merged = self.state.add_customers(list_id, normalized_records, source_rows=imported.record_rows)
         except (OSError, ValueError, StateError) as exc:
             self._message("Customer List", f"Import failed: {exc}", QMessageBox.Icon.Warning)
             return

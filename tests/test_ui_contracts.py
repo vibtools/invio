@@ -53,6 +53,41 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('QWidget#Sidebar QWidget#SidebarNavHost', style_source)
         self.assertIn("background: {c['window_background']};", style_source)
 
+
+    def test_dark_popup_list_and_table_surfaces_are_explicitly_styled(self):
+        root = Path(__file__).resolve().parents[1]
+        style_source = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        app_source = (root / "src" / "app.py").read_text(encoding="utf-8")
+        self.assertIn("QListWidget {", style_source)
+        self.assertIn("QMenu {", style_source)
+        self.assertIn("QMenu::item:selected", style_source)
+        self.assertIn("selection-color: {c['primary_text']}", style_source)
+        self.assertIn("app.setStyleSheet(app_qss())", app_source)
+
+    def test_application_icon_contract_uses_owner_asset_paths_and_windows_build_icon(self):
+        root = Path(__file__).resolve().parents[1]
+        app_source = (root / "src" / "app.py").read_text(encoding="utf-8")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('("app.png", "app.ico")', app_source)
+        self.assertIn('SetCurrentProcessExplicitAppUserModelID("VibTools.Invio")', app_source)
+        self.assertIn("app.setWindowIcon(icon)", app_source)
+        self.assertIn("windows-icon-from-ico: assets/icons/app.ico", workflow)
+        self.assertIn('"app.png", "app.ico"', pyproject)
+
+    def test_customer_default_settings_controls_and_import_wiring_are_present(self):
+        root = Path(__file__).resolve().parents[1]
+        settings_page = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        main_window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        customer_page = (root / "src" / "ui" / "pages" / "customer_lists_page.py").read_text(encoding="utf-8")
+        self.assertIn("Default customer name", settings_page)
+        self.assertIn("Default customer country", settings_page)
+        self.assertIn("apply_customer_defaults", main_window)
+        self.assertIn("default_name=self.app_settings.default_customer_name", main_window)
+        self.assertIn("default_country=self.app_settings.default_customer_country", main_window)
+        self.assertIn("email username", customer_page)
+        self.assertIn("Settings default", customer_page)
+
     def test_provider_cards_use_official_plugin_visual_contract(self):
         root = Path(__file__).resolve().parents[1]
         page_source = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
@@ -372,7 +407,7 @@ class UiContractTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         self.assertIn(
-            "self.state.add_customers(list_id, imported.records, source_rows=imported.record_rows)",
+            "self.state.add_customers(list_id, normalized_records, source_rows=imported.record_rows)",
             window,
         )
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.0.1.40 - Refrens Live Send, Customer Defaults, Dark Popup/List and App Icon Correction Candidate
+
+- Froze owner-approved `v1.0.0.1.39` as the parent baseline for this correction; v1.40 remains local/pre-release until live source and compiled-artifact acceptance.
+- Corrected the confirmed Refrens HTTP 400 boundary by no longer serializing Invio `list[str]` terms into the Refrens create-invoice request; auth/email/ledger/retry architecture is unchanged.
+- Added Settings-backed import defaults: configured Default Customer Name, otherwise email local-part; configured Default Customer Country, otherwise explicit imported country or `US` for missing country.
+- Added explicit dark styling for `QListWidget`, `QTableWidget` surfaces and `QMenu`, and applies the existing Invio QSS application-wide so top-level context menus inherit the dark contract.
+- Wired `assets/icons/app.png` / `assets/icons/app.ico` into QApplication/Windows AppUserModelID and the pinned Nuitka build. Owner supplies the actual binary icon assets before build.
+- No SQLite schema, CredentialStore policy, WorkerManager, Task state-machine, provider manifest, dependency or architecture redesign.
+- P11 remains LIVE ACCEPTANCE PENDING and P14 remains CERTIFICATION PENDING; production-ready remains NO.
+
+## v1.0.0.1.39 - P14 Compiled Protected-Credential Storage Correction Candidate
+
+- Frozen `v1.0.0.1.38` as the Official released parent baseline; `v1.0.0.1.39` is local/pre-release only and must not be tagged yet.
+- Owner live Refrens API Test succeeded, but `Add Account` failed immediately afterward with `Protected credential storage is unavailable.`, proving the observed failure is in the initial compiled `CredentialStore` keyring import/dependency boundary rather than provider authentication.
+- Closed the v1.38 certification coverage gap by explicitly freezing the existing keyring runtime dependency graph and keyring distribution metadata into the pinned Nuitka standalone build.
+- Added CI-only compiled protected-credential set/get/delete round-trip execution in the OneDir executable and MSI-installed executable.
+- Kept `CredentialStore` policy/no-plaintext-fallback behavior, runtime dependency versions, provider send logic, SQLite schema v5, Task/WorkerManager architecture, provider manifests, WiX/Nuitka pins and UI/UX unchanged.
+- P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING pending owner source/live sending and non-tagged compiled-artifact acceptance.
+
 ## v1.0.0.1.38 - P14 WiX Debug-Symbol Release Inventory Correction
 
 - Audited GitHub Actions run `31386258538` / Windows job `93447256779`; all gates through MSI install/run/uninstall passed before release checksum inventory validation failed.

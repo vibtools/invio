@@ -164,6 +164,36 @@ def _legacy_import(rows: list[tuple[int, list[object]]]) -> CustomerImportResult
     return result
 
 
+
+def apply_customer_defaults(
+    records: list[CustomerRecord],
+    *,
+    default_name: str = "",
+    default_country: str = "",
+) -> list[CustomerRecord]:
+    """Apply owner-configured import defaults without mutating parsed records.
+
+    An explicit configured default takes precedence. Otherwise existing structured
+    name/country values are preserved; missing names use the email username and
+    missing countries use ``US``.
+    """
+
+    configured_name = str(default_name).strip()
+    configured_country = str(default_country).strip().upper()
+    if configured_country and (
+        len(configured_country) != 2 or not configured_country.isascii() or not configured_country.isalpha()
+    ):
+        raise ValueError("Default customer country must be a two-letter code when provided.")
+
+    normalized: list[CustomerRecord] = []
+    for record in records:
+        email_username = record.email.split("@", 1)[0]
+        name = configured_name or record.name or email_username
+        country = configured_country or record.country or "US"
+        normalized.append(CustomerRecord(record.email, name, country))
+    return normalized
+
+
 def import_customers(path: str | Path) -> CustomerImportResult:
     """Import customer records with structured and legacy email-only compatibility.
 

@@ -159,7 +159,33 @@ class SettingsPage(QWidget):
         )
         grid.addWidget(files, 1, 1)
 
-        for settings_card in (general, safety, logs, files):
+        # Customer defaults ----------------------------------------------
+        customer_defaults = card(
+            "Customer Defaults",
+            "Fill missing customer identity data during import so email-only lists are immediately usable by providers that require name and country.",
+        )
+        self.default_customer_name = QLineEdit()
+        self.default_customer_name.setPlaceholderText("Use email username")
+        customer_defaults.layout().addWidget(
+            form_group(
+                "Default customer name",
+                self.default_customer_name,
+                "If set, this value is used when an imported customer has no name. If blank, Invio uses the email username.",
+            )
+        )
+        self.default_customer_country = QLineEdit()
+        self.default_customer_country.setMaxLength(2)
+        self.default_customer_country.setPlaceholderText("US")
+        customer_defaults.layout().addWidget(
+            form_group(
+                "Default customer country",
+                self.default_customer_country,
+                "Use a two-letter country code. If blank, Invio uses US for imported customers that have no country.",
+            )
+        )
+        grid.addWidget(customer_defaults, 2, 0, 1, 2)
+
+        for settings_card in (general, safety, logs, files, customer_defaults):
             settings_card.setProperty("settingsCard", True)
             settings_card.layout().setContentsMargins(12, 11, 12, 11)
             settings_card.layout().setSpacing(5)
@@ -194,6 +220,8 @@ class SettingsPage(QWidget):
 
         self.default_file_folder.setText(settings.default_file_folder)
         self.remember_last_folder.setChecked(settings.remember_last_folder)
+        self.default_customer_name.setText(settings.default_customer_name)
+        self.default_customer_country.setText(settings.default_customer_country)
 
     def _collect_settings(self) -> AppSettings:
         return AppSettings(
@@ -209,6 +237,8 @@ class SettingsPage(QWidget):
             max_log_entries=self.max_log_entries.value(),
             default_file_folder=self.default_file_folder.text().strip(),
             remember_last_folder=self.remember_last_folder.isChecked(),
+            default_customer_name=self.default_customer_name.text().strip(),
+            default_customer_country=self.default_customer_country.text().strip(),
         )
 
     def _save(self) -> None:

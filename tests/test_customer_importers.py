@@ -7,7 +7,7 @@ from pathlib import Path
 
 from openpyxl import Workbook
 
-from src.customers.importers import import_customers, import_emails
+from src.customers.importers import apply_customer_defaults, import_customers, import_emails
 
 
 class CustomerImporterTests(unittest.TestCase):
@@ -79,6 +79,34 @@ class CustomerImporterTests(unittest.TestCase):
             ("a@example.com", "", ""),
             ("b@example.com", "", ""),
         ])
+
+
+    def test_email_only_records_receive_provider_ready_defaults(self):
+        path = self.root / "emails.txt"
+        path.write_text("Alpha.User@example.com\nbeta+tag@example.com\n", encoding="utf-8")
+        imported = import_customers(path)
+        normalized = apply_customer_defaults(imported.records)
+        self.assertEqual(
+            [(r.email, r.name, r.country) for r in normalized],
+            [
+                ("alpha.user@example.com", "alpha.user", "US"),
+                ("beta+tag@example.com", "beta+tag", "US"),
+            ],
+        )
+
+    def test_configured_customer_defaults_override_import_defaults_without_mutating_email(self):
+        path = self.root / "customers.csv"
+        path.write_text("email,name,country\na@example.com,Alice,BD\n", encoding="utf-8")
+        imported = import_customers(path)
+        normalized = apply_customer_defaults(imported.records, default_name="Invio Customer", default_country="gb")
+        self.assertEqual(
+            [(r.email, r.name, r.country) for r in normalized],
+            [("a@example.com", "Invio Customer", "GB")],
+        )
+
+    def test_customer_default_country_rejects_invalid_code(self):
+        with self.assertRaisesRegex(ValueError, "two-letter code"):
+            apply_customer_defaults([], default_country="United States")
 
     def test_structured_xlsx_supported(self):
         path = self.root / "customers.xlsx"

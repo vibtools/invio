@@ -215,7 +215,7 @@ class ProviderRuntimeTests(unittest.TestCase):
         self.assertEqual(payload["currency"], "USD")
         self.assertEqual(payload["billedTo"]["country"], "BD")
         self.assertEqual(payload["items"][0]["taxRate"], 5.0)
-        self.assertIn("Thank you", payload["terms"])
+        self.assertNotIn("terms", payload)
 
     def test_refrens_create_and_send_uses_documented_create_email_payload(self):
         calls = []
@@ -229,6 +229,7 @@ class ProviderRuntimeTests(unittest.TestCase):
                 payload = json.loads((body or b"{}").decode("utf-8"))
                 self.assertEqual(payload["email"]["to"]["email"], "a@example.com")
                 self.assertEqual(payload["billedTo"]["country"], "BD")
+                self.assertNotIn("terms", payload)
                 return {"_id": "inv_1"}
             raise AssertionError(f"Unexpected request: {method} {url}")
 

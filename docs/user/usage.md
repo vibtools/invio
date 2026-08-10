@@ -170,3 +170,12 @@ The portable ZIP is *installer-free distribution*, not a portable-data mode. Inv
 ### v1.0.0.1.38 release inventory note
 
 End-user distribution remains unchanged: use either the complete portable ZIP or the per-user MSI. The `.wixpdb` file is a WiX build-debug artifact and is not part of the supported Invio release.
+## Current live-acceptance sequence for v1.0.0.1.39 candidate
+
+For owner validation, use the existing Account workflow unchanged: run the real provider **API Test**, then **Add Account**. A successful candidate must commit the Account to protected credential storage, show it as Verified, and restore it after restart. Only then proceed with the already-existing Customer List, Invoice Template and one-recipient controlled Task flow. v1.39 is not approved for public release until this source/live sequence and the later compiled Windows artifact validation pass.
+
+## Email-only customer import defaults — v1.0.0.1.40
+
+Before importing, optionally open **Settings → Customer Defaults**. Set a Default customer name if all imported rows should use the same name. Leave it blank to use an explicit imported name when present and otherwise the email username/local-part. Set a two-letter Default customer country if desired; leave it blank to preserve an explicit imported country and use `US` when country is missing. This makes an email-only list provider-ready before Task snapshot creation.
+
+For Refrens live acceptance, use one controlled recipient first. A successful automated Task result is still not the final P11 gate; confirm the invoice exists in Refrens and that the controlled mailbox received the invoice email.

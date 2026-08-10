@@ -60,3 +60,7 @@ The packaged Agiled manifest defines one required `API Key` password field and `
 ## v1.0.0.1.22 Agiled Verification
 
 The Agiled credential contract remains one protected `API Key` field with `Default` mode. No base URL is added and no key is transmitted by this release. The official Agiled materials remain internally inconsistent for the executable API contract, so configuration remains fail-closed.
+
+## Customer defaults — v1.0.0.1.40
+
+Settings now includes **Default customer name** and **Default customer country**. If Default customer name is nonblank, that configured value is used for imported customers; if blank, an imported row keeps an explicit name and an email-only/missing-name row uses the email local-part. Default customer country accepts a two-letter ASCII code and is stored uppercase; if blank, explicit imported country is preserved and a missing country becomes `US`. These are non-sensitive preferences saved in the existing Settings JSON.
