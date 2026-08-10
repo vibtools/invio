@@ -135,3 +135,14 @@ No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provide
 - External adapter interface remains version 1 and provider business flows are unchanged.
 - No PyInstaller/Briefcase/MSI technology or runtime dependency is introduced.
 - Production certification remains pending until live-provider and native-Windows gates execute successfully.
+
+
+## v1.0.0.1.35 P14 distribution compatibility
+
+- Python/runtime dependency ranges and `requirements.txt` are unchanged; Nuitka and WiX are CI build-only tools.
+- Existing source-checkout and wheel execution remain supported. `application_root()` adds only an exact executable-directory fallback when the four frozen runtime resources exist there.
+- Nuitka output is OneDir, not onefile; no PyInstaller or Briefcase path is added.
+- MSI is per-user under LocalAppData to preserve the existing writable provider registry and P13 Load/Install/Uninstall workflow without UAC.
+- SQLite schema v5, the three P10 ledger tables, one-Task/one-QThread ownership, provider API/send behavior, P13 external adapter interface v1, Settings, Reports/Logs and page inventory are unchanged.
+- The wheel remains supported and is included in CI/release output as a Python packaging/certification artifact.
+- P11/P14 certification status is unchanged until live provider and executed Windows evidence passes.

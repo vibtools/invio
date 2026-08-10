@@ -1,10 +1,12 @@
 # Roadmap
 
-Current implementation candidate: **Invio v1.0.0.1.34 — P14 CERTIFICATION PENDING**.
+Current Official source/build baseline: **Invio v1.0.0.1.35 — P14 CERTIFICATION PENDING**.
+
+Owner-frozen parent baseline: **Invio v1.0.0.1.34**. Production certification remains pending.
 
 Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification harness work is implemented in `v1.0.0.1.34`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is implemented through `v1.0.0.1.35`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -98,3 +100,8 @@ The exact v1.0.0.1.32 P13 baseline was re-audited. v1.0.0.1.33 closes two P13 li
 ## P14 Certification Candidate - v1.0.0.1.34
 
 P14 candidate implementation repairs the setuptools wheel package/resource omissions, adds deterministic source/install resource resolution, adds Windows CI/native-smoke certification tooling, and adds local deterministic 10,000-import, 1,000-recipient injected execution and subprocess crash-recovery gates. Local automated and packaging gates can be executed without provider secrets. The final acceptance gate remains open: Stripe Test/Live controlled integration, Refrens API/invoice/mailbox delivery, and clean Windows/native PySide6/keyring evidence must be recorded before P11/P14 can be marked complete or Invio can be described as production-ready.
+
+
+## P14 Windows Distribution / Release Pipeline - v1.0.0.1.35
+
+The owner explicitly approved Nuitka OneDir and WiX MSI distribution as a P14 verification/build correction. v1.35 adds pinned Windows standalone compilation, a versioned portable ZIP, a generated per-user MSI, release checksums, per-push Windows artifact upload and exact-tag GitHub Release publication while retaining the v1.34 wheel and native-smoke gates. This does not change the P14 acceptance rule: the exact pushed Windows workflow and owner-controlled Stripe/Refrens live gates must pass before P11/P14 can be completed or Invio can be described as production-ready.

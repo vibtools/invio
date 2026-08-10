@@ -8,19 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v100134(self):
+    def test_release_metadata_is_v100135(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.34"', pyproject)
-        self.assertIn('"version": "1.0.0.1.34"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.34"', project_meta)
-        self.assertIn('"current": "1.0.0.1.34"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.34"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.34', main_window)
-        self.assertIn('Invio/1.0.0.1.34', runtime)
+        self.assertIn('version = "1.0.0.1.35"', pyproject)
+        self.assertIn('"version": "1.0.0.1.35"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.35"', project_meta)
+        self.assertIn('"current": "1.0.0.1.35"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.35"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.35', main_window)
+        self.assertIn('Invio/1.0.0.1.35', runtime)
+
+    def test_release_metadata_is_v100134(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100135()
 
     def test_release_metadata_is_v100133(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -99,12 +103,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.34"', pyproject)
-        self.assertIn('"version": "1.0.0.1.34"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.34"', project_meta)
+        self.assertIn('version = "1.0.0.1.35"', pyproject)
+        self.assertIn('"version": "1.0.0.1.35"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.35"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.34', main_window)
-        self.assertIn('Invio/1.0.0.1.34', runtime)
+        self.assertIn('Production • v1.0.0.1.35', main_window)
+        self.assertIn('Invio/1.0.0.1.35', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -173,6 +177,30 @@ class RepositoryContractTests(unittest.TestCase):
             self.assertTrue((project_root / "research" / "P14_WINDOWS_NATIVE_CERTIFICATION_v1.0.0.1.34.md").is_file())
             pending = (project_root / "specifications" / "P14_CERTIFICATION_PENDING_v1.0.0.1.34.md").read_text(encoding="utf-8")
             self.assertIn("not a production-certified Official Baseline", pending)
+
+    def test_v100135_distribution_pipeline_and_certification_truthfulness(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+        release = (ROOT / "docs" / "release-notes" / "1.0.0.1.35.md").read_text(encoding="utf-8")
+        self.assertIn("Nuitka/Nuitka-Action@99c9d3ab258c7008c0604617d925574101327e5d", workflow)
+        self.assertIn('WIX_VERSION: "6.0.2"', workflow)
+        prepare = (ROOT / "scripts" / "build" / "prepare_windows_distribution.py").read_text(encoding="utf-8")
+        distribution_audit = (ROOT / "scripts" / "test" / "p14_distribution_audit.py").read_text(encoding="utf-8")
+        self.assertIn("windows_x64_portable.zip", prepare)
+        self.assertIn("windows_x64_setup.msi", distribution_audit)
+        self.assertIn("gh release create", workflow)
+        self.assertIn("P14 CERTIFICATION PENDING", roadmap)
+        self.assertIn("Production-ready: NO", release)
+        self.assertIn("P11", release)
+        self.assertIn("LIVE ACCEPTANCE PENDING", release)
+        self.assertTrue((ROOT / "scripts" / "build" / "version_info.py").is_file())
+        self.assertTrue((ROOT / "scripts" / "build" / "prepare_windows_distribution.py").is_file())
+        self.assertTrue((ROOT / "scripts" / "build" / "generate_wix_source.py").is_file())
+        self.assertTrue((ROOT / "scripts" / "test" / "p14_distribution_audit.py").is_file())
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            pending = (project_root / "specifications" / "P14_CERTIFICATION_PENDING_v1.0.0.1.35.md").read_text(encoding="utf-8")
+            self.assertIn("not production-certified", pending)
 
     def test_p02_storage_package_and_keyring_dependency_exist(self):
         storage_dir = ROOT / "src" / "core" / "storage"

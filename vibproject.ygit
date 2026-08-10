@@ -9,7 +9,7 @@
     "displayName": "Invio",
     "description": "Vib Tools desktop application for provider-based invoice automation workflows with provider-managed accounts, invoice templates, named customer lists, and isolated task execution.",
     "summary": "Vib Tools desktop application defining provider, account, customer-list, invoice-template, task, report, log, settings, and per-task worker architecture.",
-    "version": "1.0.0.1.34",
+    "version": "1.0.0.1.35",
     "status": "development",
     "visibility": "public",
     "category": "desktop-application",
@@ -166,19 +166,23 @@
   },
   "build": {
     "buildSystem": "pip",
-    "packageFormat": [],
+    "packageFormat": [
+      "wheel",
+      "Nuitka OneDir",
+      "WiX MSI"
+    ],
     "commands": {
       "install": "python -m pip install -r requirements.txt",
-      "build": "",
+      "build": "GitHub Actions: wheel + Nuitka OneDir + WiX MSI",
       "test": "python scripts/test/audit.py",
       "lint": "",
       "format": ""
     }
   },
   "release": {
-    "strategy": "manual",
+    "strategy": "GitHub Actions tag release",
     "versioning": "Vib Tools release versioning",
-    "latestVersion": "1.0.0.1.34",
+    "latestVersion": "1.0.0.1.35",
     "releaseNotes": "docs/release-notes/"
   },
   "distribution": {

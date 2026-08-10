@@ -1,6 +1,6 @@
 # Actual Implementation Status
 
-**Current candidate:** `Invio v1.0.0.1.34 — P14 CERTIFICATION PENDING`
+**Current source/build baseline:** `Invio v1.0.0.1.35 — P14 CERTIFICATION PENDING`
 **Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
@@ -272,3 +272,8 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## P14 certification candidate - v1.0.0.1.34
 
 **Status: PARTIAL / CERTIFICATION PENDING.** Local packaging and deterministic certification harness work is implemented: the wheel includes `src.core.settings`, packaged provider manifests and the checkmark asset; isolated wheel resource/provider resolution passes; 10,000-recipient import, 1,000-recipient injected execution and subprocess write-ahead crash recovery pass locally. GitHub CI now defines a Windows clean-wheel/native PySide6/keyring/three-QThread smoke, but that workflow has not been executed for this unpushed candidate. Owner live Stripe/Refrens credentials and mailbox evidence were not supplied. Therefore P11 remains LIVE ACCEPTANCE PENDING, P14 is not complete, and production-ready status is not claimed.
+
+
+## P14 distribution verification correction - v1.0.0.1.35
+
+**Status: IMPLEMENTED / CERTIFICATION PENDING.** The v1.34 wheel/native certification harness is retained and Windows distribution now defines pinned Nuitka OneDir compilation, portable ZIP assembly, deterministic per-user WiX MSI generation, MSI install/run/uninstall smoke, retained wheel, checksum audit, ordinary-push artifact upload and exact-tag GitHub Release publication. These build definitions are locally contract-tested but their Windows execution is pending until the exact commit is pushed. Owner live Stripe/Refrens evidence also remains unavailable; P11 and P14 are therefore not complete and production-ready remains NO.

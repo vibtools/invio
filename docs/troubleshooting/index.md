@@ -154,3 +154,16 @@ Use `v1.0.0.1.34` or later candidate packaging and run `python scripts/test/p14_
 ## Is v1.0.0.1.34 production-ready?
 
 No. Local deterministic P14 gates and packaging correction are implemented, but the owner live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring certification run remain outstanding. P11 and P14 must not be marked complete until that evidence exists.
+
+
+## Portable EXE starts but reports missing runtime resources
+
+Re-extract the complete versioned portable ZIP. `Invio.exe` must remain beside the packaged `assets/` and `providers/` trees and all Nuitka OneDir support files. Copying `Invio.exe` alone is unsupported.
+
+## MSI install succeeds but Provider Load/Install cannot write
+
+The v1.0.0.1.35 MSI is designed as a per-user LocalAppData installation specifically so the provider registry is writable. If the files were manually moved into a protected system directory, reinstall using the official MSI instead of changing provider-storage permissions.
+
+## GitHub release was not created for a tag
+
+Confirm the tag exactly matches the five-part application version (`v1.0.0.1.35`) and that both the Ubuntu and Windows build jobs passed. The release job intentionally does not run if the tag/version differs or if the Nuitka/MSI distribution gate fails.

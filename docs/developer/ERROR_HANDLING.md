@@ -445,3 +445,15 @@ These rules introduce no schema migration and do not alter packaged Stripe/Refre
 ## P14 candidate packaging/resource failures
 
 `RuntimeResourceError` fails startup closed when an installed/source distribution is missing a required provider manifest or the checkmark asset. Wheel-content audit catches the same packaging defect before installation. This handling is deliberately narrow and does not convert unrelated application `RuntimeError` exceptions into resource failures. Native Windows/live-provider error certification remains pending evidence.
+
+## v1.0.0.1.35 distribution error gates
+
+| ID | Condition | Handling | Status |
+|---|---|---|---|
+| EH-036 | Nuitka OneDir lacks `main.exe` or a frozen provider/icon resource | preparation fails before portable/MSI publication | IMPLEMENTED |
+| EH-037 | Git release tag does not exactly match `pyproject.toml` | release job fails before GitHub Release publication | IMPLEMENTED |
+| EH-038 | WiX does not produce a non-empty MSI | Windows build fails; no release job runs | IMPLEMENTED |
+| EH-039 | MSI silent install/run/uninstall smoke fails | Windows build fails; no tag release is published | IMPLEMENTED |
+| EH-040 | portable/MSI/wheel/checksum inventory mismatches | distribution audit fails before artifact/release acceptance | IMPLEMENTED |
+
+These build-time gates do not alter runtime provider/network error handling.

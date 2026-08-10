@@ -108,3 +108,8 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.34 - P14 certification candidate
 
 `v1.0.0.1.34` uniquely identifies the P14 packaging/certification candidate. It is not a production-certified baseline: local deterministic packaging/recovery/load gates are implemented, but owner live Stripe/Refrens evidence and executed Windows-native certification remain pending. P11/P14 completion and a 14/14 production-ready claim are prohibited until those gates pass.
+
+
+## v1.0.0.1.35 - P14 Windows distribution baseline
+
+`v1.0.0.1.35` is the owner-frozen source/build baseline for the approved Nuitka OneDir + WiX MSI + GitHub Release pipeline. The public release identity remains five-part. Windows PE metadata maps it to `1.0.1.35`; Windows Installer ProductVersion maps it to `1.1.35`; the exact release tag is `v1.0.0.1.35`. These shorter forms are packaging metadata only and do not rename or replace the public Invio version. P11 and P14 remain acceptance-pending until real live/native evidence exists.

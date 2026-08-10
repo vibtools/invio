@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.0.1.35 - P14 Windows Distribution and Release Pipeline Verification Correction
+
+- Added the explicitly approved Windows distribution build while preserving the v1.34 wheel/resource corrections: pinned Nuitka `4.1.3` OneDir + PySide6 build, versioned portable ZIP, pinned WiX Toolset `6.0.2` per-user MSI, wheel retention and release checksum audit.
+- GitHub Actions now produces Windows distribution artifacts on normal pushes/PRs; exact `v<application-version>` tags publish portable ZIP, MSI, wheel and `SHA256SUMS.txt` to GitHub Releases only after Ubuntu and Windows gates succeed.
+- Scoped normal CI permissions to `contents: read`; only the tag-gated release job receives `contents: write`.
+- Added deterministic public-five-part -> PE/MSI version mapping, portable preparation, WiX source generation, release checksum finalization and distribution auditing helpers/tests.
+- Added an exact executable-directory resource fallback for Nuitka OneDir while preserving source/wheel module-relative resource resolution.
+- MSI installation is per-user under LocalAppData to preserve the existing writable P13 provider registry without moving provider state or requiring UAC.
+- Runtime dependencies, provider APIs/business logic, schema v5, WorkerManager, Task/customer/template models, P13 interface v1, Settings/Reports/Logs and page inventory remain unchanged.
+- P11 remains LIVE ACCEPTANCE PENDING and P14 remains CERTIFICATION PENDING; the exact v1.35 Windows workflow and owner-controlled live provider gates are not represented as PASS until executed.
+
 ## v1.0.0.1.34 - P14 Certification Candidate
 
 - Repaired the reproduced setuptools wheel packaging gap by including the existing `src.core.settings` package, packaged Stripe/Refrens/Agiled manifests and `assets/icons/checkmark.svg`; no provider manifest content or runtime dependency changed.

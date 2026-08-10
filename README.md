@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.34`** is the P14 certification candidate built from the frozen `v1.0.0.1.33` P13 baseline. It repairs the reproduced setuptools wheel omission of `src.core.settings`, packaged provider manifests and the checkmark asset, adds deterministic source/install resource resolution, Windows GitHub Actions certification coverage, native Windows smoke tooling, and deterministic large-list/crash-recovery certification tests without changing provider business logic, SQLite schema v5, Task state semantics, P13 interface version 1, dependencies or page inventory. **P14 is not COMPLETE and Invio is not production-certified** because owner-supplied Stripe/Refrens live evidence and an executed clean Windows/native PySide6/keyring certification run are not available in this workspace. P11 therefore remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.35`** is the owner-frozen P14 source/build baseline based on the `v1.0.0.1.34` certification candidate. It keeps all v1.34 packaging/resource corrections and adds the explicitly approved Windows distribution pipeline: pinned Nuitka OneDir EXE build, versioned portable ZIP, pinned WiX Toolset MSI, wheel retention, checksum auditing, per-push build artifacts, and tag-gated GitHub Release publication. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies and page inventory remain unchanged. **P14 is still CERTIFICATION PENDING and Invio is not production-certified** because the exact v1.35 Windows workflow and owner-controlled Stripe/Refrens live gates have not yet executed. P11 therefore remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
 
 ## Current Application Scope
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.34` is the current **P14 certification candidate**. Local deterministic packaging, 10,000-record import, 1,000-recipient injected execution and subprocess crash-recovery gates pass, but P14 remains **CERTIFICATION PENDING** because the owner-supplied live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring run are still required. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
+`v1.0.0.1.35` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. Local deterministic packaging, 10,000-record import, 1,000-recipient injected execution and subprocess crash-recovery gates pass, but P14 remains **CERTIFICATION PENDING** because the owner-supplied live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring run are still required. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -294,3 +294,12 @@ The uploaded v1.0.0.1.32 baseline was re-audited against the approved P13 execut
 P14 repairs the current setuptools wheel contract without introducing a new installer framework: the existing `src.core.settings` package, the three packaged provider manifests and `assets/icons/checkmark.svg` are now included in the wheel, while `src/core/paths.py` resolves the same top-level resource layout in source checkouts and installed wheels. CI retains Ubuntu regression testing and adds a Windows/Python-3.12 job that builds and clean-installs the wheel and runs a native offscreen PySide6/keyring/resource/three-QThread smoke. Local deterministic certification adds a 10,000-customer import, 1,000-recipient injected Stripe execution soak and real subprocess crash-after-write-ahead recovery test.
 
 The Windows job has **not been executed for this unpushed candidate**, and no owner live Stripe/Refrens credentials or controlled recipient mailbox were supplied. Therefore P11 live acceptance remains pending, P14 is **not complete**, and `v1.0.0.1.34` must not be described as production-ready.
+
+
+## v1.0.0.1.35 P14 Windows Distribution and Release Pipeline
+
+The owner-approved v1.35 distribution update keeps the existing wheel/native certification path and adds a Windows x64 **Nuitka 4.1.3 OneDir** build, versioned portable ZIP, **WiX Toolset 6.0.2** per-user MSI, and `SHA256SUMS.txt`. Normal pushes/PRs run the build and upload the Windows distribution artifact. An exact matching version tag such as `v1.0.0.1.35` waits for the Ubuntu and Windows gates and then publishes the portable ZIP, MSI, wheel and checksums to the GitHub Release. Build/test jobs use read-only repository permissions; release-write permission exists only on the tag-gated release job.
+
+The MSI installs under `%LOCALAPPDATA%\Vib Tools\Invio` so the frozen P13 provider registry remains writable without elevation. The portable OneDir keeps the same application-root provider workflow. Nuitka and WiX are CI build tools only and are not added to `requirements.txt`.
+
+This build/release pipeline does **not** close P11 or P14. Until the exact Windows workflow passes after push and owner-controlled Stripe/Refrens live acceptance evidence is recorded, production-ready remains **NO**.

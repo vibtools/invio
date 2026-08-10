@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import tomllib
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+EXPECTED_VERSION = str(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
 REQUIRED_RESOURCES = {
     "assets/icons/checkmark.svg",
     "providers/packages/stripe/provider.json",
@@ -42,8 +44,8 @@ def main() -> int:
         if len(dist_info) != 1:
             raise SystemExit("Wheel has an unexpected dist-info metadata layout.")
         metadata = archive.read(dist_info[0]).decode("utf-8", errors="replace")
-        if "Version: 1.0.0.1.34" not in metadata:
-            raise SystemExit("Wheel metadata version is not 1.0.0.1.34.")
+        if f"Version: {EXPECTED_VERSION}" not in metadata:
+            raise SystemExit(f"Wheel metadata version is not {EXPECTED_VERSION}.")
         entry_name = dist_info[0].rsplit("/", 1)[0] + "/entry_points.txt"
         if entry_name not in names:
             raise SystemExit("Wheel is missing console entrypoint metadata.")

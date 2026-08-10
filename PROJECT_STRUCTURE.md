@@ -170,3 +170,15 @@ No folder/module/page/schema/dependency structure is added, removed, renamed or 
 - `.github/workflows/ci.yml` — existing Ubuntu audit retained plus Windows/Python-3.12 clean-wheel/native-smoke job.
 
 No new application page, storage schema/table, provider package contract, runtime dependency or installer framework is added.
+
+
+## v1.0.0.1.35 Windows distribution build additions
+
+- `scripts/build/version_info.py` — canonical five-part release to PE/MSI/tag mapping and tag validation.
+- `scripts/build/prepare_windows_distribution.py` — copies Nuitka `main.dist`, renames `main.exe` to `Invio.exe`, verifies frozen runtime resources and creates the versioned portable ZIP.
+- `scripts/build/generate_wix_source.py` — deterministic WiX v4-schema source generator for the exact prepared OneDir inventory and per-user LocalAppData installation.
+- `scripts/build/finalize_release_checksums.py` — final release SHA-256 inventory.
+- `scripts/test/p14_distribution_audit.py` — portable/MSI/wheel/checksum release-payload audit.
+- `tests/test_p14_distribution_pipeline.py` — version/resource/portable/WiX/workflow distribution contracts.
+
+No new runtime package tree, application page, provider package, schema table or application dependency is introduced.

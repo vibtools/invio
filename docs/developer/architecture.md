@@ -257,3 +257,18 @@ Architecture remains frozen. `ExternalAdapterRegistry.validate_adapter()` now tr
 ## P14 packaging/resource boundary - v1.0.0.1.34 candidate
 
 Source and wheel installations retain the same top-level `src/`, `providers/` and `assets/` resource shape. `src/core/paths.py` resolves that application root and validates the four runtime resources required at startup. Setuptools package data now carries the three existing provider manifests and checkmark asset, and `src.core.settings` is explicitly included in the wheel package inventory. No provider execution, storage or WorkerManager architecture changed. Native Windows and live-provider certification remain evidence-gated.
+
+
+## v1.0.0.1.35 distribution build boundary
+
+The runtime architecture remains unchanged. Distribution is an outer build layer:
+
+`main.py` → Nuitka standalone/PySide6 → `Invio` OneDir → portable ZIP and generated WiX MSI.
+
+`src/core/paths.py` continues to prefer the historical module-relative application root used by source/wheel installs. Only when those exact frozen resources are absent does it accept the executable directory, and only when all three packaged provider manifests plus the checkmark asset exist there. This supports compiled OneDir without broad path guessing.
+
+The WiX MSI installs the OneDir per-user in LocalAppData specifically to preserve P13's existing writable `providers/registry` under the application root. No provider registry/storage migration was introduced.
+
+### WiX build-tool compliance
+
+WiX is a build-time installer tool, not an Invio runtime dependency. Maintainers using the release pipeline must comply with the applicable WiX/OSMF terms. The pinned v6.0.2 command is intentionally not given the v7-only explicit EULA-acceptance switch.

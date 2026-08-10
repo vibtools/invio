@@ -4,6 +4,15 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
+env:
+  INVIO_VERSION: "1.0.0.1.35"
+  INVIO_PE_VERSION: "1.0.1.35"
+  NUITKA_VERSION: "4.1.3"
+  WIX_VERSION: "6.0.2"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,30 +32,39 @@ jobs:
       - name: Audit wheel contents
         run: python scripts/test/p14_wheel_audit.py dist/*.whl
 
-  windows-native:
+  windows-build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install dependencies
+          architecture: 'x64'
+      - name: Install application dependencies
         run: python -m pip install -r requirements.txt
       - name: Full regression audit
         run: python scripts/test/audit.py
+      - name: Verify workflow version mapping
+        shell: pwsh
+        run: |
+          $application = python scripts/build/version_info.py --field application
+          $pe = python scripts/build/version_info.py --field pe
+          if ($application.Trim() -ne $env:INVIO_VERSION) { throw "Workflow application version is stale: $application" }
+          if ($pe.Trim() -ne $env:INVIO_PE_VERSION) { throw "Workflow PE version is stale: $pe" }
       - name: Build wheel
         shell: pwsh
         run: |
           python -m pip install --upgrade setuptools wheel
-          python -m pip wheel . --no-deps --no-build-isolation -w dist
-          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force -Path dist\wheel | Out-Null
+          python -m pip wheel . --no-deps --no-build-isolation -w dist\wheel
+          $wheel = (Get-ChildItem dist\wheel\*.whl | Select-Object -First 1).FullName
           python scripts/test/p14_wheel_audit.py $wheel
       - name: Clean wheel install
         shell: pwsh
         run: |
           python -m venv .p14-wheel-venv
           .\.p14-wheel-venv\Scripts\python.exe -m pip install --upgrade pip
-          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          $wheel = (Get-ChildItem dist\wheel\*.whl | Select-Object -First 1).FullName
           .\.p14-wheel-venv\Scripts\python.exe -m pip install $wheel
       - name: Native PySide6/keyring/resource smoke
         shell: pwsh
@@ -54,3 +72,143 @@ jobs:
           $env:QT_QPA_PLATFORM = "offscreen"
           $env:INVIO_P14_EXPECT_INSTALLED = "1"
           .\.p14-wheel-venv\Scripts\python.exe scripts/test/p14_windows_smoke.py
+
+      - name: Build Nuitka OneDir
+        uses: Nuitka/Nuitka-Action@99c9d3ab258c7008c0604617d925574101327e5d
+        with:
+          nuitka-version: ${{ env.NUITKA_VERSION }}
+          script-name: main.py
+          mode: standalone
+          enable-plugins: pyside6
+          include-package: keyring.backends
+          include-data-dir: |
+            assets=assets
+            providers=providers
+          include-data-files: LICENSE=LICENSE
+          windows-console-mode: disable
+          company-name: Vib Tools
+          product-name: Invio
+          file-version: ${{ env.INVIO_PE_VERSION }}
+          product-version: ${{ env.INVIO_PE_VERSION }}
+          file-description: Invio Invoice Automation
+          output-dir: build
+
+      - name: Prepare portable OneDir
+        shell: pwsh
+        run: |
+          python scripts/build/prepare_windows_distribution.py --nuitka-dist build\main.dist --output-root dist\windows --release-root dist\release
+
+      - name: Smoke compiled OneDir startup
+        shell: pwsh
+        run: |
+          $smoke = Join-Path $env:RUNNER_TEMP "invio-nuitka-smoke"
+          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+          $env:APPDATA = Join-Path $smoke "appdata"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $exe = (Resolve-Path "dist\windows\Invio\Invio.exe").Path
+          $process = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 5
+          try {
+            if ($process.HasExited) { throw "Nuitka OneDir Invio.exe exited during startup smoke with code $($process.ExitCode)." }
+            $db = Join-Path $env:APPDATA "Vib Tools\Invio\domain.sqlite3"
+            if (-not (Test-Path $db)) { throw "Nuitka OneDir startup did not create the expected operational database." }
+          }
+          finally {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+      - name: Setup .NET for WiX
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version $env:WIX_VERSION
+          $wixVersion = wix --version
+          if ($wixVersion.Trim() -ne $env:WIX_VERSION) { throw "Installed WiX version is stale: $wixVersion" }
+
+      - name: Build WiX MSI
+        shell: pwsh
+        run: |
+          python scripts/build/generate_wix_source.py --dist dist\windows\Invio --output build\Invio.wxs
+          $msi = "dist\release\Invio_v$($env:INVIO_VERSION)_windows_x64_setup.msi"
+          wix build build\Invio.wxs -arch x64 -o $msi
+          if (-not (Test-Path $msi)) { throw "WiX did not produce the expected MSI." }
+          if ((Get-Item $msi).Length -le 0) { throw "WiX produced an empty MSI." }
+
+      - name: MSI clean install/run/uninstall smoke
+        shell: pwsh
+        run: |
+          $msi = (Resolve-Path "dist\release\Invio_v$($env:INVIO_VERSION)_windows_x64_setup.msi").Path
+          $install = Start-Process msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart') -PassThru -Wait
+          if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed with exit code $($install.ExitCode)." }
+          $installedExe = Join-Path $env:LOCALAPPDATA "Vib Tools\Invio\Invio.exe"
+          if (-not (Test-Path $installedExe)) { throw "MSI did not install Invio.exe at the expected per-user location." }
+
+          $smoke = Join-Path $env:RUNNER_TEMP "invio-msi-smoke"
+          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+          $env:APPDATA = Join-Path $smoke "appdata"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $process = Start-Process -FilePath $installedExe -PassThru
+          Start-Sleep -Seconds 5
+          try {
+            if ($process.HasExited) { throw "MSI-installed Invio.exe exited during startup smoke with code $($process.ExitCode)." }
+            $db = Join-Path $env:APPDATA "Vib Tools\Invio\domain.sqlite3"
+            if (-not (Test-Path $db)) { throw "MSI-installed startup did not create the expected operational database." }
+          }
+          finally {
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+          }
+
+          $uninstall = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart') -PassThru -Wait
+          if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed with exit code $($uninstall.ExitCode)." }
+
+      - name: Assemble release payloads and checksums
+        shell: pwsh
+        run: |
+          $wheel = Get-ChildItem dist\wheel\*.whl | Select-Object -First 1
+          Copy-Item $wheel.FullName (Join-Path "dist\release" $wheel.Name)
+          python scripts/build/finalize_release_checksums.py dist\release
+          python scripts/test/p14_distribution_audit.py --release-dir dist\release --version $env:INVIO_VERSION
+
+      - name: Upload Windows distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: invio-windows-distribution
+          path: dist/release/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, windows-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify release tag matches Invio version
+        run: python scripts/build/version_info.py --expect-tag "${GITHUB_REF_NAME}"
+      - name: Download Windows distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: invio-windows-distribution
+          path: release
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(python scripts/build/version_info.py --field application)"
+          notes="docs/release-notes/${version}.md"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" release/* --verify-tag --title "Invio ${GITHUB_REF_NAME}" --notes-file "$notes"
+          fi

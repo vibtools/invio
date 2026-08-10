@@ -105,3 +105,8 @@ P13 remains complete. The correction contains adapter metadata failures that pre
 ## v1.0.0.1.34 P14 certification candidate
 
 P14 candidate documentation covers corrected setuptools wheel contents, source/install resource resolution, Windows CI/native-smoke tooling and deterministic local load/recovery gates. Live Stripe/Refrens and executed native-Windows evidence remain pending, so the release is not production-certified.
+
+
+## v1.0.0.1.35 Windows distribution baseline
+
+P14 distribution documentation now covers the approved Nuitka OneDir Windows executable folder, versioned portable ZIP, WiX per-user MSI, retained wheel, checksum manifest and tag-gated GitHub Release publication. The build/release implementation is not itself production certification: P11 live Refrens acceptance and P14 live/native gates remain pending.
