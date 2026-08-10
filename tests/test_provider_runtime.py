@@ -37,6 +37,7 @@ class ProviderRuntimeTests(unittest.TestCase):
         runtime = ProviderRuntime(transport=lambda *_args: {})
         self.assertTrue(runtime.supports_api_test("stripe"))
         self.assertTrue(runtime.supports_api_test("refrens"))
+        self.assertTrue(runtime.supports_api_test("agiled"))
         self.assertFalse(runtime.supports_api_test("external-provider"))
 
     def test_stripe_api_test_is_mode_aware_and_uses_real_permission_requests(self):

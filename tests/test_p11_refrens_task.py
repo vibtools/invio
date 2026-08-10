@@ -242,6 +242,35 @@ class P11RefrensTaskTests(unittest.TestCase):
         self.assertNotIn(b"P11_SECRET_A", raw_db)
         self.assertNotIn(b"token-app-A", raw_db)
 
+    def test_refrens_http_failure_emits_provider_code_line(self):
+        calls: list[tuple] = []
+        state, task, _accounts = self.task_state([CustomerRecord("a@example.com", "Alice", "BD")])
+
+        def transport(method, url, headers, body, timeout):
+            del headers, body, timeout
+            calls.append((method, url))
+            path = urlparse(url).path
+            if path == "/authentication":
+                return {"accessToken": "token"}
+            if path.endswith("/invoices"):
+                return {"_id": "inv_1"}
+            if path.endswith("/email"):
+                raise ProviderRuntimeError(
+                    "Not allowed to send mail",
+                    category="http",
+                    retryable=False,
+                    http_status=400,
+                )
+            raise AssertionError(path)
+
+        runtime = ProviderRuntime(transport=transport, domain_store=self.store)
+        context = _Context(task)
+        with patch.object(runtime, "_await_account_rate_slot", return_value=True):
+            with self.assertRaisesRegex(ProviderRuntimeError, r"1 Refrens recipient\(s\) failed"):
+                runtime.make_task_runner(task, state)(context)
+        self.assertTrue(any("Not allowed to send mail" in message for message in context.logs))
+        self.assertIn("CODE 400", context.logs)
+
     def test_authentication_retries_three_times_but_invoice_posts_once(self):
         calls: list[str] = []
         auth_attempts = 0

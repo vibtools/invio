@@ -191,3 +191,11 @@ This is the owner-observed v1.40 live gap. Invoice creation and provider email t
 ## GitHub/Nuitka duplicate `keyring` config — v1.0.0.1.40
 
 GitHub run `31411715607`, job `93531112926`, reached the Nuitka OneDir step after the regression/native wheel checks passed and then failed because `.github/nuitka-keyring.nuitka-package.config.yml` duplicated Nuitka 4.1.3's built-in `keyring` standard package configuration. v1.0.0.1.40.1 keeps the keyring packages and compiled credential smoke but no longer passes the custom user package config to Nuitka.
+
+## Agiled API Test works but Task sending is unavailable — v1.0.0.1.40.2
+
+This is intentional. The owner-supplied current Agiled OpenAPI verifies Bearer authentication, `GET /public/v1/me`, and invoice CRUD, so Account API Test can now succeed. The same OpenAPI does not publish an invoice email/send endpoint and does not define the invoice-specific fields inside its generic mutation body. Invio therefore keeps Agiled Task sending fail-closed rather than guessing.
+
+## Refrens `HTTP 400: Not allowed to send mail` — v1.0.0.1.40.2
+
+The explicit Refrens invoice email endpoint is documented and the current Invio request shape matches that contract. If the provider returns `Not allowed to send mail`, v1.40.2 logs the message plus a separate `CODE 400` provider line. This is a Refrens-side API mail permission/capability rejection. Manual sending from the Refrens web dashboard does not prove that API mail permission is enabled. Resolve the provider-side permission before another live acceptance attempt; Invio does not bypass the rejection or falsely mark it successful.

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current correction candidate: **v1.0.0.1.40.1**; owner-frozen parent baseline: **v1.0.0.1.40**.
+Current correction candidate: **v1.0.0.1.40.2**; owner-frozen parent baseline: **v1.0.0.1.40.1**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -20,7 +20,9 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.38.md` - current P14 WiX release-inventory correction release.
+- `release-notes/1.0.0.1.40.2.md` - current Agiled API-test/Refrens provider-error correction candidate.
+- `api/agiled-runtime.md` - verified Agiled Bearer API Test boundary and Task-send fail-closed rationale.
+- `release-notes/1.0.0.1.38.md` - historical P14 WiX release-inventory correction release.
 - `release-notes/1.0.0.1.27.md` - original P10 completion release.
 - `release-notes/1.0.0.1.26.md` - P09 CI verification correction.
 - `release-notes/1.0.0.1.25.md` - P09 production release.
@@ -136,3 +138,7 @@ Owner-frozen parent baseline is v1.0.0.1.39. v1.40 is limited to the live Refren
 ## Current v1.0.0.1.40.1 error-fix candidate
 
 The owner-frozen v1.40 baseline now proves real Refrens invoice creation but exposed a separate email-trigger gap. v1.40.1 uses Refrens' explicit post-create invoice-email endpoint, restores Settings to the shared frozen Vib Tools form/card spacing and typography, and removes the obsolete custom Nuitka keyring package config from CI. Agiled stays fail-closed; P11/P14 and production certification remain pending.
+
+## v1.0.0.1.40.2 provider note
+
+Agiled Account API Test is now executable against the exact current `GET https://api.agiled.ai/public/v1/me` Bearer endpoint. Agiled Task sending is still unavailable because the supplied OpenAPI does not define an invoice email/send operation or field-level invoice mutation schema. Refrens live API mail remains blocked by the provider response `HTTP 400: Not allowed to send mail`; Invio logs the provider HTTP status explicitly and does not convert the rejection into success.

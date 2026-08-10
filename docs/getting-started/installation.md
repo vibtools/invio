@@ -103,3 +103,7 @@ The source/runtime/build contract now consumes owner branding from `assets/icons
 ## v1.0.0.1.40.1 Windows build correction
 
 The application/runtime dependency set is unchanged. For the Windows CI build, pinned Nuitka 4.1.3 now uses its own standard `keyring` package configuration; Invio no longer passes the historical duplicate `.github/nuitka-keyring.nuitka-package.config.yml` as a user package config. Explicit keyring package inclusion and compiled protected-credential smoke remain required. Do not publish a tagged build until the non-tagged candidate CI and downloaded portable/MSI acceptance pass.
+
+## v1.0.0.1.40.2 provider credential note
+
+Agiled still uses the existing single protected `API Key` credential field. A successful Agiled API Test requires the key to be valid for the current Agiled Public API and the `GET https://api.agiled.ai/public/v1/me` scope. No Agiled base URL is user-configured in Invio; the verified endpoint is fixed by the built-in adapter. Agiled Task sending remains unavailable in this candidate.

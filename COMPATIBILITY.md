@@ -1,5 +1,9 @@
 # Compatibility
 
+## v1.0.0.1.40.2 provider-contract compatibility correction
+
+`v1.0.0.1.40.2` keeps the existing provider IDs, credential fields, account modes, SQLite schema v5, dependencies, Task model, WorkerManager and UI page inventory. Agiled retains its single protected `api_key` credential; only the executable API Test capability is enabled, using the exact current `https://api.agiled.ai/public/v1/me` Bearer safe-read. Agiled Task sending remains unavailable. Refrens request endpoints/payloads remain unchanged; only HTTP status visibility is added for provider rejections. Five-part version mappings remain unchanged, and this six-part hotfix maps to PE `1.0.1.4002` / MSI `1.1.4002`.
+
 ## v1.0.0.1.39 compiled protected-credential compatibility correction
 
 `v1.0.0.1.39` does not change the supported Python/runtime dependency contract. `keyring>=25.7,<26` remains the approved credential technology and there is still no plaintext fallback. The correction only makes the existing Windows keyring dependency graph and keyring distribution metadata explicit in the pinned Nuitka standalone build and verifies the production CredentialStore round trip from compiled OneDir/MSI executables. Normal source/wheel compatibility, provider contracts, SQLite schema v5 and UI/UX are unchanged.
@@ -171,7 +175,3 @@ The Windows release contract remains portable ZIP + MSI + wheel + `SHA256SUMS.tx
 ## v1.0.0.1.40 compatibility note
 
 No runtime dependency, SQLite schema, CredentialStore, Task/WorkerManager or provider-manifest compatibility contract changes. The two new Settings fields are backward-compatible because missing keys load their blank defaults. Customer defaults are materialized on future imports; existing durable customer records are not silently rewritten. Windows icon packaging depends on owner-provided `assets/icons/app.ico` and `app.png`.
-
-## v1.0.0.1.40.1 compatibility note
-
-No runtime dependency, SQLite schema, provider manifest, WorkerManager, Task-state, Stripe, credential-storage or customer/template persistence contract changes. Five-part Invio version mappings remain unchanged. The new six-part hotfix identity `1.0.0.1.40.1` maps to PE `1.0.1.4001` and MSI `1.1.4001` only for Windows native metadata/upgrade ordering.

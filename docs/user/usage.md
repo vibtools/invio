@@ -183,3 +183,8 @@ For Refrens live acceptance, use one controlled recipient first. A successful au
 ## v1.0.0.1.40.1 Refrens send acceptance
 
 A Refrens Task now treats invoice creation and invoice-email triggering as separate steps. The Task is provider-successful for a recipient only after the explicit invoice email endpoint accepts the request. If invoice creation succeeded but email triggering definitively failed, **Retry Failed** reuses the existing invoice ID and retries only the email trigger. For production acceptance, still verify that the controlled recipient mailbox actually receives the invoice.
+
+## v1.0.0.1.40.2 Agiled/Refrens usage note
+
+- **Agiled:** Add Account/Re-test can now verify an Agiled API key with the current Bearer-authenticated `/public/v1/me` safe-read. A verified Agiled account still cannot create/run an Invio Task because the supplied current OpenAPI does not publish the invoice field mapping or invoice email/send operation required for safe execution.
+- **Refrens:** if Live Logs show `Not allowed to send mail` followed by `CODE 400`, the invoice was created but Refrens rejected the API email operation. Do not repeatedly Retry Failed or create replacement Tasks to work around that rejection. Resolve API mail permission/capability with Refrens first, then retry only the preserved failed recipient using Invio's existing duplicate-invoice-safe flow.

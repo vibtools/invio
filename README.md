@@ -1,6 +1,13 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40.1` is a local error-fix candidate and must not be tagged or released yet.** The v1.40.1 scope is limited to the owner-observed Refrens invoice-email trigger gap, Settings-page frozen-brand alignment, and the GitHub/Nuitka duplicate-keyring-config build failure. Agiled remains intentionally fail-closed because its current published authentication/invoice contract is not internally consistent with Invio's existing one-field manifest. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, provider manifests and runtime dependency versions remain unchanged. **P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.1` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40.2` is the local scope-locked correction candidate and must not be tagged or released yet.** The v1.40.2 scope is limited to current Agiled Bearer API Test enablement from the owner-supplied OpenAPI contract, truthful Agiled Task-send fail-closed reporting, Refrens HTTP status visibility for the live provider mail rejection, and required release/documentation synchronization. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, Stripe behavior, provider credential shapes and runtime dependencies remain unchanged. **Refrens live API mail remains blocked by provider response `HTTP 400: Not allowed to send mail`; P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
+
+
+## v1.0.0.1.40.2 Provider Contract Correction
+
+- **Agiled API Test:** the protected API key is sent only to `https://api.agiled.ai/public/v1/me` as an HTTP Bearer token. No Agiled invoice mutation is attempted because the supplied current OpenAPI does not publish a safe invoice request mapping or invoice email/send operation.
+- **Refrens live send:** the existing documented post-create email endpoint is preserved. When the provider rejects it with HTTP status metadata, Live Logs now emit a separate `CODE <status>` provider error line. The observed `HTTP 400: Not allowed to send mail` is a Refrens-side API mail permission/capability blocker and is not converted into success.
+- No database migration, WorkerManager change, UI redesign, dependency change or Stripe behavior change is included.
 
 ## Current Application Scope
 
@@ -9,7 +16,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory. During import, Settings can supply a default customer name/country; otherwise missing names use the email local-part and missing countries use `US`. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports remain supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry; Agiled remains fail-closed. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry. Agiled now has a verified Bearer-token API Test against `GET /public/v1/me`, while Agiled Task sending remains fail-closed because the current OpenAPI exposes no invoice email/send operation or field-level invoice mutation schema. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: task summaries plus durable recipient reconciliation, structured privacy-redacted logs, spreadsheet-safe exports, closed-history retention controls, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; P08 keeps provider network sending and retry/backoff outside the GUI thread and uses cooperative worker shutdown without forced thread termination.
 
@@ -141,7 +148,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.1.md`
+- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.2.md`
 
 ## Private Project Material
 

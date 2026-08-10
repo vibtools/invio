@@ -39,7 +39,7 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
         self.assertEqual(stripe.task_batch_handler, "_run_stripe_batch")
         self.assertEqual(refrens.api_test_handler, "_test_refrens_account")
         self.assertEqual(refrens.task_batch_handler, "_run_refrens_batch")
-        self.assertIsNone(agiled.api_test_handler)
+        self.assertEqual(agiled.api_test_handler, "_test_agiled_account")
         self.assertIsNone(agiled.task_batch_handler)
 
     def test_agiled_packaged_manifest_matches_registered_runtime_contract(self):
@@ -66,19 +66,25 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
         )
         self.assertFalse(manifest_runtime_contract_matches(drifted, drifted))
 
-    def test_agiled_declared_capabilities_are_not_reported_as_executable(self):
+    def test_agiled_reports_only_verified_api_test_as_executable(self):
         packaged = self.manager.get_packaged("agiled")
         assert packaged is not None
-        self.assertEqual(executable_capabilities("agiled"), ())
-        self.assertEqual(effective_capabilities(packaged), ())
+        self.assertEqual(executable_capabilities("agiled"), ("api_test",))
+        self.assertEqual(effective_capabilities(packaged), ("api_test",))
 
-    def test_agiled_api_test_fails_closed_without_transmitting_api_key(self):
+    def test_agiled_api_test_uses_exact_current_bearer_safe_read(self):
         calls: list[tuple] = []
-        runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {})
-        self.assertFalse(runtime.supports_api_test("agiled"))
-        with self.assertRaisesRegex(ProviderRuntimeError, "Agiled API Test is fail-closed"):
-            runtime.test_account("agiled", {"api_key": "agiled-secret-key"}, mode="Default")
-        self.assertEqual(calls, [])
+        runtime = ProviderRuntime(transport=lambda *args: calls.append(args) or {"data": {"token_id": "tok"}})
+        self.assertTrue(runtime.supports_api_test("agiled"))
+        message = runtime.test_account("agiled", {"api_key": "agiled-secret-key"}, mode="Default")
+        self.assertEqual(message, "Agiled API connection verified.")
+        self.assertEqual(len(calls), 1)
+        method, url, headers, body, _timeout = calls[0]
+        self.assertEqual(method, "GET")
+        self.assertEqual(url, "https://api.agiled.ai/public/v1/me")
+        self.assertEqual(headers["Authorization"], "Bearer agiled-secret-key")
+        self.assertEqual(headers["Accept"], "application/json")
+        self.assertIsNone(body)
 
     def test_agiled_package_install_uninstall_round_trip_uses_manifest_only(self):
         source_manifest = ROOT / "providers" / "packages" / "agiled" / "provider.json"
@@ -105,9 +111,9 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
             self.assertEqual(manager.installed_ids(), set())
             self.assertTrue(source_manifest.is_file())
 
-    def test_executable_adapter_handler_bindings_resolve_and_agiled_has_none(self):
+    def test_executable_adapter_handler_bindings_resolve_and_agiled_task_stays_disabled(self):
         runtime = ProviderRuntime(transport=lambda *_args, **_kwargs: {})
-        for provider_id in ("stripe", "refrens"):
+        for provider_id in ("stripe", "refrens", "agiled"):
             adapter = provider_adapter_contract(provider_id)
             self.assertIsNotNone(adapter)
             assert adapter is not None and adapter.api_test_handler is not None
@@ -120,7 +126,7 @@ class ProviderAdapterRegistryTests(unittest.TestCase):
         agiled = provider_adapter_contract("agiled")
         assert refrens is not None and agiled is not None
         self.assertEqual(refrens.task_batch_handler, "_run_refrens_batch")
-        self.assertIsNone(agiled.api_test_handler)
+        self.assertEqual(agiled.api_test_handler, "_test_agiled_account")
         self.assertIsNone(agiled.task_batch_handler)
 
     def test_agiled_ui_contract_is_generic_manifest_driven_and_api_test_gated(self):

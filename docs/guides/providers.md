@@ -108,3 +108,13 @@ P13 API Test is not allowed to self-certify: a validated external adapter must c
 Refrens Task sending now uses two explicit provider mutations: create the invoice, persist its `_id`, then call the invoice-specific `/email` endpoint. A definitive email-trigger failure can retry the email against the same invoice reference; an ambiguous provider mutation still fails closed.
 
 Agiled remains intentionally fail-closed. The current Agiled product page describes Bearer-token authentication, while the currently published OpenAPI document uses an `api_token` query parameter plus a required `Brand` account-URL header for `/invoices`. Invio's frozen packaged Agiled manifest has only one protected `api_key` field and no approved Brand/base-URL/send contract. Enabling it in this hotfix would require inventing or changing credentials/provider behavior, so no Agiled runtime is added.
+
+## v1.0.0.1.40.2 Agiled current OpenAPI boundary
+
+The owner-supplied current Agiled OpenAPI verifies HTTP Bearer authentication and the safe `GET /public/v1/me` endpoint. Invio therefore enables Agiled API Test using exactly `https://api.agiled.ai/public/v1/me`; only `api_test` is an effective executable capability.
+
+Agiled invoice CRUD is declared by the same OpenAPI, but Task sending remains unavailable because no invoice email/send operation is published and the generic invoice mutation body does not define the invoice-specific field contract. The Documents `/send` endpoint is not reused for invoices. No guessed API behavior is introduced.
+
+## v1.0.0.1.40.2 Refrens live mail rejection
+
+Refrens continues to use the documented explicit post-create invoice `/email` endpoint and durable invoice-ID reuse on Retry Failed. If Refrens returns a deterministic HTTP rejection, Live Logs now include `CODE <status>`. The observed `HTTP 400: Not allowed to send mail` requires provider-side API mail permission/capability resolution and is not treated as a successful send.

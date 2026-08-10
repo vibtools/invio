@@ -1,16 +1,14 @@
 # Changelog
 
-## v1.0.0.1.40.1 - Refrens Email Trigger, Settings Brand Alignment and Nuitka Build Correction Candidate
+## v1.0.0.1.40.2 - Agiled API-Test Contract and Refrens Provider-Error Visibility Candidate
 
-- Treats owner-frozen `v1.0.0.1.40` as the Official Baseline for this error-fix candidate.
-- Splits Refrens invoice creation and invoice email triggering into two explicit provider operations: `POST /businesses/:urlKey/invoices` followed by `POST /businesses/:urlKey/invoices/:invoiceID/email`. Provider acceptance is recorded only after the email-trigger endpoint succeeds.
-- Reuses the durable P10 invoice reference when Retry Failed follows a definitive email-trigger failure, preventing a second invoice from being created for the same Task recipient.
-- Restores Settings-page spacing/typography to the existing frozen Vib Tools shared tokens instead of Settings-only smaller overrides. No other page is redesigned.
-- Removes the obsolete custom Nuitka `keyring` package-configuration option from CI because pinned Nuitka 4.1.3 already contains a standard `keyring` package config; explicit keyring dependency inclusion and compiled credential smoke remain.
-- Adds six-part public hotfix version support for `1.0.0.1.40.1`, mapping it to Windows PE `1.0.1.4001` and MSI `1.1.4001` while preserving all existing five-part mappings unchanged.
-- Agiled remains fail-closed; no guessed authentication/base-URL/Brand-header/send implementation is introduced.
-- SQLite schema remains v5; WorkerManager, Task state machine, Stripe behavior, provider manifests, dependencies, credential policy and page inventory remain unchanged.
-- P11 remains **LIVE ACCEPTANCE PENDING** until a controlled recipient mailbox confirms Refrens email receipt; P14 remains **CERTIFICATION PENDING** until corrected Windows CI and compiled artifact acceptance pass. Production-ready status remains NO.
+- Freezes owner-approved `v1.0.0.1.40.1` as the parent Official Baseline for this correction.
+- Enables built-in Agiled API Test using the owner-supplied current OpenAPI contract: `GET https://api.agiled.ai/public/v1/me` with HTTP Bearer authentication.
+- Keeps Agiled Task sending fail-closed because the current OpenAPI publishes invoice CRUD but no invoice email/send operation and no field-level invoice mutation schema; no guessed Agiled invoice request is introduced.
+- Preserves the documented Refrens explicit post-create invoice email operation. The live `HTTP 400: Not allowed to send mail` response is classified as a provider-side API mail permission/capability rejection, not bypassed or falsely marked successful.
+- Adds a separate provider Live Log status line such as `CODE 400` when Refrens returns machine-readable HTTP status metadata.
+- Keeps SQLite schema v5, WorkerManager/Task architecture, Stripe behavior, provider credential shapes, dependencies and UI architecture unchanged.
+- P11 remains **LIVE ACCEPTANCE PENDING**; P14 remains **CERTIFICATION PENDING**; production-ready remains **NO**.
 
 ## v1.0.0.1.40 - Refrens Live Send, Customer Defaults, Dark Popup/List and App Icon Correction Candidate
 

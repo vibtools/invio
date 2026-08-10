@@ -1,17 +1,15 @@
 # Versioning
 
-## v1.0.0.1.40.1 Local Error-Fix Candidate
+## v1.0.0.1.40.2 Local Provider-Contract Correction Candidate
 
-- Official parent baseline: `v1.0.0.1.40`
-- Application/source version: `1.0.0.1.40.1`
-- Windows PE file/product version: `1.0.1.4001`
-- MSI product version: `1.1.4001`
-- Reserved future exact tag: `v1.0.0.1.40.1` — **not authorized yet**
-- P11: LIVE ACCEPTANCE PENDING
+- Application/source version: `1.0.0.1.40.2`
+- Windows PE file/product version: `1.0.1.4002`
+- MSI product version: `1.1.4002`
+- Reserved future exact tag: `v1.0.0.1.40.2` — **not authorized yet**
+- Parent Official Baseline for this correction: `v1.0.0.1.40.1`
+- P11: LIVE ACCEPTANCE PENDING — Refrens provider currently rejects API mail with HTTP 400 `Not allowed to send mail`
 - P14: CERTIFICATION PENDING
 - Production-ready: NO
-
-The optional sixth public component is reserved for a scope-locked hotfix beneath an existing five-part Invio revision. Windows native version fields cannot represent the full public identity directly, so `revision.hotfix` is folded into the final native field as `revision * 100 + hotfix`; therefore `40.1 -> 4001`. Existing five-part releases keep their historical PE/MSI mapping unchanged. Six-part mapping is limited to revision `<=655` and hotfix `<=99` so the native field remains within the Windows `65535` limit.
 
 ## v1.0.0.1.40 Local Live-Correction Candidate
 

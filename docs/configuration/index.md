@@ -68,3 +68,7 @@ Settings now includes **Default customer name** and **Default customer country**
 ## v1.0.0.1.40.1 Settings visual contract
 
 Settings values and persistence semantics are unchanged from v1.40. The correction only removes Settings-specific reduced spacing/typography so the existing controls inherit the frozen shared Vib Tools page/card/form tokens. Customer Default Name/Country behavior remains exactly the v1.40 import-time default policy.
+
+## v1.0.0.1.40.2 provider configuration boundary
+
+No new Settings key or provider credential field is added. Agiled continues to store only its protected `api_key` through the existing CredentialStore. The built-in API Test uses the fixed current Public API endpoint `https://api.agiled.ai/public/v1/me`; there is no configurable Agiled endpoint override. Refrens configuration remains API Base URL, URL Key, App ID and App Secret.

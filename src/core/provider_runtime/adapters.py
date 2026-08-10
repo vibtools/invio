@@ -105,21 +105,21 @@ _REFRENS_PROFILE = ProviderCapabilityProfile(
     required_customer_fields=("email", "name", "country"),
 )
 
-# Agiled's current product page documents scoped API keys and Bearer-token
-# authentication, while the official Documentation link still exposes an older
-# OpenAPI contract using a different base URL/authentication model. The
-# user-supplied https://api.agiled.ai/public/v1 endpoint and an explicit API
-# invoice-send operation are not currently confirmed by the accessible official
-# reference. Keep the packaged provider truthful and fail closed until that
-# contract can be revalidated instead of sending credentials/invoices to a
-# guessed endpoint.
+# The owner-supplied current Agiled Public API OpenAPI contract verifies Bearer
+# authentication plus GET /public/v1/me and invoice CRUD under /public/v1.
+# It does not publish an invoice email/send operation, and its generic
+# MutationRequest does not define the field-level invoice mutation contract.
+# API Test can therefore execute safely, while Task sending must remain
+# fail-closed rather than guessing invoice fields or reusing the unrelated
+# document-email endpoint.
 _AGILED_PROFILE = ProviderCapabilityProfile(
     provider_id="agiled",
-    executable_capabilities=frozenset(),
+    executable_capabilities=frozenset({"api_test"}),
     task_execution_enabled=False,
     task_unavailable_message=(
-        "Agiled Task sending is fail-closed because the current official Agiled API materials do not expose one "
-        "consistent verified base-URL/authentication/invoice-send contract. No Agiled invoice request was made."
+        "Agiled Task sending is fail-closed because the current Agiled Public API OpenAPI contract exposes invoice "
+        "CRUD but no invoice email/send operation and no field-level invoice mutation schema. No Agiled invoice "
+        "request was made."
     ),
     invoice_types=frozenset({"INVOICE"}),
     currencies=frozenset(SUPPORTED_INVOICE_CURRENCY_SET),
@@ -195,7 +195,7 @@ _AGILED_MANIFEST_CONTRACT = ProviderManifest(
     id="agiled",
     name="Agiled",
     version="runtime",
-    description="Packaged Agiled provider contract pending verified executable API binding.",
+    description="Built-in Agiled API-test contract with Task sending fail-closed pending an official invoice-send schema.",
     credential_fields=(CredentialField("api_key", "API Key", "password", True),),
     account_modes=("Default",),
     capabilities=("invoice", "send_invoice", "api_test"),
@@ -224,11 +224,7 @@ _BUILTIN_ADAPTERS = {
         provider_id="agiled",
         manifest_contract=_AGILED_MANIFEST_CONTRACT,
         profile=_AGILED_PROFILE,
-        api_test_unavailable_message=(
-            "Agiled API Test is fail-closed: the accessible official Agiled materials currently conflict on the "
-            "base URL/authentication contract, and the user-supplied https://api.agiled.ai/public/v1 endpoint is "
-            "not confirmed by the accessible official API reference. No Agiled API key was transmitted."
-        ),
+        api_test_handler="_test_agiled_account",
         task_unavailable_message=_AGILED_PROFILE.task_unavailable_message,
     ),
 }

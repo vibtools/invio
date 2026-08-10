@@ -8,19 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v1001401(self):
+    def test_release_metadata_is_v1001402(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.40.1"', pyproject)
-        self.assertIn('"version": "1.0.0.1.40.1"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.40.1"', project_meta)
-        self.assertIn('"current": "1.0.0.1.40.1"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.40.1"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.40.1', main_window)
-        self.assertIn('Invio/1.0.0.1.40.1', runtime)
+        self.assertIn('version = "1.0.0.1.40.2"', pyproject)
+        self.assertIn('"version": "1.0.0.1.40.2"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.40.2"', project_meta)
+        self.assertIn('"current": "1.0.0.1.40.2"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.40.2"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.40.2', main_window)
+        self.assertIn('Invio/1.0.0.1.40.2', runtime)
+
+    def test_release_metadata_is_v1001401(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v1001402()
 
     def test_release_metadata_is_v100140(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -139,12 +143,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.40.1"', pyproject)
-        self.assertIn('"version": "1.0.0.1.40.1"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.40.1"', project_meta)
+        self.assertIn('version = "1.0.0.1.40.2"', pyproject)
+        self.assertIn('"version": "1.0.0.1.40.2"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.40.2"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.40.1', main_window)
-        self.assertIn('Invio/1.0.0.1.40.1', runtime)
+        self.assertIn('Production • v1.0.0.1.40.2', main_window)
+        self.assertIn('Invio/1.0.0.1.40.2', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -242,8 +246,8 @@ class RepositoryContractTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.36.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertIn("P14 CERTIFICATION PENDING", roadmap)
         self.assertIn("Production-ready: NO", release)
         self.assertIn("GitHub Actions run `31371279808`", release)
@@ -258,8 +262,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100137_wix_version_verification_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.37.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertIn('WIX_VERSION: "6.0.2"', workflow)
         self.assertIn("$wixCoreVersion = ($wixVersion -split '\\+', 2)[0]", workflow)
         self.assertIn("GitHub Actions run `31374749523`", release)
@@ -273,8 +277,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100138_wixpdb_release_inventory_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.38.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertIn('WIX_VERSION: "6.0.2"', workflow)
         self.assertIn('wix build build\\Invio.wxs -arch x64 -pdbtype none -o $msi', workflow)
         self.assertIn("31386258538", release)
@@ -289,8 +293,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100139_compiled_keyring_credential_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.39.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertNotIn("user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml", workflow)
         self.assertTrue((ROOT / ".github" / "nuitka-keyring.nuitka-package.config.yml").is_file())
         self.assertIn("Smoke compiled protected credential storage", workflow)
@@ -310,8 +314,8 @@ class RepositoryContractTests(unittest.TestCase):
         styles = (ROOT / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         settings = (ROOT / "src" / "core" / "settings" / "manager.py").read_text(encoding="utf-8")
         importer = (ROOT / "src" / "customers" / "importers" / "email_importer.py").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertIn("windows-icon-from-ico: assets/icons/app.ico", workflow)
         self.assertNotIn('payload["terms"]', runtime[runtime.index("def build_refrens_invoice_payload"):runtime.index("def create_and_send_refrens_invoice")])
         self.assertIn("QListWidget {", styles)
@@ -334,8 +338,8 @@ class RepositoryContractTests(unittest.TestCase):
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         settings_page = (ROOT / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.40.1.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.40.1"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4001"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
         self.assertNotIn("user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml", workflow)
         self.assertIn('f"/businesses/{url_key}/invoices/{invoice_id}/email"', runtime)
         self.assertIn('stage = "refrens_invoice_create"', runtime)
@@ -349,6 +353,27 @@ class RepositoryContractTests(unittest.TestCase):
         if project_root.is_dir():
             self.assertTrue((project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.1.md").is_file())
             self.assertTrue((project_root / "specifications" / "P14_CERTIFICATION_PENDING_v1.0.0.1.40.1.md").is_file())
+
+    def test_v1001402_agiled_api_test_and_refrens_status_logging_truthfulness(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        adapters = (ROOT / "src" / "core" / "provider_runtime" / "adapters.py").read_text(encoding="utf-8")
+        release = (ROOT / "docs" / "release-notes" / "1.0.0.1.40.2.md").read_text(encoding="utf-8")
+        self.assertIn('INVIO_VERSION: "1.0.0.1.40.2"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4002"', workflow)
+        self.assertIn('AGILED_PUBLIC_API_BASE_URL = "https://api.agiled.ai"', runtime)
+        self.assertIn('AGILED_PUBLIC_API_ME_PATH = "/public/v1/me"', runtime)
+        self.assertIn('def _test_agiled_account', runtime)
+        self.assertIn('"Authorization": f"Bearer {api_key}"', runtime)
+        self.assertIn('f"CODE {exc.http_status}"', runtime)
+        self.assertIn('executable_capabilities=frozenset({"api_test"})', adapters)
+        self.assertIn('no invoice email/send operation', adapters)
+        self.assertIn('provider-side API mail permission', release)
+        self.assertIn('GET /public/v1/me', release)
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            self.assertTrue((project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.2.md").is_file())
+            self.assertTrue((project_root / "specifications" / "P14_CERTIFICATION_PENDING_v1.0.0.1.40.2.md").is_file())
 
     def test_p02_storage_package_and_keyring_dependency_exist(self):
         storage_dir = ROOT / "src" / "core" / "storage"

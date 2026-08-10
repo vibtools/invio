@@ -64,6 +64,8 @@ MAX_TOTAL_ATTEMPTS = 3
 RETRY_BASE_DELAY_SECONDS = 0.5
 RETRY_BACKOFF_CAP_SECONDS = 8.0
 RETRY_JITTER_RATIO = 0.25
+AGILED_PUBLIC_API_BASE_URL = "https://api.agiled.ai"
+AGILED_PUBLIC_API_ME_PATH = "/public/v1/me"
 
 
 def _context_log(context: Any, message: str, *, severity: str = "INFO", category: str = "PROVIDER") -> None:
@@ -624,6 +626,25 @@ class ProviderRuntime:
             query={"$limit": 1, "$skip": 0, "$sort[createdAt]": -1},
         )
         return "Refrens API connection verified."
+
+    def _test_agiled_account(self, credentials: dict[str, str], *, mode: str = "") -> str:
+        del mode
+        api_key = str(credentials.get("api_key", "")).strip()
+        if not api_key:
+            raise ProviderRuntimeError("Agiled API Key is required.")
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "Invio/1.0.0.1.40.2 Vib-Tools",
+        }
+        self._transport(
+            "GET",
+            f"{AGILED_PUBLIC_API_BASE_URL}{AGILED_PUBLIC_API_ME_PATH}",
+            headers,
+            None,
+            self.timeout,
+        )
+        return "Agiled API connection verified."
 
     def delivery_summary(self, task: Task) -> TaskDeliverySummary | None:
         execution = task.execution_snapshot
@@ -2156,7 +2177,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.40.1 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.40.2 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2387,7 +2408,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.40.1 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.40.2 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -2696,6 +2717,8 @@ class ProviderRuntime:
                     else:
                         delivery.failed_recipients.add(email)
                 _context_log(context, f"Refrens send failed for {email} via account '{account.name}': {exc}")
+                if exc.http_status is not None:
+                    _context_log(context, f"CODE {exc.http_status}", severity="ERROR")
             except Exception as exc:
                 attempt_number = int(getattr(exc, "attempt_number", attempt_number))
                 final_result = DELIVERY_RESULT_FAILED

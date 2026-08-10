@@ -212,13 +212,12 @@ No folder/module reorganization is introduced. The existing WiX build still cons
 - `docs/api/refrens-runtime.md` — scoped Refrens request mapping note for the v1.40 live correction.
 - `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.md` — private root-cause record.
 
-### v1.0.0.1.40.1 correction records
+### v1.0.0.1.40.2 provider-contract records
 
-- `docs/release-notes/1.0.0.1.40.1.md` — public candidate release note.
-- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.1.md` — scoped root-cause record.
-- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.40.1.md` — final verification record.
-- `project/specifications/BASELINE_FREEZE_v1.0.0.1.40.1.md` — next-baseline candidate record.
-- `project/specifications/P11_LIVE_ACCEPTANCE_PENDING_v1.0.0.1.40.1.md` — mailbox acceptance gate.
-- `project/specifications/P14_CERTIFICATION_PENDING_v1.0.0.1.40.1.md` — compiled/release certification gate.
-
-The historical `.github/nuitka-keyring.nuitka-package.config.yml` file is retained under the no-removal baseline rule but is no longer passed to Nuitka because pinned Nuitka 4.1.3 already provides the standard `keyring` package configuration.
+- `docs/api/agiled-runtime.md` — current Agiled Bearer API Test boundary and exact Task-send fail-closed rationale.
+- `docs/release-notes/1.0.0.1.40.2.md` — current local correction-candidate release note.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.40.2.md` — Refrens/Agiled forensic root-cause record.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.40.2.md` — final scoped verification record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.40.2.md` — next-baseline candidate record.
+- `project/specifications/P11_LIVE_ACCEPTANCE_PENDING_v1.0.0.1.40.2.md` — Refrens external live-mail gate.
+- `project/specifications/P14_CERTIFICATION_PENDING_v1.0.0.1.40.2.md` — compiled/release certification gate.

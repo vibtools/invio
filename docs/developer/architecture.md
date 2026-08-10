@@ -298,3 +298,9 @@ Email-only defaults are applied between `import_customers()` and `AppState.add_c
 ## v1.0.0.1.40.1 scoped correction flow
 
 The provider/runtime architecture is unchanged. Refrens now expresses its existing send workflow as two explicit P10 operations inside the same Task-owned QThread: `refrens_invoice_create` persists the returned invoice `_id`, then `refrens_invoice_create_email` calls the post-create email endpoint. Retry Failed may reuse the durable invoice reference after a definitive email failure, while ambiguous mutations remain fail-closed. Settings continues using existing shared widgets/tokens; only Settings-specific overrides are removed. The Windows pipeline retains the same Nuitka OneDir architecture and compiled credential smoke but no longer feeds a duplicate user package-config entry for `keyring`. SQLite remains schema v5.
+
+## v1.0.0.1.40.2 provider-adapter boundary
+
+The built-in adapter registry architecture is unchanged. Agiled now binds only `_test_agiled_account`; it still has no Task batch handler. The API-test handler sends the protected key as an HTTP Bearer token to the exact current `https://api.agiled.ai/public/v1/me` safe-read. Declared Agiled manifest capabilities remain separate from effective executable capabilities, so only `api_test` is effective. No new scheduling policy, Task runner, schema, thread, dependency or external-adapter mechanism is introduced.
+
+Refrens keeps its existing authentication -> invoice-create -> explicit invoice-email operation chain and durable invoice-reference reuse. v1.40.2 adds only HTTP status visibility at the provider logging boundary.

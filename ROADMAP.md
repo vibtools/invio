@@ -1,12 +1,12 @@
 # Roadmap
 
-Current owner-frozen Official Baseline: **Invio v1.0.0.1.40**. Current local correction candidate: **Invio v1.0.0.1.40.1 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED**.
+Current owner-frozen Official Baseline: **Invio v1.0.0.1.40.1**. Current local correction candidate: **Invio v1.0.0.1.40.2 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED**.
 
-Owner-frozen parent baseline for the current correction: **Invio v1.0.0.1.39**. Production certification remains pending.
+Owner-frozen parent baseline for the current correction: **Invio v1.0.0.1.40.1**. Production certification remains pending.
 
 Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. Owner live v1.39 testing reached real Refrens Task execution and exposed the confirmed create-invoice `terms` validation failure plus the approved UI/customer-default/icon issues. v1.40 is the scope-locked correction candidate; P14 is **not COMPLETE** until owner source-live invoice/email evidence and corrected compiled OneDir/MSI artifact acceptance pass.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. Owner live v1.40.1 evidence confirms Refrens authentication and invoice creation but the provider rejects API mail with `HTTP 400: Not allowed to send mail`. v1.40.2 is the scope-locked provider-contract correction candidate; P14 is **not COMPLETE** until the corrected candidate is built and owner live/native acceptance passes.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -128,6 +128,6 @@ The v1.38 tagged release pipeline completed successfully, but owner live use dem
 
 This candidate does not add a new production phase. It corrects only the owner-observed v1.39 UI/customer-default/Refrens payload/icon issues. P11 remains LIVE ACCEPTANCE PENDING until real Refrens invoice creation plus mailbox receipt succeed. P14 remains CERTIFICATION PENDING until the corrected non-tagged compiled artifacts are also accepted. No tag/release before both gates.
 
-## v1.0.0.1.40.1 owner live/build correction gate
+## v1.0.0.1.40.2 owner provider-contract gate
 
-Owner live v1.40 evidence proves Refrens authentication, invoice creation and 7/7 provider create acceptance, but did not produce actual invoice-email delivery. v1.40.1 therefore changes only the Refrens send boundary from create-time request intent to an explicit post-create `/invoices/:invoiceID/email` operation and retains the created invoice ID for safe failed-email retry. The same correction restores Settings to the frozen shared Vib Tools spacing/typography tokens and removes the duplicate custom keyring package-config option that caused GitHub run `31411715607` job `93531112926` to fail in Nuitka 4.1.3. Agiled remains fail-closed pending a separately approved, internally consistent official credential/base-URL/invoice/send contract. P11/P14 remain pending and production-ready remains NO.
+Agiled API Test is now safely executable from the owner-supplied current OpenAPI via `GET /public/v1/me` with Bearer authentication. Agiled Task sending remains fail-closed because that OpenAPI provides no invoice email/send operation and no field-level invoice mutation schema. Refrens continues to use the documented explicit email endpoint; the live `HTTP 400: Not allowed to send mail` result is an external provider permission/capability blocker and is surfaced with explicit HTTP status logging. P11/P14 remain pending and production-ready remains NO.

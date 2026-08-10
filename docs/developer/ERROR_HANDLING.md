@@ -480,3 +480,9 @@ The owner-observed Refrens `terms` HTTP 400 is treated as a provider payload val
 ## v1.0.0.1.40.1 explicit Refrens email/build correction
 
 Refrens create success is no longer treated as send acceptance. Invoice creation and the explicit `/invoices/:invoiceID/email` request are separate write-ahead mutations. A definitive email-trigger failure is reported as Failed and can reuse the durable invoice reference on Retry Failed; an ambiguous mutation remains Uncertain and is not blindly replayed. GitHub/Nuitka packaging no longer passes the duplicate custom keyring package configuration.
+
+## v1.0.0.1.40.2 provider error-handling correction
+
+Agiled API Test now performs one exact side-effect-free Bearer request to `GET https://api.agiled.ai/public/v1/me`. Provider HTTP failures continue through `ProviderRuntimeError`; no API key is logged or persisted outside the existing protected credential store. Agiled Task execution remains fail-closed before invoice transport because the supplied current OpenAPI does not define a field-level invoice mutation contract or invoice email/send operation.
+
+For Refrens, the existing documented `/businesses/:urlKey/invoices/:invoiceID/email` operation is preserved. When a `ProviderRuntimeError` contains `http_status`, the provider log now emits a separate `CODE <status>` line. The live `HTTP 400: Not allowed to send mail` response is treated as a deterministic provider-side permission/capability rejection; it is not retried automatically, bypassed, or converted into provider acceptance.

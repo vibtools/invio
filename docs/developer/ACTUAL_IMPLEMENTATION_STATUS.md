@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Owner-frozen parent baseline for current correction:** `Invio v1.0.0.1.39`  
-**Current local source/live correction candidate:** `Invio v1.0.0.1.40.1 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
+**Owner-frozen parent baseline for current correction:** `Invio v1.0.0.1.40.1`  
+**Current local source/live correction candidate:** `Invio v1.0.0.1.40.2 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
 **Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
@@ -15,8 +15,8 @@
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
 | Executable external provider adapter loading | WORKING by P13 contract | Optional interface-v1 `provider.json` + fixed sibling `adapter.py`; explicit trusted-code confirmation, truthful Executable/Manifest-only/Missing/Incompatible state, and fail-closed version/capability validation |
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
-| Refrens normal Task sending | WORKING by automated contract / LIVE ACCEPTANCE PENDING | P11 runner is implemented with explicit name/country/host/no-replay/P10-ledger safeguards; owner live API/invoice/email acceptance remains outstanding |
-| Real Add Account API Test | WORKING/PARTIAL by provider | Stripe/Refrens verification is real on a dedicated dialog `QThread`; Agiled intentionally fails closed pending contract revalidation |
+| Refrens normal Task sending | BLOCKED externally / LIVE ACCEPTANCE PENDING | Authentication and invoice creation succeed live; the documented API email endpoint currently returns HTTP 400 `Not allowed to send mail`, so provider-side API mail permission/capability must be resolved before live acceptance |
+| Real Add Account API Test | WORKING by built-in provider | Stripe/Refrens verification remains real; Agiled now performs the verified Bearer safe-read `GET https://api.agiled.ai/public/v1/me` on the existing dedicated dialog `QThread` |
 | Durable Accounts metadata | WORKING | Current SQLite schema v5 retains IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
 | Protected provider credentials | WORKING by local contract | `keyring` only; no plaintext fallback; native OS integration certification remains P14 |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
@@ -316,3 +316,10 @@ Implemented locally: dark Task/list/menu surface contract; import-time customer 
 **Agiled:** remains non-executable/fail-closed. Current published Agiled materials do not form a single contract compatible with Invio's existing one-field `api_key` manifest, and no authoritative invoice-email send operation has been approved. No guessed runtime is added.
 
 P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING; production-ready remains NO.
+
+## v1.0.0.1.40.2 provider runtime correction
+
+- Agiled API Test is executable and side-effect free against the exact current Public API `/public/v1/me` endpoint.
+- Agiled Task execution remains intentionally unavailable because the supplied OpenAPI does not define the invoice request mapping or invoice email/send operation required by Invio's Task contract.
+- Refrens deterministic HTTP failures now surface a separate provider `CODE <status>` Live Log line.
+- Refrens `HTTP 400: Not allowed to send mail` is an external provider rejection; no code bypass is claimed.

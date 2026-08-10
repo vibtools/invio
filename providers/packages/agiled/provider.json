@@ -2,7 +2,7 @@
   "id": "agiled",
   "name": "Agiled",
   "version": "1.0.0",
-  "description": "Agiled provider package with API-key credential entry and fail-closed runtime binding until the current official Agiled invoice API contract is revalidated.",
+  "description": "Agiled provider package with Bearer API-key verification against the current Public API; Task sending remains fail-closed because the current OpenAPI does not publish an invoice email/send operation or field-level invoice mutation schema.",
   "credential_fields": [
     {
       "key": "api_key",
