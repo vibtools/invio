@@ -9,6 +9,7 @@
 - Keeps P11 Refrens live acceptance **DEFERRED/non-blocking** for this production release; Refrens API mail remains provider-rejected with `HTTP 400: Not allowed to send mail` and is not represented as a production-certified send path.
 - Agiled remains API-Test-only/fail-closed for Task sending. Stripe behavior is unchanged and no unsupported provider behavior is fabricated.
 - No application version bump is made: this is the final release certification/inclusion state for `v1.0.0.1.40.2`.
+- Production-release CI portability correction: freezes `providers/plugins/odoo/**` to LF checkout bytes via `.gitattributes`, so the bundle's raw-byte `SHA256SUMS.txt` remains identical on Windows and POSIX checkouts. No Odoo adapter/runtime behavior changes.
 
 ## v1.0.0.1.40.2 - Agiled API-Test Contract and Refrens Provider-Error Visibility Candidate
 

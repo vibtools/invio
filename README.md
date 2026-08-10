@@ -6,7 +6,7 @@
 
 - **Production-certified provider path:** Odoo Provider v1.0.0 through the frozen P13 trusted external-adapter interface.
 - **Owner live result:** real Odoo invoice creation/posting and email sending completed successfully from Invio.
-- **Distribution evidence:** the exact v1.40.2 GitHub Windows CI/distribution run passed before production freeze; the final release commit must receive the same green non-tag CI before tagging.
+- **Distribution evidence:** the pre-plugin v1.40.2 Windows CI/distribution path passed. The first final plugin-inclusion CI run exposed only a cross-platform Odoo bundle checksum checkout issue; `.gitattributes` now freezes `providers/plugins/odoo/**` to LF bytes. The corrected final commit must receive green non-tag CI before tagging.
 - **Bundled plugin source:** `providers/plugins/odoo/` ships the exact validated Odoo bundle with source, manifest, checksums and live-test documentation. It remains an external trusted-code plugin and is **not auto-installed**; users must explicitly Load Provider and approve it.
 - **Refrens:** API Test and invoice creation work; API mail is provider-rejected with `HTTP 400: Not allowed to send mail`, so Refrens email delivery remains unaccepted and non-blocking by owner decision.
 - **Agiled:** verified Bearer API Test only; Task sending stays fail-closed.
