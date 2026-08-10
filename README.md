@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.36`** is the owner-frozen P14 source/build baseline derived from `v1.0.0.1.35` and scoped only to the GitHub Actions verification correction. It preserves the v1.35 Nuitka OneDir / portable ZIP / WiX MSI / wheel / tag-release design while fixing the CI publication gap that omitted `scripts/build/*`, closing Windows test/database handles deterministically, and recording the failed GitHub run evidence. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.36 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.37`** is the owner-frozen P14 source/build correction baseline derived from `v1.0.0.1.36` and scoped only to the WiX Toolset version-verification false failure observed in GitHub Actions run `31374749523`. The existing pinned WiX `6.0.2` install, Nuitka OneDir, portable ZIP, MSI, wheel and tag-release architecture are preserved; only the workflow guard now compares the canonical WiX core version while tolerating the CLI's SemVer build metadata suffix. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.0.0.1.37 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.36.md`
+- Release notes: `docs/release-notes/1.0.0.1.37.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.36` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. It corrects the confirmed v1.35 GitHub Actions publication and Windows SQLite-handle failures while preserving the approved Nuitka/WiX distribution design. Local regression, packaging and overlay gates pass, but P14 remains **CERTIFICATION PENDING** because the exact v1.36 GitHub Windows distribution workflow and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
+`v1.0.0.1.37` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. GitHub run `31374749523` proved that the pinned WiX `6.0.2` tool installed successfully but its CLI reported `6.0.2+b3f3403`, causing the prior raw exact-string guard to fail before MSI generation. v1.37 preserves the pinned tool and distribution architecture while verifying the canonical core version before continuing. P14 remains **CERTIFICATION PENDING** because the exact v1.0.0.1.37 Windows MSI/distribution workflow and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -310,3 +310,10 @@ This build/release pipeline does **not** close P11 or P14. Until the exact Windo
 The v1.35 GitHub Actions run `31371279808` failed before wheel/Nuitka/WiX packaging because the broad `.gitignore` rule `build/` also ignored the approved source directory `scripts/build/`; the helper files existed in the v1.35 source baseline but were absent from commit `12ef4800a75a993da3899399882f0e44daccd4df`. v1.36 explicitly re-includes that source directory while keeping generated `build/` and `dist/` ignored, and re-publishes the five v1.35 helper-source entries byte-identically for GitHub reconciliation.
 
 Windows also exposed file-handle ownership defects during regression cleanup. The P14 crash-recovery verification now explicitly closes its direct SQLite query handle, and `DomainStore._connect()` closes a partially initialized connection if setup fails before return. SQLite schema v5, provider send/business logic, WorkerManager/Task architecture, P13 interface v1, runtime dependencies and UI/UX remain unchanged. Local v1.36 regression is **381/381 PASS** and the repository audit passes; P14 remains **CERTIFICATION PENDING** until the exact v1.36 GitHub Windows workflow executes successfully.
+
+
+## v1.0.0.1.37 P14 WiX Version Verification Correction
+
+GitHub Actions run `31374749523` / Windows job `93411358955` reached the WiX setup stage after the full 381-test audit, wheel build/install, native PySide6/keyring/resource smoke, Nuitka OneDir build, portable preparation and compiled startup smoke all passed. `dotnet tool install --global wix --version 6.0.2` succeeded, but `wix --version` returned `6.0.2+b3f3403`. The v1.36 workflow compared that informational string directly with `6.0.2` and incorrectly raised a stale-version error.
+
+v1.37 keeps WiX pinned at `6.0.2` and strips only the optional `+build-metadata` suffix for the verification comparison; a different canonical core version still fails closed. No installer architecture, provider behavior, runtime dependency, schema, Task/WorkerManager contract, UI/UX or release topology changes are introduced. P11 remains live-acceptance pending and P14 remains certification pending until the exact v1.37 Windows workflow completes successfully.

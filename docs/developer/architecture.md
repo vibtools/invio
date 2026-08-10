@@ -277,3 +277,8 @@ WiX is a build-time installer tool, not an Invio runtime dependency. Maintainers
 ## v1.0.0.1.36 CI publication boundary
 
 The v1.35 Windows distribution architecture is unchanged. `scripts/build/` is confirmed as tracked source required by CI; root `build/`/`dist/` remain generated output. The only runtime code correction is deterministic cleanup of a partially initialized SQLite connection on an exceptional open/setup path. No component relationship, provider runtime boundary, Task/QThread ownership, schema or UI flow changes.
+
+
+## v1.0.0.1.37 P14 WiX verification boundary
+
+The Windows distribution architecture remains `wheel/native smoke -> Nuitka OneDir -> portable ZIP -> WiX MSI -> MSI smoke -> checksums/artifact upload`. WiX remains a build-only pinned dependency at `6.0.2`. The setup guard now separates the CLI informational version from its canonical core version before equality validation, because WiX v6 may report the pinned package as `6.0.2+<build-metadata>`. This is a CI verification correction only; no application architecture boundary changes.

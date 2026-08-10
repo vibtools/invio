@@ -151,3 +151,8 @@ No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provide
 ## v1.0.0.1.36 P14 CI Verification Compatibility
 
 No platform target, Python/PySide6/openpyxl/keyring runtime requirement, provider ID/manifest/API/send contract, SQLite schema, P10 ledger table, P13 interface, WorkerManager, Task/customer/template model, UI page, Settings, Reports/Logs or business workflow changes are introduced. The release changes only Git publication of the existing `scripts/build` helper source, deterministic SQLite handle closure on exceptional/test cleanup paths, current version metadata, regression tests and synchronized documentation. Nuitka `4.1.3` and WiX `6.0.2` remain CI build-only tools.
+
+
+## v1.0.0.1.37 P14 WiX Verification Compatibility
+
+No supported platform, Python/PySide6/openpyxl/keyring range, runtime dependency, provider ID/manifest/API/send contract, SQLite schema/table, P10 ledger behavior, P13 interface, WorkerManager/Task/customer/template model, UI page, Settings, Reports/Logs, Nuitka configuration, WiX package pin or MSI layout changes are introduced. The workflow only treats an optional WiX `+build-metadata` suffix as informational when checking that the installed canonical tool version is the pinned `6.0.2`; mismatched core versions still fail closed.

@@ -189,3 +189,8 @@ No new runtime package tree, application page, provider package, schema table or
 ## v1.0.0.1.36 P14 CI publication correction
 
 `scripts/build/` is an intentional tracked source directory, not generated root `build/` output. `.gitignore` now explicitly re-includes this approved directory so GitHub Actions receives the v1.35/v1.36 version, portable, WiX and checksum helpers. No application module/folder is renamed or reorganized.
+
+
+## v1.0.0.1.37 P14 WiX verification correction
+
+No project path, module, package, page or runtime structure changes are introduced. The only executable configuration change is inside `.github/workflows/ci.yml`; the related P14 workflow contract test and version/error-fix records are synchronized in their existing locations.

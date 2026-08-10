@@ -465,3 +465,8 @@ These build-time gates do not alter runtime provider/network error handling.
 - `DomainStore._connect()` closes a SQLite connection if setup raises after `sqlite3.connect()` succeeds, then preserves the existing `DomainStoreError` / `DomainStoreCorruptionError` classification.
 - The P14 subprocess crash-recovery test explicitly closes its post-crash SQLite verification query, avoiding Windows `WinError 32` during temporary-directory cleanup.
 - No recovery classification, schema migration or delivery-ledger semantics change.
+
+
+## v1.0.0.1.37 WiX version guard correction
+
+GitHub Actions run `31374749523` showed a false-positive build guard rather than a WiX installation failure. The package manager installed pinned WiX `6.0.2`, while `wix --version` returned informational version `6.0.2+b3f3403`. The previous raw `-ne` string comparison treated the build metadata as a different tool version and aborted the pipeline. v1.37 trims the command output, removes only the optional `+build-metadata` portion for canonical comparison, and retains fail-closed behavior for a genuinely different core version. No runtime exception handling or application error path changes.

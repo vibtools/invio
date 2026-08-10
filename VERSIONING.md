@@ -116,3 +116,8 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 
 
 - `v1.0.0.1.36`: P14 GitHub Actions CI verification correction; republishes the already-approved `scripts/build` helpers by fixing their ignore rule, closes Windows SQLite handles deterministically in the affected verification/error paths, preserves the v1.35 distribution architecture, and remains certification-pending.
+
+
+## v1.0.0.1.37
+
+P14 WiX version-verification corrective release. The pinned WiX Toolset remains `6.0.2`; the GitHub Actions guard now compares its canonical core version and tolerates the CLI informational `+build-metadata` suffix observed in run `31374749523`. No runtime dependency, provider/API/send behavior, database schema, Task/WorkerManager behavior, UI/UX, installer architecture or release topology changes are introduced. P14 remains certification pending.

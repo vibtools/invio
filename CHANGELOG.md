@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0.1.37 - P14 WiX Version Verification Correction
+
+- Audited GitHub Actions run `31374749523`, Windows job `93411358955`.
+- Confirmed WiX Toolset `6.0.2` installed successfully; the failure was the workflow's raw equality check against `wix --version` output `6.0.2+b3f3403`.
+- Updated only the WiX verification guard to compare the canonical core version before the optional SemVer `+build-metadata` suffix.
+- Retained pinned WiX `6.0.2`, Nuitka `4.1.3`, OneDir/portable/MSI/wheel/tag-release architecture, runtime dependencies, provider behavior, SQLite schema v5, P13 interface v1, WorkerManager/Task behavior and UI/UX.
+- P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING until the exact v1.37 Windows distribution workflow and owner-controlled provider-live gates pass.
+
 ## v1.0.0.1.36 - P14 GitHub Actions CI Verification Correction
 
 - Forensically audited failed GitHub Actions run `31371279808` / Ubuntu job `93400604928` / Windows job `93400604966`.

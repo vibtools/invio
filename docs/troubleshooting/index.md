@@ -162,8 +162,8 @@ Re-extract the complete versioned portable ZIP. `Invio.exe` must remain beside t
 
 ## MSI install succeeds but Provider Load/Install cannot write
 
-The v1.0.0.1.36 MSI is designed as a per-user LocalAppData installation specifically so the provider registry is writable. If the files were manually moved into a protected system directory, reinstall using the official MSI instead of changing provider-storage permissions.
+The v1.0.0.1.37 MSI is designed as a per-user LocalAppData installation specifically so the provider registry is writable. If the files were manually moved into a protected system directory, reinstall using the official MSI instead of changing provider-storage permissions.
 
 ## GitHub release was not created for a tag
 
-Confirm the tag exactly matches the five-part application version (`v1.0.0.1.36`) and that both the Ubuntu and Windows build jobs passed. The release job intentionally does not run if the tag/version differs or if the Nuitka/MSI distribution gate fails.
+Confirm the tag exactly matches the five-part application version (`v1.0.0.1.37`) and that both the Ubuntu and Windows build jobs passed. The release job intentionally does not run if the tag/version differs or if the Nuitka/MSI distribution gate fails.
