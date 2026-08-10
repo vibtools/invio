@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.33`** is the P13 forensic verification-correction baseline built directly on `v1.0.0.1.32`. It preserves the interface-v1 trusted external-provider architecture while closing two lifecycle/failure-containment defects: post-entrypoint adapter metadata exceptions can no longer escape startup, and executable external-provider uninstall now rolls back atomically if the adapter registry move fails. Packaged Stripe/Refrens behavior, Agiled fail-close, SQLite schema v5, P05-P12 contracts and one-QThread-per-Task ownership remain unchanged. P11 live Refrens API/invoice/email acceptance remains separately pending. Completed acceptance phases remain **12/14**: P01-P10, P12 and P13.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.34`** is the P14 certification candidate built from the frozen `v1.0.0.1.33` P13 baseline. It repairs the reproduced setuptools wheel omission of `src.core.settings`, packaged provider manifests and the checkmark asset, adds deterministic source/install resource resolution, Windows GitHub Actions certification coverage, native Windows smoke tooling, and deterministic large-list/crash-recovery certification tests without changing provider business logic, SQLite schema v5, Task state semantics, P13 interface version 1, dependencies or page inventory. **P14 is not COMPLETE and Invio is not production-certified** because owner-supplied Stripe/Refrens live evidence and an executed clean Windows/native PySide6/keyring certification run are not available in this workspace. P11 therefore remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
 
 ## Current Application Scope
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.33` is the current P13 verification-corrected baseline. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13). P11 live Refrens acceptance remains separately pending, and P14 remains the final production-certification phase.
+`v1.0.0.1.34` is the current **P14 certification candidate**. Local deterministic packaging, 10,000-record import, 1,000-recipient injected execution and subprocess crash-recovery gates pass, but P14 remains **CERTIFICATION PENDING** because the owner-supplied live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring run are still required. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -287,3 +287,10 @@ P13 makes `Load Provider` truthful for future executable integrations. An extern
 ## v1.0.0.1.33 P13 Verification Correction
 
 The uploaded v1.0.0.1.32 baseline was re-audited against the approved P13 executable external-provider contract. Two edge defects were reproduced and corrected without expanding P13: adapter metadata access after `create_adapter()` could raise a `BaseException` such as `SystemExit` outside the existing import/entrypoint containment boundary, and external-provider uninstall could remove the manifest before a later adapter-file failure, leaving a half-uninstalled registry. v1.0.0.1.33 converts post-entrypoint metadata failures into fail-closed `Incompatible` adapter state and uses active-name staging plus rollback for uninstall. P13 remains COMPLETE; P11 live Refrens acceptance remains pending.
+
+
+## v1.0.0.1.34 P14 Certification Candidate
+
+P14 repairs the current setuptools wheel contract without introducing a new installer framework: the existing `src.core.settings` package, the three packaged provider manifests and `assets/icons/checkmark.svg` are now included in the wheel, while `src/core/paths.py` resolves the same top-level resource layout in source checkouts and installed wheels. CI retains Ubuntu regression testing and adds a Windows/Python-3.12 job that builds and clean-installs the wheel and runs a native offscreen PySide6/keyring/resource/three-QThread smoke. Local deterministic certification adds a 10,000-customer import, 1,000-recipient injected Stripe execution soak and real subprocess crash-after-write-ahead recovery test.
+
+The Windows job has **not been executed for this unpushed candidate**, and no owner live Stripe/Refrens credentials or controlled recipient mailbox were supplied. Therefore P11 live acceptance remains pending, P14 is **not complete**, and `v1.0.0.1.34` must not be described as production-ready.

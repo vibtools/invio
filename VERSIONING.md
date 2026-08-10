@@ -103,3 +103,8 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.33 - P13 verification correction
 
 `v1.0.0.1.33` is a scope-locked forensic correction to the v1.0.0.1.32 P13 architecture release. It changes no external adapter interface version, provider capability contract, storage schema, packaged provider behavior, Task/customer/template model, dependency or WorkerManager boundary. It only hardens post-entrypoint adapter metadata failure containment and atomic external-provider uninstall rollback. P13 remains COMPLETE; P11 remains IMPLEMENTED / LIVE ACCEPTANCE PENDING; completed acceptance phases remain 12/14.
+
+
+## v1.0.0.1.34 - P14 certification candidate
+
+`v1.0.0.1.34` uniquely identifies the P14 packaging/certification candidate. It is not a production-certified baseline: local deterministic packaging/recovery/load gates are implemented, but owner live Stripe/Refrens evidence and executed Windows-native certification remain pending. P11/P14 completion and a 14/14 production-ready claim are prohibited until those gates pass.

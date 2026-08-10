@@ -159,3 +159,14 @@ No new application page, schema table, dependency or provider-package folder was
 ## v1.0.0.1.33 P13 verification correction
 
 No folder/module/page/schema/dependency structure is added, removed, renamed or reorganized. The correction remains inside existing `src/core/provider_runtime/external.py` adapter validation and `src/core/provider_manager/manager.py` uninstall lifecycle handling, plus focused tests and release/documentation records. External adapter installation location, provider registry layout and UI page inventory remain unchanged.
+
+
+## v1.0.0.1.34 P14 packaging/certification additions
+
+- `src/core/paths.py` — deterministic source/install resource-root and required-runtime-resource validation.
+- `tests/test_p14_certification.py` — deterministic large-import, injected execution soak, packaging inventory and subprocess crash/recovery gates.
+- `scripts/test/p14_wheel_audit.py` — built-wheel content integrity check.
+- `scripts/test/p14_windows_smoke.py` — Windows-native installed-wheel PySide6/keyring/resource/page/three-QThread smoke.
+- `.github/workflows/ci.yml` — existing Ubuntu audit retained plus Windows/Python-3.12 clean-wheel/native-smoke job.
+
+No new application page, storage schema/table, provider package contract, runtime dependency or installer framework is added.

@@ -8,19 +8,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RepositoryContractTests(unittest.TestCase):
-    def test_release_metadata_is_v100133(self):
+    def test_release_metadata_is_v100134(self):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.33"', pyproject)
-        self.assertIn('"version": "1.0.0.1.33"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.33"', project_meta)
-        self.assertIn('"current": "1.0.0.1.33"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.33"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.33', main_window)
-        self.assertIn('Invio/1.0.0.1.33', runtime)
+        self.assertIn('version = "1.0.0.1.34"', pyproject)
+        self.assertIn('"version": "1.0.0.1.34"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.34"', project_meta)
+        self.assertIn('"current": "1.0.0.1.34"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.34"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.34', main_window)
+        self.assertIn('Invio/1.0.0.1.34', runtime)
+
+    def test_release_metadata_is_v100133(self):
+        """Compatibility alias retained under the no-removal baseline contract."""
+        self.test_release_metadata_is_v100134()
 
     def test_release_metadata_is_v100132(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -95,12 +99,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.33"', pyproject)
-        self.assertIn('"version": "1.0.0.1.33"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.33"', project_meta)
+        self.assertIn('version = "1.0.0.1.34"', pyproject)
+        self.assertIn('"version": "1.0.0.1.34"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.34"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.33', main_window)
-        self.assertIn('Invio/1.0.0.1.33', runtime)
+        self.assertIn('Production • v1.0.0.1.34', main_window)
+        self.assertIn('Invio/1.0.0.1.34', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -145,6 +149,30 @@ class RepositoryContractTests(unittest.TestCase):
     def test_release_metadata_is_v10014(self):
         """Compatibility alias retained under the no-removal baseline contract."""
         self.test_release_metadata_is_v100114()
+
+
+    def test_p14_candidate_records_are_truthful_and_packaging_contract_is_present(self):
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+        release = (ROOT / "docs" / "release-notes" / "1.0.0.1.34.md").read_text(encoding="utf-8")
+        self.assertIn('"src.core.settings"', pyproject)
+        self.assertIn('"providers.packages.stripe"', pyproject)
+        self.assertIn('"assets.icons"', pyproject)
+        self.assertIn("windows-latest", workflow)
+        self.assertIn("p14_windows_smoke.py", workflow)
+        self.assertIn("P14 CERTIFICATION PENDING", roadmap)
+        self.assertIn("Production-ready: NO", release)
+        self.assertIn("NOT EXECUTED", release)
+        self.assertTrue((ROOT / "src" / "core" / "paths.py").is_file())
+        self.assertTrue((ROOT / "scripts" / "test" / "p14_wheel_audit.py").is_file())
+        self.assertTrue((ROOT / "scripts" / "test" / "p14_windows_smoke.py").is_file())
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            self.assertTrue((project_root / "research" / "P14_LIVE_INTEGRATION_MATRIX_v1.0.0.1.34.md").is_file())
+            self.assertTrue((project_root / "research" / "P14_WINDOWS_NATIVE_CERTIFICATION_v1.0.0.1.34.md").is_file())
+            pending = (project_root / "specifications" / "P14_CERTIFICATION_PENDING_v1.0.0.1.34.md").read_text(encoding="utf-8")
+            self.assertIn("not a production-certified Official Baseline", pending)
 
     def test_p02_storage_package_and_keyring_dependency_exist(self):
         storage_dir = ROOT / "src" / "core" / "storage"
@@ -306,7 +334,7 @@ class RepositoryContractTests(unittest.TestCase):
         domain_store = (ROOT / "src" / "core" / "storage" / "domain_store.py").read_text(encoding="utf-8")
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
 
-        self.assertIn("Current Official Baseline: **Invio v1.0.0.1.33**", public_roadmap)
+        self.assertIn("Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**", public_roadmap)
         self.assertIn("P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**", public_roadmap)
         self.assertIn("v1.0.0.1.31 P12 Verification Correction", public_readme)
         self.assertIn("P12 COMPLETE / verification-corrected", public_release)
@@ -333,7 +361,7 @@ class RepositoryContractTests(unittest.TestCase):
         public_release = (ROOT / "docs" / "release-notes" / "1.0.0.1.32.md").read_text(encoding="utf-8")
         external = (ROOT / "src" / "core" / "provider_runtime" / "external.py").read_text(encoding="utf-8")
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
-        self.assertIn("Current Official Baseline: **Invio v1.0.0.1.33**", public_roadmap)
+        self.assertIn("Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**", public_roadmap)
         self.assertIn("Completed acceptance phases: **12 / 14**", public_roadmap)
         self.assertIn("P13 Completion - v1.0.0.1.32", public_roadmap)
         self.assertIn("v1.0.0.1.32 P13 Executable External Provider Adapter Contract", public_readme)
@@ -363,7 +391,7 @@ class RepositoryContractTests(unittest.TestCase):
         manager = (ROOT / "src" / "core" / "provider_manager" / "manager.py").read_text(encoding="utf-8")
         schema = (ROOT / "src" / "core" / "storage" / "schema.py").read_text(encoding="utf-8")
 
-        self.assertIn("Current Official Baseline: **Invio v1.0.0.1.33**", public_roadmap)
+        self.assertIn("Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**", public_roadmap)
         self.assertIn("P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**", public_roadmap)
         self.assertIn("v1.0.0.1.33 P13 Verification Correction", public_readme)
         self.assertIn("P13 COMPLETE / verification-corrected", public_release)

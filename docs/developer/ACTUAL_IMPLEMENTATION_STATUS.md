@@ -1,6 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.33`  
+**Current candidate:** `Invio v1.0.0.1.34 — P14 CERTIFICATION PENDING`
+**Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
@@ -266,3 +267,8 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## P13 verification correction - v1.0.0.1.33
 
 **Status: COMPLETE / VERIFICATION-CORRECTED.** The interface-v1 external adapter contract remains unchanged. Post-entrypoint adapter metadata failures are startup-contained as incompatible registrations, and executable external-provider uninstall is rollback-safe across manifest/adapter active registry moves. No P14 behavior is implemented. P11 live Refrens acceptance remains pending.
+
+
+## P14 certification candidate - v1.0.0.1.34
+
+**Status: PARTIAL / CERTIFICATION PENDING.** Local packaging and deterministic certification harness work is implemented: the wheel includes `src.core.settings`, packaged provider manifests and the checkmark asset; isolated wheel resource/provider resolution passes; 10,000-recipient import, 1,000-recipient injected execution and subprocess write-ahead crash recovery pass locally. GitHub CI now defines a Windows clean-wheel/native PySide6/keyring/three-QThread smoke, but that workflow has not been executed for this unpushed candidate. Owner live Stripe/Refrens credentials and mailbox evidence were not supplied. Therefore P11 remains LIVE ACCEPTANCE PENDING, P14 is not complete, and production-ready status is not claimed.

@@ -16,3 +16,41 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Audit
         run: python scripts/test/audit.py
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade setuptools wheel
+          python -m pip wheel . --no-deps --no-build-isolation -w dist
+      - name: Audit wheel contents
+        run: python scripts/test/p14_wheel_audit.py dist/*.whl
+
+  windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Full regression audit
+        run: python scripts/test/audit.py
+      - name: Build wheel
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade setuptools wheel
+          python -m pip wheel . --no-deps --no-build-isolation -w dist
+          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          python scripts/test/p14_wheel_audit.py $wheel
+      - name: Clean wheel install
+        shell: pwsh
+        run: |
+          python -m venv .p14-wheel-venv
+          .\.p14-wheel-venv\Scripts\python.exe -m pip install --upgrade pip
+          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          .\.p14-wheel-venv\Scripts\python.exe -m pip install $wheel
+      - name: Native PySide6/keyring/resource smoke
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $env:INVIO_P14_EXPECT_INSTALLED = "1"
+          .\.p14-wheel-venv\Scripts\python.exe scripts/test/p14_windows_smoke.py

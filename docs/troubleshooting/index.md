@@ -145,3 +145,12 @@ Confirm the bundle contains the selected `provider.json` plus sibling `adapter.p
 ## External provider reports Incompatible or uninstall fails - v1.0.0.1.33
 
 If an external provider is shown as **Incompatible**, replace it with an adapter whose interface/provider/version/profile/capability metadata can be read safely and matches its manifest. If uninstall reports a filesystem error, the active provider registry is rolled back when possible; close software that may be locking files and retry. Do not manually delete only the manifest or only the adapter file.
+
+
+## Wheel installation is missing providers/settings/assets
+
+Use `v1.0.0.1.34` or later candidate packaging and run `python scripts/test/p14_wheel_audit.py <wheel>` before installation. The audit requires the existing settings package, three packaged provider manifests and checkmark asset. If Invio reports `Invio Runtime Resources`, reinstall from a wheel that passes this audit rather than manually fabricating provider files.
+
+## Is v1.0.0.1.34 production-ready?
+
+No. Local deterministic P14 gates and packaging correction are implemented, but the owner live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring certification run remain outstanding. P11 and P14 must not be marked complete until that evidence exists.

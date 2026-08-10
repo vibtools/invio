@@ -149,3 +149,8 @@ To load an executable external provider, select its `provider.json` through the 
 ## External provider lifecycle safety - v1.0.0.1.33
 
 A broken executable adapter that fails while exposing its declared runtime metadata is now shown as **Incompatible** instead of being able to terminate application startup. Uninstalling an executable external provider remains blocked while Tasks reference it; if a filesystem error occurs while detaching the provider's adapter file, Invio restores the provider manifest and reports the uninstall failure rather than leaving a partial uninstall.
+
+
+## P14 certification-candidate notice
+
+`v1.0.0.1.34` is not yet production-certified. Stripe and Refrens executable paths remain available under their existing safety gates, but production certification requires owner-controlled live-provider evidence and native Windows acceptance. Do not interpret this candidate label as confirmation that a provider accepted or delivered any specific invoice/email.

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.0.1.34 - P14 Certification Candidate
+
+- Repaired the reproduced setuptools wheel packaging gap by including the existing `src.core.settings` package, packaged Stripe/Refrens/Agiled manifests and `assets/icons/checkmark.svg`; no provider manifest content or runtime dependency changed.
+- Added `src/core/paths.py` for deterministic source-checkout/installed-wheel resource resolution and fail-closed required-resource validation.
+- Retained Ubuntu GitHub Actions coverage and added a Windows/Python-3.12 job for full regression, wheel build/content audit, clean wheel install and native offscreen PySide6/keyring/resource/three-Task-QThread smoke.
+- Added deterministic P14 local certification tests for a 10,000-recipient import, 1,000-recipient injected-transport execution soak and subprocess crash-after-write-ahead recovery.
+- Local wheel build/content/isolated-install verification passes. Live Stripe/Refrens acceptance and executed native Windows certification are not available in this workspace, so P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and no production-ready claim is made.
+
 ## v1.0.0.1.33 - P13 Forensic Verification Correction
 
 - Contained `BaseException` raised while reading/validating the object returned by external `create_adapter()`, so hostile/broken metadata such as `interface_version` cannot terminate Invio startup and is reported as an incompatible adapter instead.

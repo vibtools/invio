@@ -60,3 +60,16 @@ A normal source installation continues to include the packaged Agiled manifest i
 ## v1.0.0.1.28 compatibility note
 
 No schema migration is added after `v1.0.0.1.27`; operational storage remains schema v5. Apply the release normally over `v1.0.0.1.27`. Existing P10 ledger rows are reinterpreted using the corrected uncertainty-reconciliation rules; no ledger data is fabricated or rewritten during installation.
+
+
+## P14 wheel candidate (v1.0.0.1.34)
+
+The supported candidate packaging format remains the existing setuptools wheel; no standalone EXE/MSI framework is introduced. Build and audit it with:
+
+```bash
+python -m pip install --upgrade setuptools wheel
+python -m pip wheel . --no-deps --no-build-isolation -w dist
+python scripts/test/p14_wheel_audit.py dist/*.whl
+```
+
+Install the resulting wheel into a clean Python 3.12 environment with normal dependency resolution. The wheel now includes `src.core.settings`, the packaged Stripe/Refrens/Agiled manifests and `assets/icons/checkmark.svg`. Source checkout execution remains supported. The clean Windows/native PySide6/keyring certification job is defined in GitHub Actions but must actually pass before this candidate can be called production-ready.

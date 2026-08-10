@@ -252,3 +252,8 @@ External executable bundle installation validates staged immutable bytes before 
 ## P13 verification correction - v1.0.0.1.33
 
 Architecture remains frozen. `ExternalAdapterRegistry.validate_adapter()` now treats all post-entrypoint metadata/callable validation as a fail-closed boundary: `BaseException` from adapter attribute access/conversion becomes `ExternalAdapterError` and therefore `Incompatible` during discovery instead of escaping startup. `ProviderManager.uninstall()` now removes active registry names by staged `os.replace` operations and rolls the manifest back if the adapter move fails; cleanup of already-detached temporary files is best-effort. No external interface version, registry location, execution context, schema, QThread ownership or packaged-provider architecture changes.
+
+
+## P14 packaging/resource boundary - v1.0.0.1.34 candidate
+
+Source and wheel installations retain the same top-level `src/`, `providers/` and `assets/` resource shape. `src/core/paths.py` resolves that application root and validates the four runtime resources required at startup. Setuptools package data now carries the three existing provider manifests and checkmark asset, and `src.core.settings` is explicitly included in the wheel package inventory. No provider execution, storage or WorkerManager architecture changed. Native Windows and live-provider certification remain evidence-gated.

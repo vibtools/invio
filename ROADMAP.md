@@ -1,8 +1,10 @@
 # Roadmap
 
-Current Official Baseline: **Invio v1.0.0.1.33**.
+Current implementation candidate: **Invio v1.0.0.1.34 — P14 CERTIFICATION PENDING**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33** after its v1.0.0.1.32 implementation. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
+Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
+
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification harness work is implemented in `v1.0.0.1.34`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -91,3 +93,8 @@ P13 is complete. External `Load Provider` now supports an optional explicit inte
 ## P13 Verification Correction - v1.0.0.1.33
 
 The exact v1.0.0.1.32 P13 baseline was re-audited. v1.0.0.1.33 closes two P13 lifecycle/containment gaps only: exceptions raised while reading adapter metadata after `create_adapter()` are converted to `Incompatible` instead of being able to escape startup, and external-provider uninstall now stages active registry names and restores the manifest if moving the adapter fails. No interface/capability/schema/dependency/provider-send/WorkerManager/UI-page behavior is expanded. P13 remains complete, completed acceptance phases remain 12/14, P11 live acceptance remains pending, and P14 remains the final certification phase.
+
+
+## P14 Certification Candidate - v1.0.0.1.34
+
+P14 candidate implementation repairs the setuptools wheel package/resource omissions, adds deterministic source/install resource resolution, adds Windows CI/native-smoke certification tooling, and adds local deterministic 10,000-import, 1,000-recipient injected execution and subprocess crash-recovery gates. Local automated and packaging gates can be executed without provider secrets. The final acceptance gate remains open: Stripe Test/Live controlled integration, Refrens API/invoice/mailbox delivery, and clean Windows/native PySide6/keyring evidence must be recorded before P11/P14 can be marked complete or Invio can be described as production-ready.

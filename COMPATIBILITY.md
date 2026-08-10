@@ -124,3 +124,14 @@ No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provide
 - Provider Task/API Test execution, P06/P08/P10 semantics, SQLite schema v5 and the three P10 ledger tables are unchanged.
 - External uninstall now uses rollback-safe registry moves; successful uninstall remains user-visible behavior-compatible while partial filesystem failure leaves the original provider installed instead of half-uninstalled.
 - No dependency, page, Settings, provider manifest, Task/customer/template or WorkerManager interface changes are introduced.
+
+
+## v1.0.0.1.34 P14 candidate compatibility
+
+- Python/runtime dependency ranges are unchanged.
+- SQLite remains schema v5 with the same three P10 ledger tables.
+- Packaged Stripe/Refrens/Agiled manifests are byte-unchanged; the wheel now includes them and the existing checkmark asset.
+- Existing source-checkout layout remains supported. `src/core/paths.py` resolves the same resource root after clean wheel installation.
+- External adapter interface remains version 1 and provider business flows are unchanged.
+- No PyInstaller/Briefcase/MSI technology or runtime dependency is introduced.
+- Production certification remains pending until live-provider and native-Windows gates execute successfully.

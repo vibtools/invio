@@ -440,3 +440,8 @@ These rules introduce no schema migration and do not alter packaged Stripe/Refre
 - Adapter import and `create_adapter()` were already contained; v1.0.0.1.33 extends that boundary through adapter metadata/profile/scheduling/callable validation so `SystemExit`, `KeyboardInterrupt`-class `BaseException` or hostile conversion access cannot terminate startup. The provider becomes `Incompatible` with a diagnostic instead.
 - External-provider uninstall now has an active-name rollback boundary. If the manifest move succeeds but the external adapter move fails, the manifest is restored before the error reaches the UI. Invio no longer reports an uninstall failure after silently losing the provider manifest.
 - Temporary detached uninstall files are cleanup-only; cleanup failure does not convert a completed logical uninstall into a half-installed active provider.
+
+
+## P14 candidate packaging/resource failures
+
+`RuntimeResourceError` fails startup closed when an installed/source distribution is missing a required provider manifest or the checkmark asset. Wheel-content audit catches the same packaging defect before installation. This handling is deliberately narrow and does not convert unrelated application `RuntimeError` exceptions into resource failures. Native Windows/live-provider error certification remains pending evidence.

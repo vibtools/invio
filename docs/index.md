@@ -100,3 +100,8 @@ P13 extends the existing Load Provider workflow with an optional executable `ada
 ## v1.0.0.1.33 P13 verification correction
 
 P13 remains complete. The correction contains adapter metadata failures that previously could escape startup and makes executable external-provider uninstall rollback-safe if its second registry move fails. External adapter interface v1, schema v5, provider behavior, dependencies and page inventory remain unchanged.
+
+
+## v1.0.0.1.34 P14 certification candidate
+
+P14 candidate documentation covers corrected setuptools wheel contents, source/install resource resolution, Windows CI/native-smoke tooling and deterministic local load/recovery gates. Live Stripe/Refrens and executed native-Windows evidence remain pending, so the release is not production-certified.

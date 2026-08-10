@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
+from ..core.paths import asset_path
 
 from .tokens import COLORS as c, CONST
 
 
 def app_qss() -> str:
-    check_icon = (Path(__file__).resolve().parents[2] / "assets" / "icons" / "checkmark.svg").as_posix()
+    check_icon = asset_path("icons", "checkmark.svg").as_posix()
     return f"""
     * {{
         font-family: 'Segoe UI Variable', 'Segoe UI';
