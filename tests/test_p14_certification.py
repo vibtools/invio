@@ -7,6 +7,7 @@ import unittest
 import subprocess
 import sys
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -167,7 +168,7 @@ os._exit(17)
                 def delete_password(self, *_args): pass
 
             DomainStore(db_path).load(CredentialStore(EmptyKeyring()))
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 run_status = connection.execute("SELECT status FROM task_delivery_runs").fetchone()[0]
                 operation_status = connection.execute("SELECT status FROM task_delivery_operations").fetchone()[0]
                 recipient_result = connection.execute("SELECT final_result FROM task_delivery_recipients").fetchone()[0]

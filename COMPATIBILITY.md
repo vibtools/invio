@@ -146,3 +146,8 @@ No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provide
 - SQLite schema v5, the three P10 ledger tables, one-Task/one-QThread ownership, provider API/send behavior, P13 external adapter interface v1, Settings, Reports/Logs and page inventory are unchanged.
 - The wheel remains supported and is included in CI/release output as a Python packaging/certification artifact.
 - P11/P14 certification status is unchanged until live provider and executed Windows evidence passes.
+
+
+## v1.0.0.1.36 P14 CI Verification Compatibility
+
+No platform target, Python/PySide6/openpyxl/keyring runtime requirement, provider ID/manifest/API/send contract, SQLite schema, P10 ledger table, P13 interface, WorkerManager, Task/customer/template model, UI page, Settings, Reports/Logs or business workflow changes are introduced. The release changes only Git publication of the existing `scripts/build` helper source, deterministic SQLite handle closure on exceptional/test cleanup paths, current version metadata, regression tests and synchronized documentation. Nuitka `4.1.3` and WiX `6.0.2` remain CI build-only tools.

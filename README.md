@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.35`** is the owner-frozen P14 source/build baseline based on the `v1.0.0.1.34` certification candidate. It keeps all v1.34 packaging/resource corrections and adds the explicitly approved Windows distribution pipeline: pinned Nuitka OneDir EXE build, versioned portable ZIP, pinned WiX Toolset MSI, wheel retention, checksum auditing, per-push build artifacts, and tag-gated GitHub Release publication. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies and page inventory remain unchanged. **P14 is still CERTIFICATION PENDING and Invio is not production-certified** because the exact v1.35 Windows workflow and owner-controlled Stripe/Refrens live gates have not yet executed. P11 therefore remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.36`** is the owner-frozen P14 source/build baseline derived from `v1.0.0.1.35` and scoped only to the GitHub Actions verification correction. It preserves the v1.35 Nuitka OneDir / portable ZIP / WiX MSI / wheel / tag-release design while fixing the CI publication gap that omitted `scripts/build/*`, closing Windows test/database handles deterministically, and recording the failed GitHub run evidence. Provider business logic, SQLite schema v5, Task/WorkerManager semantics, P13 interface version 1, runtime dependencies, UI/UX and page inventory remain unchanged. **P14 remains CERTIFICATION PENDING and Invio is not production-certified** until the exact v1.36 Windows distribution workflow and owner-controlled Stripe/Refrens live gates pass. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** and completed acceptance phases remain **12/14**.
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Release notes: `docs/release-notes/1.0.0.1.26.md`
+- Release notes: `docs/release-notes/1.0.0.1.36.md`
 
 ## Private Project Material
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.35` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. Local deterministic packaging, 10,000-record import, 1,000-recipient injected execution and subprocess crash-recovery gates pass, but P14 remains **CERTIFICATION PENDING** because the owner-supplied live Stripe/Refrens gates and an executed clean Windows/native PySide6/keyring run are still required. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
+`v1.0.0.1.36` is the current owner-frozen **P14 source/build baseline with CERTIFICATION PENDING**. It corrects the confirmed v1.35 GitHub Actions publication and Windows SQLite-handle failures while preserving the approved Nuitka/WiX distribution design. Local regression, packaging and overlay gates pass, but P14 remains **CERTIFICATION PENDING** because the exact v1.36 GitHub Windows distribution workflow and owner-controlled live Stripe/Refrens gates still require external execution evidence. Completed acceptance phases remain **12/14** (P01-P10, P12 and P13); no production-ready claim is authorized.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -303,3 +303,10 @@ The owner-approved v1.35 distribution update keeps the existing wheel/native cer
 The MSI installs under `%LOCALAPPDATA%\Vib Tools\Invio` so the frozen P13 provider registry remains writable without elevation. The portable OneDir keeps the same application-root provider workflow. Nuitka and WiX are CI build tools only and are not added to `requirements.txt`.
 
 This build/release pipeline does **not** close P11 or P14. Until the exact Windows workflow passes after push and owner-controlled Stripe/Refrens live acceptance evidence is recorded, production-ready remains **NO**.
+
+
+## v1.0.0.1.36 P14 GitHub Actions CI Verification Correction
+
+The v1.35 GitHub Actions run `31371279808` failed before wheel/Nuitka/WiX packaging because the broad `.gitignore` rule `build/` also ignored the approved source directory `scripts/build/`; the helper files existed in the v1.35 source baseline but were absent from commit `12ef4800a75a993da3899399882f0e44daccd4df`. v1.36 explicitly re-includes that source directory while keeping generated `build/` and `dist/` ignored, and re-publishes the five v1.35 helper-source entries byte-identically for GitHub reconciliation.
+
+Windows also exposed file-handle ownership defects during regression cleanup. The P14 crash-recovery verification now explicitly closes its direct SQLite query handle, and `DomainStore._connect()` closes a partially initialized connection if setup fails before return. SQLite schema v5, provider send/business logic, WorkerManager/Task architecture, P13 interface v1, runtime dependencies and UI/UX remain unchanged. Local v1.36 regression is **381/381 PASS** and the repository audit passes; P14 remains **CERTIFICATION PENDING** until the exact v1.36 GitHub Windows workflow executes successfully.

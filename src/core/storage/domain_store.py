@@ -85,6 +85,7 @@ class DomainStore:
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
+        connection: sqlite3.Connection | None = None
         try:
             connection = sqlite3.connect(self.path, timeout=10.0)
             connection.row_factory = sqlite3.Row
@@ -92,10 +93,16 @@ class DomainStore:
             connection.execute("PRAGMA synchronous = FULL")
             return connection
         except sqlite3.OperationalError as exc:
+            if connection is not None:
+                connection.close()
             raise DomainStoreError(f"Operational storage could not be opened: {exc}") from exc
         except sqlite3.DatabaseError as exc:
+            if connection is not None:
+                connection.close()
             raise DomainStoreCorruptionError(f"Operational storage is unreadable and was not overwritten: {exc}") from exc
         except sqlite3.Error as exc:
+            if connection is not None:
+                connection.close()
             raise DomainStoreError(f"Operational storage could not be opened: {exc}") from exc
 
     @contextmanager

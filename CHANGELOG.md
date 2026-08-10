@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.36 - P14 GitHub Actions CI Verification Correction
+
+- Forensically audited failed GitHub Actions run `31371279808` / Ubuntu job `93400604928` / Windows job `93400604966`.
+- Fixed the publication root cause: broad `.gitignore` `build/` matched `scripts/build/`, so the v1.35 distribution helper scripts existed in the source baseline but were omitted by `git add -A`; the approved helper directory is now explicitly re-included while root build output remains ignored.
+- Preserved the v1.35 Nuitka OneDir, portable ZIP, WiX MSI, wheel and tag-release workflow unchanged apart from the v1.36 version identity.
+- Fixed Windows-only SQLite file-lock failures found by CI: the P14 crash-recovery verification query now explicitly closes its `sqlite3` handle, and `DomainStore._connect()` closes any partially initialized SQLite connection before re-raising setup/corruption errors.
+- Added regression coverage for tracked `scripts/build/*` helpers and exceptional SQLite-handle cleanup.
+- No provider API/send behavior, schema, provider manifest, WorkerManager, Task/customer/template model, UI/UX, runtime dependency or P13 interface change.
+- P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING until the exact v1.36 GitHub Windows build and remaining live-provider acceptance gates pass.
+
 ## v1.0.0.1.35 - P14 Windows Distribution and Release Pipeline Verification Correction
 
 - Added the explicitly approved Windows distribution build while preserving the v1.34 wheel/resource corrections: pinned Nuitka `4.1.3` OneDir + PySide6 build, versioned portable ZIP, pinned WiX Toolset `6.0.2` per-user MSI, wheel retention and release checksum audit.

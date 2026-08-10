@@ -272,3 +272,8 @@ The WiX MSI installs the OneDir per-user in LocalAppData specifically to preserv
 ### WiX build-tool compliance
 
 WiX is a build-time installer tool, not an Invio runtime dependency. Maintainers using the release pipeline must comply with the applicable WiX/OSMF terms. The pinned v6.0.2 command is intentionally not given the v7-only explicit EULA-acceptance switch.
+
+
+## v1.0.0.1.36 CI publication boundary
+
+The v1.35 Windows distribution architecture is unchanged. `scripts/build/` is confirmed as tracked source required by CI; root `build/`/`dist/` remain generated output. The only runtime code correction is deterministic cleanup of a partially initialized SQLite connection on an exceptional open/setup path. No component relationship, provider runtime boundary, Task/QThread ownership, schema or UI flow changes.

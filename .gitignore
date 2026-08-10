@@ -11,6 +11,10 @@ htmlcov/
 # Build output
 build/
 dist/
+# Approved source helpers live under scripts/build and must remain tracked.
+!scripts/build/
+!scripts/build/*.py
+!scripts/build/.gitkeep
 *.spec
 *.egg-info/
 

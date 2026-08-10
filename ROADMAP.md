@@ -1,12 +1,12 @@
 # Roadmap
 
-Current Official source/build baseline: **Invio v1.0.0.1.35 — P14 CERTIFICATION PENDING**.
+Current Official source/build baseline: **Invio v1.0.0.1.36 — P14 CERTIFICATION PENDING**.
 
-Owner-frozen parent baseline: **Invio v1.0.0.1.34**. Production certification remains pending.
+Owner-frozen parent baseline: **Invio v1.0.0.1.35**. Production certification remains pending.
 
 Last fully accepted pre-certification baseline: **Invio v1.0.0.1.33**.
 
-P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is implemented through `v1.0.0.1.35`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING**. P14 packaging/certification and Windows distribution/release harness work is verification-corrected through `v1.0.0.1.36`, but P14 is **not COMPLETE** because owner live Stripe/Refrens evidence and an executed clean Windows/native PySide6/keyring certification run are still outstanding.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
@@ -105,3 +105,8 @@ P14 candidate implementation repairs the setuptools wheel package/resource omiss
 ## P14 Windows Distribution / Release Pipeline - v1.0.0.1.35
 
 The owner explicitly approved Nuitka OneDir and WiX MSI distribution as a P14 verification/build correction. v1.35 adds pinned Windows standalone compilation, a versioned portable ZIP, a generated per-user MSI, release checksums, per-push Windows artifact upload and exact-tag GitHub Release publication while retaining the v1.34 wheel and native-smoke gates. This does not change the P14 acceptance rule: the exact pushed Windows workflow and owner-controlled Stripe/Refrens live gates must pass before P11/P14 can be completed or Invio can be described as production-ready.
+
+
+## P14 GitHub Actions CI verification correction - v1.0.0.1.36
+
+The first pushed v1.35 distribution workflow correctly failed before packaging. GitHub run `31371279808` proved that `scripts/build/*` had not been committed because the existing broad `build/` ignore rule also matched `scripts/build/`. Windows additionally exposed two SQLite handle-lifetime defects during test cleanup. v1.36 fixes only those confirmed CI/runtime-verification defects, preserves the v1.35 distribution architecture, and remains P14 CERTIFICATION PENDING until the exact v1.36 Windows build executes successfully and outstanding live-provider acceptance gates pass.

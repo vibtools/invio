@@ -15,7 +15,9 @@
 ├── providers/
 │   ├── packages/             Bundled Stripe/Refrens/Agiled provider manifests
 │   └── registry/             Locally installed provider manifests (Git ignored)
-├── scripts/test/             Repository audit entrypoint
+├── scripts/
+│   ├── build/                Tracked P14 Windows distribution/release helpers
+│   └── test/                 Repository audit and certification helpers
 ├── src/
 │   ├── accounts/             Provider-account models
 │   ├── core/
@@ -182,3 +184,8 @@ No new application page, storage schema/table, provider package contract, runtim
 - `tests/test_p14_distribution_pipeline.py` — version/resource/portable/WiX/workflow distribution contracts.
 
 No new runtime package tree, application page, provider package, schema table or application dependency is introduced.
+
+
+## v1.0.0.1.36 P14 CI publication correction
+
+`scripts/build/` is an intentional tracked source directory, not generated root `build/` output. `.gitignore` now explicitly re-includes this approved directory so GitHub Actions receives the v1.35/v1.36 version, portable, WiX and checksum helpers. No application module/folder is renamed or reorganized.

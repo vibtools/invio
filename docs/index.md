@@ -110,3 +110,8 @@ P14 candidate documentation covers corrected setuptools wheel contents, source/i
 ## v1.0.0.1.35 Windows distribution baseline
 
 P14 distribution documentation now covers the approved Nuitka OneDir Windows executable folder, versioned portable ZIP, WiX per-user MSI, retained wheel, checksum manifest and tag-gated GitHub Release publication. The build/release implementation is not itself production certification: P11 live Refrens acceptance and P14 live/native gates remain pending.
+
+
+## v1.0.0.1.36 GitHub Actions verification correction
+
+The v1.35 distribution design is retained. v1.36 corrects the Git publication omission of `scripts/build/*` and Windows SQLite-handle cleanup failures found by GitHub Actions run `31371279808`. P14 remains certification-pending until the exact v1.36 Windows pipeline succeeds and remaining live-provider gates pass.

@@ -735,6 +735,14 @@ class P02StorageTests(unittest.TestCase):
             DomainStore(corrupt)
         self.assertEqual(corrupt.read_bytes(), original)
 
+    def test_failed_sqlite_connection_setup_closes_handle(self):
+        connection = mock.MagicMock()
+        connection.execute.side_effect = sqlite3.DatabaseError("corrupt")
+        with mock.patch("src.core.storage.domain_store.sqlite3.connect", return_value=connection):
+            with self.assertRaises(DomainStoreCorruptionError):
+                DomainStore(self.root / "failed-open.sqlite3")
+        connection.close.assert_called_once_with()
+
 
     def test_customer_record_round_trip_preserves_order_and_metadata(self):
         state = self.state()

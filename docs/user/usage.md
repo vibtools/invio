@@ -156,7 +156,7 @@ A broken executable adapter that fails while exposing its declared runtime metad
 `v1.0.0.1.34` is not yet production-certified. Stripe and Refrens executable paths remain available under their existing safety gates, but production certification requires owner-controlled live-provider evidence and native Windows acceptance. Do not interpret this candidate label as confirmation that a provider accepted or delivered any specific invoice/email.
 
 
-## Using the v1.0.0.1.35 Windows builds
+## Using the v1.0.0.1.36 Windows builds
 
 For the portable build, extract the complete `Invio` folder and keep all DLLs, `assets/`, and `providers/` beside `Invio.exe`; do not copy only the EXE. For the MSI build, install normally and launch the installed Invio executable. The MSI is intentionally per-user so the existing Providers Load/Install/Uninstall workflow can continue writing its registry files without administrator elevation.
 

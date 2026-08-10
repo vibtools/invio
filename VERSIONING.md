@@ -113,3 +113,6 @@ Verification-only P10 correctness release. Schema stays v5 and the three-table d
 ## v1.0.0.1.35 - P14 Windows distribution baseline
 
 `v1.0.0.1.35` is the owner-frozen source/build baseline for the approved Nuitka OneDir + WiX MSI + GitHub Release pipeline. The public release identity remains five-part. Windows PE metadata maps it to `1.0.1.35`; Windows Installer ProductVersion maps it to `1.1.35`; the exact release tag is `v1.0.0.1.35`. These shorter forms are packaging metadata only and do not rename or replace the public Invio version. P11 and P14 remain acceptance-pending until real live/native evidence exists.
+
+
+- `v1.0.0.1.36`: P14 GitHub Actions CI verification correction; republishes the already-approved `scripts/build` helpers by fixing their ignore rule, closes Windows SQLite handles deterministically in the affected verification/error paths, preserves the v1.35 distribution architecture, and remains certification-pending.

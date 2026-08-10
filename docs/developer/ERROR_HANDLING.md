@@ -457,3 +457,11 @@ These rules introduce no schema migration and do not alter packaged Stripe/Refre
 | EH-040 | portable/MSI/wheel/checksum inventory mismatches | distribution audit fails before artifact/release acceptance | IMPLEMENTED |
 
 These build-time gates do not alter runtime provider/network error handling.
+
+
+## v1.0.0.1.36 CI and SQLite handle correction
+
+- GitHub source publication now fails regression if any approved `scripts/build` helper is missing; `.gitignore` explicitly re-includes that directory.
+- `DomainStore._connect()` closes a SQLite connection if setup raises after `sqlite3.connect()` succeeds, then preserves the existing `DomainStoreError` / `DomainStoreCorruptionError` classification.
+- The P14 subprocess crash-recovery test explicitly closes its post-crash SQLite verification query, avoiding Windows `WinError 32` during temporary-directory cleanup.
+- No recovery classification, schema migration or delivery-ledger semantics change.
