@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
 **Owner-frozen parent baseline for current correction:** `Invio v1.0.0.1.39`  
-**Current local source/live correction candidate:** `Invio v1.0.0.1.40 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
+**Current local source/live correction candidate:** `Invio v1.0.0.1.40.1 — P11 LIVE ACCEPTANCE / P14 CERTIFICATION PENDING — NOT TAGGED/RELEASED`
 **Last fully accepted pre-certification baseline:** `Invio v1.0.0.1.33`  
 **Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
@@ -304,3 +304,15 @@ External executable adapters are now implemented through a versioned trusted-cod
 ## v1.0.0.1.40 correction candidate status
 
 Implemented locally: dark Task/list/menu surface contract; import-time customer defaults and Settings controls; Refrens create-request terms correction; owner app icon runtime/build wiring. Automated verification does not certify live Refrens delivery. P11 remains LIVE ACCEPTANCE PENDING and P14 remains CERTIFICATION PENDING until owner live source and compiled-artifact checks pass.
+
+## v1.0.0.1.40.1 correction candidate status
+
+**Refrens:** v1.40 owner evidence confirms real invoice creation. v1.40.1 adds the separate documented invoice-email POST after creation and records provider send acceptance only after that endpoint succeeds. A definitive email-trigger failure retains the created invoice reference so Retry Failed does not create a duplicate invoice. Mailbox receipt remains owner-live evidence and is not claimed by automated tests.
+
+**Settings UI:** Settings-only reduced font/spacing overrides are removed; the page inherits the existing frozen shared Vib Tools typography/card/input tokens and uses the shared page/content/card spacing. No other page is redesigned.
+
+**Windows build:** GitHub run `31411715607`, job `93531112926`, failed only at Nuitka because the v1.40 custom `keyring` user package config duplicated Nuitka 4.1.3's standard keyring config. v1.40.1 stops passing that custom file while retaining explicit package inclusion and compiled CredentialStore smoke.
+
+**Agiled:** remains non-executable/fail-closed. Current published Agiled materials do not form a single contract compatible with Invio's existing one-field `api_key` manifest, and no authoritative invoice-email send operation has been approved. No guessed runtime is added.
+
+P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING; production-ready remains NO.

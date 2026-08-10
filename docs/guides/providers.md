@@ -102,3 +102,9 @@ An external executable bundle contains `provider.json` and a fixed sibling `adap
 
 
 P13 API Test is not allowed to self-certify: a validated external adapter must complete at least one successful host-managed `SAFE_READ` before the existing account-verification workflow can mark the account verified. Task recipient success likewise requires a successful host-managed mutation with an exact matching final stage.
+
+## v1.0.0.1.40.1 Refrens email trigger and Agiled boundary
+
+Refrens Task sending now uses two explicit provider mutations: create the invoice, persist its `_id`, then call the invoice-specific `/email` endpoint. A definitive email-trigger failure can retry the email against the same invoice reference; an ambiguous provider mutation still fails closed.
+
+Agiled remains intentionally fail-closed. The current Agiled product page describes Bearer-token authentication, while the currently published OpenAPI document uses an `api_token` query parameter plus a required `Brand` account-URL header for `/invoices`. Invio's frozen packaged Agiled manifest has only one protected `api_key` field and no approved Brand/base-URL/send contract. Enabling it in this hotfix would require inventing or changing credentials/provider behavior, so no Agiled runtime is added.

@@ -1,6 +1,6 @@
 # Invio Documentation
 
-Current correction candidate: **v1.0.0.1.40**; owner-frozen parent baseline: **v1.0.0.1.39**.
+Current correction candidate: **v1.0.0.1.40.1**; owner-frozen parent baseline: **v1.0.0.1.40**.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -132,3 +132,7 @@ v1.38 preserves the existing Windows distribution design and suppresses WiX's de
 ## Current v1.0.0.1.40 live-correction candidate
 
 Owner-frozen parent baseline is v1.0.0.1.39. v1.40 is limited to the live Refrens `terms` payload correction, email-only customer defaults, the reported dark list/menu/table surfaces, and owner app icon wiring. Do not tag/release until local source Refrens invoice/email acceptance and subsequent non-tagged compiled-artifact acceptance both pass.
+
+## Current v1.0.0.1.40.1 error-fix candidate
+
+The owner-frozen v1.40 baseline now proves real Refrens invoice creation but exposed a separate email-trigger gap. v1.40.1 uses Refrens' explicit post-create invoice-email endpoint, restores Settings to the shared frozen Vib Tools form/card spacing and typography, and removes the obsolete custom Nuitka keyring package config from CI. Agiled stays fail-closed; P11/P14 and production certification remain pending.

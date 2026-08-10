@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.39` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40` is a local source/live correction candidate and must not be tagged or released yet.** The v1.40 scope is limited to the owner-reported dark-theme list/menu visibility defects, email-only customer default materialization, the confirmed Refrens create-invoice `terms` HTTP 400 correction, and owner-supplied app icon wiring. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, provider manifests and runtime dependency versions remain unchanged. **P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40` is the owner-frozen Official Baseline for this correction. `v1.0.0.1.40.1` is a local error-fix candidate and must not be tagged or released yet.** The v1.40.1 scope is limited to the owner-observed Refrens invoice-email trigger gap, Settings-page frozen-brand alignment, and the GitHub/Nuitka duplicate-keyring-config build failure. Agiled remains intentionally fail-closed because its current published authentication/invoice contract is not internally consistent with Invio's existing one-field manifest. SQLite schema v5, CredentialStore policy, Task/WorkerManager architecture, provider manifests and runtime dependency versions remain unchanged. **P11 remains LIVE ACCEPTANCE PENDING, P14 remains CERTIFICATION PENDING, completed acceptance phases remain 12/14, and Invio is not production-certified.**
 
 ## Current Application Scope
 
@@ -141,7 +141,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 - Error handling: `docs/developer/ERROR_HANDLING.md`
 - Configuration: `docs/configuration/index.md`
 - Troubleshooting: `docs/troubleshooting/index.md`
-- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.md`
+- Current correction-candidate release notes: `docs/release-notes/1.0.0.1.40.1.md`
 
 ## Private Project Material
 

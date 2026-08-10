@@ -171,3 +171,7 @@ The Windows release contract remains portable ZIP + MSI + wheel + `SHA256SUMS.tx
 ## v1.0.0.1.40 compatibility note
 
 No runtime dependency, SQLite schema, CredentialStore, Task/WorkerManager or provider-manifest compatibility contract changes. The two new Settings fields are backward-compatible because missing keys load their blank defaults. Customer defaults are materialized on future imports; existing durable customer records are not silently rewritten. Windows icon packaging depends on owner-provided `assets/icons/app.ico` and `app.png`.
+
+## v1.0.0.1.40.1 compatibility note
+
+No runtime dependency, SQLite schema, provider manifest, WorkerManager, Task-state, Stripe, credential-storage or customer/template persistence contract changes. Five-part Invio version mappings remain unchanged. The new six-part hotfix identity `1.0.0.1.40.1` maps to PE `1.0.1.4001` and MSI `1.1.4001` only for Windows native metadata/upgrade ordering.

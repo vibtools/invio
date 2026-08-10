@@ -792,6 +792,7 @@ class DomainStore:
                 "invoice_create",
                 "invoice_finalize",
                 "invoice_send",
+                "refrens_invoice_create",
                 "refrens_invoice_create_email",
             } else None
             if customer_reference is not None:

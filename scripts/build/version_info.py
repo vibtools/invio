@@ -6,7 +6,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)$")
+VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$")
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -21,9 +21,17 @@ class ReleaseVersion:
 def parse_release_version(value: str) -> ReleaseVersion:
     match = VERSION_RE.fullmatch(value.strip())
     if match is None:
-        raise ValueError("Invio release version must contain exactly five numeric components.")
-    major, minor, _patch, train, revision = (int(part) for part in match.groups())
-    if major > 65535 or minor > 65535 or train > 65535 or revision > 65535:
+        raise ValueError("Invio release version must contain five numeric components, with an optional sixth hotfix component.")
+    major, minor, _patch, train, revision, hotfix = (
+        int(part) if part is not None else None for part in match.groups()
+    )
+    assert hotfix is None or isinstance(hotfix, int)
+    native_revision = revision
+    if hotfix is not None:
+        if revision > 655 or hotfix > 99:
+            raise ValueError("Invio six-part hotfix mapping requires revision <= 655 and hotfix <= 99.")
+        native_revision = revision * 100 + hotfix
+    if major > 65535 or minor > 65535 or train > 65535 or native_revision > 65535:
         raise ValueError("Invio release version components exceed Windows executable version limits.")
     if major > 255 or train > 255:
         raise ValueError("Invio major/train components exceed MSI version limits (255).")
@@ -32,14 +40,13 @@ def parse_release_version(value: str) -> ReleaseVersion:
     return ReleaseVersion(
         application=application,
         # PE file/product versions permit four numeric fields. Preserve the
-        # long Invio release identity externally while mapping its active
-        # train/revision into the last two PE fields.
-        pe_file_version=f"{major}.{minor}.{train}.{revision}",
-        # Windows Installer ProductVersion is three fields. Invio's current
-        # release train is ordered by (major, train, revision), which keeps
-        # MSI MajorUpgrade ordering deterministic for this frozen versioning
-        # family without changing the public five-part application version.
-        msi_version=f"{major}.{train}.{revision}",
+        # public Invio identity externally and fold an optional two-digit
+        # hotfix component into the native revision (40.1 -> 4001).
+        pe_file_version=f"{major}.{minor}.{train}.{native_revision}",
+        # Windows Installer ProductVersion is three fields and uses the same
+        # folded native revision for six-part hotfix identities. Five-part
+        # releases retain the historical mapping byte-for-byte.
+        msi_version=f"{major}.{train}.{native_revision}",
         tag=f"v{application}",
     )
 

@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  INVIO_VERSION: "1.0.0.1.40"
-  INVIO_PE_VERSION: "1.0.1.40"
+  INVIO_VERSION: "1.0.0.1.40.1"
+  INVIO_PE_VERSION: "1.0.1.4001"
   NUITKA_VERSION: "4.1.3"
   WIX_VERSION: "6.0.2"
 
@@ -88,7 +88,6 @@ jobs:
             jaraco.functools
             more_itertools
             win32ctypes
-          user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml
           include-data-dir: |
             assets=assets
             providers=providers

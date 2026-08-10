@@ -183,3 +183,11 @@ If v1.39 live logs show a verified Refrens account followed by `invoices validat
 ## New Task / Customer Lists / right-click menu appears light
 
 v1.40 explicitly styles `QListWidget`, table surfaces and `QMenu`, and applies the existing Invio QSS at application scope. If a custom OS accessibility/theme layer still overrides those colors, record the exact widget/screenshot rather than changing unrelated palette behavior.
+
+## Refrens invoice exists but recipient email is not triggered — v1.0.0.1.40
+
+This is the owner-observed v1.40 live gap. Invoice creation and provider email triggering are separate evidence boundaries. v1.0.0.1.40.1 performs the explicit post-create `/businesses/:urlKey/invoices/:invoiceID/email` request and does not mark provider send acceptance until it succeeds. Test a controlled recipient mailbox before any release tag.
+
+## GitHub/Nuitka duplicate `keyring` config — v1.0.0.1.40
+
+GitHub run `31411715607`, job `93531112926`, reached the Nuitka OneDir step after the regression/native wheel checks passed and then failed because `.github/nuitka-keyring.nuitka-package.config.yml` duplicated Nuitka 4.1.3's built-in `keyring` standard package configuration. v1.0.0.1.40.1 keeps the keyring packages and compiled credential smoke but no longer passes the custom user package config to Nuitka.

@@ -213,11 +213,6 @@ def app_qss() -> str:
         font-size: 11px; font-weight: 600;
     }}
 
-    QWidget#SettingsPage QLabel#Description {{ font-size: 11px; color: {c['secondary_text']}; }}
-    QWidget#SettingsPage QLabel#Caption {{ font-size: 10px; color: {c['muted_text']}; }}
-    QWidget#SettingsPage QLabel#CardTitle {{ font-size: 12px; font-weight: 600; color: {c['title_text']}; }}
-    QWidget#SettingsPage QLabel#FormLabel {{ font-size: 10px; font-weight: 600; color: {c['secondary_text']}; }}
-    QWidget#SettingsPage QCheckBox {{ font-size: 11px; color: {c['primary_text']}; spacing: 7px; }}
     QWidget#SettingsPage QFrame#Card[settingsCard="true"] {{ background: {c['surface']}; border: 1px solid {c['border']}; }}
     QPlainTextEdit#LogViewer {{ background: {c['nested_surface']}; border: 1px solid {c['input_border']}; padding: 10px 12px; }}
     QTableWidget#ReportTable {{ background: {c['page_background']}; border-radius: 6px; }}

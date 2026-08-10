@@ -99,3 +99,7 @@ For the current compiled-credential correction, keep `v1.0.0.1.38` as the instal
 ## v1.0.0.1.40 application icon prerequisite
 
 The source/runtime/build contract now consumes owner branding from `assets/icons/app.png` and `assets/icons/app.ico`. Place both files at those exact paths before icon verification or a Windows build. The Windows Nuitka build specifically requires `assets/icons/app.ico`; the patch intentionally does not fabricate or replace owner branding assets.
+
+## v1.0.0.1.40.1 Windows build correction
+
+The application/runtime dependency set is unchanged. For the Windows CI build, pinned Nuitka 4.1.3 now uses its own standard `keyring` package configuration; Invio no longer passes the historical duplicate `.github/nuitka-keyring.nuitka-package.config.yml` as a user package config. Explicit keyring package inclusion and compiled protected-credential smoke remain required. Do not publish a tagged build until the non-tagged candidate CI and downloaded portable/MSI acceptance pass.

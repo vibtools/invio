@@ -137,6 +137,8 @@ class P11RefrensTaskTests(unittest.TestCase):
                 return {"accessToken": f"token-{payload['appId']}"}
             if path.endswith("/invoices"):
                 return {"_id": next(ids)}
+            if path.endswith("/email"):
+                return {"emailType": "email"}
             raise AssertionError(path)
 
         return transport
@@ -201,11 +203,17 @@ class P11RefrensTaskTests(unittest.TestCase):
         context = _Context(task)
         with patch.object(runtime, "_await_account_rate_slot", return_value=True):
             runtime.make_task_runner(task, state)(context)
-        self.assertEqual([urlparse(call[1]).path for call in calls], ["/authentication", "/businesses/biz-a/invoices"])
+        self.assertEqual(
+            [urlparse(call[1]).path for call in calls],
+            ["/authentication", "/businesses/biz-a/invoices", "/businesses/biz-a/invoices/inv_1/email"],
+        )
         invoice_payload = json.loads((calls[1][3] or b"{}").decode("utf-8"))
+        email_payload = json.loads((calls[2][3] or b"{}").decode("utf-8"))
         self.assertEqual(invoice_payload["billedTo"]["name"], "Alice")
         self.assertEqual(invoice_payload["billedTo"]["country"], "BD")
-        self.assertEqual(invoice_payload["email"]["to"], {"email": "a@example.com", "name": "Alice"})
+        self.assertNotIn("email", invoice_payload)
+        self.assertEqual(email_payload["to"], {"email": "a@example.com", "name": "Alice"})
+        self.assertEqual(email_payload["cc"], [])
         self.assertNotIn("terms", invoice_payload)
         with closing(sqlite3.connect(self.store.path)) as connection:
             connection.row_factory = sqlite3.Row
@@ -215,11 +223,18 @@ class P11RefrensTaskTests(unittest.TestCase):
             recipient = connection.execute(
                 "SELECT provider_customer_id, provider_invoice_id, final_result FROM task_delivery_recipients"
             ).fetchone()
-        self.assertEqual([row["stage"] for row in ops], ["refrens_authentication", "refrens_invoice_create_email"])
-        self.assertEqual([row["status"] for row in ops], [DELIVERY_OPERATION_SUCCEEDED, DELIVERY_OPERATION_SUCCEEDED])
-        self.assertEqual([row["attempt_number"] for row in ops], [1, 1])
-        self.assertEqual([row["idempotency_key"] for row in ops], ["", ""])
+        self.assertEqual(
+            [row["stage"] for row in ops],
+            ["refrens_authentication", "refrens_invoice_create", "refrens_invoice_create_email"],
+        )
+        self.assertEqual(
+            [row["status"] for row in ops],
+            [DELIVERY_OPERATION_SUCCEEDED, DELIVERY_OPERATION_SUCCEEDED, DELIVERY_OPERATION_SUCCEEDED],
+        )
+        self.assertEqual([row["attempt_number"] for row in ops], [1, 1, 1])
+        self.assertEqual([row["idempotency_key"] for row in ops], ["", "", ""])
         self.assertEqual(ops[1]["provider_reference"], "inv_1")
+        self.assertEqual(ops[2]["provider_reference"], "")
         self.assertEqual(recipient["provider_customer_id"], "")
         self.assertEqual(recipient["provider_invoice_id"], "inv_1")
         self.assertEqual(recipient["final_result"], "Succeeded")
@@ -243,6 +258,8 @@ class P11RefrensTaskTests(unittest.TestCase):
                 return {"accessToken": "token"}
             if path.endswith("/invoices"):
                 return {"_id": "inv_1"}
+            if path.endswith("/email"):
+                return {"emailType": "email"}
             raise AssertionError((method, path))
 
         state, task, _accounts = self.task_state([CustomerRecord("a@example.com", "Alice", "BD")])
@@ -253,6 +270,7 @@ class P11RefrensTaskTests(unittest.TestCase):
             runtime.make_task_runner(task, state)(_Context(task))
         self.assertEqual(calls.count("/authentication"), 3)
         self.assertEqual(sum(path.endswith("/invoices") for path in calls), 1)
+        self.assertEqual(sum(path.endswith("/email") for path in calls), 1)
         with closing(sqlite3.connect(self.store.path)) as connection:
             auth_rows = connection.execute(
                 "SELECT attempt_number, status FROM task_delivery_operations WHERE stage='refrens_authentication' ORDER BY attempt_number"
@@ -280,7 +298,7 @@ class P11RefrensTaskTests(unittest.TestCase):
         self.assertEqual(sum(path.endswith("/invoices") for path in calls), 1)
         with closing(sqlite3.connect(self.store.path)) as connection:
             operation = connection.execute(
-                "SELECT status, idempotency_key FROM task_delivery_operations WHERE stage='refrens_invoice_create_email'"
+                "SELECT status, idempotency_key FROM task_delivery_operations WHERE stage='refrens_invoice_create'"
             ).fetchone()
             recipient = connection.execute("SELECT final_result FROM task_delivery_recipients").fetchone()
         self.assertEqual(operation, (DELIVERY_OPERATION_UNCERTAIN, ""))
@@ -310,7 +328,7 @@ class P11RefrensTaskTests(unittest.TestCase):
                 runtime.make_task_runner(task, state)(_Context(task))
         with closing(sqlite3.connect(self.store.path)) as connection:
             operation = connection.execute(
-                "SELECT status FROM task_delivery_operations WHERE stage='refrens_invoice_create_email'"
+                "SELECT status FROM task_delivery_operations WHERE stage='refrens_invoice_create'"
             ).fetchone()
         self.assertEqual(operation[0], DELIVERY_OPERATION_UNCERTAIN)
 
@@ -329,6 +347,10 @@ class P11RefrensTaskTests(unittest.TestCase):
                 payload = json.loads((body or b"{}").decode("utf-8"))
                 calls.append((path, headers["Authorization"], payload["billedTo"]["email"]))
                 return {"_id": f"inv-{payload['billedTo']['email']}"}
+            if path.endswith("/email"):
+                payload = json.loads((body or b"{}").decode("utf-8"))
+                calls.append((path, headers["Authorization"], payload["to"]["email"]))
+                return {"emailType": "email"}
             raise AssertionError((method, path))
 
         state, task, _accounts = self.task_state(
@@ -387,6 +409,8 @@ class P11RefrensTaskTests(unittest.TestCase):
                 payload = json.loads((body or b"{}").decode("utf-8"))
                 resumed_invoices.append(payload["billedTo"]["email"])
                 return {"_id": "inv_b"}
+            if path.endswith("/email"):
+                return {"emailType": "email"}
             raise AssertionError(path)
 
         resumed_runtime = ProviderRuntime(transport=resume_transport, domain_store=self.store)
@@ -399,6 +423,46 @@ class P11RefrensTaskTests(unittest.TestCase):
         restarted_task.status = "Stopped"
         with self.assertRaisesRegex(ProviderRuntimeError, "only uncertain provider outcomes remain"):
             resumed_runtime.make_task_runner(restarted_task, restarted_state, resume_remaining=True)
+
+
+    def test_email_trigger_failure_retry_reuses_created_invoice_without_duplicate_invoice(self):
+        calls: list[str] = []
+        email_fail_once = {"value": True}
+
+        def transport(method, url, headers, body, timeout):
+            del method, headers, body, timeout
+            path = urlparse(url).path
+            calls.append(path)
+            if path == "/authentication":
+                return {"accessToken": "token"}
+            if path.endswith("/invoices"):
+                return {"_id": "inv_1"}
+            if path.endswith("/email"):
+                if email_fail_once["value"]:
+                    email_fail_once["value"] = False
+                    raise ProviderRuntimeError("email rejected", category="http", retryable=False, http_status=400)
+                return {"emailType": "email"}
+            raise AssertionError(path)
+
+        state, task, _accounts = self.task_state([CustomerRecord("a@example.com", "Alice", "BD")])
+        runtime = ProviderRuntime(transport=transport, domain_store=self.store)
+        runner = runtime.make_task_runner(task, state)
+        state.set_task_status(task.id, "Running", "Running")
+        with patch.object(runtime, "_await_account_rate_slot", return_value=True):
+            with self.assertRaisesRegex(ProviderRuntimeError, r"1 Refrens recipient\(s\) failed"):
+                runner(_Context(task))
+        self.assertEqual(sum(path.endswith("/invoices") for path in calls), 1)
+        self.assertEqual(sum(path.endswith("/email") for path in calls), 1)
+
+        state.set_task_status(task.id, "Failed", "Failed")
+        retry = runtime.make_task_runner(task, state, retry_failed=True)
+        with patch.object(runtime, "_await_account_rate_slot", return_value=True):
+            retry(_Context(task))
+        self.assertEqual(sum(path.endswith("/invoices") for path in calls), 1)
+        self.assertEqual(sum(path.endswith("/email") for path in calls), 2)
+        report = [row for row in self.store.recipient_delivery_report() if row.task_id == task.id]
+        self.assertEqual(report[0].provider_invoice_reference, "inv_1")
+        self.assertEqual(report[0].provider_send_acceptance, "Accepted")
 
     def test_refrens_429_is_provider_wide_not_account_specific_health(self):
         state, task, accounts = self.task_state([CustomerRecord("a@example.com", "Alice", "BD")])

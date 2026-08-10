@@ -476,3 +476,7 @@ GitHub Actions run `31374749523` showed a false-positive build guard rather than
 ## v1.0.0.1.40 live-provider correction
 
 The owner-observed Refrens `terms` HTTP 400 is treated as a provider payload validation failure. The correction removes only the unsupported string-list request field; existing provider exception classification, Retry Failed safety and P10 ledger recording remain unchanged. Email-only missing name/country is prevented earlier by import-time default materialization rather than by guessing inside provider execution.
+
+## v1.0.0.1.40.1 explicit Refrens email/build correction
+
+Refrens create success is no longer treated as send acceptance. Invoice creation and the explicit `/invoices/:invoiceID/email` request are separate write-ahead mutations. A definitive email-trigger failure is reported as Failed and can reuse the durable invoice reference on Retry Failed; an ambiguous mutation remains Uncertain and is not blindly replayed. GitHub/Nuitka packaging no longer passes the duplicate custom keyring package configuration.

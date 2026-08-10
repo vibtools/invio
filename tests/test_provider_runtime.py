@@ -227,10 +227,16 @@ class ProviderRuntimeTests(unittest.TestCase):
                 return {"accessToken": "token"}
             if path == "/businesses/biz/invoices":
                 payload = json.loads((body or b"{}").decode("utf-8"))
-                self.assertEqual(payload["email"]["to"]["email"], "a@example.com")
+                self.assertNotIn("email", payload)
                 self.assertEqual(payload["billedTo"]["country"], "BD")
                 self.assertNotIn("terms", payload)
                 return {"_id": "inv_1"}
+            if path == "/businesses/biz/invoices/inv_1/email":
+                payload = json.loads((body or b"{}").decode("utf-8"))
+                self.assertEqual(payload["to"]["email"], "a@example.com")
+                self.assertEqual(payload["to"]["name"], "Alice")
+                self.assertEqual(payload["cc"], [])
+                return {"emailType": "email"}
             raise AssertionError(f"Unexpected request: {method} {url}")
 
         state, task = self._stripe_state()
@@ -246,7 +252,10 @@ class ProviderRuntimeTests(unittest.TestCase):
             customer_name="Alice",
         )
         self.assertEqual(created["_id"], "inv_1")
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(
+            [urlparse(item[1]).path for item in calls],
+            ["/authentication", "/businesses/biz/invoices", "/businesses/biz/invoices/inv_1/email"],
+        )
 
     def test_refrens_task_runner_blocks_before_network_without_required_country(self):
         called = []
@@ -337,12 +346,17 @@ class ProviderRuntimeTests(unittest.TestCase):
                 return {"accessToken": "token"}
             if path == "/businesses/biz/invoices":
                 return {"_id": "inv_1"}
+            if path == "/businesses/biz/invoices/inv_1/email":
+                return {"emailType": "email"}
             raise AssertionError(path)
 
         runtime = ProviderRuntime(transport=transport)
         with patch.object(runtime, "_await_account_rate_slot", return_value=True):
             runtime.make_task_runner(task, state)(_Context(task))
-        self.assertEqual([urlparse(item[1]).path for item in called], ["/authentication", "/businesses/biz/invoices"])
+        self.assertEqual(
+            [urlparse(item[1]).path for item in called],
+            ["/authentication", "/businesses/biz/invoices", "/businesses/biz/invoices/inv_1/email"],
+        )
 
     def test_task_snapshot_preserves_old_positional_email_constructor(self):
         from src.core.provider_runtime import AccountSnapshot, TaskSnapshot

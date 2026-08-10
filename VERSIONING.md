@@ -1,5 +1,18 @@
 # Versioning
 
+## v1.0.0.1.40.1 Local Error-Fix Candidate
+
+- Official parent baseline: `v1.0.0.1.40`
+- Application/source version: `1.0.0.1.40.1`
+- Windows PE file/product version: `1.0.1.4001`
+- MSI product version: `1.1.4001`
+- Reserved future exact tag: `v1.0.0.1.40.1` — **not authorized yet**
+- P11: LIVE ACCEPTANCE PENDING
+- P14: CERTIFICATION PENDING
+- Production-ready: NO
+
+The optional sixth public component is reserved for a scope-locked hotfix beneath an existing five-part Invio revision. Windows native version fields cannot represent the full public identity directly, so `revision.hotfix` is folded into the final native field as `revision * 100 + hotfix`; therefore `40.1 -> 4001`. Existing five-part releases keep their historical PE/MSI mapping unchanged. Six-part mapping is limited to revision `<=655` and hotfix `<=99` so the native field remains within the Windows `65535` limit.
+
 ## v1.0.0.1.40 Local Live-Correction Candidate
 
 - Application/source version: `1.0.0.1.40`

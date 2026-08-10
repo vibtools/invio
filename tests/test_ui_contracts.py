@@ -215,7 +215,19 @@ class UiContractTests(unittest.TestCase):
         self.assertTrue((root / "assets" / "icons" / "checkmark.svg").is_file())
         self.assertIn('QCheckBox::indicator:checked', styles)
         self.assertIn('image: url("{check_icon}")', styles)
-        self.assertIn('QWidget#SettingsPage QCheckBox', styles)
+        self.assertNotIn('QWidget#SettingsPage QCheckBox', styles)
+        self.assertIn('QCheckBox {{ spacing: 8px; color:', styles)
+
+    def test_settings_page_inherits_shared_frozen_brand_spacing_and_typography(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("root.setContentsMargins(CONST.page_padding", source)
+        self.assertIn("grid.setHorizontalSpacing(CONST.content_gap)", source)
+        self.assertIn("grid.addWidget(customer_defaults, 2, 0)", source)
+        self.assertNotIn("settings_card.layout().setContentsMargins", source)
+        self.assertNotIn("QWidget#SettingsPage QLabel#Caption", styles)
+        self.assertNotIn("QWidget#SettingsPage QLabel#FormLabel", styles)
 
     def test_live_logs_and_reports_use_compact_reference_aligned_surfaces(self):
         root = Path(__file__).resolve().parents[1]

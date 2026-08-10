@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.settings import START_PAGE_LAST, START_PAGES, AppSettings, SettingsManager
+from ..tokens import CONST
 from ..widgets import button, card, form_group, label, page_header
 
 SaveSettingsHandler = Callable[[AppSettings], tuple[bool, str]]
@@ -32,8 +33,8 @@ class SettingsPage(QWidget):
         self.setObjectName("SettingsPage")
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 14, 14, 14)
-        root.setSpacing(8)
+        root.setContentsMargins(CONST.page_padding, CONST.page_padding, CONST.page_padding, CONST.page_padding)
+        root.setSpacing(CONST.section_gap)
 
         restore = button("Restore Defaults")
         save = button("Save Changes", "primary")
@@ -56,11 +57,11 @@ class SettingsPage(QWidget):
         content.setObjectName("SettingsContent")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(8)
+        content_layout.setSpacing(CONST.section_gap)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(8)
+        grid.setHorizontalSpacing(CONST.content_gap)
+        grid.setVerticalSpacing(CONST.content_gap)
         grid.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # General -------------------------------------------------------
@@ -183,12 +184,10 @@ class SettingsPage(QWidget):
                 "Use a two-letter country code. If blank, Invio uses US for imported customers that have no country.",
             )
         )
-        grid.addWidget(customer_defaults, 2, 0, 1, 2)
+        grid.addWidget(customer_defaults, 2, 0)
 
         for settings_card in (general, safety, logs, files, customer_defaults):
             settings_card.setProperty("settingsCard", True)
-            settings_card.layout().setContentsMargins(12, 11, 12, 11)
-            settings_card.layout().setSpacing(5)
 
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)

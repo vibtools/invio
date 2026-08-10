@@ -2156,7 +2156,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.40 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.40.1 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2387,7 +2387,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.40 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.40.1 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -2520,6 +2520,15 @@ class ProviderRuntime:
                 ) from exc
         return result
 
+    def _prior_refrens_invoice_reference(self, task_id: str, recipient_email: str) -> str:
+        if self._domain_store is None:
+            return ""
+        email = str(recipient_email).strip().lower()
+        for row in reversed(self._domain_store.recipient_delivery_report()):
+            if row.task_id == task_id and row.recipient_email.strip().lower() == email:
+                return row.provider_invoice_reference.strip()
+        return ""
+
     def _run_refrens_batch(
         self,
         context: Any,
@@ -2591,20 +2600,47 @@ class ProviderRuntime:
                     run_id=run_id,
                     recipient_ordinal=recipient_ordinal,
                 )
+                invoice_id = self._prior_refrens_invoice_reference(snapshot.task_id, email)
+                if not invoice_id:
+                    stage = "refrens_invoice_create"
+                    created = self._refrens_request(
+                        "POST",
+                        base_url,
+                        f"/businesses/{url_key}/invoices",
+                        token=token,
+                        json_data=copy.deepcopy(payload),
+                        context=context,
+                        account=account,
+                        task_id=snapshot.task_id,
+                        recipient_email=email,
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        operation_stage=stage,
+                        mutating=True,
+                        required_reference_key="_id",
+                    )
+                    invoice_id = str(created.get("_id", "")).strip()
+                    if not invoice_id:
+                        raise ProviderRuntimeError(
+                            "Refrens invoice response did not contain _id; delivery cannot be confirmed safely.",
+                            category="response",
+                            retryable=False,
+                        )
+
                 stage = "refrens_invoice_create_email"
-                request_payload = copy.deepcopy(payload)
-                request_payload["email"] = {
-                    "to": {
-                        "email": customer.email,
-                        "name": customer.name,
-                    }
-                }
-                created = self._refrens_request(
+                self._refrens_request(
                     "POST",
                     base_url,
-                    f"/businesses/{url_key}/invoices",
+                    f"/businesses/{url_key}/invoices/{invoice_id}/email",
                     token=token,
-                    json_data=request_payload,
+                    json_data={
+                        "to": {
+                            "email": customer.email,
+                            "name": customer.name,
+                        },
+                        "cc": [],
+                    },
                     context=context,
                     account=account,
                     task_id=snapshot.task_id,
@@ -2614,15 +2650,7 @@ class ProviderRuntime:
                     attempt_number=attempt_number,
                     operation_stage=stage,
                     mutating=True,
-                    required_reference_key="_id",
                 )
-                invoice_id = str(created.get("_id", "")).strip()
-                if not invoice_id:
-                    raise ProviderRuntimeError(
-                        "Refrens invoice response did not contain _id; delivery cannot be confirmed safely.",
-                        category="response",
-                        retryable=False,
-                    )
             except ProviderRuntimeError as exc:
                 attempt_number = int(getattr(exc, "attempt_number", attempt_number))
                 if exc.category == "stopped" and context.stop_flag.is_set():
@@ -2728,7 +2756,7 @@ class ProviderRuntime:
                     delivery.pending_recipients.discard(email)
                     delivery.failed_recipients.discard(email)
                     delivery.uncertain_recipients.discard(email)
-                _context_log(context, f"Refrens invoice created and email requested for {email} via account '{account.name}'.")
+                _context_log(context, f"Refrens invoice email trigger accepted for {email} via account '{account.name}'.")
 
             attempted += 1
             summary = self.delivery_summary(context.task)
@@ -2833,17 +2861,17 @@ class ProviderRuntime:
         if not name:
             raise ProviderRuntimeError("Refrens customer name is required; Invio will not substitute the email address.")
         token, base_url, url_key = self._refrens_auth(credentials)
-        request_payload = copy.deepcopy(payload)
-        request_payload["email"] = {
-            "to": {
-                "email": email,
-                "name": name,
-            }
-        }
         created = self._refrens_request(
-            "POST", base_url, f"/businesses/{url_key}/invoices", token=token, json_data=request_payload
+            "POST", base_url, f"/businesses/{url_key}/invoices", token=token, json_data=copy.deepcopy(payload)
         )
         invoice_id = str(created.get("_id", "")).strip()
         if not invoice_id:
             raise ProviderRuntimeError("Refrens invoice response did not contain _id; delivery cannot be confirmed.")
+        self._refrens_request(
+            "POST",
+            base_url,
+            f"/businesses/{url_key}/invoices/{invoice_id}/email",
+            token=token,
+            json_data={"to": {"email": email, "name": name}, "cc": []},
+        )
         return created

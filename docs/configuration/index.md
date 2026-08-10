@@ -64,3 +64,7 @@ The Agiled credential contract remains one protected `API Key` field with `Defau
 ## Customer defaults — v1.0.0.1.40
 
 Settings now includes **Default customer name** and **Default customer country**. If Default customer name is nonblank, that configured value is used for imported customers; if blank, an imported row keeps an explicit name and an email-only/missing-name row uses the email local-part. Default customer country accepts a two-letter ASCII code and is stored uppercase; if blank, explicit imported country is preserved and a missing country becomes `US`. These are non-sensitive preferences saved in the existing Settings JSON.
+
+## v1.0.0.1.40.1 Settings visual contract
+
+Settings values and persistence semantics are unchanged from v1.40. The correction only removes Settings-specific reduced spacing/typography so the existing controls inherit the frozen shared Vib Tools page/card/form tokens. Customer Default Name/Country behavior remains exactly the v1.40 import-time default policy.

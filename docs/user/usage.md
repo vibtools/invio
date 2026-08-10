@@ -179,3 +179,7 @@ For owner validation, use the existing Account workflow unchanged: run the real 
 Before importing, optionally open **Settings → Customer Defaults**. Set a Default customer name if all imported rows should use the same name. Leave it blank to use an explicit imported name when present and otherwise the email username/local-part. Set a two-letter Default customer country if desired; leave it blank to preserve an explicit imported country and use `US` when country is missing. This makes an email-only list provider-ready before Task snapshot creation.
 
 For Refrens live acceptance, use one controlled recipient first. A successful automated Task result is still not the final P11 gate; confirm the invoice exists in Refrens and that the controlled mailbox received the invoice email.
+
+## v1.0.0.1.40.1 Refrens send acceptance
+
+A Refrens Task now treats invoice creation and invoice-email triggering as separate steps. The Task is provider-successful for a recipient only after the explicit invoice email endpoint accepts the request. If invoice creation succeeded but email triggering definitively failed, **Retry Failed** reuses the existing invoice ID and retries only the email trigger. For production acceptance, still verify that the controlled recipient mailbox actually receives the invoice.
