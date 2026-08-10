@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
             loaded=loaded_domain,
         )
         self.providers = ProviderManager(self.project_root)
-        self.provider_runtime = ProviderRuntime(domain_store=self.domain_store)
+        self.provider_runtime = ProviderRuntime(domain_store=self.domain_store, project_root=self.project_root)
         self.worker_manager = WorkerManager(self)
         self.task_runners: dict[str, TaskRunner] = {}
         self.pages: dict[str, QWidget] = {}
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.31 started.")
+        self.log("Invio v1.0.0.1.32 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -224,6 +224,7 @@ class MainWindow(QMainWindow):
             self.uninstall_provider,
             self.load_provider,
             self._runtime_capabilities_for_provider,
+            self._runtime_adapter_status_for_provider,
         )
         self.reports_page = ReportsPage(
             self.state,
@@ -254,7 +255,7 @@ class MainWindow(QMainWindow):
     def _build_status_bar(self) -> None:
         self.status_label = QLabel("Viewing: Accounts")
         self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.31")
+        self.runtime_status = QLabel("Production • v1.0.0.1.32")
         self.statusBar().addPermanentWidget(self.runtime_status)
 
     def _connect_workers(self) -> None:
@@ -452,7 +453,22 @@ class MainWindow(QMainWindow):
             return effective_capabilities(provider)
         if provider.id in self.task_runners:
             return ("registered_task_runner",)
-        return ()
+        runtime_values = self.provider_runtime.runtime_capabilities(provider.id)
+        return runtime_values
+
+    def _runtime_adapter_status_for_provider(self, provider: ProviderManifest) -> tuple[str, str]:
+        try:
+            packaged = self.providers.get_packaged(provider.id)
+        except ProviderManifestError as exc:
+            return "Incompatible", str(exc)
+        if packaged is not None:
+            if not manifest_runtime_contract_matches(provider, packaged):
+                return "Incompatible", "Installed packaged manifest does not match the built-in runtime contract."
+            capabilities = effective_capabilities(provider)
+            return ("Executable", "Built-in packaged runtime adapter validated.") if capabilities else (
+                "Manifest only", "Packaged provider intentionally has no executable runtime capability."
+            )
+        return self.provider_runtime.external_adapter_status(provider.id)
 
     def _provider_manifest_contract_error(self, provider: ProviderManifest) -> str:
         try:
@@ -464,6 +480,10 @@ class MainWindow(QMainWindow):
                 f"Installed {packaged.name} manifest does not match the packaged {packaged.name} runtime contract. "
                 f"Uninstall it and install the packaged {packaged.name} provider again."
             )
+        if packaged is None and provider.runtime_adapter is not None:
+            status, message = self.provider_runtime.external_adapter_status(provider.id)
+            if status != "Executable":
+                return f"External provider runtime adapter is {status.lower()}: {message}"
         return ""
 
     def install_provider(self, provider_id: str) -> None:
@@ -491,6 +511,22 @@ class MainWindow(QMainWindow):
             task for task in self.state.tasks.values()
             if task.provider_id == provider_id and self.worker_manager.is_running(task.id)
         ]
+        try:
+            packaged = self.providers.get_packaged(provider_id)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        if packaged is None and provider.runtime_adapter is not None:
+            referenced = [task for task in self.state.tasks.values() if task.provider_id == provider_id]
+            if referenced:
+                names = ", ".join(task.name for task in referenced)
+                self._message(
+                    "Provider",
+                    f"Close all Tasks that reference executable external provider {provider.name} before uninstalling it. "
+                    f"Referenced: {names}.",
+                    QMessageBox.Icon.Warning,
+                )
+                return
         if active_tasks:
             names = ", ".join(task.name for task in active_tasks)
             self._message(
@@ -511,6 +547,7 @@ class MainWindow(QMainWindow):
         except ProviderManifestError as exc:
             self._message("Provider", str(exc), QMessageBox.Icon.Warning)
             return
+        self.provider_runtime.reload_external_adapters()
         self.log(f"Provider uninstalled: {removed.name} v{removed.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
@@ -518,16 +555,62 @@ class MainWindow(QMainWindow):
         self._refresh_dashboard()
 
     def load_provider(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Load Provider Manifest", self._dialog_directory(), "Provider Manifest (*.json);;JSON (*.json)")
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Provider Manifest",
+            self._dialog_directory(),
+            "Provider Manifest (*.json);;JSON (*.json)",
+        )
         if not path:
             return
-        self._remember_dialog_path(path)
         try:
-            provider = self.providers.load_external(path)
+            candidate = self.providers.inspect_manifest(path)
         except ProviderManifestError as exc:
             self._message("Provider", str(exc), QMessageBox.Icon.Warning)
             return
-        self.log(f"External provider manifest loaded: {provider.name} v{provider.version}")
+
+        allow_executable = candidate.runtime_adapter is not None
+        existing = self.providers.get_installed(candidate.id)
+        adapter_contract_changes = bool(
+            allow_executable or (existing is not None and existing.runtime_adapter is not None)
+        )
+        if adapter_contract_changes:
+            referenced = [task for task in self.state.tasks.values() if task.provider_id == candidate.id]
+            if referenced:
+                names = ", ".join(task.name for task in referenced)
+                self._message(
+                    "Provider",
+                    f"Close all Tasks that reference external provider {candidate.name} before loading, replacing, "
+                    f"or removing its executable adapter contract. Referenced: {names}.",
+                    QMessageBox.Icon.Warning,
+                )
+                return
+        if allow_executable:
+            answer = self._question(
+                "Load Executable Provider",
+                f"{candidate.name} includes executable Python adapter code. It will run in-process with Invio's "
+                "application permissions and is not sandboxed. Load only code you trust. Continue?",
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+
+        try:
+            provider = self.providers.load_external(
+                path,
+                allow_executable=allow_executable,
+                adapter_validator=self.provider_runtime.validate_external_adapter if allow_executable else None,
+            )
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        self.provider_runtime.reload_external_adapters()
+        self._remember_dialog_path(path)
+        status, message = self._runtime_adapter_status_for_provider(provider)
+        self.log(
+            f"External provider loaded: {provider.name} v{provider.version}; runtime adapter {status}. {message}",
+            severity="INFO" if status in {"Executable", "Manifest only"} else "WARNING",
+            category="APPLICATION",
+        )
         self.providers_page.refresh()
         self.accounts_page.refresh()
         self._refresh_dashboard()
@@ -865,6 +948,11 @@ class MainWindow(QMainWindow):
         if template is None or customer_list is None:
             self._message("Preflight Failed", "The selected Task inputs are no longer available.", QMessageBox.Icon.Warning)
             return
+        injected_runner_available = payload["provider_id"] in self.task_runners
+        runtime_profile = None if injected_runner_available else self.provider_runtime.capability_profile(payload["provider_id"])
+        additional_issues = () if injected_runner_available else self.provider_runtime.external_task_validation_issues(
+            payload["provider_id"], template, customer_list.customers
+        )
         result = preflight_candidate(
             provider_id=payload["provider_id"],
             installed_manifest=installed_provider,
@@ -872,7 +960,9 @@ class MainWindow(QMainWindow):
             accounts=accounts,
             template=template,
             customers=customer_list.customers,
-            injected_runner_available=payload["provider_id"] in self.task_runners,
+            injected_runner_available=injected_runner_available,
+            runtime_profile=runtime_profile,
+            additional_issues=additional_issues,
         )
         if not result.passed:
             self.log(f"New Task preflight blocked: {result.message}")
@@ -897,6 +987,17 @@ class MainWindow(QMainWindow):
             return EXTERNAL_CONTINUATION_UNAVAILABLE_MESSAGE
         if summary is not None and summary.continuation_safe:
             if (
+                self.provider_runtime.external_adapter(task.provider_id) is not None
+                and task.status == "Stopped"
+                and summary.uncertain_recipients
+                and not summary.pending_recipients
+                and not summary.failed_recipients
+            ):
+                return (
+                    "Only uncertain external-provider mutation outcomes remain. Automatic Resume is disabled to "
+                    "prevent blind replay of provider operations whose outcome cannot be proven safely."
+                )
+            if (
                 task.provider_id == "refrens"
                 and task.status == "Stopped"
                 and summary.uncertain_recipients
@@ -919,6 +1020,8 @@ class MainWindow(QMainWindow):
         safe_resume_available = bool(summary is not None and summary.resume_remaining_available)
         if task.provider_id == "refrens" and summary is not None:
             safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
+        if self.provider_runtime.external_adapter(task.provider_id) is not None and summary is not None:
+            safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
         resume_available = bool(
             built_in_continuation and summary is not None and safe_resume_available
         )
@@ -938,6 +1041,8 @@ class MainWindow(QMainWindow):
         built_in_continuation = task.provider_id not in self.task_runners
         safe_resume_available = bool(summary is not None and summary.resume_remaining_available)
         if task.provider_id == "refrens" and summary is not None:
+            safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
+        if self.provider_runtime.external_adapter(task.provider_id) is not None and summary is not None:
             safe_resume_available = bool(summary.pending_recipients or summary.failed_recipients)
         resume_available = bool(
             built_in_continuation and summary is not None and safe_resume_available
@@ -995,12 +1100,22 @@ class MainWindow(QMainWindow):
                 return task, None, f"Account '{account.name}' is not verified. Run a successful API Test before starting this task."
             accounts.append(account)
 
+        execution = task.execution_snapshot
+        injected_runner_available = task.provider_id in self.task_runners
+        runtime_profile = None if injected_runner_available else self.provider_runtime.capability_profile(task.provider_id)
+        additional_issues = ()
+        if not injected_runner_available and execution is not None and execution.template is not None:
+            additional_issues = self.provider_runtime.external_task_validation_issues(
+                task.provider_id, execution.template.to_template(), list(execution.customers)
+            )
         result = preflight_task(
             task=task,
             installed_manifest=installed_provider,
             packaged_manifest=packaged_provider,
             accounts=accounts,
-            injected_runner_available=task.provider_id in self.task_runners,
+            injected_runner_available=injected_runner_available,
+            runtime_profile=runtime_profile,
+            additional_issues=additional_issues,
         )
         if not result.passed:
             return task, None, result.message

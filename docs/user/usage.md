@@ -136,3 +136,12 @@ This release is an implementation candidate: owner live API Test, real invoice c
 ## P12 support-report correction - v1.0.0.1.31
 
 Recipient Delivery History remains the support surface for full recipient email, account reference and provider invoice reference. A row shows **Provider Accepted** only when the durable ledger contains successful provider send-stage evidence. If the stored history is contradictory or a side-effecting outcome remains unresolved, Invio reports `Uncertain` or fails the report read safely rather than guessing. Live Logs continue to mask recipient email and provider secrets, including quoted JSON-style token/secret fields.
+
+## External executable providers - P13
+
+To load an executable external provider, select its `provider.json` through the existing **Load Provider** action. The manifest must declare `runtime_adapter` interface version 1 and a compatible fixed sibling `adapter.py` must be present. Invio shows a warning before loading executable code because the adapter runs in-process with Invio permissions and is not sandboxed. Load only code you trust. A provider shown as `Manifest only`, `Missing`, or `Incompatible` cannot API Test or execute Tasks. Valid executable providers use the same verified-account and Task controls as built-in providers.
+
+
+## Trusted external provider adapters (P13)
+
+`Load Provider` still starts from `provider.json`. A provider may be manifest-only, or it may declare an executable runtime and include a fixed sibling `adapter.py`. Before executable Python is installed, Invio asks for explicit confirmation because the adapter runs in-process with Invio permissions and is not sandboxed. Load only provider code you trust. A provider card reports Executable, Manifest only, Missing or Incompatible separately from the manifest's declared capabilities. Invalid or unavailable executable adapters cannot API Test or run Tasks.

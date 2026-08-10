@@ -1,3 +1,3 @@
-from .manager import CredentialField, ProviderManager, ProviderManifest, ProviderManifestError
+from .manager import CredentialField, ProviderManager, ProviderManifest, ProviderManifestError, RuntimeAdapterDeclaration
 
-__all__ = ["ProviderManager", "ProviderManifest", "ProviderManifestError", "CredentialField"]
+__all__ = ["ProviderManager", "ProviderManifest", "ProviderManifestError", "CredentialField", "RuntimeAdapterDeclaration"]

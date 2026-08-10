@@ -31,7 +31,11 @@ MUTATING_DELIVERY_STAGES = frozenset(
 
 def is_mutating_delivery_stage(stage: str) -> bool:
     clean = str(stage).strip()
-    return clean in MUTATING_DELIVERY_STAGES or clean.startswith("invoice_item:")
+    return (
+        clean in MUTATING_DELIVERY_STAGES
+        or clean.startswith("invoice_item:")
+        or clean.startswith("external_mutation:")
+    )
 
 
 @dataclass(frozen=True, slots=True)

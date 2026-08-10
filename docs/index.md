@@ -92,3 +92,7 @@ P12 adds durable recipient reconciliation, provider-acceptance vs independent-em
 ## v1.0.0.1.31 P12 verification correction
 
 P12 reporting/privacy was re-audited. Quoted JSON-style named secrets are now redacted centrally, and recipient support status can only claim provider acceptance when durable send-stage success proves it. Unresolved ambiguity and conflicting historical account evidence remain fail-closed/observable. Schema stays v5 and P11 live acceptance remains pending.
+
+## v1.0.0.1.32 P13 executable external providers
+
+P13 extends the existing Load Provider workflow with an optional executable `adapter.py` contract. Manifest-only providers remain visible but non-executable. Executable adapters require explicit trusted-code confirmation and exact interface/version/capability validation, and run through existing account verification, Task worker, preflight, retry and durable-ledger boundaries. See `guides/providers.md` and `api/provider-manifest.md`.

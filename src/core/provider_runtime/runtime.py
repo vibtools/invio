@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
 from http.client import IncompleteRead
+from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -38,7 +39,20 @@ from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..observability import redact_sensitive_text
 from ..state import AppState
 from ..storage import DomainStore, DomainStoreError
-from .adapters import ProviderSchedulingPolicy, provider_adapter_contract
+from .adapters import ProviderCapabilityProfile, ProviderSchedulingPolicy, provider_adapter_contract
+from .external import (
+    ADAPTER_STATUS_EXECUTABLE,
+    EXTERNAL_OPERATION_KINDS,
+    IDEMPOTENT_MUTATION,
+    NON_IDEMPOTENT_MUTATION,
+    SAFE_READ,
+    ExternalAccountTestContext,
+    ExternalAdapterError,
+    ExternalAdapterRegistry,
+    ExternalRecipientExecutionContext,
+    ExternalRecipientResult,
+    ExternalTaskValidationContext,
+)
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
 
@@ -401,6 +415,7 @@ class ProviderRuntime:
         timeout: float = DEFAULT_CONNECT_TIMEOUT_SECONDS,
         retry_jitter_source: Callable[[], float] | None = None,
         domain_store: DomainStore | None = None,
+        project_root: Path | None = None,
     ) -> None:
         self._transport = transport or _stdlib_transport
         self._domain_store = domain_store
@@ -415,6 +430,7 @@ class ProviderRuntime:
         self._account_health: dict[tuple[str, str], _SchedulerHealthState] = {}
         self._provider_health: dict[str, _SchedulerHealthState] = {}
         self._account_next_request_at: dict[tuple[str, str], float] = {}
+        self._external_registry = ExternalAdapterRegistry(project_root) if project_root is not None else None
 
     def clear_task(self, task_id: str) -> None:
         with self._state_lock:
@@ -434,24 +450,159 @@ class ProviderRuntime:
                 self._account_health.pop(key, None)
                 self._account_next_request_at.pop(key, None)
 
-    @staticmethod
-    def supports_api_test(provider_id: str) -> bool:
-        """Return whether the registered provider adapter exposes a verified API-test handler."""
+    def reload_external_adapters(self) -> None:
+        if self._external_registry is not None:
+            self._external_registry.reload_installed()
+
+    def validate_external_adapter(self, manifest, adapter_path: Path) -> None:
+        ExternalAdapterRegistry.validate_adapter(manifest, adapter_path)
+
+    def external_adapter_status(self, provider_id: str) -> tuple[str, str]:
+        if self._external_registry is None:
+            return "Manifest only", "External adapter discovery is unavailable in this runtime."
+        status = self._external_registry.status(provider_id)
+        return status.status, status.message
+
+    def external_adapter(self, provider_id: str):
+        return self._external_registry.adapter(provider_id) if self._external_registry is not None else None
+
+    def capability_profile(self, provider_id: str) -> ProviderCapabilityProfile | None:
+        built_in = provider_adapter_contract(provider_id)
+        if built_in is not None:
+            return built_in.profile
+        external = self.external_adapter(provider_id)
+        return external.profile if external is not None else None
+
+    def runtime_capabilities(self, provider_id: str) -> tuple[str, ...]:
+        profile = self.capability_profile(provider_id)
+        if profile is None:
+            return ()
+        order = ("invoice", "send_invoice", "api_test")
+        known = [value for value in order if value in profile.executable_capabilities]
+        known.extend(sorted(value for value in profile.executable_capabilities if value not in order))
+        return tuple(known)
+
+    def external_task_validation_issues(
+        self,
+        provider_id: str,
+        template: InvoiceTemplate,
+        customers: tuple[CustomerRecord, ...] | list[CustomerRecord],
+    ) -> tuple[object, ...]:
+        adapter = self.external_adapter(provider_id)
+        if adapter is None or not adapter.profile.task_execution_enabled:
+            return ()
+        context = ExternalTaskValidationContext(
+            provider_id=provider_id.strip().lower(),
+            template=copy.deepcopy(template),
+            customers=tuple(customers),
+        )
+        try:
+            return tuple(adapter.validate_task(context) or ())
+        except BaseException as exc:
+            return (
+                type("ExternalValidationFailure", (), {
+                    "code": "external-validation-error",
+                    "message": f"External provider Task validation failed: {type(exc).__name__}: {exc}",
+                    "correction": "Fix or replace the external adapter before executing this Task.",
+                })(),
+            )
+
+    def supports_api_test(self, provider_id: str) -> bool:
+        """Return whether a built-in or validated external adapter exposes API Test."""
         adapter = provider_adapter_contract(provider_id)
-        return bool(adapter is not None and adapter.supports_api_test)
+        if adapter is not None:
+            return bool(adapter.supports_api_test)
+        external = self.external_adapter(provider_id)
+        return bool(external is not None and "api_test" in external.profile.executable_capabilities)
+
+    def _external_api_test_request(
+        self,
+        *,
+        provider_id: str,
+        stage: str,
+        operation_kind: str,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        json_data: dict[str, Any] | None = None,
+        idempotency_key: str = "",
+    ) -> dict[str, Any]:
+        del provider_id, stage
+        if operation_kind != SAFE_READ:
+            raise ProviderRuntimeError(
+                "External API Test may perform only SAFE_READ operations; side-effecting verification is blocked.",
+                category="preflight",
+                retryable=False,
+            )
+        if idempotency_key:
+            raise ProviderRuntimeError("SAFE_READ API Test operation cannot declare an idempotency key.")
+        if body is not None and json_data is not None:
+            raise ProviderRuntimeError("External request cannot provide both body and json_data.")
+        effective_headers = dict(headers or {})
+        effective_body = body
+        if json_data is not None:
+            effective_headers.setdefault("Content-Type", "application/json")
+            effective_body = _json_body(json_data)
+        attempt = 1
+        while True:
+            try:
+                return self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+            except ProviderRuntimeError as exc:
+                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                    raise
+                time.sleep(self._retry_delay_seconds(attempt, exc))
+                attempt += 1
 
     def test_account(self, provider_id: str, credentials: dict[str, str], *, mode: str = "") -> str:
         adapter = provider_adapter_contract(provider_id)
-        if adapter is None or not adapter.supports_api_test or adapter.api_test_handler is None:
-            if adapter is not None and adapter.api_test_unavailable_message:
-                raise ProviderRuntimeError(adapter.api_test_unavailable_message)
-            raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
-        handler = getattr(self, adapter.api_test_handler, None)
-        if not callable(handler):
+        if adapter is not None:
+            if not adapter.supports_api_test or adapter.api_test_handler is None:
+                if adapter.api_test_unavailable_message:
+                    raise ProviderRuntimeError(adapter.api_test_unavailable_message)
+                raise ProviderRuntimeError("No built-in API-test adapter is available for this provider.")
+            handler = getattr(self, adapter.api_test_handler, None)
+            if not callable(handler):
+                raise ProviderRuntimeError(
+                    f"The registered API-test handler for provider '{adapter.provider_id}' is unavailable."
+                )
+            return handler(credentials, mode=mode)
+
+        external = self.external_adapter(provider_id)
+        if external is None or "api_test" not in external.profile.executable_capabilities:
+            raise ProviderRuntimeError("No built-in API-test adapter is available for this provider, and no validated external adapter is installed.")
+        successful_safe_reads = [0]
+
+        def api_test_request(**kwargs):
+            result = self._external_api_test_request(provider_id=provider_id, **kwargs)
+            successful_safe_reads[0] += 1
+            return result
+
+        context = ExternalAccountTestContext(
+            provider_id=provider_id.strip().lower(),
+            credentials=dict(credentials),
+            mode=mode,
+            request=api_test_request,
+        )
+        try:
+            result = external.test_account(context)
+        except ProviderRuntimeError:
+            raise
+        except BaseException as exc:
             raise ProviderRuntimeError(
-                f"The registered API-test handler for provider '{adapter.provider_id}' is unavailable."
+                f"External provider API Test failed: {type(exc).__name__}: {exc}",
+                category="provider",
+                retryable=False,
+            ) from exc
+        if successful_safe_reads[0] < 1:
+            raise ProviderRuntimeError(
+                "External provider API Test did not complete a host-managed SAFE_READ request; "
+                "account verification cannot be accepted.",
+                category="preflight",
+                retryable=False,
             )
-        return handler(credentials, mode=mode)
+        message = str(result).strip()
+        return message or f"{provider_id} API connection verified."
 
     def _test_stripe_account(self, credentials: dict[str, str], *, mode: str = "") -> str:
         key = credentials.get("secret_key", "").strip()
@@ -592,24 +743,48 @@ class ProviderRuntime:
             raise ProviderRuntimeError("Retry Failed and Resume Remaining cannot be requested together.")
         snapshot = self._snapshot(task, state)
         adapter = provider_adapter_contract(snapshot.provider_id)
-        if adapter is None:
-            raise ProviderRuntimeError("No built-in task runner is available for this provider.")
-        if not adapter.supports_task_execution or adapter.task_batch_handler is None:
-            message = adapter.task_unavailable_message or adapter.profile.task_unavailable_message
-            raise ProviderRuntimeError(message or "No built-in task runner is available for this provider.")
-        batch_handler = getattr(self, adapter.task_batch_handler, None)
-        if not callable(batch_handler):
-            raise ProviderRuntimeError(
-                f"The registered Task handler for provider '{adapter.provider_id}' is unavailable."
-            )
+        external_adapter = None
+        if adapter is not None:
+            if not adapter.supports_task_execution or adapter.task_batch_handler is None:
+                message = adapter.task_unavailable_message or adapter.profile.task_unavailable_message
+                raise ProviderRuntimeError(message or "No built-in task runner is available for this provider.")
+            batch_handler = getattr(self, adapter.task_batch_handler, None)
+            if not callable(batch_handler):
+                raise ProviderRuntimeError(
+                    f"The registered Task handler for provider '{adapter.provider_id}' is unavailable."
+                )
+            runtime_profile = adapter.profile
+        else:
+            external_adapter = self.external_adapter(snapshot.provider_id)
+            if external_adapter is None or not external_adapter.profile.task_execution_enabled:
+                raise ProviderRuntimeError("No executable Task adapter is available for this external provider.")
+            if self._domain_store is None:
+                raise ProviderRuntimeError(
+                    "Executable external Tasks require the durable P10 delivery ledger; operational storage is unavailable.",
+                    category="storage",
+                )
+            batch_handler = self._run_external_batch
+            runtime_profile = external_adapter.profile
 
         runtime_preflight = preflight_runtime_inputs(
             provider_id=snapshot.provider_id,
             template=snapshot.template,
             customers=(CustomerRecord(customer.email, customer.name, customer.country) for customer in snapshot.customers),
+            runtime_profile=runtime_profile,
         )
         if not runtime_preflight.passed:
             raise ProviderRuntimeError(runtime_preflight.message)
+        if external_adapter is not None:
+            extra_issues = self.external_task_validation_issues(
+                snapshot.provider_id,
+                snapshot.template,
+                [CustomerRecord(c.email, c.name, c.country) for c in snapshot.customers],
+            )
+            if extra_issues:
+                first = extra_issues[0]
+                message = str(getattr(first, "message", first)).strip()
+                correction = str(getattr(first, "correction", "")).strip()
+                raise ProviderRuntimeError(f"{message} {correction}".strip(), category="preflight")
 
         existing_summary = self.delivery_summary(task)
         if retry_failed:
@@ -656,11 +831,17 @@ class ProviderRuntime:
                     else "The exact continuation recipient set is not available in this application session."
                 )
                 raise ProviderRuntimeError(message)
-            if snapshot.provider_id == "refrens":
-                # Refrens does not document a provider idempotency contract for
-                # invoice creation. Never replay a durable uncertain mutation.
+            if snapshot.provider_id == "refrens" or external_adapter is not None:
+                # Refrens and generic external providers cannot blindly replay
+                # unresolved non-idempotent mutations. Only known failed/pending
+                # recipients are safe automatic continuation candidates.
                 eligible = set(existing_summary.failed_recipients) | set(existing_summary.pending_recipients)
                 if not eligible and existing_summary.uncertain_recipients:
+                    if external_adapter is not None:
+                        raise ProviderRuntimeError(
+                            "External Resume Remaining is unavailable because only uncertain provider outcomes remain. "
+                            "Automatic replay is disabled to prevent duplicate provider mutations."
+                        )
                     raise ProviderRuntimeError(
                         "Refrens Resume Remaining is unavailable because only uncertain provider outcomes remain. "
                         "Automatic replay is disabled to prevent duplicate invoice/email delivery."
@@ -732,13 +913,23 @@ class ProviderRuntime:
                 run_id = run.run_id
                 _context_log(context, f"Durable delivery run {run.run_id} started (run {run.run_number}).", category="TASK")
             try:
-                batch_handler(
-                    context,
-                    snapshot,
-                    recipients,
-                    execution_mode=mode,
-                    run_id=run_id,
-                )
+                if external_adapter is not None:
+                    batch_handler(
+                        context,
+                        snapshot,
+                        recipients,
+                        execution_mode=mode,
+                        run_id=run_id,
+                        external_adapter=external_adapter,
+                    )
+                else:
+                    batch_handler(
+                        context,
+                        snapshot,
+                        recipients,
+                        execution_mode=mode,
+                        run_id=run_id,
+                    )
             except Exception as exc:
                 if self._domain_store is not None and run_id:
                     # A storage fault can leave a write-ahead Started operation
@@ -810,10 +1001,12 @@ class ProviderRuntime:
             customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
         )
 
-    @staticmethod
-    def _provider_scheduling_policy(provider_id: str) -> ProviderSchedulingPolicy | None:
+    def _provider_scheduling_policy(self, provider_id: str) -> ProviderSchedulingPolicy | None:
         adapter = provider_adapter_contract(provider_id)
-        return adapter.scheduling_policy if adapter is not None else None
+        if adapter is not None:
+            return adapter.scheduling_policy
+        external = self.external_adapter(provider_id)
+        return external.scheduling_policy if external is not None else None
 
     @staticmethod
     def _cooldown_delay(
@@ -1105,6 +1298,7 @@ class ProviderRuntime:
             exc.category in {"timeout", "network"}
             or exc.http_status in {408, 500, 502, 503, 504}
             or (normalized == "refrens" and exc.http_status == 429)
+            or (provider_adapter_contract(normalized) is None and exc.http_status == 429)
         )
         if provider_transient:
             with self._scheduler_lock:
@@ -1199,6 +1393,367 @@ class ProviderRuntime:
                 setattr(exc, "attempt_number", attempt)
                 raise
 
+
+    @staticmethod
+    def _external_mutation_is_ambiguous(exc: ProviderRuntimeError) -> bool:
+        return (
+            exc.category in {"timeout", "network"}
+            or exc.http_status in {408, 500, 502, 503, 504}
+        )
+
+    def _external_task_request(
+        self,
+        context: Any,
+        *,
+        snapshot: TaskSnapshot,
+        account: AccountSnapshot,
+        run_id: str,
+        recipient_ordinal: int,
+        attempt_state: list[int],
+        operation_state: dict[str, Any],
+        stage: str,
+        operation_kind: str,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        json_data: dict[str, Any] | None = None,
+        idempotency_key: str = "",
+        provider_reference_key: str = "",
+    ) -> dict[str, Any]:
+        clean_stage = str(stage).strip()
+        if not clean_stage or len(clean_stage) > 96 or any(ch.isspace() for ch in clean_stage):
+            raise ProviderRuntimeError("External provider operation stage is invalid.", category="preflight")
+        if operation_kind not in EXTERNAL_OPERATION_KINDS:
+            raise ProviderRuntimeError("External provider operation kind is unsupported.", category="preflight")
+        if operation_kind == IDEMPOTENT_MUTATION and not str(idempotency_key).strip():
+            raise ProviderRuntimeError(
+                "IDEMPOTENT_MUTATION requires a real stable provider-supported idempotency reference.",
+                category="preflight",
+            )
+        if operation_kind != IDEMPOTENT_MUTATION and idempotency_key:
+            raise ProviderRuntimeError(
+                "Only IDEMPOTENT_MUTATION may declare an idempotency reference.",
+                category="preflight",
+            )
+        ledger_stage = (
+            f"external_mutation:{clean_stage}"
+            if operation_kind in {IDEMPOTENT_MUTATION, NON_IDEMPOTENT_MUTATION}
+            else f"external_read:{clean_stage}"
+        )
+        if body is not None and json_data is not None:
+            raise ProviderRuntimeError("External request cannot provide both body and json_data.")
+
+        effective_headers = dict(headers or {})
+        effective_body = body
+        if json_data is not None:
+            effective_headers.setdefault("Content-Type", "application/json")
+            effective_body = _json_body(json_data)
+
+        while True:
+            attempt_number = attempt_state[0]
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                raise ProviderRuntimeError("External provider execution stopped before the next operation.", category="stopped")
+            if not self._wait_for_provider_health(context, snapshot.provider_id, email=snapshot.customers[recipient_ordinal].email):
+                raise ProviderRuntimeError("External provider execution stopped during provider cooldown.", category="stopped")
+            if not self._wait_for_account_health(
+                context, snapshot.provider_id, account, email=snapshot.customers[recipient_ordinal].email
+            ):
+                raise ProviderRuntimeError("External provider execution stopped during account cooldown.", category="stopped")
+            if not self._await_account_rate_slot(context, snapshot.provider_id, account):
+                raise ProviderRuntimeError("External provider execution stopped during account rate wait.", category="stopped")
+            self._mark_recipient_attempted(
+                snapshot.task_id, snapshot.customers[recipient_ordinal].email, account.id
+            )
+            if self._domain_store is not None and run_id:
+                try:
+                    self._domain_store.begin_delivery_operation(
+                        run_id=run_id,
+                        recipient_ordinal=recipient_ordinal,
+                        attempt_number=attempt_number,
+                        stage=ledger_stage,
+                        account_id=account.id,
+                        account_name=account.name,
+                        idempotency_key=str(idempotency_key).strip(),
+                    )
+                except DomainStoreError as exc:
+                    raise ProviderRuntimeError(
+                        f"Durable Started operation could not be committed before external provider request: {exc}",
+                        category="storage",
+                    ) from exc
+            try:
+                result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+            except ProviderRuntimeError as exc:
+                uncertain = operation_kind == NON_IDEMPOTENT_MUTATION and self._external_mutation_is_ambiguous(exc)
+                status = DELIVERY_OPERATION_UNCERTAIN if uncertain else DELIVERY_OPERATION_FAILED
+                if self._domain_store is not None and run_id:
+                    error_class, error_code, error_message = self._safe_delivery_error(account, exc)
+                    try:
+                        self._domain_store.finish_delivery_operation(
+                            run_id=run_id, recipient_ordinal=recipient_ordinal, attempt_number=attempt_number,
+                            stage=ledger_stage, status=status, error_class=error_class, error_code=error_code,
+                            error_message=error_message,
+                        )
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"External provider request ended but its durable result could not be saved: {ledger_exc}",
+                            category="storage",
+                        ) from exc
+                for message in self._record_scheduler_failure(snapshot.provider_id, account, exc):
+                    _context_log(context, message)
+                if uncertain:
+                    wrapped = ProviderRuntimeError(
+                        f"External non-idempotent operation '{clean_stage}' has an uncertain provider outcome: {exc}",
+                        category="uncertain", retryable=False, http_status=exc.http_status,
+                    )
+                    setattr(wrapped, "attempt_number", attempt_number)
+                    raise wrapped from exc
+                retry_allowed = operation_kind in {SAFE_READ, IDEMPOTENT_MUTATION} and exc.retryable
+                if not retry_allowed or attempt_number >= MAX_TOTAL_ATTEMPTS:
+                    setattr(exc, "attempt_number", attempt_number)
+                    raise
+                delay = self._retry_delay_seconds(attempt_number, exc)
+                _context_log(
+                    context,
+                    f"External provider transient failure during {clean_stage} "
+                    f"(attempt {attempt_number}/{MAX_TOTAL_ATTEMPTS}): {exc}. Retrying in {delay:.2f}s.",
+                )
+                if not _cooperative_retry_wait(context, delay):
+                    raise ProviderRuntimeError("External provider retry stopped by user request.", category="stopped") from exc
+                attempt_state[0] += 1
+                continue
+
+            provider_reference = ""
+            if provider_reference_key:
+                provider_reference = str(result.get(provider_reference_key, "")).strip()
+                if not provider_reference:
+                    error = ProviderRuntimeError(
+                        f"External provider response did not contain required reference '{provider_reference_key}'.",
+                        category="response", retryable=False,
+                    )
+                    status = DELIVERY_OPERATION_UNCERTAIN if operation_kind != SAFE_READ else DELIVERY_OPERATION_FAILED
+                    if self._domain_store is not None and run_id:
+                        error_class, error_code, error_message = self._safe_delivery_error(account, error)
+                        try:
+                            self._domain_store.finish_delivery_operation(
+                                run_id=run_id, recipient_ordinal=recipient_ordinal, attempt_number=attempt_number,
+                                stage=ledger_stage, status=status, error_class=error_class, error_code=error_code,
+                                error_message=error_message,
+                            )
+                        except DomainStoreError as ledger_exc:
+                            raise ProviderRuntimeError(
+                                f"External provider response could not be reconciled durably: {ledger_exc}",
+                                category="storage",
+                            ) from error
+                    setattr(error, "attempt_number", attempt_number)
+                    raise error
+            if self._domain_store is not None and run_id:
+                try:
+                    self._domain_store.finish_delivery_operation(
+                        run_id=run_id, recipient_ordinal=recipient_ordinal, attempt_number=attempt_number,
+                        stage=ledger_stage, status=DELIVERY_OPERATION_SUCCEEDED, provider_reference=provider_reference,
+                    )
+                except DomainStoreError as exc:
+                    raise ProviderRuntimeError(
+                        f"External provider request succeeded but its durable result could not be saved: {exc}",
+                        category="storage",
+                    ) from exc
+            self._record_scheduler_success(snapshot.provider_id, account)
+            if operation_kind in {IDEMPOTENT_MUTATION, NON_IDEMPOTENT_MUTATION}:
+                successful_stages = operation_state.setdefault("mutating_succeeded_stages", [])
+                successful_stages.append(ledger_stage)
+                if operation_kind == NON_IDEMPOTENT_MUTATION:
+                    operation_state["non_idempotent_succeeded"] = True
+            return result
+
+    def _run_external_batch(
+        self,
+        context: Any,
+        snapshot: TaskSnapshot,
+        recipients: tuple[str, ...],
+        *,
+        execution_mode: TaskExecutionMode,
+        run_id: str = "",
+        external_adapter=None,
+    ) -> None:
+        if external_adapter is None:
+            raise ProviderRuntimeError("Validated external provider adapter is unavailable.")
+        full_index = {email: index for index, email in enumerate(snapshot.customer_emails)}
+        with self._state_lock:
+            delivery = self._delivery_state.get(snapshot.task_id)
+            if delivery is None or not delivery.continuation_safe:
+                raise ProviderRuntimeError("The Task continuation state is unavailable before external execution.")
+            attempted_before_execution = set(delivery.attempted_recipients)
+            attempted_account_ids = dict(delivery.attempted_account_ids)
+
+        validation_context = ExternalTaskValidationContext(
+            provider_id=snapshot.provider_id,
+            template=copy.deepcopy(snapshot.template),
+            customers=tuple(CustomerRecord(c.email, c.name, c.country) for c in snapshot.customers),
+        )
+        try:
+            validation_issues = tuple(external_adapter.validate_task(validation_context) or ())
+        except BaseException as exc:
+            raise ProviderRuntimeError(
+                f"External provider Task validation failed: {type(exc).__name__}: {exc}", category="preflight"
+            ) from exc
+        if validation_issues:
+            first = validation_issues[0]
+            message = str(getattr(first, "message", first)).strip() or "External provider Task validation failed."
+            correction = str(getattr(first, "correction", "")).strip()
+            raise ProviderRuntimeError(f"{message} {correction}".strip(), category="preflight")
+
+        _context_log(context, f"External {snapshot.provider_id} batch started with {len(recipients)} recipient(s).", category="TASK")
+        attempted = 0
+        for email in recipients:
+            if context.stop_flag.is_set() or not _wait_for_resume(context):
+                break
+            recipient_ordinal = full_index[email]
+            primary_index = recipient_ordinal % len(snapshot.accounts)
+            bound_account_id = attempted_account_ids.get(email)
+            if email in attempted_before_execution and not bound_account_id:
+                raise ProviderRuntimeError(
+                    "The attempted external recipient has no exact account binding; continuation is blocked."
+                )
+            if bound_account_id:
+                account = next((a for a in snapshot.accounts if a.id == bound_account_id), None)
+                if account is None:
+                    raise ProviderRuntimeError(
+                        "The attempted external recipient account is outside the frozen Task account set."
+                    )
+            else:
+                account = snapshot.accounts[primary_index]
+
+            attempt_state = [1]
+            operation_state: dict[str, Any] = {
+                "mutating_succeeded_stages": [],
+                "non_idempotent_succeeded": False,
+            }
+            result_stage = ""
+            try:
+                customer = snapshot.customers[recipient_ordinal]
+                external_context = ExternalRecipientExecutionContext(
+                    provider_id=snapshot.provider_id,
+                    task_id=snapshot.task_id,
+                    account_id=account.id,
+                    account_name=account.name,
+                    account_mode=account.mode,
+                    credentials=dict(account.credentials),
+                    customer=CustomerRecord(customer.email, customer.name, customer.country),
+                    template=copy.deepcopy(snapshot.template),
+                    request=lambda **kwargs: self._external_task_request(
+                        context, snapshot=snapshot, account=account, run_id=run_id,
+                        recipient_ordinal=recipient_ordinal, attempt_state=attempt_state,
+                        operation_state=operation_state, **kwargs
+                    ),
+                    log=lambda message: _context_log(context, str(message)),
+                )
+                result = external_adapter.execute_recipient(external_context)
+                if not isinstance(result, ExternalRecipientResult):
+                    raise ProviderRuntimeError(
+                        "External adapter execute_recipient must return ExternalRecipientResult.", category="provider"
+                    )
+                result_stage = result.final_stage.strip()
+                successful_mutating_stages = tuple(operation_state.get("mutating_succeeded_stages", ()))
+                if not successful_mutating_stages:
+                    raise ProviderRuntimeError(
+                        "External adapter returned recipient success without a successful host-managed mutating "
+                        "provider operation; recipient success cannot be recorded.",
+                        category="provider",
+                        retryable=False,
+                    )
+                if not result_stage or result_stage != successful_mutating_stages[-1]:
+                    raise ProviderRuntimeError(
+                        "External adapter final_stage must match its last successful host-managed mutating operation.",
+                        category="provider",
+                        retryable=False,
+                    )
+                if self._domain_store is not None and run_id:
+                    if result.provider_customer_id or result.provider_invoice_id:
+                        try:
+                            self._domain_store.update_delivery_provider_ids(
+                                run_id=run_id, recipient_ordinal=recipient_ordinal,
+                                provider_customer_id=result.provider_customer_id or None,
+                                provider_invoice_id=result.provider_invoice_id or None,
+                            )
+                        except DomainStoreError as exc:
+                            raise ProviderRuntimeError(
+                                f"External provider references could not be saved: {exc}", category="storage"
+                            ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id, recipient_ordinal=recipient_ordinal, result=DELIVERY_RESULT_SUCCEEDED,
+                        stage=result_stage, attempt_number=attempt_state[0], account=account,
+                    )
+            except BaseException as exc:
+                attempt_number = int(getattr(exc, "attempt_number", attempt_state[0]))
+                final_result = (
+                    DELIVERY_RESULT_UNCERTAIN
+                    if operation_state.get("non_idempotent_succeeded")
+                    else DELIVERY_RESULT_FAILED
+                )
+                if self._domain_store is not None and run_id:
+                    try:
+                        if self._domain_store.recipient_has_uncertain_mutation(
+                            run_id=run_id, recipient_ordinal=recipient_ordinal
+                        ):
+                            final_result = DELIVERY_RESULT_UNCERTAIN
+                    except DomainStoreError as ledger_exc:
+                        raise ProviderRuntimeError(
+                            f"External delivery uncertainty could not be reconciled: {ledger_exc}", category="storage"
+                        ) from exc
+                    self._finish_ledger_recipient(
+                        run_id=run_id, recipient_ordinal=recipient_ordinal, result=final_result, stage=result_stage,
+                        attempt_number=attempt_number, account=account, error=exc,
+                    )
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError("The external Task continuation state became unavailable.") from exc
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                    if final_result == DELIVERY_RESULT_UNCERTAIN:
+                        delivery.uncertain_recipients.add(email)
+                    else:
+                        delivery.failed_recipients.add(email)
+                _context_log(context, f"External {snapshot.provider_id} execution failed for {email}: {exc}")
+            else:
+                with self._state_lock:
+                    delivery = self._delivery_state.get(snapshot.task_id)
+                    if delivery is None or not delivery.continuation_safe:
+                        raise ProviderRuntimeError("The external Task continuation state became unavailable.")
+                    delivery.pending_recipients.discard(email)
+                    delivery.failed_recipients.discard(email)
+                    delivery.uncertain_recipients.discard(email)
+                _context_log(context, f"External {snapshot.provider_id} recipient accepted for {email}.")
+
+            attempted += 1
+            summary = self.delivery_summary(context.task)
+            if summary is None or not summary.continuation_safe:
+                raise ProviderRuntimeError("The external Task continuation state could not be reconciled safely.")
+            context.progress(
+                summary.processed, summary.success, summary.failed,
+                f"Processed {attempted}/{len(recipients)} external recipient(s).",
+            )
+
+        summary = self.delivery_summary(context.task)
+        if summary is None or not summary.continuation_safe:
+            raise ProviderRuntimeError("The external Task continuation state could not be reconciled safely.")
+        if context.stop_flag.is_set():
+            _context_log(context, "External provider batch stopped by user request.", category="TASK")
+            return
+        if summary.pending_recipients:
+            raise ProviderRuntimeError("External Task ended before all selected recipients were resolved safely.")
+        if summary.uncertain_recipients:
+            raise ProviderRuntimeError(
+                f"{len(summary.uncertain_recipients)} external recipient(s) have uncertain provider outcomes. "
+                "Automatic replay is disabled for uncertain external mutations."
+            )
+        if summary.failed_recipients:
+            raise ProviderRuntimeError(
+                f"{summary.failed} external recipient(s) failed. Use Retry Failed after reviewing Live Logs."
+            )
+        _context_log(context, "External provider batch completed successfully.", category="TASK")
 
     def _run_stripe_batch(
         self,
@@ -1601,7 +2156,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.31 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.32 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -1832,7 +2387,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.31 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.32 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

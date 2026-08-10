@@ -95,3 +95,10 @@ P10 does not change provider manifests or enable Refrens/Agiled Task execution. 
 ## Refrens Task execution - v1.0.0.1.29 candidate
 
 The built-in Refrens adapter exposes API Test, invoice and send-invoice Task capabilities in the P11 implementation candidate. Credentials remain URL Key, App ID and App Secret with canonical API Base URL `https://api.refrens.com`. Invio requires explicit customer email/name/country, blocks India under the current customer model, uses 1 request/second/account internal safety pacing, retries only authentication, and records invoice-create/email as a write-ahead P10 operation. The candidate remains live-acceptance pending.
+
+## External executable adapter bundles (P13)
+
+An external executable bundle contains `provider.json` and a fixed sibling `adapter.py`. The manifest declares `runtime_adapter.interface_version`, `adapter_version`, and the fixed `create_adapter` entrypoint. Invio validates staged adapter bytes before atomic installation, rejects validation-time byte mutation, forbids packaged provider IDs, contains adapter import/entrypoint failures, restores/rejects persistent `sys.path` changes, and separates declared capabilities from executable runtime capabilities. Executable Python is trusted in-process code, not sandboxed code; no remote download or dependency auto-installation occurs.
+
+
+P13 API Test is not allowed to self-certify: a validated external adapter must complete at least one successful host-managed `SAFE_READ` before the existing account-verification workflow can mark the account verified. Task recipient success likewise requires a successful host-managed mutation with an exact matching final stage.

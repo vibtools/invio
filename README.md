@@ -1,6 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.31`** is the P12 forensic verification-correction baseline built directly on the uploaded **`v1.0.0.1.30`** P12 release. The correction closes two observability/privacy defects without changing provider sending, SQLite schema v5, WorkerManager, Task state, customer/template models, dependencies, or page inventory. P12 remains complete; the separate P11 live Refrens API/invoice/email acceptance gate remains pending and is not represented as passed. Completed acceptance phases remain **11/14**: P01-P10 plus P12.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.32`** completes P13, adding a versioned, explicitly trusted executable external-provider adapter contract to the existing Load Provider workflow while preserving packaged Stripe/Refrens behavior, Agiled fail-close, SQLite schema v5, P05-P12 execution contracts and one-QThread-per-Task ownership. Manifest-only external providers remain loadable but non-executable, and missing/incompatible adapters fail closed. P11 live Refrens API/invoice/email acceptance remains separately pending. Completed acceptance phases are **12/14**: P01-P10, P12 and P13.
 
 ## Current Application Scope
 
@@ -9,7 +9,7 @@
 - **Invoice Templates**: reusable invoice-only content. Templates never store customer, billing, shipping, or payment details.
 - **Customer Lists**: independent named bulk-customer lists. Email is mandatory; explicit name and country are optional. CSV/TSV/XLSX/XLSM structured imports and legacy email-only imports are supported.
 - **Tasks**: installed provider -> one or more available verified accounts -> invoice template -> customer list, with P05 immutable execution inputs and P07 deterministic First Run / Resume Remaining / Retry Failed state semantics. One account cannot belong to two open tasks.
-- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility and packaged-runtime contract reconciliation. Built-in packaged runtime binding is resolved through one internal adapter registry. Stripe remains executable; the P11 implementation candidate enables built-in Refrens Task execution behind strict explicit customer-data, canonical-host, retry/no-replay, scheduling and P10-ledger safety contracts; packaged Agiled remains fail-closed until its current official API contract is authoritative. A provider is selectable in Accounts and Tasks only while installed.
+- **Providers**: manifest-based install/load/uninstall workflow with P06 declared-vs-executable capability visibility, packaged-runtime reconciliation, and P13 optional executable external adapters. A trusted external bundle is `provider.json` plus fixed sibling `adapter.py`; manifest-only providers remain non-executable, executable code requires explicit user confirmation, and invalid/missing adapters fail closed. Stripe/Refrens remain on the static packaged adapter registry; Agiled remains fail-closed. A provider is selectable in Accounts and Tasks only while installed.
 - **Reports / Live Logs / Settings**: task summaries plus durable recipient reconciliation, structured privacy-redacted logs, spreadsheet-safe exports, closed-history retention controls, and persistent non-sensitive application preferences.
 - **Threading**: each active Task runs through its own `QThread`; P08 keeps provider network sending and retry/backoff outside the GUI thread and uses cooperative worker shutdown without forced thread termination.
 
@@ -149,7 +149,7 @@ The current suite covers P01-P09 regressions plus P10 schema-v5 migration, write
 
 ## Production Readiness Program
 
-`v1.0.0.1.25` is the current P09-complete baseline. Production progress is **9/14 phases complete**. The next separately approved phase is **P10 - Persistent Delivery Ledger, Idempotency and Recovery**.
+`v1.0.0.1.32` is the current P13-complete baseline. Completed acceptance phases are **12/14** (P01-P10, P12 and P13). P11 live Refrens acceptance remains separately pending, and P14 remains the final production-certification phase.
 
 P02 makes operational metadata restart-durable, but it does **not** claim exact provider-side crash reconciliation. Per-recipient provider IDs, attempts, run identities, and durable retry/idempotency evidence remain P10 scope.
 
@@ -279,3 +279,7 @@ No new page, customer field, schema migration, dependency, WorkerManager archite
 ## v1.0.0.1.31 P12 Verification Correction
 
 The v1.0.0.1.30 P12 release was re-audited against its approved privacy and support-reconciliation contract. v1.0.0.1.31 fixes JSON-style named secret redaction (for example quoted `accessToken`, `appSecret`, `api_key`, `secret_key` and `token` fields) and makes recipient report acceptance fail closed unless durable provider send-stage evidence actually proves acceptance. Unresolved mutating operation history remains `Uncertain`, and conflicting historical account assignment evidence causes recipient reporting to fail closed instead of selecting a misleading latest value. P12 remains complete; P11 live Refrens acceptance remains pending.
+
+## v1.0.0.1.32 P13 Executable External Provider Adapter Contract
+
+P13 makes `Load Provider` truthful for future executable integrations. An external manifest may optionally declare a `runtime_adapter` interface-v1 contract and ship a fixed sibling `adapter.py`. Invio requires explicit trusted-code confirmation before installation, validates staged adapter bytes before atomic registry replacement, rejects validation-time byte mutation, validates provider/interface/adapter/profile/capability identity, contains import/entrypoint failures, rejects/restores persistent `sys.path` mutation, and reports `Executable`, `Manifest only`, `Missing`, or `Incompatible` runtime state. External API Test and Task execution stay inside the existing P01/P05/P06/P08/P10/WorkerManager contracts: API Test must complete a host-managed `SAFE_READ`; adapter task inputs are isolated from mutable application template state; and recipient success requires a successful host-managed mutation with a matching final stage. Host-managed `SAFE_READ`, `IDEMPOTENT_MUTATION`, and `NON_IDEMPOTENT_MUTATION` requests enforce retry/idempotency/uncertainty behavior, including durable `Uncertain` recovery after successful non-idempotent provider mutation when final recipient state was not safely committed. No dependency is auto-installed and this in-process model is explicitly **not a sandbox**. SQLite remains schema v5 with exactly the existing three P10 ledger tables. P11 live Refrens acceptance remains pending.

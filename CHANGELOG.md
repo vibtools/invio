@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.0.1.32 - P13 Executable External Provider Adapter Contract
+
+- Added explicit `ExternalProviderAdapterV1` interface version 1 and optional `provider.json` + sibling `adapter.py` executable bundle support through the existing Load Provider workflow.
+- Added trusted in-process adapter confirmation, staged immutable-byte validation before atomic registry replacement, reserved packaged-ID protection, exact ID/interface/version/profile/capability validation, import/entrypoint failure containment, and persistent `sys.path` tamper rejection/restoration.
+- External API Test now uses the existing threaded verification path and cannot report success until at least one host-managed `SAFE_READ` succeeds.
+- External Tasks reuse P05 immutable inputs, P06 preflight, P08 bounded reliability, optional P09 pacing and P10 write-ahead ledger/recovery through host-managed SAFE_READ / IDEMPOTENT_MUTATION / NON_IDEMPOTENT_MUTATION operations. Adapter validation/execution receives isolated template data; recipient success requires successful host-managed mutating evidence with a matching final stage.
+- Ambiguous non-idempotent mutations, adapter failures after successful non-idempotent mutation, and restart windows where mutation success exists without recipient finalization remain durable `Uncertain` when safe replay cannot be proven. SQLite remains schema v5 with exactly the existing three P10 tables.
+- Manifest-only external providers remain loadable but non-executable; executable external replacement/uninstall is blocked while current Tasks reference the provider.
+- Packaged Stripe/Refrens business behavior, Agiled fail-close, WorkerManager, dependencies and page inventory remain unchanged.
+- P13 is COMPLETE; completed acceptance phases are 12/14. P11 live Refrens acceptance remains pending; P14 remains the final production-certification phase.
+
 ## v1.0.0.1.31 - P12 Forensic Verification Correction
 
 - Corrected centralized secret redaction so quoted JSON-style named secrets such as `accessToken`, `appSecret`, `api_key`, `secret_key`, `authorization` and `token` are masked even when their values are not already known account credentials.

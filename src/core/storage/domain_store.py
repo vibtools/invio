@@ -352,7 +352,7 @@ class DomainStore:
             result = str(row["final_result"])
             if result == DELIVERY_RESULT_PENDING:
                 operation_rows = connection.execute(
-                    """SELECT stage, status FROM task_delivery_operations
+                    """SELECT stage, status, idempotency_key FROM task_delivery_operations
                        WHERE run_id=? AND recipient_ordinal=?""",
                     (str(row["run_id"]), ordinal),
                 ).fetchall()
@@ -362,6 +362,19 @@ class DomainStore:
                     for operation in operation_rows
                 ):
                     result = DELIVERY_RESULT_SUCCEEDED
+                elif any(
+                    str(operation["status"]) == DELIVERY_OPERATION_SUCCEEDED
+                    and str(operation["stage"]).startswith("external_mutation:")
+                    and not str(operation["idempotency_key"]).strip()
+                    for operation in operation_rows
+                ):
+                    # A validated external adapter may complete a non-idempotent
+                    # provider mutation and then lose the process before the
+                    # recipient-level result commit. The successful operation is
+                    # durable evidence that a side effect occurred, but without a
+                    # provider idempotency key Invio cannot safely replay the
+                    # recipient or prove the adapter's full workflow completed.
+                    result = DELIVERY_RESULT_UNCERTAIN
                 elif any(
                     str(operation["status"]) in {DELIVERY_OPERATION_STARTED, DELIVERY_OPERATION_UNCERTAIN}
                     and is_mutating_delivery_stage(str(operation["stage"]))

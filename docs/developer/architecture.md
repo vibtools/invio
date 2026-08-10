@@ -2,12 +2,12 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.31` is the P12 forensic verification-correction baseline built directly on `v1.0.0.1.30`. P12 extends the existing Reports/Live Logs and schema-v5 ledger read/retention surfaces without changing provider send semantics, database schema, dependencies, Task state machine, customer model or one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
+Invio `v1.0.0.1.32` is the P13 executable external-provider adapter baseline built directly on `v1.0.0.1.31`. P13 adds a versioned trusted in-process adapter contract to the existing Load Provider workflow while preserving packaged provider business behavior, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
 
 ## 2. Core Responsibilities
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
-- `src/core/provider_runtime/`: internal packaged-provider adapter registry, Stripe/Refrens API verification/invoice execution, P06 preflight and structured provider log emission.
+- `src/core/provider_runtime/`: packaged adapter registry, P13 external adapter registry/host operation contract, Stripe/Refrens execution, P06 preflight and structured provider log emission.
 - `src/core/observability.py`: non-persistent structured-log validation, provider-neutral secret/email redaction, spreadsheet-safe text handling and atomic export helpers.
 - `src/core/settings/`: non-sensitive per-user JSON preferences.
 - `src/core/state/`: domain invariants plus persistence coordination for state mutations.
@@ -235,3 +235,16 @@ P11 enables the existing packaged Refrens adapter without adding a subsystem. Th
 ## P12 verification correction - v1.0.0.1.31
 
 The P12 architecture is unchanged. Central observability remains in `src/core/observability.py`; ledger-backed reporting remains in `DomainStore`; Reports and Live Logs remain the only affected UI surfaces. The correction expands named-secret parsing to quoted JSON-style fields and tightens recipient report evidence rules so provider acceptance requires a successful provider send stage. Historical account-assignment conflicts fail closed. No schema, thread ownership, provider-send path, dependency or page architecture changes are introduced.
+
+## P13 external executable adapter architecture
+
+`ExternalAdapterRegistry` discovers runtime-declared external manifests in the existing registry, validates fixed installed adapter copies, and records `Executable`, `Manifest only`, `Missing`, or `Incompatible` state without letting one broken adapter abort startup. Source bundles use `provider.json` plus fixed sibling `adapter.py`; install validates the staged source before atomic registry replacement. Adapter imports use a unique stdlib `importlib` module name, restore `sys.path`, and reject import-time `sys.path` mutation. This is trusted in-process execution, not a sandbox.
+
+`ExternalProviderAdapterV1` reuses `ProviderCapabilityProfile` and optional `ProviderSchedulingPolicy`. API Test receives a narrow context whose request callback permits safe reads only. Task validation is side-effect-free. Recipient execution receives immutable recipient/template/account data and a host request callback. The host owns P08 retry classification and P10 write-ahead operation persistence; supported operation kinds are `SAFE_READ`, `IDEMPOTENT_MUTATION`, and `NON_IDEMPOTENT_MUTATION`. External mutation ledger stages are prefixed `external_mutation:` so existing restart recovery treats interrupted mutation as `Uncertain`.
+
+Because the P05 snapshot does not persist an external adapter version, replacement/uninstall of an executable external provider is blocked while a current Task references that provider. This avoids fabricating historical executable-code identity without changing schema v5.
+
+
+### P13 forensic safety invariants
+
+External executable bundle installation validates staged immutable bytes before atomic registry replacement. Adapter import and `create_adapter()` failures, including `SystemExit`, are contained and a persistent `sys.path` mutation is restored/rejected. External API Test is accepted only after a successful host-managed `SAFE_READ`. Task validation/execution receives isolated template data, and recipient success requires successful host-managed mutation evidence whose final stage exactly matches the adapter result. Successful non-idempotent mutation followed by adapter failure or interrupted recipient finalization remains durable `Uncertain` when replay safety cannot be proven. This external-stage recovery interpretation uses the existing schema-v5 P10 ledger and does not change built-in Stripe/Refrens semantics.

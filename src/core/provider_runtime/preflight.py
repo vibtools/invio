@@ -129,6 +129,7 @@ def _provider_issues(
     installed_manifest: ProviderManifest | None,
     packaged_manifest: ProviderManifest | None,
     injected_runner_available: bool,
+    runtime_profile: ProviderCapabilityProfile | None = None,
 ) -> list[PreflightIssue]:
     issues: list[PreflightIssue] = []
     normalized = provider_id.strip().lower()
@@ -159,7 +160,7 @@ def _provider_issues(
             )
         ]
 
-    profile = capability_profile(normalized)
+    profile = runtime_profile or capability_profile(normalized)
     if profile is None:
         if injected_runner_available:
             # P13 owns an executable external-provider capability contract. Keep
@@ -170,11 +171,15 @@ def _provider_issues(
             PreflightIssue(
                 "runtime-unavailable",
                 f"No executable Task runtime is registered for provider '{installed_manifest.name}'.",
-                "Use a provider with an executable runtime, or wait for the approved external runtime capability phase.",
+                "Install a compatible executable adapter for this provider before creating or running Tasks.",
             )
         ]
 
-    effective = set(effective_capabilities(installed_manifest))
+    effective = {
+        capability
+        for capability in installed_manifest.capabilities
+        if capability in profile.executable_capabilities
+    }
     if not profile.task_execution_enabled or not {"invoice", "send_invoice"}.issubset(effective):
         message = profile.task_unavailable_message or (
             f"{installed_manifest.name} does not have executable invoice/send capability in the current Invio runtime."
@@ -420,9 +425,10 @@ def preflight_runtime_inputs(
     provider_id: str,
     template: InvoiceTemplate,
     customers: Iterable[CustomerRecord],
+    runtime_profile: ProviderCapabilityProfile | None = None,
 ) -> PreflightResult:
     """Validate provider-specific immutable inputs without installation/network side effects."""
-    profile = capability_profile(provider_id)
+    profile = runtime_profile or capability_profile(provider_id)
     return PreflightResult(tuple(_template_and_customer_issues(profile, template, customers)))
 
 
@@ -435,21 +441,35 @@ def preflight_candidate(
     template: InvoiceTemplate,
     customers: Iterable[CustomerRecord],
     injected_runner_available: bool = False,
+    runtime_profile: ProviderCapabilityProfile | None = None,
+    additional_issues: Iterable[object] = (),
 ) -> PreflightResult:
     issues = _provider_issues(
         provider_id=provider_id,
         installed_manifest=installed_manifest,
         packaged_manifest=packaged_manifest,
         injected_runner_available=injected_runner_available,
+        runtime_profile=runtime_profile,
     )
     if installed_manifest is None:
         return PreflightResult(tuple(issues))
 
     account_values = tuple(accounts)
     issues.extend(_account_issues(account_values, installed_manifest))
-    profile = capability_profile(provider_id)
+    profile = runtime_profile or capability_profile(provider_id)
     issues.extend(_template_and_customer_issues(profile, template, customers))
     issues.extend(_endpoint_issues(account_values, installed_manifest))
+    for issue in additional_issues:
+        if isinstance(issue, PreflightIssue):
+            issues.append(issue)
+        else:
+            issues.append(
+                PreflightIssue(
+                    str(getattr(issue, "code", "external-validation")),
+                    str(getattr(issue, "message", issue)),
+                    str(getattr(issue, "correction", "")),
+                )
+            )
     return PreflightResult(tuple(issues))
 
 
@@ -460,6 +480,8 @@ def preflight_task(
     packaged_manifest: ProviderManifest | None,
     accounts: Iterable[Account],
     injected_runner_available: bool = False,
+    runtime_profile: ProviderCapabilityProfile | None = None,
+    additional_issues: Iterable[object] = (),
 ) -> PreflightResult:
     issues: list[PreflightIssue] = []
     execution = task.execution_snapshot
@@ -487,6 +509,7 @@ def preflight_task(
         installed_manifest=installed_manifest,
         packaged_manifest=packaged_manifest,
         injected_runner_available=injected_runner_available,
+        runtime_profile=runtime_profile,
     )
     issues.extend(provider_result)
     if installed_manifest is None:
@@ -502,7 +525,7 @@ def preflight_task(
             )
         )
     issues.extend(_account_issues(account_values, installed_manifest))
-    profile = capability_profile(task.provider_id)
+    profile = runtime_profile or capability_profile(task.provider_id)
     issues.extend(
         _template_and_customer_issues(
             profile,
@@ -511,4 +534,15 @@ def preflight_task(
         )
     )
     issues.extend(_endpoint_issues(account_values, installed_manifest))
+    for issue in additional_issues:
+        if isinstance(issue, PreflightIssue):
+            issues.append(issue)
+        else:
+            issues.append(
+                PreflightIssue(
+                    str(getattr(issue, "code", "external-validation")),
+                    str(getattr(issue, "message", issue)),
+                    str(getattr(issue, "correction", "")),
+                )
+            )
     return PreflightResult(tuple(issues))

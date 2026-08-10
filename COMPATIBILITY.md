@@ -107,3 +107,11 @@ No dependency, provider ID, credential field, Task/customer/template model, prov
 ## v1.0.0.1.31 P12 Verification-Correction Compatibility
 
 No dependency, Python/PySide6/keyring/openpyxl range, provider manifest, provider API request, Task/customer/template model, scheduling policy, WorkerManager interface, page inventory or SQLite schema changes from v1.0.0.1.30. Existing schema-v5 databases remain directly compatible. The correction only strengthens non-persistent/durable diagnostic redaction and ledger-backed report interpretation.
+
+## v1.0.0.1.32 P13 Compatibility
+
+- Existing manifest-only external providers remain installable and visible but are explicitly non-executable until a compatible adapter is supplied.
+- Existing packaged Stripe/Refrens adapters remain on the static built-in registry; Agiled remains fail-closed.
+- Existing `register_task_runner()` injection API remains available with its historical continuation limitations.
+- Existing SQLite schema v5 and P10 ledger tables are unchanged.
+- External adapter code is trusted in-process Python and receives no automatic dependency installation or remote download support.

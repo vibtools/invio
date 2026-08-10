@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+import os
 import shutil
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,6 +30,14 @@ class ProviderManifest:
     account_modes: tuple[str, ...] = field(default_factory=tuple)
     capabilities: tuple[str, ...] = field(default_factory=tuple)
     source_path: Path | None = None
+    runtime_adapter: RuntimeAdapterDeclaration | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeAdapterDeclaration:
+    interface_version: int
+    adapter_version: str
+    entrypoint: str
 
 
 class ProviderManifestError(ValueError):
@@ -37,9 +47,10 @@ class ProviderManifestError(ValueError):
 class ProviderManager:
     """Manifest-driven provider package and installation-state manager.
 
-    This manager never imports or executes provider code. Installation means a
-    validated manifest is copied to ``providers/registry``. Provider execution
-    remains isolated behind separately registered task runners.
+    This manager parses and installs provider declarations but does not itself
+    import provider code. P13 executable bundles are validated by an explicit
+    runtime validator before their manifest/adapter files are atomically copied
+    into ``providers/registry``.
     """
 
     def __init__(self, project_root: Path):
@@ -82,6 +93,22 @@ class ProviderManager:
 
         modes = tuple(str(value).strip() for value in raw.get("account_modes", []) if str(value).strip())
         capabilities = tuple(str(value).strip() for value in raw.get("capabilities", []) if str(value).strip())
+        runtime_adapter = None
+        runtime_raw = raw.get("runtime_adapter")
+        if runtime_raw is not None:
+            if not isinstance(runtime_raw, dict):
+                raise ProviderManifestError("runtime_adapter must be an object when provided.")
+            try:
+                interface_version = int(runtime_raw.get("interface_version"))
+            except (TypeError, ValueError) as exc:
+                raise ProviderManifestError("runtime_adapter.interface_version must be an integer.") from exc
+            adapter_version = str(runtime_raw.get("adapter_version", "")).strip()
+            entrypoint = str(runtime_raw.get("entrypoint", "")).strip()
+            if interface_version < 1 or not adapter_version or entrypoint != "create_adapter":
+                raise ProviderManifestError(
+                    "runtime_adapter requires interface_version >= 1, adapter_version and entrypoint 'create_adapter'."
+                )
+            runtime_adapter = RuntimeAdapterDeclaration(interface_version, adapter_version, entrypoint)
         return ProviderManifest(
             id=provider_id,
             name=name,
@@ -91,7 +118,12 @@ class ProviderManager:
             account_modes=modes,
             capabilities=capabilities,
             source_path=path,
+            runtime_adapter=runtime_adapter,
         )
+
+    def inspect_manifest(self, path: str | Path) -> ProviderManifest:
+        """Parse a provider manifest without installing or executing provider code."""
+        return self._parse_manifest(Path(path))
 
     def _find_package_manifests(self) -> list[Path]:
         if not self.packages_dir.exists():
@@ -130,7 +162,16 @@ class ProviderManager:
         shutil.copyfile(manifest.source_path, target)
         return self._parse_manifest(target)
 
-    def load_external(self, path: str | Path) -> ProviderManifest:
+    def external_adapter_path(self, provider_id: str) -> Path:
+        return self.registry_dir / f"{provider_id.strip().lower()}_adapter.py"
+
+    def load_external(
+        self,
+        path: str | Path,
+        *,
+        allow_executable: bool = False,
+        adapter_validator=None,
+    ) -> ProviderManifest:
         source = Path(path)
         manifest = self._parse_manifest(source)
         packaged = self.get_packaged(manifest.id)
@@ -139,17 +180,114 @@ class ProviderManager:
                 f"Provider ID '{manifest.id}' is reserved by the packaged {packaged.name} integration. "
                 f"Install the packaged provider instead."
             )
-        target = self.registry_dir / f"{manifest.id}.json"
-        shutil.copyfile(source, target)
-        return self._parse_manifest(target)
+
+        adapter_source: Path | None = None
+        if manifest.runtime_adapter is not None:
+            if not allow_executable:
+                raise ProviderManifestError(
+                    "This provider declares executable adapter code. Explicit trusted-code approval is required before loading it."
+                )
+            adapter_source = source.with_name("adapter.py")
+            if not adapter_source.is_file():
+                raise ProviderManifestError("Executable provider bundle is missing sibling adapter.py.")
+            if adapter_validator is None:
+                raise ProviderManifestError("Executable provider adapter validation is unavailable.")
+
+        target_manifest = self.registry_dir / f"{manifest.id}.json"
+        target_adapter = self.external_adapter_path(manifest.id)
+        token = uuid.uuid4().hex
+        staged_manifest = self.registry_dir / f".{manifest.id}.{token}.json.tmp"
+        # Keep a Python filename suffix while staging so the exact bytes that
+        # will be installed can be imported/validated before registry replace.
+        staged_adapter = self.registry_dir / f".{manifest.id}.{token}_adapter.py"
+        backup_manifest = self.registry_dir / f".{manifest.id}.{token}.json.rollback"
+        backup_adapter = self.registry_dir / f".{manifest.id}.{token}.adapter.rollback"
+        had_manifest = target_manifest.exists()
+        had_adapter = target_adapter.exists()
+        try:
+            shutil.copyfile(source, staged_manifest)
+            staged = self._parse_manifest(staged_manifest)
+            if (
+                staged.id != manifest.id
+                or staged.name != manifest.name
+                or staged.version != manifest.version
+                or staged.description != manifest.description
+                or staged.credential_fields != manifest.credential_fields
+                or staged.account_modes != manifest.account_modes
+                or staged.capabilities != manifest.capabilities
+                or staged.runtime_adapter != manifest.runtime_adapter
+            ):
+                raise ProviderManifestError("Provider manifest changed while it was being staged; load was cancelled.")
+            staged_packaged = self.get_packaged(staged.id)
+            if staged_packaged is not None:
+                raise ProviderManifestError(
+                    f"Provider ID '{staged.id}' is reserved by the packaged {staged_packaged.name} integration. "
+                    f"Install the packaged provider instead."
+                )
+
+            if adapter_source is not None:
+                shutil.copyfile(adapter_source, staged_adapter)
+                staged_manifest_bytes = staged_manifest.read_bytes()
+                staged_adapter_bytes = staged_adapter.read_bytes()
+                try:
+                    adapter_validator(staged, staged_adapter)
+                except ProviderManifestError:
+                    raise
+                except Exception as exc:
+                    raise ProviderManifestError(f"External provider adapter is incompatible: {exc}") from exc
+                if (
+                    staged_manifest.read_bytes() != staged_manifest_bytes
+                    or staged_adapter.read_bytes() != staged_adapter_bytes
+                ):
+                    raise ProviderManifestError(
+                        "External provider staged manifest/adapter changed during validation; load was cancelled."
+                    )
+
+            if had_manifest:
+                shutil.copyfile(target_manifest, backup_manifest)
+            if had_adapter:
+                shutil.copyfile(target_adapter, backup_adapter)
+
+            if adapter_source is not None:
+                os.replace(staged_adapter, target_adapter)
+            elif target_adapter.exists():
+                target_adapter.unlink()
+            os.replace(staged_manifest, target_manifest)
+        except ProviderManifestError:
+            raise
+        except OSError as exc:
+            try:
+                if backup_manifest.exists():
+                    os.replace(backup_manifest, target_manifest)
+                elif not had_manifest:
+                    target_manifest.unlink(missing_ok=True)
+                if backup_adapter.exists():
+                    os.replace(backup_adapter, target_adapter)
+                elif not had_adapter:
+                    target_adapter.unlink(missing_ok=True)
+            except OSError as rollback_exc:
+                raise ProviderManifestError(
+                    f"External provider installation failed and rollback could not be completed safely: {rollback_exc}"
+                ) from exc
+            raise ProviderManifestError(f"Could not load external provider '{manifest.name}'.") from exc
+        finally:
+            for temporary in (staged_manifest, staged_adapter, backup_manifest, backup_adapter):
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+        return self._parse_manifest(target_manifest)
 
     def uninstall(self, provider_id: str) -> ProviderManifest:
         manifest = self.get_installed(provider_id)
         if manifest is None:
             raise ProviderManifestError(f"Provider '{provider_id}' is not installed.")
         target = self.registry_dir / f"{manifest.id}.json"
+        adapter = self.external_adapter_path(manifest.id)
         try:
             target.unlink()
+            if self.get_packaged(manifest.id) is None:
+                adapter.unlink(missing_ok=True)
         except OSError as exc:
             raise ProviderManifestError(f"Could not uninstall provider '{manifest.name}'.") from exc
         return manifest

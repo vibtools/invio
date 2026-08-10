@@ -132,3 +132,12 @@ If recipient history appears `Provider Accepted`, remember that this means provi
 ## Recipient Delivery History reports an error or Uncertain status
 
 P12 reporting fails closed when durable history contains conflicting account-assignment evidence or unresolved side-effecting provider operations. Do not infer delivery from aggregate Task counters alone. Review the durable recipient status/provider reference and reconcile the provider-side invoice state before retrying an uncertain operation. `Provider Accepted` means Invio has durable send-stage success evidence; it is still not independent mailbox-delivery confirmation.
+
+## External provider adapter is not executable
+
+Check the Providers card runtime-adapter state. `Manifest only` means no executable adapter was declared. `Missing` means an executable declaration exists but the installed adapter file is absent. `Incompatible` means import, interface version, provider ID, adapter version, profile, capability or scheduling validation failed. Re-load a complete trusted `provider.json` + sibling `adapter.py` bundle. Invio does not install missing Python dependencies automatically. If existing Tasks reference an executable external provider, close those Tasks before replacing or uninstalling its adapter.
+
+
+## External provider adapter is Incompatible
+
+Confirm the bundle contains the selected `provider.json` plus sibling `adapter.py`, uses interface version 1, matching provider/adapter versions and matching declared/executable capabilities. Invio does not auto-install missing Python dependencies. Import/entrypoint failures or persistent `sys.path` mutation are contained and the provider remains non-executable; correct the trusted adapter bundle and load it again.

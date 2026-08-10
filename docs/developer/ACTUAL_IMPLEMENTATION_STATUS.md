@@ -1,7 +1,7 @@
 # Actual Implementation Status
 
-**Baseline:** `Invio v1.0.0.1.31`  
-**Completed acceptance phases:** P01-P10 and P12 (11/14); P11 implementation exists but live acceptance is pending  
+**Baseline:** `Invio v1.0.0.1.32`  
+**Completed acceptance phases:** P01-P10, P12 and P13 (12/14); P11 implementation exists but live acceptance is pending  
 **Purpose:** Record only behavior that exists in the current frozen source and explicit remaining production gaps.  
 **Status values:** WORKING, PARTIAL, NOT IMPLEMENTED, BLOCKED.
 
@@ -11,7 +11,7 @@
 |---|---|---|
 | Vib Tools desktop shell/pages | WORKING | Dashboard, Accounts, Invoice Templates, Customer Lists, Tasks, Providers, Reports, Live Logs, Settings |
 | Provider manifest install/load/uninstall | WORKING | Validated manifest registry workflow |
-| Executable external provider plugin loading | NOT IMPLEMENTED | P13; ProviderManager still does not import/execute arbitrary provider code; v1.0.0.1.21 adds only an internal packaged-provider adapter registry |
+| Executable external provider adapter loading | WORKING by P13 contract | Optional interface-v1 `provider.json` + fixed sibling `adapter.py`; explicit trusted-code confirmation, truthful Executable/Manifest-only/Missing/Incompatible state, and fail-closed version/capability validation |
 | Stripe built-in invoice sending | WORKING locally by contract | Real HTTP path exists; live certification remains P14 |
 | Refrens normal Task sending | WORKING by automated contract / LIVE ACCEPTANCE PENDING | P11 runner is implemented with explicit name/country/host/no-replay/P10-ledger safeguards; owner live API/invoice/email acceptance remains outstanding |
 | Real Add Account API Test | WORKING/PARTIAL by provider | Stripe/Refrens verification is real on a dedicated dialog `QThread`; Agiled intentionally fails closed pending contract revalidation |
@@ -85,7 +85,7 @@
 ### REMAINING
 
 - Account edit/delete/re-test, verification time/error metadata, and provider-uninstall Task consistency are **WORKING in P03**.
-- External executable provider adapters are P13.
+- External executable provider adapters are **WORKING by P13 contract**; live/provider-specific certification remains P14.
 
 ## Customer Lists / Invoice Templates / Tasks
 
@@ -253,3 +253,12 @@ P12 is COMPLETE: Reports include ledger-backed recipient reconciliation, Live Lo
 ## P12 verification correction - v1.0.0.1.31
 
 **WORKING / VERIFIED:** centralized redaction now masks quoted JSON-style named provider/token secrets without relying on the secret already being known from an Account. Recipient delivery support rows require durable provider send-stage success before displaying provider acceptance, preserve unresolved mutating ambiguity as `Uncertain`, and reject conflicting historical account-assignment evidence. P12 remains COMPLETE; P11 live Refrens acceptance remains pending.
+
+## P13 completion - v1.0.0.1.32
+
+External executable adapters are now implemented through a versioned trusted-code contract. Valid adapters can participate in API Test, P06 preflight, P08 host-managed request reliability and P10 durable Task operations. Manifest-only or incompatible providers remain non-executable. No provider marketplace, remote download, sandbox, automatic dependency installation or arbitrary multi-file package loading exists. P14 live/native certification remains pending; P11 Refrens live acceptance remains separately pending.
+
+
+## P13 forensic hardening — v1.0.0.1.32
+
+**WORKING / VERIFIED:** staged immutable external-adapter validation, explicit trusted-code confirmation, interface/version/profile/capability checks, startup-safe import/entrypoint containment, `sys.path` integrity enforcement, host-evidence API Test, isolated Task inputs, host-managed mutation/final-stage proof, and P10 fail-closed recovery for interrupted non-idempotent external mutations. Manifest-only/Missing/Incompatible providers remain non-executable. Packaged Stripe/Refrens behavior is unchanged and Agiled remains fail-closed.

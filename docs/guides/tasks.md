@@ -107,3 +107,10 @@ Durable Task continuation considers the complete recipient operation history. An
 ## Refrens Task safety - v1.0.0.1.29 candidate
 
 Refrens uses the same frozen recipient order, deterministic account assignment, one-QThread Task worker, durable execution run and aggregate progress contracts as other built-in Task execution. Pending/Failed outcomes can participate in durable continuation under existing action rules. A Refrens `Uncertain` invoice-create/email outcome is not eligible for automatic replay; if only uncertain outcomes remain, Resume Remaining is disabled.
+
+## External provider Tasks (P13)
+
+A validated executable external provider uses the same immutable Task snapshot, verified-account requirement, preflight, one-QThread worker ownership, bounded reliability and durable delivery ledger as built-in providers. External adapter code does not receive direct AppState/Qt/DomainStore control through the supported interface. Ambiguous non-idempotent mutations are recorded `Uncertain` and are not blindly replayed.
+
+
+For P13 external Tasks, adapter validation/execution receives isolated template data. `SAFE_READ` and idempotent/non-idempotent mutation semantics remain host-owned. A non-idempotent provider mutation whose final recipient result cannot be safely committed remains `Uncertain` across adapter failure or restart; it is not automatically replayed. Recipient success is accepted only when the adapter final stage matches the last successful host-managed mutating operation.

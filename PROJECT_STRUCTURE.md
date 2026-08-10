@@ -146,3 +146,12 @@ P12 adds `src/core/observability.py` as a focused non-persistent observability/p
 ## v1.0.0.1.31 P12 verification correction
 
 No folders or runtime modules are renamed/reorganized. `src/core/observability.py` and `src/core/storage/domain_store.py` remain in their existing P12 locations; the correction only tightens their redaction/report interpretation behavior. No new application page, storage table, provider package or dependency is introduced.
+
+## v1.0.0.1.32 P13 external adapter additions
+
+- `src/core/provider_runtime/external.py` — interface-v1 external adapter contract, staged-code validation, discovery, trusted in-process loading and runtime state.
+- `providers/registry/<provider>_adapter.py` — runtime-installed executable adapter copy; registry runtime files remain Git-ignored.
+- `src/core/storage/domain_store.py` — existing schema-v5 store with a P13-only external-mutation restart interpretation: successful non-idempotent external mutation without provider idempotency evidence remains unresolved if recipient finalization was interrupted; no new table/schema is added.
+- `tests/test_p13_external_adapters.py` — P13 executable/manifest-only/fail-closed/API-test/Task/P10 integration and external-code containment contracts.
+
+No new application page, schema table, dependency or provider-package folder was introduced.

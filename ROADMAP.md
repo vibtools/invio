@@ -1,16 +1,16 @@
 # Roadmap
 
-Current Official Baseline: **Invio v1.0.0.1.31**.
+Current Official Baseline: **Invio v1.0.0.1.32**.
 
-P12 is **COMPLETE / verification-corrected in v1.0.0.1.31**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
+P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 is **COMPLETE in v1.0.0.1.32**. P11 remains **IMPLEMENTED / LIVE ACCEPTANCE PENDING** because owner live Refrens API Test/invoice/email acceptance has not been supplied.
 
 Roadmap entries are planning records, not implementation approval. Every production phase requires a separate explicit owner scope lock before code changes.
 
 ## Production Progress
 
 - Documentation/governance phase `G0`: **COMPLETE**.
-- Completed acceptance phases: **11 / 14** (P01-P10 and P12).
-- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**, **P09**, **P10**, **P12**.
+- Completed acceptance phases: **12 / 14** (P01-P10, P12 and P13).
+- Completed: **P01**, **P02**, **P03**, **P04**, **P05**, **P06**, **P07**, **P08**, **P09**, **P10**, **P12**, **P13**.
 - Outstanding acceptance gate: **P11 - Refrens End-to-End Task Enablement — IMPLEMENTED / LIVE ACCEPTANCE PENDING**.
 - Owner explicitly froze `v1.0.0.1.29` and unlocked P12 despite the separate P11 live gate; that exception is recorded rather than retroactively marking P11 complete.
 - Current status: **not production-certified**.
@@ -29,7 +29,7 @@ Roadmap entries are planning records, not implementation approval. Every product
 10. **P10 - Persistent Delivery Ledger, Idempotency and Recovery [COMPLETE in v1.0.0.1.27; verification-corrected in v1.0.0.1.28]**: per-recipient durable attempts/provider IDs/idempotency/restart recovery.
 11. **P11 - Refrens End-to-End Task Enablement [IMPLEMENTED in v1.0.0.1.29; LIVE ACCEPTANCE PENDING]**: built-in Refrens Task execution using explicit required customer data; phase completion remains gated on owner-supplied live API Test, real invoice creation and recipient email delivery.
 12. **P12 - Reports, Logs, Privacy and Operational Observability [COMPLETE in v1.0.0.1.30]**: recipient-level ledger reconciliation, structured/generalized redaction, safe export and closed-history retention controls.
-13. **P13 - Executable External Provider Adapter Contract**: make future loaded providers accurately represent executable capability; architecture approval required before implementation.
+13. **P13 - Executable External Provider Adapter Contract [COMPLETE in v1.0.0.1.32]**: versioned trusted external adapter bundles, truthful executable capability, fail-closed loading and P06/P08/P10 host integration.
 14. **P14 - Live Integration, Recovery, Packaging and Production Certification**: real provider/environment tests and final production gate.
 
 Detailed dependency graph and acceptance criteria remain in `project/planning/PRODUCTION_ROADMAP.md`.
@@ -83,3 +83,7 @@ P12 is complete. Reports now reconcile recipients from the existing P10 ledger; 
 ## P12 Verification Correction - v1.0.0.1.31
 
 The exact uploaded v1.0.0.1.30 P12 baseline was re-audited. v1.0.0.1.31 closes only P12 observability/privacy correctness gaps: quoted JSON-style provider/token fields are centrally redacted, provider-send acceptance is derived from durable send-stage evidence rather than a recipient result flag alone, unresolved mutating ambiguity stays observable, and conflicting historical account evidence fails closed in recipient reporting. P12 remains complete, production acceptance progress remains 11/14, P11 live acceptance remains pending, and P13/P14 remain separately approval-gated.
+
+## P13 Completion - v1.0.0.1.32
+
+P13 is complete. External `Load Provider` now supports an optional explicit interface-v1 executable adapter bundle while preserving manifest-only compatibility. Executable code requires owner confirmation and is treated as trusted in-process Python, not sandboxed code. Provider ID/interface/version/profile/capability mismatches, missing adapter files and import failures remain visible but non-executable. External API Test and Task operations execute through existing verification, immutable snapshot, preflight, reliability, scheduling and durable-ledger boundaries. Packaged Stripe/Refrens remain on the built-in registry and Agiled remains fail-closed. Completed acceptance phases are 12/14; P11 live acceptance and P14 production certification remain outstanding.

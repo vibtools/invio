@@ -1,6 +1,6 @@
 # Error Handling - Current Baseline and Production Plan
 
-**Baseline:** `v1.0.0.1.31`  
+**Baseline:** `v1.0.0.1.32`  
 **Status:** Current error-handling inventory including P12 export/privacy behavior.
 
 ## 1. Current Error-Handling Layers
@@ -417,3 +417,20 @@ Task/recipient/log exports catch file/encoding/CSV failures at the UI boundary, 
 ## P12 forensic correction - v1.0.0.1.31
 
 The v1.0.0.1.30 baseline passed its existing tests but two support/privacy edge cases were reproducible. Quoted JSON-style secret fields were not matched by the named-secret regex unless the value was already known explicitly, and recipient reporting could infer provider acceptance from a recipient `Succeeded` result even with no durable send-stage success evidence. v1.0.0.1.31 corrects both paths and adds fail-closed historical account-evidence validation. No historical ledger rows are rewritten.
+
+## P13 external adapter failure boundaries - v1.0.0.1.32
+
+P13 contains adapter discovery/import/entrypoint/identity/version/profile/capability failures as non-executable runtime state instead of crashing application startup. API Test and Tasks fail closed when no validated executable adapter exists. Supported external non-idempotent mutations are never blindly retried after ambiguous network/408/5xx outcomes; P10 records `Uncertain`. Idempotent mutation retry requires a stable adapter-supplied provider idempotency reference. Adapter dependency/import failures do not trigger automatic installation.
+
+
+## P13 external-adapter failure handling
+
+| ID | Condition | Handling |
+|---|---|---|
+| EH-P13-01 | Staged/source adapter changes during install validation | Reject install; preserve prior registry state |
+| EH-P13-02 | Adapter import/entrypoint raises, exits, or mutates `sys.path` | Contain failure, restore host path state, mark runtime Incompatible |
+| EH-P13-03 | API Test returns without host-managed `SAFE_READ` | Verification fails closed |
+| EH-P13-04 | Adapter reports recipient success without host-managed mutation/final-stage proof | Recipient execution fails closed |
+| EH-P13-05 | Successful non-idempotent provider mutation followed by adapter/finalization interruption | Persist/recover recipient as `Uncertain`; never blind replay |
+
+These rules introduce no schema migration and do not alter packaged Stripe/Refrens send behavior.

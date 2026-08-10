@@ -285,7 +285,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('"status": "Verified"', dialogs)
         self.assertIn('account.status != "Verified"', dialogs)
         self.assertIn("API Test is unavailable for this provider", dialogs)
-        self.assertIn("def supports_api_test(provider_id: str)", runtime)
+        self.assertIn("def supports_api_test(self, provider_id: str)", runtime)
         self.assertIn('mode=self.mode', dialogs)
         self.assertIn('if account.status != "Verified"', state)
         self.assertIn('dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)', window)
