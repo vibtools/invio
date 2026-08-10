@@ -78,8 +78,8 @@ def app_qss() -> str:
         border-radius: {CONST.common_radius}px;
     }}
     QFrame#PluginCard:hover {{
-        background: {c['surface']};
-        border: 1px solid rgba(56,189,248,102);
+        background: {c['nested_surface']};
+        border: 1px solid {c['border']};
     }}
     QLabel#PluginCardTitle {{
         font-size: 13px;
@@ -90,6 +90,28 @@ def app_qss() -> str:
         font-size: 11px;
         font-weight: 400;
         color: {c['secondary_text']};
+    }}
+    QLabel#ProviderLogoPlaceholder {{
+        background: {c['nested_surface']};
+        color: {c['secondary_text']};
+        border: 1px solid {c['input_border']};
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }}
+    QLabel#ProviderCapabilityChip {{
+        background: #1E293B;
+        color: {c['secondary_text']};
+        border: 1px solid #263244;
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 10px;
+        font-weight: 600;
+    }}
+    QLabel#ProviderMeta {{
+        font-size: 10px;
+        font-weight: 400;
+        color: {c['muted_text']};
     }}
     QLabel#PluginCategoryChip {{
         background: #1E293B;
@@ -133,6 +155,14 @@ def app_qss() -> str:
     QPushButton#PrimaryButton {{ background: {c['primary']}; border-color: rgba(255,255,255,31); }}
     QPushButton#PrimaryButton:hover {{ background: {c['primary_hover']}; }}
     QPushButton#PrimaryButton:pressed {{ background: {c['primary_pressed']}; }}
+    QPushButton#ProviderLoadButton {{
+        background: {c['primary']};
+        border-color: {c['focus']};
+        color: {c['primary_text']};
+        font-weight: 600;
+    }}
+    QPushButton#ProviderLoadButton:hover {{ background: {c['primary_hover']}; }}
+    QPushButton#ProviderLoadButton:pressed {{ background: {c['primary_pressed']}; }}
     QPushButton#DangerButton {{ background: transparent; border-color: {c['danger']}; color: #FCA5A5; }}
     QPushButton#DangerButton:hover {{ background: rgba(185,28,28,31); }}
     QPushButton#GhostButton {{ background: transparent; border-color: transparent; color: {c['secondary_text']}; }}

@@ -1,6 +1,19 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.2` is the owner-frozen first production release baseline.** Owner-controlled live acceptance has proven the trusted external **Odoo Provider v1.0.0** can authenticate, create/post an invoice, execute Odoo Send & Print email delivery, and complete an Invio Task successfully. The exact v1.40.2 Windows CI/distribution pipeline is green. **P14 production certification is COMPLETE by explicit owner acceptance. P11 Refrens live mail acceptance remains DEFERRED/non-blocking for this release because Refrens currently rejects API mail with `HTTP 400: Not allowed to send mail`.** Refrens is therefore not advertised as a production-certified email-send path in this release; Agiled remains API-Test-only/fail-closed for Task sending.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.2` remains the owner-frozen first production release baseline.** **`v1.0.0.1.41` is the scope-locked Providers Page UI/UX update candidate** built directly on that production release. This candidate changes only Providers-page presentation: compact fixed cards, responsive 2–4-column reflow, neutral provider initials, three-line ellided descriptions, capability chips, bottom-anchored actions, and compact hover treatment. Provider install/load/uninstall behavior, provider runtime/API behavior, Odoo/Refrens/Stripe/Agiled contracts, SQLite schema v5, WorkerManager, Task behavior, credentials, and dependencies are unchanged.
+
+## v1.0.0.1.41 Providers Page UI/UX Candidate
+
+- Providers Page root background (`#090D14`) and 14px page padding are unchanged.
+- Provider cards are compact fixed `220px` height with `280px` minimum width, `16px` internal padding, and `16px` grid gaps.
+- The provider grid reflows from 2 to 4 columns according to available content width without introducing a new UI/layout framework.
+- Card headers use a neutral `32x32px` provider-initial placeholder, title/version identity block, and right-aligned Installed/Available status.
+- Provider descriptions are limited to three visible lines with right ellipsis while the complete description remains in the tooltip.
+- Runtime/effective capabilities are rendered as compact chips; runtime-adapter state plus credential count is collapsed to one compact metadata line.
+- Install/Uninstall remains the same real action and is bottom-anchored with stretch inside every equal-height card.
+- Hover changes only the card surface from `#111722` to `#1A212E`; border semantics remain unchanged.
+- `Load Provider` remains the same trusted-provider workflow and receives only a compact provider-page-specific visual emphasis.
+- No provider/business/runtime/storage/threading/API/configuration behavior changes are included.
 
 ## v1.0.0.1.40.2 First Production Release
 

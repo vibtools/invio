@@ -2,9 +2,13 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.33` is the P13 verification-corrected external-provider adapter baseline built directly on `v1.0.0.1.32`. P13 adds a versioned trusted in-process adapter contract to the existing Load Provider workflow while preserving packaged provider business behavior, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership. P11 live Refrens acceptance remains a separate pending external evidence gate.
+Invio `v1.0.0.1.40.2` is the frozen first production baseline. `v1.0.0.1.41` is a Providers Page UI/UX-only candidate layered on that baseline. The P13 trusted external-provider contract, packaged provider runtime contracts, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership remain frozen. The only implementation delta is within Providers-page presentation plus release/version/test/documentation synchronization.
 
 ## 2. Core Responsibilities
+
+### Providers Page presentation boundary in v1.0.0.1.41
+
+`src/ui/pages/providers_page.py` owns the 220px fixed Provider card geometry, 280px minimum card width, responsive 2–4-column reflow, neutral provider-initial placeholder, three-line ellipsis, runtime/effective capability chips, compact runtime/credential metadata and bottom-anchored card action. `src/ui/styles.py` owns only the matching Provider-card/placeholder/chip/Load Provider QSS. ProviderManager, ProviderRuntime and callbacks supplied by MainWindow are consumed unchanged.
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
 - `src/core/provider_runtime/`: packaged adapter registry, P13 external adapter registry/host operation contract, Stripe/Refrens execution, P06 preflight and structured provider log emission.

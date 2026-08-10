@@ -9,3 +9,7 @@
 7. Verify the Odoo invoice exists and is Posted.
 8. Verify the recipient mailbox received the Odoo invoice email.
 9. If Invio reports `Uncertain`, inspect Odoo before any replay.
+## v1.0.0.1.41 Providers-page note
+
+The Odoo live-canary workflow is unchanged. In the v1.0.0.1.41 UI candidate, the installed Odoo provider appears in the same Providers workflow using the compact fixed card, neutral `O` initial, effective capability chips, runtime/credential summary, and bottom-anchored Uninstall action. This visual change does not alter Odoo API Test or invoice sending.
+

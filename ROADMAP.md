@@ -2,6 +2,8 @@
 
 Current owner-frozen Official Production Baseline: **Invio v1.0.0.1.40.2 — FIRST PRODUCTION RELEASE**.
 
+Active approved UI candidate: **Invio v1.0.0.1.41 — Providers Page compact UI/UX update only**. Production/runtime phase status remains inherited from v1.0.0.1.40.2; this UI candidate does not reopen or advance any provider/runtime phase.
+
 Owner acceptance on 2026-08-10 records a successful real Odoo end-to-end invoice delivery path through the frozen P13 external-provider contract and accepts the green Windows distribution pipeline as the P14 native packaging gate. **P14 is COMPLETE by explicit owner production acceptance.** P11 remains the separate Refrens-specific live acceptance phase and is **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED (non-blocking for v1.0.0.1.40.2)** because Refrens API mail is rejected by the provider with `HTTP 400: Not allowed to send mail`.
 
 P12 remains **COMPLETE / verification-corrected in v1.0.0.1.31**. P13 remains **COMPLETE / verification-corrected in v1.0.0.1.33**. Odoo Provider v1.0.0 is the first owner-live-certified send path and ships as a trusted external plugin under `providers/plugins/odoo/`.

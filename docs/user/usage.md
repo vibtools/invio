@@ -8,6 +8,8 @@ Dashboard shows installed providers, accounts, templates, customer count, task a
 
 Install Stripe/Refrens or load an approved external manifest. Provider install/uninstall behavior is unchanged by P02.
 
+In `v1.0.0.1.41`, the Providers page is presentation-only updated for compact scanning: cards use a fixed 220px height, 280px minimum width, responsive 2–4-column reflow, neutral 32x32 provider initials, maximum three-line descriptions with tooltip access to the full text, compact runtime capability chips, and bottom-anchored Install/Uninstall actions. The provider name, version, status, runtime truth, credential count, and the existing Load/Install/Uninstall workflows are unchanged.
+
 ## 3. Accounts
 
 Open **Accounts** to Add, Edit, Re-test, or Delete a provider account. Add/Edit require a successful real API Test before commit. Edit is blocked while an account is assigned to an open Task. Re-test checks the current protected credentials without changing them and records the latest UTC test time plus a safe failure summary. Delete is blocked while a Task still references the account.

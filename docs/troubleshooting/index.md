@@ -1,5 +1,9 @@
 # Troubleshooting
 
+## Provider cards look clipped or do not reflow
+
+On `v1.0.0.1.41`, Provider cards are intentionally fixed at 220px and descriptions are intentionally limited to three visible lines; hover the description for the full tooltip. The grid calculates 2–4 columns from available page width using a 280px minimum card width. If the page does not update after resizing, confirm the exact v1.0.0.1.41 source/build is running before treating it as a runtime issue. Provider install/load/uninstall behavior is unrelated to this visual layout.
+
 ## Provider does not appear in Accounts or Tasks
 
 Install it from **Providers**. Bundled packages can be Available without being installed.

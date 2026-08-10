@@ -1,5 +1,9 @@
 # Compatibility
 
+## v1.0.0.1.41 Providers UI compatibility
+
+`v1.0.0.1.41` is a Providers-page presentation-only candidate over the released `v1.0.0.1.40.2` production baseline. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, P13 external-provider interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, Task state/resend semantics, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. The update adds no provider SDK, storage migration, configuration key, external dependency or API contract.
+
 ## v1.0.0.1.40.2 production compatibility
 
 `v1.0.0.1.40.2` is the first owner-accepted production baseline. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, WorkerManager/QThread behavior, P05/P07/P10 execution contracts, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. Odoo Provider v1.0.0 is distributed as a P13 interface-v1 external plugin under `providers/plugins/odoo/`; it is not converted into a packaged provider and still requires explicit trusted-code installation. The release makes no compatibility claim that Refrens API mail is enabled or that Agiled Task sending is executable.

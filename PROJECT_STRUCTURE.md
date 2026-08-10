@@ -222,3 +222,10 @@ No folder/module reorganization is introduced. The existing WiX build still cons
 - `pyproject.toml` includes this tree in wheel packaging, while the existing Nuitka `providers=providers` data inclusion carries it into Windows OneDir/MSI distributions.
 
 No core runtime module, page, schema table, WorkerManager subsystem, dependency or P13 interface is added or renamed by this production finalization.
+## v1.0.0.1.41 Providers UI records
+
+- `docs/release-notes/1.0.0.1.41.md` — public Providers Page compact UI/UX candidate record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.41.md` — parent production baseline and candidate scope boundary.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.41.md` — scoped final verification record.
+- No folder/module reorganization is introduced; Providers UI code remains in `src/ui/pages/providers_page.py` and provider-specific QSS remains in `src/ui/styles.py`.
+

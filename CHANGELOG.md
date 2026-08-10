@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.41 - Providers Page Compact UI/UX Update
+
+- Keeps `v1.0.0.1.40.2` as the frozen production parent baseline.
+- Reflows the Providers grid responsively across 2–4 columns using a 280px minimum card width and 16px grid gaps.
+- Standardizes provider cards at 220px fixed height with 16px padding and bottom-anchored Install/Uninstall actions.
+- Adds neutral 32x32 provider-initial visual anchors, three-line ellided descriptions, compact capability chips, and one-line runtime/credential metadata.
+- Changes Provider-card hover to compact `#1A212E` surface lightening and gives Load Provider a provider-page-specific emphasis without changing its callback/workflow.
+- Preserves all provider manifests, provider runtime/API contracts, Odoo/Refrens/Stripe/Agiled behavior, SQLite schema v5, WorkerManager, Tasks, Accounts, Settings, dependencies and every non-Providers page.
+
 ## v1.0.0.1.40.2 - First Production Release Finalization
 
 - Owner live acceptance proves the trusted Odoo Provider v1.0.0 completes the end-to-end Invio workflow through Odoo authentication, customer/invoice processing, posting and invoice email sending.

@@ -1,5 +1,9 @@
 # Provider Guide
 
+## v1.0.0.1.41 compact Providers page
+
+The Providers page now presents the same provider manifests/runtime truth in equal-height 220px cards. Cards use a 32x32 neutral initial placeholder, title/version/status header, three-line description, compact effective-runtime capability chips, one runtime/credential line and a bottom-anchored Install/Uninstall action. The grid reflows between 2 and 4 columns using a 280px minimum card width. This is a UI-only representation change: Load Provider trust handling, packaged install, external adapter validation and uninstall semantics are unchanged.
+
 Providers are manifest-based registrations. Bundled packages appear on **Providers** as Available until installed. Installed providers become selectable in Accounts and Tasks. **Uninstall** removes the local installed manifest but keeps a bundled package available for reinstall.
 
 ## Real API Verification

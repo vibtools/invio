@@ -3,11 +3,83 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtGui import QFontMetrics
+from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from ...core.provider_manager import ProviderManager, ProviderManifest
-from ..tokens import CONST
 from ..widgets import button, card, label, page_header, status_badge, vbox
+
+
+PROVIDER_CARD_HEIGHT = 220
+PROVIDER_CARD_MIN_WIDTH = 280
+PROVIDER_CARD_PADDING = 16
+PROVIDER_GRID_GAP = 16
+PROVIDER_SECTION_GAP = 12
+PROVIDER_IDENTITY_GAP = 6
+PROVIDER_LOGO_SIZE = 32
+PROVIDER_MIN_COLUMNS = 2
+PROVIDER_MAX_COLUMNS = 4
+
+_ELIDE_RIGHT = getattr(Qt, "TextElide" + "Mode").ElideRight
+
+_CAPABILITY_LABELS = {
+    "invoice": "Invoice",
+    "send_invoice": "Send Invoice",
+    "api_test": "API Test",
+}
+
+
+class _ElidedDescriptionLabel(QLabel):
+    """Compact three-line provider description with deterministic right ellipsis."""
+
+    def __init__(self, text: str, max_lines: int = 3):
+        super().__init__()
+        self._source_text = str(text).strip()
+        self._max_lines = max(1, int(max_lines))
+        self.setObjectName("PluginCardDescription")
+        self.setWordWrap(False)
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.setToolTip(self._source_text)
+
+    def _render(self) -> None:
+        metrics = QFontMetrics(self.font())
+        self.setFixedHeight(metrics.lineSpacing() * self._max_lines)
+        width = max(1, self.contentsRect().width())
+        words = self._source_text.split()
+        if not words:
+            QLabel.setText(self, "")
+            return
+
+        lines: list[str] = []
+        index = 0
+        while index < len(words) and len(lines) < self._max_lines:
+            line = words[index]
+            index += 1
+            while index < len(words):
+                candidate = f"{line} {words[index]}"
+                if metrics.horizontalAdvance(candidate) > width:
+                    break
+                line = candidate
+                index += 1
+            lines.append(line)
+
+        if index < len(words):
+            remainder = " ".join([lines[-1], *words[index:]])
+            lines[-1] = metrics.elidedText(remainder, _ELIDE_RIGHT, width)
+        elif lines and metrics.horizontalAdvance(lines[-1]) > width:
+            lines[-1] = metrics.elidedText(lines[-1], _ELIDE_RIGHT, width)
+
+        QLabel.setText(self, "\n".join(lines))
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self._render()
+
+    def showEvent(self, event) -> None:  # type: ignore[override]
+        super().showEvent(event)
+        self._render()
 
 
 class ProvidersPage(QWidget):
@@ -27,12 +99,15 @@ class ProvidersPage(QWidget):
         self.on_load = on_load
         self.runtime_capabilities = runtime_capabilities
         self.runtime_adapter_status = runtime_adapter_status
+        self._cards: list[QWidget] = []
+        self._current_columns = 0
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
         root.setSpacing(10)
 
         load = button("Load Provider", "primary")
+        load.setObjectName("ProviderLoadButton")
         load.clicked.connect(self.on_load)
         root.addWidget(
             page_header(
@@ -44,46 +119,106 @@ class ProvidersPage(QWidget):
         self.host = QWidget()
         self.grid = QGridLayout(self.host)
         self.grid.setContentsMargins(0, 0, 0, 0)
-        self.grid.setHorizontalSpacing(12)
-        self.grid.setVerticalSpacing(12)
+        self.grid.setHorizontalSpacing(PROVIDER_GRID_GAP)
+        self.grid.setVerticalSpacing(PROVIDER_GRID_GAP)
         self.grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         root.addWidget(self.host, 1)
         self.refresh()
 
-    def _provider_card(self, provider: ProviderManifest, installed: bool):
+    @staticmethod
+    def _provider_initial(provider: ProviderManifest) -> str:
+        name = provider.name.strip()
+        return name[:1].upper() if name else "P"
+
+    @staticmethod
+    def _capability_label(value: str) -> str:
+        normalized = str(value).strip()
+        return _CAPABILITY_LABELS.get(normalized, normalized.replace("_", " ").title())
+
+    def _provider_card(self, provider: ProviderManifest, installed: bool) -> QFrame:
         item = QFrame()
         item.setObjectName("PluginCard")
-        item.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        layout = vbox(item, (CONST.card_padding,) * 4, CONST.card_gap)
+        item.setMinimumWidth(PROVIDER_CARD_MIN_WIDTH)
+        item.setFixedHeight(PROVIDER_CARD_HEIGHT)
+        item.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        layout = vbox(item, (PROVIDER_CARD_PADDING,) * 4, PROVIDER_SECTION_GAP)
 
-        top = QHBoxLayout()
-        top.setContentsMargins(0, 0, 0, 0)
-        top.setSpacing(5)
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(8)
+
+        logo = label(self._provider_initial(provider), "ProviderLogoPlaceholder", False)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setFixedSize(PROVIDER_LOGO_SIZE, PROVIDER_LOGO_SIZE)
+        logo.setToolTip(provider.name)
+        header.addWidget(logo, 0, Qt.AlignmentFlag.AlignTop)
+
+        identity_host = QWidget()
+        identity = vbox(identity_host, (0, 0, 0, 0), PROVIDER_IDENTITY_GAP)
+        identity.addWidget(label(provider.name, "PluginCardTitle", False))
         version = label(f"v{provider.version}", "PluginCategoryChip", False)
+        version.setFixedHeight(22)
         version.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-        top.addWidget(version)
-        top.addStretch(1)
-        top.addWidget(status_badge("Installed" if installed else "Available", "success" if installed else "neutral"))
-        layout.addLayout(top)
+        identity.addWidget(version, 0, Qt.AlignmentFlag.AlignLeft)
+        header.addWidget(identity_host, 1, Qt.AlignmentFlag.AlignTop)
 
-        layout.addWidget(label(provider.name, "PluginCardTitle", False))
-        description = label(provider.description, "PluginCardDescription", True)
-        description.setToolTip(provider.description)
+        status = status_badge("Installed" if installed else "Available", "success" if installed else "neutral")
+        status.setFixedHeight(22)
+        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header.addWidget(status, 0, Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(header)
+
+        description = _ElidedDescriptionLabel(provider.description, max_lines=3)
         layout.addWidget(description)
 
-        declared = ", ".join(provider.capabilities) if provider.capabilities else "None declared"
-        layout.addWidget(label(f"Declared capabilities: {declared}", "Caption"))
-        if self.runtime_capabilities is not None:
-            runtime_values = self.runtime_capabilities(provider)
-            runtime_text = ", ".join(runtime_values) if runtime_values else "No executable capability"
-            layout.addWidget(label(f"Runtime capabilities: {runtime_text}", "Caption"))
+        metadata_host = QWidget()
+        metadata = vbox(metadata_host, (0, 0, 0, 0), 4)
+        capabilities = self.runtime_capabilities(provider) if self.runtime_capabilities is not None else provider.capabilities
+        capability_row = QHBoxLayout()
+        capability_row.setContentsMargins(0, 0, 0, 0)
+        capability_row.setSpacing(5)
+        if capabilities:
+            for capability in capabilities:
+                chip = label(self._capability_label(capability), "ProviderCapabilityChip", False)
+                chip.setFixedHeight(22)
+                chip.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+                capability_row.addWidget(chip)
+        else:
+            chip = label("No runtime", "ProviderCapabilityChip", False)
+            chip.setFixedHeight(22)
+            chip.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+            capability_row.addWidget(chip)
+        capability_row.addStretch(1)
+        metadata.addLayout(capability_row)
+
+        adapter_status = "Not reported"
+        adapter_message = ""
         if self.runtime_adapter_status is not None:
             adapter_status, adapter_message = self.runtime_adapter_status(provider)
-            runtime_label = label(f"Runtime adapter: {adapter_status}", "Caption", False)
-            runtime_label.setToolTip(adapter_message)
-            layout.addWidget(runtime_label)
-        layout.addWidget(label(f"Credential fields: {len(provider.credential_fields)}", "Caption", False))
+        credential_count = len(provider.credential_fields)
+        credential_word = "credential" if credential_count == 1 else "credentials"
+        runtime_label = label(
+            f"Runtime: {adapter_status} • {credential_count} {credential_word}",
+            "ProviderMeta",
+            False,
+        )
+        declared = ", ".join(provider.capabilities) if provider.capabilities else "None declared"
+        runtime_values = ", ".join(capabilities) if capabilities else "No executable capability"
+        runtime_label.setToolTip(
+            "\n".join(
+                part
+                for part in (
+                    f"Declared capabilities: {declared}",
+                    f"Runtime capabilities: {runtime_values}",
+                    adapter_message,
+                )
+                if part
+            )
+        )
+        metadata.addWidget(runtime_label)
+        layout.addWidget(metadata_host)
 
+        layout.addStretch(1)
         if installed:
             action = button("Uninstall", "danger")
             action.clicked.connect(lambda _checked=False, pid=provider.id: self.on_uninstall(pid))
@@ -98,11 +233,38 @@ class ProvidersPage(QWidget):
         layout.addLayout(row)
         return item
 
+    def _column_count(self) -> int:
+        available_width = self.host.contentsRect().width()
+        if available_width <= 0:
+            available_width = max(0, self.width() - 28)
+        fitting = (available_width + PROVIDER_GRID_GAP) // (PROVIDER_CARD_MIN_WIDTH + PROVIDER_GRID_GAP)
+        return max(PROVIDER_MIN_COLUMNS, min(PROVIDER_MAX_COLUMNS, int(fitting)))
+
+    def _reflow_cards(self, *, force: bool = False) -> None:
+        columns = self._column_count()
+        if not force and columns == self._current_columns:
+            return
+        self._current_columns = columns
+        while self.grid.count():
+            self.grid.takeAt(0)
+        for column in range(PROVIDER_MAX_COLUMNS):
+            self.grid.setColumnMinimumWidth(column, PROVIDER_CARD_MIN_WIDTH if column < columns else 0)
+            self.grid.setColumnStretch(column, 1 if column < columns else 0)
+        for index, item in enumerate(self._cards):
+            row, column = divmod(index, columns)
+            self.grid.addWidget(item, row, column)
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        if hasattr(self, "grid"):
+            self._reflow_cards()
+
     def refresh(self) -> None:
         while self.grid.count():
             item = self.grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+        self._cards.clear()
         installed = self.manager.list_installed()
         installed_by_id = {provider.id: provider for provider in installed}
         installed_ids = set(installed_by_id)
@@ -117,8 +279,7 @@ class ProvidersPage(QWidget):
         if not providers:
             empty = card("No provider packages", "Use Load Provider to add a validated provider manifest.")
             self.grid.addWidget(empty, 0, 0)
+            self._current_columns = 1
             return
-        for index, provider in enumerate(providers):
-            self.grid.addWidget(self._provider_card(provider, provider.id in installed_ids), index // 3, index % 3)
-        for column in range(3):
-            self.grid.setColumnStretch(column, 1)
+        self._cards.extend(self._provider_card(provider, provider.id in installed_ids) for provider in providers)
+        self._reflow_cards(force=True)

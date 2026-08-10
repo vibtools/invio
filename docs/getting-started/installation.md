@@ -22,6 +22,10 @@ On Linux, a usable Secret Service/libsecret or KWallet environment must be avail
 python main.py
 ```
 
+## Upgrade to v1.0.0.1.41
+
+`v1.0.0.1.41` is a Providers-page UI/UX-only candidate over the `v1.0.0.1.40.2` production baseline. No dependency, database-schema, credential-store, provider-registry or configuration migration is required. Apply the replace-ready delta over the exact v1.0.0.1.40.2 project root; existing provider installation/account/task data remains untouched.
+
 On first P02 launch, Invio creates the version-1 operational SQLite schema in the same per-user application directory used by Settings. An existing empty version-0 database is backed up before migration.
 
 ## Upgrade from v1.0.0.1.7
