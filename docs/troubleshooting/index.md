@@ -1,5 +1,10 @@
 # Troubleshooting
 
+## v1.0.0.1.43.0 Data Grid troubleshooting
+
+Search/filter/pagination are UI-session state only. Clear the search and return filters to `All` if a known record is not visible. Pagination resets to page 1 after a search/filter change. Full text for elided table values is available by hover tooltip. The New Task account selector still disables unverified or reserved accounts; search/pagination do not override those existing eligibility gates.
+
+
 ## v1.0.0.1.42.0 UI troubleshooting
 
 If Settings appears empty, clear the Search settings field or press `Ctrl+F` and remove the filter text. Search hides nonmatching cards only; it never deletes or changes settings. If a dialog action looks generic rather than blue, treat it as a packaging/source mismatch because Save/Create/Add primary actions are explicitly styled in v1.42.0.

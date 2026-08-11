@@ -1,8 +1,8 @@
 # Invio Documentation
 
-Current UI baseline/candidate chain: **v1.0.0.1.41.1 is owner-frozen; v1.0.0.1.42.0 is the Global Forms + Settings UI/UX candidate.** The candidate changes form/dialog presentation and Settings layout/search only; runtime/provider/storage/task behavior is unchanged.
+Current UI baseline/candidate chain: **v1.0.0.1.42.0 is owner-frozen; v1.0.0.1.43.0 is the Global Data Tables + Lists + Fonts candidate.** The candidate adds compact in-memory search/filter/pagination and data-surface presentation only; runtime/provider/storage/task business behavior is unchanged.
 
-- `release-notes/1.0.0.1.42.0.md` - Global Forms + Settings UI/UX candidate.
+- `release-notes/1.0.0.1.43.0.md` - Global Data Tables + Lists + Fonts candidate.
 
 
 Official Production Baseline: **v1.0.0.1.40.2 — FIRST PRODUCTION RELEASE**. Owner-confirmed Odoo Provider v1.0.0 end-to-end invoice sending is the production-certified live provider path. P14 is complete by explicit owner acceptance; Refrens P11 live email acceptance is deferred/non-blocking.

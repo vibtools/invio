@@ -1,12 +1,14 @@
 # Changelog
 
-## v1.0.0.1.42.0 - Global Forms + Settings UI/UX Refinement
+## v1.0.0.1.43.0 - Global Data Tables + Lists + Fonts
 
-- Freezes `v1.0.0.1.41.1` as the parent Official Baseline.
-- Adds scoped 32px/6px compact form controls, softened form typography/colors, 12px dialog padding and 8px dialog spacing.
-- Removes verbose application-owned dialog subtitles/nonessential help text and standardizes explicit primary footer actions.
-- Modernizes Settings with Search (`Ctrl+F`), live card filtering, responsive 1/2-column reflow, compact full-width Customer Defaults, Reset Settings and aligned Browse/input heights.
-- Preserves Settings persistence/defaults, provider/runtime/API behavior, SQLite schema v5, WorkerManager, Tasks, customer/invoice behavior, Providers Page and dependencies.
+- Freezes `v1.0.0.1.42.0` as the parent Official Baseline.
+- Adds a compact shared in-memory Data Grid presentation contract with 28px search/filter/pagination controls, 28px headers, 30px rows, subtle zebra/hover states, semantic status badges, full-value tooltips and 10/25/50 pagination.
+- Adds approved search/filter/pagination to Accounts, Customer Lists/Records, Invoice Templates, Reports Task/Recipient tables, Invoice Items and the New Task account selector.
+- Converts only the New Task Accounts selector from `QListWidget` to a compact four-column `QTableWidget`, preserves account eligibility/selection semantics, and caps the selector at 250px.
+- Fixes the Invoice Templates clipped Actions cell with an 80px fixed action column and compact 28px row buttons.
+- Unifies Reports table surfaces and scopes 400/500 data-page typography while retaining 600-weight 11px table headers.
+- Preserves provider/runtime/API behavior, SQLite schema v5, WorkerManager, settings/forms/providers approved UI, Task/customer/invoice business semantics and dependencies.
 
 
 ## v1.0.0.1.41.1 - Providers Page Final UI Polish

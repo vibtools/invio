@@ -1,13 +1,13 @@
 # Versioning
 
-## v1.0.0.1.42.0 Global Forms + Settings UI/UX Candidate
+## v1.0.0.1.43.0 Global Data Tables + Lists + Fonts Candidate
 
-- Parent Official Baseline: `1.0.0.1.41.1`
-- Application/source version: `1.0.0.1.42.0`
-- Windows PE file/product version: `1.0.1.4200`
-- MSI product version: `1.1.4200`
-- Reserved exact tag: `v1.0.0.1.42.0` — not authorized until owner visual acceptance and green candidate CI.
-- Scope: Global Forms + Settings UI/UX only; runtime/business/storage behavior frozen.
+- Parent Official Baseline: `v1.0.0.1.42.0`
+- Application/source version: `1.0.0.1.43.0`
+- Windows PE file/product version: `1.0.1.4300`
+- MSI product version: `1.1.4300`
+- Reserved exact tag: `v1.0.0.1.43.0` — **not authorized until owner visual acceptance and green candidate CI**
+- Scope: compact Data Grid UI/UX only; provider/runtime/storage/settings/business behavior unchanged.
 
 
 ## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate

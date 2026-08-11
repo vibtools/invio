@@ -29,8 +29,8 @@ class UiContractTests(unittest.TestCase):
         self.assertEqual(CONST.form_radius, 6)
         self.assertEqual(CONST.dialog_padding, 12)
         self.assertEqual(CONST.dialog_gap, 8)
-        self.assertEqual(CONST.table_header_height, 30)
-        self.assertEqual(CONST.table_row_height, 32)
+        self.assertEqual(CONST.table_header_height, 28)
+        self.assertEqual(CONST.table_row_height, 30)
         self.assertEqual((CONST.min_window_width, CONST.min_window_height), (1120, 720))
         self.assertEqual((CONST.default_window_width, CONST.default_window_height), (1366, 768))
 
@@ -71,6 +71,75 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("QMenu::item:selected", style_source)
         self.assertIn("selection-color: {c['primary_text']}", style_source)
         self.assertIn("app.setStyleSheet(app_qss())", app_source)
+
+
+    def test_v143_compact_data_grid_contract_is_scope_locked(self):
+        root = Path(__file__).resolve().parents[1]
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        accounts = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        customers = (root / "src" / "ui" / "pages" / "customer_lists_page.py").read_text(encoding="utf-8")
+        templates = (root / "src" / "ui" / "pages" / "invoice_templates_page.py").read_text(encoding="utf-8")
+        reports = (root / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+
+        self.assertEqual(CONST.data_grid_control_height, 28)
+        self.assertEqual(CONST.data_grid_gap, 6)
+        self.assertEqual(CONST.data_grid_search_width, 220)
+        self.assertEqual(CONST.data_grid_default_page_size, 10)
+        self.assertEqual(CONST.data_grid_accounts_max_height, 250)
+        self.assertIn("class DataGridToolbar(QWidget):", widgets)
+        self.assertIn("class DataGridPager(QWidget):", widgets)
+        self.assertIn('self.summary.setText(f"Showing {start + 1}–{end} of {self.total}")', widgets)
+        self.assertIn('(10, 25, 50)', widgets)
+        self.assertIn('asset_path("icons", "search.svg")', widgets)
+        self.assertTrue((root / "assets" / "icons" / "search.svg").is_file())
+        self.assertIn('"search.svg"', pyproject)
+        self.assertIn('QLineEdit#DataGridSearchInput', styles)
+        self.assertIn('QPushButton#DataGridPageButton', styles)
+        self.assertIn('QLabel#DataGridStatusSuccess', styles)
+        self.assertIn('background: #064E3B; color: #34D399;', styles)
+        self.assertIn('background: #7F1D1D; color: #F87171;', styles)
+        self.assertIn('background: #78350F; color: #FBBF24;', styles)
+        self.assertIn("alternate-background-color: {c['row_alternate']}", styles)
+        self.assertIn("letter-spacing: 0.2px", styles)
+
+        self.assertIn('self.setProperty("dataPage", True)', accounts)
+        self.assertIn('DataGridToolbar(', accounts)
+        self.assertIn('DataGridPager(', accounts)
+        self.assertIn('strftime("%b %d, %Y • %H:%M")', accounts)
+        self.assertIn('setIconSize(QSize(16, 16))', accounts)
+        self.assertIn('data_badge_host(provider_status)', accounts)
+
+        self.assertIn('"Search lists..."', customers)
+        self.assertIn('"Search customers..."', customers)
+        self.assertIn('self.email_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)', customers)
+        self.assertIn('"No matching records."', customers)
+
+        self.assertIn('"Search templates..."', templates)
+        self.assertIn('self.table.setColumnWidth(6, 80)', templates)
+        self.assertIn('edit.setFixedWidth(32)', templates)
+        self.assertIn('delete.setFixedWidth(44)', templates)
+
+        self.assertIn('"Search tasks..."', reports)
+        self.assertIn('"Search delivery history..."', reports)
+        self.assertIn('setObjectName("RecipientReportTable")', reports)
+        self.assertIn('data_badge_host(value)', reports)
+
+        new_task = dialogs[dialogs.index("class NewTaskDialog") :]
+        self.assertIn('self.accounts = QTableWidget(0, 4)', new_task)
+        self.assertNotIn('QListWidget()', new_task)
+        self.assertIn('["✓", "ACCOUNT NAME", "MODE", "STATUS"]', new_task)
+        self.assertIn('self.accounts.setFixedHeight(height)', new_task)
+        self.assertIn('CONST.data_grid_accounts_max_height', new_task)
+        self.assertIn('self.accounts_pager = DataGridPager', new_task)
+        self.assertIn('self.accounts_toolbar = DataGridToolbar', new_task)
+
+        invoice = dialogs[dialogs.index("class InvoiceTemplateDialog") : dialogs.index("class NewTaskDialog")]
+        self.assertIn('self.items_toolbar = DataGridToolbar', invoice)
+        self.assertIn('self.items_pager = DataGridPager', invoice)
+        self.assertIn('self.items.setRowHidden(row, row not in visible_rows)', invoice)
 
     def test_application_icon_contract_uses_owner_asset_paths_and_windows_build_icon(self):
         root = Path(__file__).resolve().parents[1]
@@ -270,7 +339,7 @@ class UiContractTests(unittest.TestCase):
             'form_group("Invoice note (optional)"',
             'form_group("Customer note (optional)"',
             'form_group("Invoice type"',
-            '["Description", "Quantity", "Unit amount", "Tax %"]',
+            '["DESCRIPTION", "QUANTITY", "UNIT AMOUNT", "TAX %"]',
             'self.items.verticalHeader().setVisible(False)',
         ):
             self.assertIn(marker, source)
@@ -454,7 +523,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('button("Edit")', page)
         self.assertIn('button("Re-test")', page)
         self.assertIn('button("Delete")', page)
-        self.assertIn('"Last API Test"', page)
+        self.assertIn('"LAST API TEST"', page)
         self.assertIn('"Protected storage"', page)
         self.assertIn('"Not Installed"', page)
         self.assertIn('class AccountRetestDialog(QDialog)', dialogs)
@@ -489,7 +558,7 @@ class UiContractTests(unittest.TestCase):
         main_window = (Path(__file__).resolve().parents[1] / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         importer = (Path(__file__).resolve().parents[1] / "src" / "customers" / "importers" / "email_importer.py").read_text(encoding="utf-8")
         model = (Path(__file__).resolve().parents[1] / "src" / "customers" / "models" / "customer_list.py").read_text(encoding="utf-8")
-        self.assertIn('["#", "Email", "Name", "Country"]', page)
+        self.assertIn('["#", "EMAIL", "NAME", "COUNTRY"]', page)
         self.assertIn('button("Upload Customers")', page)
         self.assertIn('import_customers(path)', main_window)
         self.assertIn('class CustomerRecord', model)

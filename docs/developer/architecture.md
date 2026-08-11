@@ -1,5 +1,10 @@
 # Developer Architecture
 
+## v1.0.0.1.43.0 Data Grid UI boundary
+
+The owner-frozen `v1.0.0.1.42.0` runtime/business architecture is unchanged. v1.43.0 adds small shared UI helpers in `src/ui/widgets.py` for search/filter and in-memory pagination, then applies them only to Accounts, Customer Lists/Records, Invoice Templates, Reports, Invoice Items and New Task Accounts. Data filters/pagers never write application state. New Task keeps the same provider/account eligibility and payload IDs while presenting available accounts in a compact `QTableWidget`. No backend pagination, sorting, persistence key, model/schema change or dependency is introduced.
+
+
 ## v1.0.0.1.42.0 UI boundary
 
 The owner-frozen `v1.0.0.1.41.1` runtime architecture is unchanged. v1.42.0 is limited to `src/ui/tokens.py`, `src/ui/styles.py`, `src/ui/dialogs.py`, `src/ui/pages/settings_page.py` plus directly required tests/version/docs. Form styling is selector-scoped to `QDialog` and `SettingsPage` so the approved Providers Page geometry remains frozen. Settings search is in-memory presentation state only and does not alter `AppSettings` or SettingsManager persistence.

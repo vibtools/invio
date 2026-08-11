@@ -1,16 +1,6 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.41.1` is the owner-frozen Official Baseline.** **`v1.0.0.1.42.0` is the scope-locked Global Forms + Settings UI/UX candidate.** This update refines only application-owned form/dialog presentation and the Settings page; provider/runtime/API, SQLite schema v5, WorkerManager, Task/customer/invoice behavior, credentials, dependencies and the approved Providers Page remain unchanged.
-
-## v1.0.0.1.42.0 Global Forms + Settings UI/UX Candidate
-
-- Normalizes application-owned dialog/form controls to 32px height and 6px radius using scoped form tokens, without changing frozen page-level Provider controls.
-- Applies softened form/settings text tokens: title `#E6EDF3`, body `#C9D1D9`, muted `#8B949E`, placeholder `#48515E`.
-- Removes verbose dialog subtitles and nonessential help captions from New Customer List, Add/Edit Account, Re-test Account, Invoice Template and New Task surfaces.
-- Standardizes dialog root padding to 12px, dialog section spacing to 8px, and explicit right-aligned secondary + primary footer actions.
-- Adds Settings Search with `Ctrl+F`, live card/option-keyword filtering, responsive 1/2-column card reflow, a full-width compact Customer Defaults card, `Reset Settings`, and 32px Browse alignment.
-- Removes all five Settings card subtitles/help paragraphs while preserving every setting key, default, persistence rule and save/reset behavior.
-- No provider/runtime/storage/task/business behavior changes are included.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.42.0` is the owner-frozen Official Baseline.** **`v1.0.0.1.43.0` is the scope-locked Global Data Tables + Lists + Fonts candidate.** It adds compact search/filter/pagination, semantic status badges, 28px data controls/headers, 30px rows, tooltip-backed text elision, unified report surfaces, a bounded tabular New Task account selector and the Invoice Templates action-column clip correction while preserving the approved Providers/Forms/Settings UI and all provider/runtime/storage/business behavior.
 
 ## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate
 
@@ -22,6 +12,17 @@
 - Keeps actions bottom-anchored; Providers-page Uninstall now uses primary-theme blue styling rather than the global danger/red treatment.
 - Retains v1.41 card height `220px`, minimum width `280px`, `16px` spacing, 2–4 responsive columns, three-line description ellipsis and `#1A212E` hover surface.
 - No provider/runtime/storage/threading/business/API behavior changes are included.
+
+## v1.0.0.1.43.0 Global Data Tables + Lists + Fonts Candidate
+
+- Uses the existing Segoe UI Variable/Segoe UI family; data-page titles/cards move to the approved 500-weight hierarchy while table headers remain 11px/600.
+- Adds reusable 28px Data Grid search/filter/footer controls and 10/25/50 in-memory pagination without backend pagination or sorting.
+- Standardizes 28px table headers, 30px rows, subtle zebra striping/hover, no vertical grid lines, semantic status pills and full-value cell tooltips.
+- Adds presentation filters/search/pagination to Accounts, Customer Lists/Records, Invoice Templates, both Reports tables, Invoice Items and New Task Accounts.
+- Keeps Accounts as a QTreeWidget with stronger provider-group hierarchy, 16px provider logos and compact displayed API-test timestamps.
+- Converts only New Task Accounts from QListWidget to a four-column QTableWidget and caps the record surface at 250px while retaining verified/reserved account gates.
+- Fixes the Invoice Templates Actions clipping at the approved compact 80px width.
+- No provider/runtime/storage/settings/business behavior changes are included.
 
 ## v1.0.0.1.41 Providers Page UI/UX Candidate
 

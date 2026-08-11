@@ -1,5 +1,10 @@
 # Installation
 
+## Upgrade to v1.0.0.1.43.0
+
+Apply the replace-ready v1.43.0 delta over the exact owner-frozen `v1.0.0.1.42.0` project root. The update adds only UI source/tests/docs plus `assets/icons/search.svg`; dependencies and SQLite schema remain unchanged. Rebuild the wheel/portable/MSI normally after owner visual acceptance and green non-tag CI.
+
+
 ## Upgrade to v1.0.0.1.42.0
 
 Apply the replace-ready delta only to an exact `v1.0.0.1.41.1` project root. No dependency, database, provider-registry, credential or settings-file migration is required. Existing local Settings values remain compatible.

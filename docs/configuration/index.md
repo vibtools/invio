@@ -1,5 +1,10 @@
 # Configuration
 
+## v1.0.0.1.43.0 configuration boundary
+
+Data Grid search text, filters, current page and rows-per-page are not persisted settings. They exist only for the active UI session. No configuration key/default/file format changes are introduced.
+
+
 ## v1.0.0.1.42.0 configuration boundary
 
 No configuration key or Settings persistence schema changes are introduced. Search text is session-only UI state. `Reset Settings` still loads `SettingsManager.defaults()` and requires `Save Changes` before persistence, exactly as the baseline restore workflow did.

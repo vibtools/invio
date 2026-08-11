@@ -197,6 +197,7 @@ def app_qss() -> str:
         background: {c['surface']}; color: {c['primary_text']};
         border: 1px solid {c['border']}; border-radius: {CONST.common_radius}px;
         selection-background-color: {c['selection']}; selection-color: {c['primary_text']};
+        font-size: 12px; font-weight: 400;
     }}
     QListWidget::item {{ min-height: {CONST.table_row_height}px; padding: 0px 7px; color: {c['primary_text']}; }}
     QListWidget::item:hover {{ background: {c['row_hover']}; }}
@@ -227,18 +228,22 @@ def app_qss() -> str:
         image: url("{check_icon}");
     }}
     QTreeWidget, QTableWidget {{
-        background: {c['surface']}; alternate-background-color: rgba(255,255,255,3);
+        background: {c['surface']}; alternate-background-color: {c['row_alternate']};
         border: 1px solid {c['border']}; border-radius: {CONST.common_radius}px;
         gridline-color: transparent; selection-background-color: {c['selection']};
         selection-color: {c['primary_text']}; color: {c['primary_text']};
+        font-size: 12px; font-weight: 400;
     }}
-    QTreeWidget::item, QTableWidget::item {{ min-height: {CONST.table_row_height}px; padding: 0px 7px; border-bottom: 1px solid {c['border']}; }}
+    QTreeWidget::item, QTableWidget::item {{
+        min-height: {CONST.table_row_height}px; padding: 0px 7px;
+        border-bottom: 1px solid {c['border']};
+    }}
     QTreeWidget::item:hover, QTableWidget::item:hover {{ background: {c['row_hover']}; }}
     QHeaderView::section {{
         background: {c['table_header']}; color: {c['secondary_text']}; border: none;
-        border-bottom: 1px solid {c['border']}; padding: 0px 7px;
+        border-bottom: 1px solid {c['data_divider']}; padding: 0px 7px;
         min-height: {CONST.table_header_height}px; max-height: {CONST.table_header_height}px;
-        font-size: 11px; font-weight: 600;
+        font-size: 11px; font-weight: 600; letter-spacing: 0.2px;
     }}
 
     /* v1.42.0 Global Forms + Settings scoped compact design contract. */
@@ -339,8 +344,122 @@ def app_qss() -> str:
         border-color: {c['danger']};
     }}
     QPlainTextEdit#LogViewer {{ background: {c['nested_surface']}; border: 1px solid {c['input_border']}; padding: 10px 12px; }}
-    QTableWidget#ReportTable {{ background: {c['page_background']}; border-radius: 6px; }}
-    QTableWidget#InvoiceItemsTable {{ background: {c['page_background']}; }}
+    QTableWidget#ReportTable, QTableWidget#RecipientReportTable {{ background: {c['surface']}; border-radius: {CONST.common_radius}px; }}
+    QTableWidget#InvoiceItemsTable {{ background: {c['surface']}; }}
+
+
+    /* v1.43.0 compact Data Grid contract. */
+    QWidget[dataPage="true"] QLabel#PageTitle,
+    QWidget[dataPage="true"] QLabel#SectionTitle,
+    QWidget[dataPage="true"] QLabel#CardTitle {{
+        color: {c['text_title']};
+        font-weight: 500;
+    }}
+    QWidget[dataPage="true"] QLabel#Description {{
+        color: {c['text_body']};
+        font-weight: 400;
+    }}
+    QWidget#DataGridToolbar,
+    QWidget#DataGridFooter,
+    QWidget#DataGridBadgeHost {{
+        background: transparent;
+        border: none;
+    }}
+    QWidget#DataGridToolbar {{
+        border-bottom: 1px solid {c['data_divider']};
+        padding-bottom: {CONST.data_grid_padding}px;
+    }}
+    QWidget#DataGridFooter {{
+        border-top: 1px solid {c['data_divider']};
+        padding-top: {CONST.data_grid_padding}px;
+    }}
+    QLineEdit#DataGridSearchInput,
+    QComboBox#DataGridFilter,
+    QComboBox#DataGridPageSize {{
+        min-height: {CONST.data_grid_control_height}px;
+        max-height: {CONST.data_grid_control_height}px;
+        border-radius: 6px;
+        border: 1px solid {c['input_border']};
+        background: {c['nested_surface']};
+        color: {c['text_body']};
+        padding: 0px 8px;
+        font-size: 11px;
+        font-weight: 400;
+        placeholder-text-color: {c['text_placeholder']};
+    }}
+    QLineEdit#DataGridSearchInput:focus,
+    QComboBox#DataGridFilter:focus,
+    QComboBox#DataGridPageSize:focus {{
+        border-color: {c['focus']};
+    }}
+    QComboBox#DataGridFilter {{ min-width: 118px; }}
+    QComboBox#DataGridPageSize {{ min-width: 52px; max-width: 62px; }}
+    QLabel#DataGridMeta,
+    QLabel#DataGridEmpty {{
+        color: {c['text_muted']};
+        font-size: 11px;
+        font-weight: 400;
+    }}
+    QPushButton#DataGridPageButton {{
+        min-width: {CONST.data_grid_control_height}px;
+        max-width: {CONST.data_grid_control_height}px;
+        min-height: {CONST.data_grid_control_height}px;
+        max-height: {CONST.data_grid_control_height}px;
+        padding: 0px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 500;
+    }}
+    QPushButton#DataGridPageButton[currentPage="true"] {{
+        background: {c['primary']};
+        border-color: {c['primary_hover']};
+        color: #FFFFFF;
+    }}
+    QLabel#DataGridStatusSuccess,
+    QLabel#DataGridStatusDanger,
+    QLabel#DataGridStatusWarning,
+    QLabel#DataGridStatusNeutral {{
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 10px;
+        font-weight: 500;
+    }}
+    QLabel#DataGridStatusSuccess {{ background: #064E3B; color: #34D399; }}
+    QLabel#DataGridStatusDanger {{ background: #7F1D1D; color: #F87171; }}
+    QLabel#DataGridStatusWarning {{ background: #78350F; color: #FBBF24; }}
+    QLabel#DataGridStatusNeutral {{ background: #1E293B; color: {c['text_muted']}; }}
+    QPushButton#TableActionButton {{
+        min-height: 28px;
+        max-height: 28px;
+        border-radius: 6px;
+        padding: 0px 5px;
+        font-size: 11px;
+        font-weight: 500;
+    }}
+    QPushButton#TableActionDangerButton {{
+        min-height: 28px;
+        max-height: 28px;
+        border-radius: 6px;
+        padding: 0px 5px;
+        font-size: 11px;
+        font-weight: 500;
+        background: transparent;
+        border: 1px solid {c['danger']};
+        color: {c['danger_text']};
+    }}
+    QPushButton#TableActionDangerButton:hover {{ background: rgba(185,28,28,31); }}
+    QTableWidget#NewTaskAccountsTable::indicator {{
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1px solid #30363D;
+        background: {c['window_background']};
+    }}
+    QTableWidget#NewTaskAccountsTable::indicator:checked {{
+        background: {c['primary']};
+        border-color: {c['primary_hover']};
+        image: url("{check_icon}");
+    }}
 
     QProgressBar {{
         min-height: 6px; max-height: 6px; border: none; background: {c['border']}; border-radius: 3px; text-align: center;

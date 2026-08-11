@@ -10,6 +10,7 @@ from version_info import current_release_version
 
 REQUIRED_RELATIVE_RESOURCES = (
     Path("assets/icons/checkmark.svg"),
+    Path("assets/icons/search.svg"),
     Path("assets/icons/providers/stripe.png"),
     Path("assets/icons/providers/refrens.png"),
     Path("assets/icons/providers/agiled.png"),

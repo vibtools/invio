@@ -1,5 +1,10 @@
 # User Guide
 
+## v1.0.0.1.43.0 Data Grid usage
+
+Accounts, Customer Lists/Records, Invoice Templates and Reports now provide compact UI-session search/filter/pagination controls. Pagination defaults to 10 rows with 25/50 alternatives and does not change stored data. Long table values retain full-value tooltips. Accounts keep provider grouping with compact displayed API-test time; New Task Accounts is a bounded four-column selector that preserves the existing Verified/available eligibility rules. Invoice Items pagination hides non-page rows only in the view; every item remains part of the saved template payload.
+
+
 ## v1.0.0.1.42.0 Forms and Settings usage
 
 Application-owned forms use a denser 32px control system with consistent primary actions and reduced explanatory copy. Settings adds `Search settings... (Ctrl+F)`: type any setting/card/option term to filter visible cards; `Ctrl+F` focuses the field. `Reset Settings` loads existing defaults but does not persist them until `Save Changes` is selected. All existing setting meanings and defaults are unchanged.

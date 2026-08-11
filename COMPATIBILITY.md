@@ -1,8 +1,8 @@
 # Compatibility
 
-## v1.0.0.1.42.0 Forms/Settings compatibility
+## v1.0.0.1.43.0 Data Grid compatibility
 
-`v1.0.0.1.42.0` is a presentation-only candidate over the owner-frozen `v1.0.0.1.41.1` baseline. It adds no settings key, persistence migration, provider SDK/API change, database migration, dependency, task-state change or plugin-interface change. Existing Settings JSON remains fully compatible. Python/runtime, SQLite schema v5, P13 interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged.
+`v1.0.0.1.43.0` is a presentation/interaction-only candidate over the owner-frozen `v1.0.0.1.42.0` baseline. Search, filter and pagination operate on existing in-memory UI records and do not add a persistence key, schema migration, provider API change, Task transition, customer/import rule, invoice calculation, report field, dependency or plugin-interface change. SQLite remains schema v5; P13 interface v1, WorkerManager/QThread ownership, provider credential/runtime contracts, v1.41.1 Providers UI and v1.42.0 Global Forms/Settings UI remain compatible.
 
 
 ## v1.0.0.1.41.1 Providers UI compatibility

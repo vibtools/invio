@@ -18,8 +18,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QLayout,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -38,7 +36,16 @@ from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
 from ..core.state import AppState
 from ..invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCIES
 from .tokens import CONST
-from .widgets import button, card, form_group, label
+from .widgets import (
+    DataGridPager,
+    DataGridToolbar,
+    button,
+    card,
+    data_badge_host,
+    data_table_item,
+    form_group,
+    label,
+)
 
 
 class _AccountVerificationWorker(QObject):
@@ -817,14 +824,22 @@ class InvoiceTemplateDialog(QDialog):
         content_layout.addWidget(secondary_card, 0, Qt.AlignmentFlag.AlignTop)
 
         items_card = _dialog_card("Invoice Items")
+        self.items_pager = DataGridPager(on_changed=self._refresh_item_view)
+        self.items_toolbar = DataGridToolbar(
+            "Search items...",
+            on_changed=self._item_controls_changed,
+        )
+        items_card.layout().addWidget(self.items_toolbar)
         self.items = QTableWidget(0, 4)
         self.items.setObjectName("InvoiceItemsTable")
-        self.items.setHorizontalHeaderLabels(["Description", "Quantity", "Unit amount", "Tax %"])
+        self.items.setHorizontalHeaderLabels(["DESCRIPTION", "QUANTITY", "UNIT AMOUNT", "TAX %"])
         self.items.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.items.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.items.setAlternatingRowColors(True)
         self.items.verticalHeader().setVisible(False)
-        self.items.verticalHeader().setDefaultSectionSize(30)
+        self.items.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         header = self.items.horizontalHeader()
+        header.setSectionsClickable(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -842,6 +857,7 @@ class InvoiceTemplateDialog(QDialog):
         item_actions.addWidget(remove_item)
         item_actions.addStretch(1)
         items_card.layout().addLayout(item_actions)
+        items_card.layout().addWidget(self.items_pager)
         content_layout.addWidget(items_card, 0, Qt.AlignmentFlag.AlignTop)
         content_layout.addStretch(1)
 
@@ -856,6 +872,22 @@ class InvoiceTemplateDialog(QDialog):
 
         root.addWidget(_dialog_footer("Save", self._validate_and_accept, self.reject))
 
+    def _item_controls_changed(self) -> None:
+        self.items_pager.reset()
+        self._refresh_item_view()
+
+    def _refresh_item_view(self) -> None:
+        query = self.items_toolbar.query
+        matching_rows: list[int] = []
+        for row in range(self.items.rowCount()):
+            values = [self.items.item(row, column).text() if self.items.item(row, column) else "" for column in range(4)]
+            if not query or query in " ".join(values).casefold():
+                matching_rows.append(row)
+        start, end = self.items_pager.set_total(len(matching_rows))
+        visible_rows = set(matching_rows[start:end])
+        for row in range(self.items.rowCount()):
+            self.items.setRowHidden(row, row not in visible_rows)
+
     def _add_item(
         self,
         description: str = "",
@@ -866,12 +898,14 @@ class InvoiceTemplateDialog(QDialog):
         row = self.items.rowCount()
         self.items.insertRow(row)
         for column, value in enumerate((description, quantity, amount, tax_rate)):
-            self.items.setItem(row, column, QTableWidgetItem(value))
+            self.items.setItem(row, column, data_table_item(value, right_align=column in {1, 2, 3}))
+        self._refresh_item_view()
 
     def _remove_selected(self) -> None:
         rows = sorted({item.row() for item in self.items.selectedItems()}, reverse=True)
         for row in rows:
             self.items.removeRow(row)
+        self._refresh_item_view()
 
     def _validate_and_accept(self) -> None:
         if not self.name_edit.text().strip():
@@ -923,6 +957,7 @@ class NewTaskDialog(QDialog):
         super().__init__(parent)
         self.state = state
         self.providers = providers
+        self._checked_account_ids: set[str] = set()
         self.setWindowTitle("New Task")
         self.setModal(True)
         _apply_compact_dialog_geometry(
@@ -937,13 +972,37 @@ class NewTaskDialog(QDialog):
         self.provider_combo = QComboBox()
         for provider in providers:
             self.provider_combo.addItem(provider.name, provider.id)
-        self.provider_combo.currentIndexChanged.connect(self._refresh_accounts)
+        self.provider_combo.currentIndexChanged.connect(self._provider_changed)
         root.addWidget(form_group("Provider", self.provider_combo))
 
         root.addWidget(label("Accounts", "FormLabel", False))
-        self.accounts = QListWidget()
-        self.accounts.setMinimumHeight(104)
+        self.accounts_pager = DataGridPager(on_changed=self._refresh_accounts)
+        self.accounts_toolbar = DataGridToolbar(
+            "Search accounts...",
+            on_changed=self._account_controls_changed,
+            filters=(
+                ("Availability", (("All", ""), ("Available", "available"), ("Unavailable", "unavailable"))),
+                ("Status", (("All statuses", ""),)),
+            ),
+        )
+        root.addWidget(self.accounts_toolbar)
+        self.accounts = QTableWidget(0, 4)
+        self.accounts.setObjectName("NewTaskAccountsTable")
+        self.accounts.setHorizontalHeaderLabels(["✓", "ACCOUNT NAME", "MODE", "STATUS"])
+        self.accounts.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.accounts.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.accounts.setAlternatingRowColors(True)
+        self.accounts.verticalHeader().setVisible(False)
+        self.accounts.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
+        self.accounts.itemChanged.connect(self._account_item_changed)
+        accounts_header = self.accounts.horizontalHeader()
+        accounts_header.setSectionsClickable(False)
+        accounts_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        accounts_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        accounts_header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        accounts_header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         root.addWidget(self.accounts)
+        root.addWidget(self.accounts_pager)
 
         selectors = QWidget()
         selectors_grid = QGridLayout(selectors)
@@ -965,36 +1024,109 @@ class NewTaskDialog(QDialog):
         root.addWidget(_dialog_footer("Create Task", self._validate_and_accept, self.reject))
         self._refresh_accounts()
 
-    def _refresh_accounts(self) -> None:
-        self.accounts.clear()
+    def _provider_changed(self, _index: int) -> None:
+        self._checked_account_ids.clear()
+        self.accounts_pager.reset()
+        self._refresh_accounts()
+
+    def _account_controls_changed(self) -> None:
+        self.accounts_pager.reset()
+        self._refresh_accounts()
+
+    def _account_rows(self):
         provider_id = self.provider_combo.currentData()
         if not provider_id:
-            return
+            return []
+        records = []
         for account in self.state.accounts_for_provider(provider_id):
             reserved_by = self.state.account_reservations.get(account.id)
-            text = f"{account.name}  •  {account.mode}  •  {account.status}"
-            item = QListWidgetItem(text)
-            item.setData(Qt.ItemDataRole.UserRole, account.id)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             if account.status != "Verified":
-                item.setText(f"{text}  •  API Test required")
-                item.setCheckState(Qt.CheckState.Unchecked)
-                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                available = False
+                display_status = account.status or "Not Verified"
+                tooltip_status = f"{display_status} • API Test required"
             elif reserved_by:
+                available = False
                 task_name = self.state.tasks.get(reserved_by).name if reserved_by in self.state.tasks else "another task"
-                item.setText(f"{text}  •  In use by {task_name}")
-                item.setCheckState(Qt.CheckState.Unchecked)
-                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                display_status = f"In use by {task_name}"
+                tooltip_status = display_status
             else:
-                item.setCheckState(Qt.CheckState.Unchecked)
-            self.accounts.addItem(item)
+                available = True
+                display_status = "Verified"
+                tooltip_status = "Verified • Available"
+            records.append((account, available, display_status, tooltip_status))
+        return records
+
+    def _refresh_accounts(self) -> None:
+        records = self._account_rows()
+        statuses = sorted({account.status for account, _available, _display, _tip in records}, key=str.casefold)
+        self.accounts_toolbar.set_filter_options(1, [("All statuses", ""), *((value, value) for value in statuses)])
+
+        query = self.accounts_toolbar.query
+        availability_filter = str(self.accounts_toolbar.filter_value(0) or "")
+        status_filter = str(self.accounts_toolbar.filter_value(1) or "")
+        filtered = []
+        for record in records:
+            account, available, display_status, tooltip_status = record
+            if availability_filter == "available" and not available:
+                continue
+            if availability_filter == "unavailable" and available:
+                continue
+            if status_filter and account.status != status_filter:
+                continue
+            searchable = f"{account.name} {account.mode} {account.status} {display_status} {tooltip_status}".casefold()
+            if query and query not in searchable:
+                continue
+            filtered.append(record)
+
+        start, end = self.accounts_pager.set_total(len(filtered))
+        visible = filtered[start:end]
+        self.accounts.blockSignals(True)
+        self.accounts.setRowCount(0)
+        for account, available, display_status, tooltip_status in visible:
+            row = self.accounts.rowCount()
+            self.accounts.insertRow(row)
+            checkbox = data_table_item("")
+            checkbox.setData(Qt.ItemDataRole.UserRole, account.id)
+            checkbox.setFlags(checkbox.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            checkbox.setCheckState(Qt.CheckState.Checked if account.id in self._checked_account_ids else Qt.CheckState.Unchecked)
+            if not available:
+                checkbox.setFlags(checkbox.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                self._checked_account_ids.discard(account.id)
+            self.accounts.setItem(row, 0, checkbox)
+            self.accounts.setItem(row, 1, data_table_item(account.name))
+            self.accounts.setItem(row, 2, data_table_item(account.mode))
+            status_item = data_table_item(display_status, tooltip=tooltip_status)
+            self.accounts.setItem(row, 3, status_item)
+            self.accounts.setCellWidget(row, 3, data_badge_host(display_status, "success" if available else "warning"))
+        self.accounts.blockSignals(False)
+        self._adjust_accounts_height(len(visible))
+
+    def _adjust_accounts_height(self, visible_count: int) -> None:
+        row_count = max(1, min(visible_count, self.accounts_pager.page_size))
+        desired = CONST.table_header_height + row_count * CONST.table_row_height + 4
+        height = min(CONST.data_grid_accounts_max_height, max(62, desired))
+        self.accounts.setFixedHeight(height)
+
+    def _account_item_changed(self, item: QTableWidgetItem) -> None:
+        if item.column() != 0:
+            return
+        account_id = str(item.data(Qt.ItemDataRole.UserRole) or "")
+        if not account_id:
+            return
+        if item.checkState() == Qt.CheckState.Checked and item.flags() & Qt.ItemFlag.ItemIsEnabled:
+            self._checked_account_ids.add(account_id)
+        else:
+            self._checked_account_ids.discard(account_id)
 
     def selected_account_ids(self) -> list[str]:
+        provider_id = self.provider_combo.currentData()
         selected: list[str] = []
-        for index in range(self.accounts.count()):
-            item = self.accounts.item(index)
-            if item.checkState() == Qt.CheckState.Checked and item.flags() & Qt.ItemFlag.ItemIsEnabled:
-                selected.append(str(item.data(Qt.ItemDataRole.UserRole)))
+        for account in self.state.accounts_for_provider(str(provider_id or "")):
+            if account.id not in self._checked_account_ids:
+                continue
+            if account.status != "Verified" or self.state.account_reservations.get(account.id):
+                continue
+            selected.append(account.id)
         return selected
 
     def _validate_and_accept(self) -> None:

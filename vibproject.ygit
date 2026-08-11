@@ -9,7 +9,7 @@
     "displayName": "Invio",
     "description": "Vib Tools desktop application for provider-based invoice automation workflows with provider-managed accounts, invoice templates, named customer lists, and isolated task execution.",
     "summary": "Vib Tools desktop application defining provider, account, customer-list, invoice-template, task, report, log, settings, and per-task worker architecture.",
-    "version": "1.0.0.1.42.0",
+    "version": "1.0.0.1.43.0",
     "status": "development",
     "visibility": "public",
     "category": "desktop-application",
@@ -182,9 +182,9 @@
   "release": {
     "strategy": "GitHub Actions tag release",
     "versioning": "Vib Tools release versioning",
-    "latestVersion": "1.0.0.1.42.0",
+    "latestVersion": "1.0.0.1.43.0",
     "releaseNotes": "docs/release-notes/",
-    "version": "1.0.0.1.42.0"
+    "version": "1.0.0.1.43.0"
   },
   "distribution": {
     "githubReleases": "",

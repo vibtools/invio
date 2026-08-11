@@ -239,11 +239,15 @@ No core runtime module, page, schema table, WorkerManager subsystem, dependency 
 - No folder/module reorganization is introduced; Providers UI code remains in `src/ui/pages/providers_page.py` and provider-specific QSS remains in `src/ui/styles.py`.
 
 
-## v1.0.0.1.42.0 Forms/Settings UI records
 
-- `docs/release-notes/1.0.0.1.42.0.md` — public Global Forms + Settings candidate record.
-- `examples/forms_settings_ui.md` — owner visual canary checklist.
-- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.42.0.md` — scope/root visual findings.
-- `project/specifications/BASELINE_FREEZE_v1.0.0.1.42.0.md` — candidate boundary.
-- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.42.0.md` — final verification record.
-- `PATCH_MANIFEST_v1.0.0.1.42.0.md` — replace-ready v1.42.0 overlay inventory.
+## v1.0.0.1.43.0 Data Grid UI records
+
+- `assets/icons/search.svg` — compact shared Data Grid search icon included in wheel/portable distribution audits.
+- `src/ui/widgets.py` — reusable Data Grid toolbar, pager, semantic badge and data-item presentation helpers; no backend/state API is introduced.
+- `src/ui/pages/accounts_page.py`, `customer_lists_page.py`, `invoice_templates_page.py`, `reports_page.py` — existing page classes retain their business callbacks while gaining scoped search/filter/pagination and compact table presentation.
+- `src/ui/dialogs.py` — existing Invoice Items gains view-only search/pagination and New Task Accounts is the single approved `QListWidget` → `QTableWidget` selector conversion.
+- `examples/data_grid_ui.md` — owner desktop visual canary checklist.
+- `docs/release-notes/1.0.0.1.43.0.md` — public candidate record.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.43.0.md` — approved UI findings/scope record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.43.0.md` — v1.42.0 parent baseline and v1.43.0 candidate boundary.
+- No folder/module reorganization, database schema change, provider/runtime interface, setting key, dependency or business workflow is introduced.

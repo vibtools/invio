@@ -28,7 +28,9 @@ COLORS = {
     "table_header": "#111620",
     "nav_selected": "rgba(37,99,235,31)",
     "hover": "rgba(255,255,255,13)",
-    "row_hover": "rgba(255,255,255,8)",
+    "row_hover": "rgba(255,255,255,6)",
+    "row_alternate": "rgba(255,255,255,2)",
+    "data_divider": "#263244",
     "selection": "rgba(37,99,235,38)",
     # v1.42.0 scoped form/settings typography tokens.
     "text_title": "#E6EDF3",
@@ -54,8 +56,14 @@ class UiConstants:
     button_height: int = 28
     button_padding_x: int = 9
     input_height: int = 32
-    table_header_height: int = 30
-    table_row_height: int = 32
+    table_header_height: int = 28
+    table_row_height: int = 30
+    data_grid_control_height: int = 28
+    data_grid_gap: int = 6
+    data_grid_padding: int = 8
+    data_grid_search_width: int = 220
+    data_grid_default_page_size: int = 10
+    data_grid_accounts_max_height: int = 250
     common_radius: int = 8
     form_control_height: int = 32
     form_radius: int = 6
