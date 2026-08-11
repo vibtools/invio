@@ -1,3 +1,14 @@
+## v1.0.0.1.48.4 - Compact Add Task Modal UI Redesign
+
+- Freezes `Invio v1.0.0.1.48.3` as the parent Official Baseline.
+- Reflows only the **New Task** modal into the approved compact toolbar, account grid, pager and one-row configuration/action layout.
+- Keeps Provider, availability/status filters and account search on one row; keeps the existing account columns, checkbox selection, pagination and account eligibility semantics.
+- Uses the existing 250px account-grid cap as a stable scrollable viewport instead of shrinking the table to the current visible-row count.
+- Keeps Invoice Template, Customer List, Cancel and Create Task on one bottom row while preserving validation and payload behavior.
+- Adds real PySide6 interaction coverage for open/close/reopen, provider change, filters, search, scrolling, selection, selectors, Cancel and Create Task; the tests execute in dependency-installed CI and skip only when PySide6 is absent.
+- No other page, style token, provider/runtime/storage/task/WorkerManager/business behavior, dependency, schema or architecture is changed.
+- Version mapping: application `1.0.0.1.48.4`, PE `1.0.1.4804`, MSI `1.1.4804`.
+
 ## v1.0.0.1.48.3 - End-to-End CI/CD & Release Pipeline Stabilization
 
 - Freezes `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip` as the parent Official Baseline.

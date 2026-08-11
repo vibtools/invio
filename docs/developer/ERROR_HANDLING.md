@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 Error-Handling Note
+
+No error classification, validation message, exception path or failure-handling behavior is changed. The New Task modal still uses the existing `_validate_and_accept()` validation gates and `compact_message_box()` warnings.
+
 ## v1.0.0.1.48.3 CI repository-contract regression boundary
 
 GitHub Actions run `31516505105` failed after Linux Qt/PySide6 initialization had already succeeded. The failure was not a runtime exception: the v1.48.02 `.gitignore` workaround partially materialized the otherwise private `project/` directory in public CI. Historical tests use directory existence as the signal that a complete private baseline is available, so the partial tree caused them to read planning/specification/research files that were intentionally absent from GitHub.

@@ -1,3 +1,9 @@
+# v1.0.0.1.48.4 Compact Add Task Modal UI Redesign
+
+`Invio v1.0.0.1.48.3` is the frozen parent baseline. `v1.0.0.1.48.4` changes only the **Tasks → New Task** modal composition: Provider + account availability/status filters + account search share one compact toolbar row; the existing account table uses a stable 250px scrollable viewport with its existing pagination; Invoice Template + Customer List + Cancel + Create Task share one compact bottom row. Existing colors, typography, borders, custom title bar, dialog shadow, account eligibility, selection, validation, payload, Task creation workflow, provider/runtime/storage/WorkerManager behavior and every other page remain unchanged.
+
+Version mapping: application/tag `1.0.0.1.48.4` / `v1.0.0.1.48.4`, PE `1.0.1.4804`, MSI `1.1.4804`, Python wheel `1.0.0.1.48.4`.
+
 # v1.0.0.1.48.3 End-to-End CI/CD & Release Pipeline Stabilization Candidate
 
 `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip` is the owner-frozen Official Baseline. `v1.0.0.1.48.3` is limited to GitHub CI/test/build/release stabilization. GitHub Actions run `31516505105` confirmed that the Linux Qt runtime correction is effective and that the real PySide6 popup interaction suite passes on both Linux and Windows. The remaining regression was repository-contract only: the v1.48.02 CI correction partially unignored the private `project/` tree so four root-cause records could be checked in a public checkout. That made `project/` exist in GitHub Actions and unintentionally activated every historical private-project assertion, producing 21 repository-contract failures before the Windows build stages could start.

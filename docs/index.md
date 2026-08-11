@@ -1,3 +1,7 @@
+## Current UI Update — v1.0.0.1.48.4
+
+The Tasks → New Task dialog now uses the approved compact single-toolbar / scrollable-account-grid / single-bottom-row layout. Workflow and backend behavior are unchanged.
+
 ## v1.0.0.1.48.3 CI/CD Stabilization
 
 The current candidate corrects only the GitHub CI/repository-contract boundary discovered in run `31516505105`. Linux Qt/PySide6 runtime tests already pass; the remaining failure came from partially publishing the private `project/` tree, which activated historical private-only checks in clean Actions checkouts. `v1.0.0.1.48.3` restores the established private-project contract and keeps the existing wheel, Nuitka, WiX MSI, checksum, artifact and exact-tag release pipeline unchanged.

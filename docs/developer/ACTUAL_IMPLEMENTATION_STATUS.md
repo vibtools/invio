@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 — New Task Modal
+
+**IMPLEMENTED:** compact New Task modal composition only. Provider/filter/search, account table/pager, selectors and actions retain their existing data bindings and callbacks. No backend capability status changes are introduced.
+
 ## v1.0.0.1.48.3 CI/CD stabilization status
 
 **IMPLEMENTED LOCALLY / REMOTE CONFIRMATION PENDING:** GitHub Actions run `31516505105` proves the Linux Qt dependency correction and real PySide6 popup runtime tests are working on both Linux and Windows. The remaining 21 failures are repository-contract failures caused by a partially unignored private `project/` tree. `v1.0.0.1.48.3` restores the established public/private test boundary: public CI no longer materializes `project/`, while a full private baseline continues to validate private records conditionally. Runtime/UI/business/provider/storage behavior is unchanged. A new pushed v1.48.3 run is required before claiming remote Windows wheel/Nuitka/MSI/artifact completion.

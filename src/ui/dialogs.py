@@ -978,18 +978,21 @@ class NewTaskDialog(QDialog):
         self.setWindowTitle("New Task")
         self.setModal(True)
         _apply_compact_dialog_geometry(
-            self, parent, width_ratio=0.60, preferred_height=520, min_width=700, max_width=860, min_height=450
+            self, parent, width_ratio=0.62, preferred_height=430, min_width=760, max_width=920, min_height=400
         )
 
         root = build_dialog_shell(self)
+        root.setSpacing(CONST.space_compact)
 
         self.provider_combo = QComboBox()
+        self.provider_combo.setObjectName("NewTaskProvider")
+        self.provider_combo.setAccessibleName("Provider")
+        self.provider_combo.setMinimumWidth(180)
+        self.provider_combo.setMaximumWidth(260)
         for provider in providers:
             self.provider_combo.addItem(provider.name, provider.id)
         self.provider_combo.currentIndexChanged.connect(self._provider_changed)
-        root.addWidget(form_group("Provider", self.provider_combo))
 
-        root.addWidget(label("Accounts", "FormLabel", False))
         self.accounts_pager = DataGridPager(on_changed=self._refresh_accounts)
         self.accounts_toolbar = DataGridToolbar(
             "Search accounts...",
@@ -999,13 +1002,40 @@ class NewTaskDialog(QDialog):
                 ("Status", (("All statuses", ""),)),
             ),
         )
-        root.addWidget(self.accounts_toolbar)
+        self.accounts_toolbar.setObjectName("NewTaskAccountToolbar")
+        for account_filter in self.accounts_toolbar.filters:
+            account_filter.setMinimumWidth(108)
+            account_filter.setMaximumWidth(150)
+        self.accounts_toolbar.search.setMaximumWidth(190)
+
+        # New Task is the only surface that uses Provider + filters + search in
+        # one compact row. Reorder this toolbar instance locally so the shared
+        # DataGridToolbar contract remains unchanged everywhere else.
+        account_toolbar_layout = self.accounts_toolbar.layout()
+        if isinstance(account_toolbar_layout, QHBoxLayout):
+            for account_filter in self.accounts_toolbar.filters:
+                account_toolbar_layout.removeWidget(account_filter)
+            account_toolbar_layout.removeWidget(self.accounts_toolbar.search)
+            for account_filter in self.accounts_toolbar.filters:
+                account_toolbar_layout.addWidget(account_filter)
+            account_toolbar_layout.addWidget(self.accounts_toolbar.search)
+
+        toolbar_row = QWidget()
+        toolbar_row.setObjectName("NewTaskToolbarRow")
+        toolbar_layout = QHBoxLayout(toolbar_row)
+        toolbar_layout.setContentsMargins(0, 0, 0, 0)
+        toolbar_layout.setSpacing(CONST.data_grid_gap)
+        toolbar_layout.addWidget(self.provider_combo)
+        toolbar_layout.addWidget(self.accounts_toolbar, 1)
+        root.addWidget(toolbar_row)
+
         self.accounts = QTableWidget(0, 4)
         self.accounts.setObjectName("NewTaskAccountsTable")
         self.accounts.setHorizontalHeaderLabels(["✓", "ACCOUNT NAME", "MODE", "STATUS"])
         self.accounts.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.accounts.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.accounts.setAlternatingRowColors(True)
+        self.accounts.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.accounts.verticalHeader().setVisible(False)
         self.accounts.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         self.accounts.itemChanged.connect(self._account_item_changed)
@@ -1015,27 +1045,47 @@ class NewTaskDialog(QDialog):
         accounts_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         accounts_header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         accounts_header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.accounts.setFixedHeight(CONST.data_grid_accounts_max_height)
         root.addWidget(self.accounts)
         root.addWidget(self.accounts_pager)
 
-        selectors = QWidget()
-        selectors_grid = QGridLayout(selectors)
-        selectors_grid.setContentsMargins(0, 0, 0, 0)
-        selectors_grid.setHorizontalSpacing(CONST.dialog_gap)
-        selectors_grid.setVerticalSpacing(CONST.dialog_gap)
         self.invoice_template = QComboBox()
+        self.invoice_template.setObjectName("NewTaskInvoiceTemplate")
+        self.invoice_template.setAccessibleName("Invoice Template")
+        self.invoice_template.setToolTip("Invoice Template")
+        self.invoice_template.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         for item in sorted(state.invoice_templates.values(), key=lambda value: value.name.casefold()):
             self.invoice_template.addItem(f"{item.name}  •  {item.currency.upper()}", item.id)
+
         self.customer_list = QComboBox()
+        self.customer_list.setObjectName("NewTaskCustomerList")
+        self.customer_list.setAccessibleName("Customer List")
+        self.customer_list.setToolTip("Customer List")
+        self.customer_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         for item in sorted(state.customer_lists.values(), key=lambda value: value.name.casefold()):
             self.customer_list.addItem(f"{item.name}  ({item.count} emails)", item.id)
-        selectors_grid.addWidget(form_group("Invoice template", self.invoice_template), 0, 0)
-        selectors_grid.addWidget(form_group("Customer list", self.customer_list), 0, 1)
-        selectors_grid.setColumnStretch(0, 1)
-        selectors_grid.setColumnStretch(1, 1)
-        root.addWidget(selectors)
 
-        root.addWidget(_dialog_footer("Create Task", self._validate_and_accept, self.reject))
+        bottom_row = QWidget()
+        bottom_row.setObjectName("NewTaskBottomRow")
+        bottom_layout = QHBoxLayout(bottom_row)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(CONST.dialog_gap)
+        bottom_layout.addWidget(self.invoice_template, 1)
+        bottom_layout.addWidget(self.customer_list, 1)
+        bottom_layout.addStretch(1)
+
+        cancel_button = button("Cancel")
+        cancel_button.setObjectName("GhostButton")
+        create_button = button("Create Task", "primary")
+        create_button.setObjectName("NewTaskCreateButton")
+        create_button.setDefault(True)
+        create_button.setAutoDefault(True)
+        cancel_button.clicked.connect(self.reject)
+        create_button.clicked.connect(self._validate_and_accept)
+        bottom_layout.addWidget(cancel_button)
+        bottom_layout.addWidget(create_button)
+        root.addWidget(bottom_row)
+
         self._refresh_accounts()
         QTimer.singleShot(0, self.provider_combo.setFocus)
 
@@ -1117,10 +1167,10 @@ class NewTaskDialog(QDialog):
         self._adjust_accounts_height(len(visible))
 
     def _adjust_accounts_height(self, visible_count: int) -> None:
-        row_count = max(1, min(visible_count, self.accounts_pager.page_size))
-        desired = CONST.table_header_height + row_count * CONST.table_row_height + 4
-        height = min(CONST.data_grid_accounts_max_height, max(62, desired))
-        self.accounts.setFixedHeight(height)
+        # Keep a stable compact viewport; overflow scrolls inside the existing
+        # table while the existing pager continues to control the data page.
+        _ = visible_count
+        self.accounts.setFixedHeight(CONST.data_grid_accounts_max_height)
 
     def _account_item_changed(self, item: QTableWidgetItem) -> None:
         if item.column() != 0:

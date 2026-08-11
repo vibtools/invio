@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 New Task Modal
+
+No new operational troubleshooting path is introduced. Existing Task validation messages remain authoritative. UI interaction regression coverage includes modal reopen, provider/filter/search controls, account selection/scrolling and Cancel/Create actions.
+
 ## GitHub Actions reports many missing `project/...` records after a narrow allowlist
 
 If `tests/test_repository_contracts.py` suddenly reports multiple missing planning/specification/research files while application tests and PySide6 runtime tests pass, verify `.gitignore` first. `project/` is intentionally private. A partial unignore makes `project_root.is_dir()` true and activates private-baseline-only assertions without supplying the complete private tree. `v1.0.0.1.48.3` restores the correct boundary: keep `/project/` fully ignored and make private-record verification conditional on a complete private baseline. Do not publish the private project tree as a CI workaround.

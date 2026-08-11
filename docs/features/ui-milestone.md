@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 — New Task Modal Scope
+
+Only the Tasks-page New Task modal is reflowed to the owner-approved compact layout. Existing design tokens, custom dialog chrome/shadow and all other pages remain frozen.
+
 # Desktop UI Baseline
 
 Invio uses the frozen Vib Tools Step-40J shell, colors, geometry, surfaces, navigation and compact control treatment.

@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 Structure Note
+
+No project folders, modules, public APIs or architecture boundaries are added, removed or renamed. The runtime UI change remains inside `src/ui/dialogs.py`; regression coverage remains in the existing UI test modules and release records use the established documentation locations.
+
 ## v1.0.0.1.48.3 CI/CD Stabilization Structure Note
 
 No application folder/module architecture is added, removed, renamed or reorganized. `project/` remains private internal material and is fully Git-ignored. Public repository-contract tests depend only on tracked public files; private project records are verified only when a full private baseline provides the complete `project/` tree. Existing `scripts/build/`, `scripts/test/`, `.github/workflows/ci.yml`, runtime source structure and distribution architecture are otherwise unchanged.

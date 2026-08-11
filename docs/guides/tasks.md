@@ -1,3 +1,7 @@
+## Compact New Task Dialog — v1.0.0.1.48.4
+
+The New Task dialog keeps the same required inputs and validation rules but presents them compactly: Provider + account filters + account search on one row, the existing account table/pagination in the middle, and Invoice Template + Customer List + Cancel + Create Task on one bottom row. Account verification/reservation eligibility and Task payload semantics are unchanged.
+
 # Task Guide
 
 A Task is an isolated provider execution unit. Each open Task owns its selected accounts until the Task is closed.

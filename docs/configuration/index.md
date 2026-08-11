@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 Configuration Note
+
+No configuration keys or defaults are added or changed by the New Task modal UI redesign.
+
 ## v1.0.0.1.47.0 Configuration Note
 
 No new configuration key or persisted setting is added. The design-system refinement is presentation-only and uses the existing centralized UI tokens/QSS.

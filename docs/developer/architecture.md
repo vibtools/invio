@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 UI Architecture Note
+
+`NewTaskDialog` remains the existing `QDialog` owned by the Tasks workflow. The update changes only local widget composition: one local toolbar row, the existing `QTableWidget` + `DataGridPager`, and one local bottom configuration/action row. Shared `DataGridToolbar`, `DataGridPager`, `build_dialog_shell`, styling tokens, AppState, Task creation, ProviderRuntime and WorkerManager contracts are not redesigned.
+
 ## v1.0.0.1.48.3 CI/Public-Checkout Verification Boundary
 
 Application architecture is unchanged. The CI contract has two verification contexts: tracked public repository records must always be testable from an Actions checkout, while `project/` is private internal material and may be additionally verified only when the full private baseline is present. The v1.48.02 narrow unignore exception violated that boundary by materializing a partial `project/` tree. `v1.0.0.1.48.3` removes those exceptions and guards the four newer private-record reads exactly like the established historical repository-contract checks. Build flow remains test → wheel → Windows native/wheel smoke → Nuitka OneDir → compiled credential smoke → WiX MSI → MSI smoke → checksum audit → artifact upload → exact-tag release.

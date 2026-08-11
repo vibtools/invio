@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 — Creating a Task
+
+Open **Tasks → New Task**. Provider, account availability/status filters and account search now appear on one compact row. Select eligible accounts in the same checkbox table; use the existing pager for larger result sets and scroll inside the fixed account viewport when needed. Choose the Invoice Template and Customer List on the bottom row, then use **Create Task** or **Cancel**. The underlying selection and creation workflow is unchanged.
+
 ## CI/CD stabilization — v1.0.0.1.48.3
 
 There is no new user workflow or user-visible feature in this release. Existing dialogs, pages, Task actions, providers, customer/invoice operations and Settings behavior are unchanged. The update is limited to automated test/build/release reliability and release-version identity.

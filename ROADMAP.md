@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 Scope Status
+
+The approved Tasks-page New Task modal compact UI redesign is the only v1.0.0.1.48.4 scope. It does not introduce a new production phase or alter the existing provider/task/storage roadmap.
+
 ## Current CI/CD Stabilization Candidate — v1.0.0.1.48.3
 
 Parent Official Baseline: `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip`. Scope is limited to GitHub CI/test/build/release stabilization and required version/documentation synchronization. The correction restores the established public/private repository-contract boundary; it does not advance production phases or modify application behavior. A post-push GitHub Actions run remains the authoritative Windows OneDir/MSI/artifact confirmation gate.

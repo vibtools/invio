@@ -131,7 +131,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('self.accounts = QTableWidget(0, 4)', new_task)
         self.assertNotIn('QListWidget()', new_task)
         self.assertIn('["✓", "ACCOUNT NAME", "MODE", "STATUS"]', new_task)
-        self.assertIn('self.accounts.setFixedHeight(height)', new_task)
+        self.assertIn('self.accounts.setFixedHeight(CONST.data_grid_accounts_max_height)', new_task)
         self.assertIn('CONST.data_grid_accounts_max_height', new_task)
         self.assertIn('self.accounts_pager = DataGridPager', new_task)
         self.assertIn('self.accounts_toolbar = DataGridToolbar', new_task)
@@ -936,6 +936,84 @@ class V1480DialogChromePolishContractTests(unittest.TestCase):
             'label("Create Task", "PageTitle", False)',
         ):
             self.assertNotIn(duplicate, dialogs)
+
+
+
+class V1484NewTaskCompactModalContractTests(unittest.TestCase):
+    def test_v1484_new_task_modal_uses_only_the_approved_compact_rows(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        new_task = dialogs[dialogs.index("class NewTaskDialog") :]
+
+        self.assertIn(
+            "self, parent, width_ratio=0.62, preferred_height=430, min_width=760, max_width=920, min_height=400",
+            new_task,
+        )
+        self.assertIn('toolbar_row.setObjectName("NewTaskToolbarRow")', new_task)
+        self.assertIn('toolbar_layout.addWidget(self.provider_combo)', new_task)
+        self.assertIn('toolbar_layout.addWidget(self.accounts_toolbar, 1)', new_task)
+        self.assertIn('account_toolbar_layout.addWidget(account_filter)', new_task)
+        self.assertIn('account_toolbar_layout.addWidget(self.accounts_toolbar.search)', new_task)
+        self.assertNotIn('root.addWidget(form_group("Provider", self.provider_combo))', new_task)
+        self.assertNotIn('root.addWidget(label("Accounts", "FormLabel", False))', new_task)
+
+        self.assertIn('self.accounts.setHorizontalHeaderLabels(["✓", "ACCOUNT NAME", "MODE", "STATUS"])', new_task)
+        self.assertIn('self.accounts.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)', new_task)
+        self.assertIn('self.accounts.setFixedHeight(CONST.data_grid_accounts_max_height)', new_task)
+        self.assertIn('self.accounts_pager = DataGridPager(on_changed=self._refresh_accounts)', new_task)
+        self.assertIn('root.addWidget(self.accounts_pager)', new_task)
+
+        self.assertIn('bottom_row.setObjectName("NewTaskBottomRow")', new_task)
+        self.assertIn('bottom_layout.addWidget(self.invoice_template, 1)', new_task)
+        self.assertIn('bottom_layout.addWidget(self.customer_list, 1)', new_task)
+        self.assertIn('cancel_button.clicked.connect(self.reject)', new_task)
+        self.assertIn('create_button.clicked.connect(self._validate_and_accept)', new_task)
+        self.assertIn('create_button.setDefault(True)', new_task)
+        self.assertNotIn('root.addWidget(_dialog_footer("Create Task"', new_task)
+
+    def test_v1484_new_task_business_validation_and_payload_contract_remain_intact(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        new_task = dialogs[dialogs.index("class NewTaskDialog") :]
+        validation = new_task.split("def _validate_and_accept", 1)[1].split("def payload", 1)[0]
+        payload = new_task.split("def payload", 1)[1]
+
+        for message in (
+            "Install and select a provider.",
+            "Select at least one available account.",
+            "Create and select an invoice template.",
+            "Create and select a customer list.",
+        ):
+            self.assertIn(message, validation)
+        self.assertIn("self.accept()", validation)
+        for key in (
+            '"provider_id": provider.id',
+            '"provider_name": provider.name',
+            '"account_ids": self.selected_account_ids()',
+            '"invoice_template_id": str(self.invoice_template.currentData())',
+            '"customer_list_id": str(self.customer_list.currentData())',
+        ):
+            self.assertIn(key, payload)
+
+    def test_v1484_runtime_interaction_suite_covers_new_task_modal_workflow(self):
+        root = Path(__file__).resolve().parents[1]
+        runtime_test = (root / "tests" / "test_ui_runtime_interactions.py").read_text(encoding="utf-8")
+        self.assertIn("class NewTaskDialogRuntimeInteractionTests", runtime_test)
+        for token in (
+            "dialog.show()",
+            "dialog.reject()",
+            "dialog.provider_combo.setCurrentIndex",
+            "dialog.accounts_toolbar.search.setText",
+            "dialog.accounts_toolbar.filters[0].setCurrentIndex",
+            "dialog.accounts.item(0, 0).setCheckState",
+            "dialog.accounts.verticalScrollBar().maximum()",
+            "dialog.invoice_template.setCurrentIndex",
+            "dialog.customer_list.setCurrentIndex",
+            'self._button(dialog, "Cancel").click()',
+            'self._button(dialog, "Create Task").click()',
+            "dialog.payload()",
+        ):
+            self.assertIn(token, runtime_test)
 
 
 

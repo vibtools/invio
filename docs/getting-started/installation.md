@@ -1,3 +1,7 @@
+## v1.0.0.1.48.4 Installation Note
+
+Installation requirements and commands are unchanged. The compact New Task modal does not add dependencies or configuration steps.
+
 ## Upgrade to v1.0.0.1.48.3
 
 Apply the replace-ready v1.48.3 delta directly over the exact `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip` project root. No runtime dependency, database schema, provider configuration or user-data migration is introduced. The update changes CI/repository-contract files, release identity markers, directly related tests and synchronized documentation only. After replacement, commit/push the tracked files and use a non-tag GitHub Actions run to confirm the full Windows wheel/Nuitka/WiX/artifact pipeline before creating the exact `v1.0.0.1.48.3` tag.
