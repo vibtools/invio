@@ -34,6 +34,7 @@ providers/registry/*
 !providers/registry/.gitkeep
 
 # Personal development material. Never publish this folder.
+# Private development / forensic workspace
 /project/
 /project/*
 /project/research/*
