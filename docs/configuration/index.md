@@ -1,5 +1,10 @@
 # Configuration
 
+## v1.0.0.1.42.0 configuration boundary
+
+No configuration key or Settings persistence schema changes are introduced. Search text is session-only UI state. `Reset Settings` still loads `SettingsManager.defaults()` and requires `Save Changes` before persistence, exactly as the baseline restore workflow did.
+
+
 `v1.0.0.1.41.1` adds **no configuration keys or storage changes**. Search state is UI-session-only and is not persisted. All Settings, provider credentials, registry state, SQLite schema v5 and runtime configuration contracts remain unchanged from the v1.41 baseline.
 
 Invio `v1.0.0.1.17` separates Settings, durable operational data, provider registry state, and protected provider credentials.

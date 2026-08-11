@@ -241,7 +241,103 @@ def app_qss() -> str:
         font-size: 11px; font-weight: 600;
     }}
 
-    QWidget#SettingsPage QFrame#Card[settingsCard="true"] {{ background: {c['surface']}; border: 1px solid {c['border']}; }}
+    /* v1.42.0 Global Forms + Settings scoped compact design contract. */
+    QDialog QLabel,
+    QWidget#SettingsPage QLabel {{ color: {c['text_body']}; }}
+    QDialog QLabel#PageTitle,
+    QWidget#SettingsPage QLabel#PageTitle {{
+        font-size: 15px; font-weight: 500; color: {c['text_title']};
+    }}
+    QDialog QLabel#SectionTitle,
+    QDialog QLabel#CardTitle,
+    QWidget#SettingsPage QLabel#SectionTitle,
+    QWidget#SettingsPage QLabel#CardTitle {{
+        font-size: 13px; font-weight: 500; color: {c['text_title']};
+    }}
+    QDialog QLabel#Description,
+    QWidget#SettingsPage QLabel#Description {{
+        font-size: 12px; font-weight: 400; color: {c['text_body']};
+    }}
+    QDialog QLabel#Caption,
+    QDialog QLabel#Muted,
+    QDialog QLabel#FormLabel,
+    QWidget#SettingsPage QLabel#Caption,
+    QWidget#SettingsPage QLabel#Muted,
+    QWidget#SettingsPage QLabel#FormLabel {{
+        font-size: 11px; font-weight: 500; color: {c['text_muted']};
+    }}
+    QDialog QLineEdit,
+    QDialog QComboBox,
+    QDialog QSpinBox,
+    QWidget#SettingsPage QLineEdit,
+    QWidget#SettingsPage QComboBox,
+    QWidget#SettingsPage QSpinBox {{
+        min-height: {CONST.form_control_height}px;
+        max-height: {CONST.form_control_height}px;
+        border-radius: {CONST.form_radius}px;
+        border: 1px solid {c['input_border']};
+        background: {c['input_background']};
+        color: {c['text_body']};
+        padding: 0px 9px;
+        font-weight: 400;
+        placeholder-text-color: {c['text_placeholder']};
+        selection-background-color: {c['selection']};
+    }}
+    QDialog QTextEdit,
+    QDialog QPlainTextEdit,
+    QWidget#SettingsPage QTextEdit,
+    QWidget#SettingsPage QPlainTextEdit {{
+        border-radius: {CONST.form_radius}px;
+        color: {c['text_body']};
+        font-weight: 400;
+        placeholder-text-color: {c['text_placeholder']};
+    }}
+    QDialog QPushButton,
+    QWidget#SettingsPage QPushButton {{
+        min-height: {CONST.form_control_height}px;
+        max-height: {CONST.form_control_height}px;
+        border-radius: {CONST.form_radius}px;
+        font-size: 12px;
+        font-weight: 500;
+    }}
+    QDialog QPushButton#PrimaryButton,
+    QWidget#SettingsPage QPushButton#PrimaryButton {{
+        background: {c['primary']};
+        border-color: rgba(255,255,255,31);
+        color: #FFFFFF;
+        font-weight: 500;
+    }}
+    QDialog QFrame#Card,
+    QWidget#SettingsPage QFrame#Card[settingsCard="true"] {{
+        background: {c['surface']};
+        border: 1px solid {c['border']};
+        border-radius: {CONST.form_radius}px;
+    }}
+    QDialog QListWidget,
+    QDialog QTableWidget {{ border-radius: {CONST.form_radius}px; }}
+    QDialog QCheckBox,
+    QWidget#SettingsPage QCheckBox {{ color: {c['text_body']}; font-weight: 400; }}
+    QWidget#SettingsHeader {{ background: transparent; border: none; }}
+    QWidget#SettingsPage QLineEdit#SettingsSearchInput {{
+        background: {c['nested_surface']};
+        color: {c['text_body']};
+        border-color: {c['input_border']};
+        placeholder-text-color: {c['text_placeholder']};
+    }}
+    QWidget#SettingsPage QLineEdit#SettingsSearchInput:focus {{ border-color: {c['focus']}; }}
+    QWidget#SettingsPage QPushButton#SettingsResetButton {{
+        background: {c['nested_surface']};
+        border-color: {c['button_border']};
+        color: {c['danger_text']};
+    }}
+    QWidget#SettingsPage QPushButton#SettingsResetButton:hover {{
+        background: rgba(185,28,28,20);
+        border-color: {c['danger']};
+    }}
+    QWidget#SettingsPage QPushButton#SettingsResetButton:pressed {{
+        background: rgba(185,28,28,35);
+        border-color: {c['danger']};
+    }}
     QPlainTextEdit#LogViewer {{ background: {c['nested_surface']}; border: 1px solid {c['input_border']}; padding: 10px 12px; }}
     QTableWidget#ReportTable {{ background: {c['page_background']}; border-radius: 6px; }}
     QTableWidget#InvoiceItemsTable {{ background: {c['page_background']}; }}

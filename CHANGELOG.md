@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.0.1.42.0 - Global Forms + Settings UI/UX Refinement
+
+- Freezes `v1.0.0.1.41.1` as the parent Official Baseline.
+- Adds scoped 32px/6px compact form controls, softened form typography/colors, 12px dialog padding and 8px dialog spacing.
+- Removes verbose application-owned dialog subtitles/nonessential help text and standardizes explicit primary footer actions.
+- Modernizes Settings with Search (`Ctrl+F`), live card filtering, responsive 1/2-column reflow, compact full-width Customer Defaults, Reset Settings and aligned Browse/input heights.
+- Preserves Settings persistence/defaults, provider/runtime/API behavior, SQLite schema v5, WorkerManager, Tasks, customer/invoice behavior, Providers Page and dependencies.
+
+
 ## v1.0.0.1.41.1 - Providers Page Final UI Polish
 
 - Freezes `v1.0.0.1.41` as the parent Official Baseline.

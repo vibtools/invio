@@ -1,5 +1,10 @@
 # Compatibility
 
+## v1.0.0.1.42.0 Forms/Settings compatibility
+
+`v1.0.0.1.42.0` is a presentation-only candidate over the owner-frozen `v1.0.0.1.41.1` baseline. It adds no settings key, persistence migration, provider SDK/API change, database migration, dependency, task-state change or plugin-interface change. Existing Settings JSON remains fully compatible. Python/runtime, SQLite schema v5, P13 interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged.
+
+
 ## v1.0.0.1.41.1 Providers UI compatibility
 
 `v1.0.0.1.41.1` is a Providers-page presentation/resource hotfix over the owner-frozen `v1.0.0.1.41` baseline. It adds no provider SDK, manifest field, storage migration, configuration key, external dependency or provider API contract. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, P13 external-provider interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, Task state/resend semantics, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. The only new runtime resources are four provider-logo PNG files required by the Providers Page and packaging audits.

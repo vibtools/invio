@@ -16,11 +16,19 @@ class UiContractTests(unittest.TestCase):
         self.assertEqual(COLORS["focus"], "#38BDF8")
         self.assertEqual(COLORS["primary_text"], "#F8FAFC")
         self.assertEqual(COLORS["secondary_text"], "#CBD5E1")
+        self.assertEqual(COLORS["text_title"], "#E6EDF3")
+        self.assertEqual(COLORS["text_body"], "#C9D1D9")
+        self.assertEqual(COLORS["text_muted"], "#8B949E")
+        self.assertEqual(COLORS["text_placeholder"], "#48515E")
         self.assertEqual(CONST.sidebar_width, 220)
         self.assertEqual(CONST.header_height, 44)
         self.assertEqual(CONST.page_padding, 14)
         self.assertEqual(CONST.button_height, 28)
         self.assertEqual(CONST.input_height, 32)
+        self.assertEqual(CONST.form_control_height, 32)
+        self.assertEqual(CONST.form_radius, 6)
+        self.assertEqual(CONST.dialog_padding, 12)
+        self.assertEqual(CONST.dialog_gap, 8)
         self.assertEqual(CONST.table_header_height, 30)
         self.assertEqual(CONST.table_row_height, 32)
         self.assertEqual((CONST.min_window_width, CONST.min_window_height), (1120, 720))
@@ -171,7 +179,11 @@ class UiContractTests(unittest.TestCase):
         ):
             self.assertIn(f"self.{control}", source)
         self.assertIn('button("Save Changes", "primary")', source)
-        self.assertIn('button("Restore Defaults")', source)
+        self.assertIn('button("Reset Settings")', source)
+        self.assertIn('self.search_input.setPlaceholderText("Search settings... (Ctrl+F)")', source)
+        self.assertIn('self.search_input.textChanged.connect(self._filter_settings_cards)', source)
+        self.assertIn('QShortcut(QKeySequence.StandardKey.Find, self)', source)
+        self.assertNotIn('button("Restore Defaults")', source)
 
     def test_settings_are_wired_to_existing_runtime_actions(self):
         root = Path(__file__).resolve().parents[1]
@@ -213,6 +225,27 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("compact_message_box(self, title, text, icon=icon)", window_source)
         self.assertNotIn("QMessageBox.question(", window_source)
 
+    def test_v1420_global_dialog_visual_contract_is_scoped_and_uniform(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("CONST.dialog_padding", dialogs)
+        self.assertIn("CONST.dialog_gap", dialogs)
+        self.assertIn("def _dialog_footer", dialogs)
+        self.assertIn('button(primary_text, "primary")', dialogs)
+        self.assertNotIn("QDialogButtonBox", dialogs)
+        for removed in (
+            "Create a named list first, then upload customer email addresses into that list.",
+            "Only installed providers are available. Credentials are saved through protected credential storage",
+            "Reusable invoice content only. Customer, billing, shipping and payment details remain outside templates.",
+            "Select a provider, one or more available provider accounts, an invoice template and a customer list.",
+        ):
+            self.assertNotIn(removed, dialogs)
+        self.assertIn("QDialog QLineEdit", styles)
+        self.assertIn("QDialog QPushButton", styles)
+        self.assertIn("placeholder-text-color: {c['text_placeholder']}", styles)
+        self.assertIn("border-radius: {CONST.form_radius}px", styles)
+
     def test_add_account_dialog_uses_compact_two_column_provider_fields(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
@@ -249,19 +282,32 @@ class UiContractTests(unittest.TestCase):
         self.assertTrue((root / "assets" / "icons" / "checkmark.svg").is_file())
         self.assertIn('QCheckBox::indicator:checked', styles)
         self.assertIn('image: url("{check_icon}")', styles)
-        self.assertNotIn('QWidget#SettingsPage QCheckBox', styles)
+        self.assertIn('QWidget#SettingsPage QCheckBox', styles)
         self.assertIn('QCheckBox {{ spacing: 8px; color:', styles)
 
-    def test_settings_page_inherits_shared_frozen_brand_spacing_and_typography(self):
+    def test_settings_page_uses_scoped_compact_searchable_responsive_contract(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
         styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         self.assertIn("root.setContentsMargins(CONST.page_padding", source)
-        self.assertIn("grid.setHorizontalSpacing(CONST.content_gap)", source)
-        self.assertIn("grid.addWidget(customer_defaults, 2, 0)", source)
-        self.assertNotIn("settings_card.layout().setContentsMargins", source)
-        self.assertNotIn("QWidget#SettingsPage QLabel#Caption", styles)
-        self.assertNotIn("QWidget#SettingsPage QLabel#FormLabel", styles)
+        self.assertIn("_SETTINGS_MIN_CARD_WIDTH = 360", source)
+        self.assertIn("self.settings_grid.setHorizontalSpacing(_SETTINGS_GRID_GAP)", source)
+        self.assertIn("self.search_input.textChanged.connect(self._filter_settings_cards)", source)
+        self.assertIn("def _reflow_settings_grid", source)
+        self.assertIn("self.settings_grid.addWidget(settings_card, row, 0, 1, 2)", source)
+        self.assertIn("self.default_customer_country.setMaximumWidth(_SETTINGS_COUNTRY_FIELD_WIDTH)", source)
+        self.assertIn("QWidget#SettingsPage QLabel#Caption", styles)
+        self.assertIn("QWidget#SettingsPage QLabel#FormLabel", styles)
+        self.assertIn("QWidget#SettingsPage QLineEdit", styles)
+        self.assertIn("QWidget#SettingsPage QPushButton", styles)
+        for removed in (
+            "Choose what you see when Invio opens",
+            "Keep confirmation prompts for actions",
+            "Control how the Live Logs page displays",
+            "Choose the starting folder used by provider loading",
+            "Fill missing customer identity data during import",
+        ):
+            self.assertNotIn(removed, source)
 
     def test_live_logs_and_reports_use_compact_reference_aligned_surfaces(self):
         root = Path(__file__).resolve().parents[1]
@@ -335,18 +381,20 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("upper.setAlignment(Qt.AlignmentFlag.AlignTop)", source)
         self.assertIn("secondary_grid.setAlignment(Qt.AlignmentFlag.AlignTop)", source)
 
-    def test_invoice_template_wrapped_notes_have_height_for_width_and_separate_rows(self):
+    def test_invoice_template_compact_groups_remove_verbose_help_without_changing_fields(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
-        self.assertIn("def _invoice_wrapped_label", source)
-        self.assertIn("QSizePolicy.Policy.Minimum", source)
-        self.assertIn("policy.setHeightForWidth(True)", source)
         self.assertIn("def _invoice_form_group", source)
         self.assertIn('_invoice_form_group("Currency", self.currency)', source)
         self.assertIn('_invoice_form_group("Days until due", self.days_due)', source)
-        self.assertIn('"Displayed in uppercase; provider API formatting is handled automatically."', source)
         self.assertIn('_invoice_form_group("Invoice type", self.invoice_type)', source)
-        self.assertIn('"BOS is used only by providers that support it."', source)
+        for removed in (
+            "Displayed in uppercase; provider API formatting is handled automatically.",
+            "BOS is used only by providers that support it.",
+            "Provider-supported headings and customer-facing notes",
+            "Tax rate is used by providers with direct line-tax support",
+        ):
+            self.assertNotIn(removed, source)
         self.assertIn("self.memo.setFixedHeight(52)", source)
         self.assertIn("self.customer_note.setFixedHeight(52)", source)
         self.assertIn("self.footer.setFixedHeight(52)", source)

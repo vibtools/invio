@@ -1,5 +1,8 @@
 # Actual Implementation Status
 
+**Current UI baseline/candidate:** `Invio v1.0.0.1.41.1` owner-frozen baseline → `Invio v1.0.0.1.42.0` Global Forms + Settings UI/UX candidate. Provider/runtime/storage/business behavior unchanged.
+
+
 **Official Production Baseline:** `Invio v1.0.0.1.40.2`  
 **Current UI baseline/candidate:** `Invio v1.0.0.1.41` owner-frozen baseline → `Invio v1.0.0.1.41.1` Providers Page final-polish candidate; provider/runtime/storage behavior unchanged.  
 **Production status:** **ACCEPTED / FIRST PRODUCTION RELEASE**  

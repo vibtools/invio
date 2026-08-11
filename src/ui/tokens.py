@@ -30,6 +30,12 @@ COLORS = {
     "hover": "rgba(255,255,255,13)",
     "row_hover": "rgba(255,255,255,8)",
     "selection": "rgba(37,99,235,38)",
+    # v1.42.0 scoped form/settings typography tokens.
+    "text_title": "#E6EDF3",
+    "text_body": "#C9D1D9",
+    "text_muted": "#8B949E",
+    "text_placeholder": "#48515E",
+    "danger_text": "#FCA5A5",
 }
 
 
@@ -51,6 +57,10 @@ class UiConstants:
     table_header_height: int = 30
     table_row_height: int = 32
     common_radius: int = 8
+    form_control_height: int = 32
+    form_radius: int = 6
+    dialog_padding: int = 12
+    dialog_gap: int = 8
     min_window_width: int = 1120
     min_window_height: int = 720
     default_window_width: int = 1366

@@ -1,5 +1,10 @@
 # Installation
 
+## Upgrade to v1.0.0.1.42.0
+
+Apply the replace-ready delta only to an exact `v1.0.0.1.41.1` project root. No dependency, database, provider-registry, credential or settings-file migration is required. Existing local Settings values remain compatible.
+
+
 ## v1.0.0.1.41.1 provider logo resources
 
 The Providers Page logo assets are packaged with Invio under `assets/icons/providers/`. No separate icon download or runtime network access is required. Wheel and Windows portable release audits require all four current provider-logo files.

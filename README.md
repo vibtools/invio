@@ -1,6 +1,16 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.41` is the owner-frozen Official Baseline for this Providers-page polish.** **`v1.0.0.1.41.1` is the scope-locked Providers Page final UI polish candidate.** It adds provider search/filter, real packaged provider logos, the owner-approved Verified badge placement, bottom-right version text, simplified card content, and primary-theme Uninstall styling while preserving the v1.41 220px responsive-card geometry. Provider install/load/uninstall behavior, provider runtime/API behavior, Odoo/Refrens/Stripe/Agiled contracts, SQLite schema v5, WorkerManager, Task behavior, credentials, dependencies and all non-Providers pages remain unchanged.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.41.1` is the owner-frozen Official Baseline.** **`v1.0.0.1.42.0` is the scope-locked Global Forms + Settings UI/UX candidate.** This update refines only application-owned form/dialog presentation and the Settings page; provider/runtime/API, SQLite schema v5, WorkerManager, Task/customer/invoice behavior, credentials, dependencies and the approved Providers Page remain unchanged.
+
+## v1.0.0.1.42.0 Global Forms + Settings UI/UX Candidate
+
+- Normalizes application-owned dialog/form controls to 32px height and 6px radius using scoped form tokens, without changing frozen page-level Provider controls.
+- Applies softened form/settings text tokens: title `#E6EDF3`, body `#C9D1D9`, muted `#8B949E`, placeholder `#48515E`.
+- Removes verbose dialog subtitles and nonessential help captions from New Customer List, Add/Edit Account, Re-test Account, Invoice Template and New Task surfaces.
+- Standardizes dialog root padding to 12px, dialog section spacing to 8px, and explicit right-aligned secondary + primary footer actions.
+- Adds Settings Search with `Ctrl+F`, live card/option-keyword filtering, responsive 1/2-column card reflow, a full-width compact Customer Defaults card, `Reset Settings`, and 32px Browse alignment.
+- Removes all five Settings card subtitles/help paragraphs while preserving every setting key, default, persistence rule and save/reset behavior.
+- No provider/runtime/storage/task/business behavior changes are included.
 
 ## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate
 

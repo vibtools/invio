@@ -1,5 +1,10 @@
 # Troubleshooting
 
+## v1.0.0.1.42.0 UI troubleshooting
+
+If Settings appears empty, clear the Search settings field or press `Ctrl+F` and remove the filter text. Search hides nonmatching cards only; it never deletes or changes settings. If a dialog action looks generic rather than blue, treat it as a packaging/source mismatch because Save/Create/Add primary actions are explicitly styled in v1.42.0.
+
+
 ## Provider cards, logos, or search do not display correctly
 
 On `v1.0.0.1.41.1`, Provider cards remain fixed at 220px and descriptions remain limited to three visible lines; hover the description for the full tooltip. The grid calculates 2–4 columns from available page width using a 280px minimum card width. The Search providers field filters the currently visible Provider cards by provider identity/description/status. Stripe, Refrens, Agiled and Odoo card logos are packaged under `assets/icons/providers/`; if a released wheel/portable build omits them, treat that build as invalid rather than substituting initials. Provider install/load/uninstall behavior is unrelated to this visual layout.

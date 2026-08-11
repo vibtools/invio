@@ -1,5 +1,10 @@
 # Developer Architecture
 
+## v1.0.0.1.42.0 UI boundary
+
+The owner-frozen `v1.0.0.1.41.1` runtime architecture is unchanged. v1.42.0 is limited to `src/ui/tokens.py`, `src/ui/styles.py`, `src/ui/dialogs.py`, `src/ui/pages/settings_page.py` plus directly required tests/version/docs. Form styling is selector-scoped to `QDialog` and `SettingsPage` so the approved Providers Page geometry remains frozen. Settings search is in-memory presentation state only and does not alter `AppSettings` or SettingsManager persistence.
+
+
 ## 1. Scope
 
 Invio `v1.0.0.1.41` is the owner-frozen Providers Page UI baseline. `v1.0.0.1.41.1` is a Providers Page final-polish candidate layered directly on it. The P13 trusted external-provider contract, packaged provider runtime contracts, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership remain frozen. The implementation delta is limited to Providers-page presentation, four packaged provider-logo resources and directly required packaging/version/test/documentation synchronization.

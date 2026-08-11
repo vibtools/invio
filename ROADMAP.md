@@ -2,7 +2,7 @@
 
 Current owner-frozen Official UI Baseline: **Invio v1.0.0.1.41 — Providers Page UI/UX baseline**. The first production-release lineage remains rooted in v1.0.0.1.40.2.
 
-Active approved UI candidate: **Invio v1.0.0.1.41.1 — Providers Page final UI polish only**. Production/runtime phase status remains inherited unchanged; this hotfix does not reopen or advance any provider/runtime phase.
+Current owner-frozen UI baseline: **Invio v1.0.0.1.41.1**. Active approved UI candidate: **Invio v1.0.0.1.42.0 — Global Forms + Settings UI/UX only**. Production/runtime phase status remains inherited unchanged; this hotfix does not reopen or advance any provider/runtime phase.
 
 Owner acceptance on 2026-08-10 records a successful real Odoo end-to-end invoice delivery path through the frozen P13 external-provider contract and accepts the green Windows distribution pipeline as the P14 native packaging gate. **P14 is COMPLETE by explicit owner production acceptance.** P11 remains the separate Refrens-specific live acceptance phase and is **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED (non-blocking for v1.0.0.1.40.2)** because Refrens API mail is rejected by the provider with `HTTP 400: Not allowed to send mail`.
 

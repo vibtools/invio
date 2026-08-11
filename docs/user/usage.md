@@ -1,5 +1,10 @@
 # User Guide
 
+## v1.0.0.1.42.0 Forms and Settings usage
+
+Application-owned forms use a denser 32px control system with consistent primary actions and reduced explanatory copy. Settings adds `Search settings... (Ctrl+F)`: type any setting/card/option term to filter visible cards; `Ctrl+F` focuses the field. `Reset Settings` loads existing defaults but does not persist them until `Save Changes` is selected. All existing setting meanings and defaults are unchanged.
+
+
 ## 1. Dashboard
 
 Dashboard shows installed providers, accounts, templates, customer count, task activity, account usage, and next setup/action. P02-restored state appears automatically after startup.

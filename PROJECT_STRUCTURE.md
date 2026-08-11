@@ -238,3 +238,12 @@ No core runtime module, page, schema table, WorkerManager subsystem, dependency 
 - `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.41.md` — scoped final verification record.
 - No folder/module reorganization is introduced; Providers UI code remains in `src/ui/pages/providers_page.py` and provider-specific QSS remains in `src/ui/styles.py`.
 
+
+## v1.0.0.1.42.0 Forms/Settings UI records
+
+- `docs/release-notes/1.0.0.1.42.0.md` — public Global Forms + Settings candidate record.
+- `examples/forms_settings_ui.md` — owner visual canary checklist.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.42.0.md` — scope/root visual findings.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.42.0.md` — candidate boundary.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.42.0.md` — final verification record.
+- `PATCH_MANIFEST_v1.0.0.1.42.0.md` — replace-ready v1.42.0 overlay inventory.
