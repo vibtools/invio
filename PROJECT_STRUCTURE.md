@@ -4,6 +4,7 @@
 .
 ├── .github/                  GitHub metadata and CI
 ├── assets/                   Static UI resources
+│   └── icons/providers/      Providers Page logo resources (Stripe/Refrens/Agiled/Odoo)
 ├── config/                   Runtime configuration location
 ├── data/                     Runtime/import/export data location
 ├── docs/                     Public user/developer documentation
@@ -222,6 +223,14 @@ No folder/module reorganization is introduced. The existing WiX build still cons
 - `pyproject.toml` includes this tree in wheel packaging, while the existing Nuitka `providers=providers` data inclusion carries it into Windows OneDir/MSI distributions.
 
 No core runtime module, page, schema table, WorkerManager subsystem, dependency or P13 interface is added or renamed by this production finalization.
+## v1.0.0.1.41.1 Providers UI records
+
+- `docs/release-notes/1.0.0.1.41.1.md` — public Providers Page final-polish candidate record.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.41.1.md` — v1.41 rejection/scope record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.41.1.md` — candidate baseline boundary.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.41.1.md` — final scoped verification record.
+- `assets/icons/providers/*.png` — packaged Provider-card logo resources.
+
 ## v1.0.0.1.41 Providers UI records
 
 - `docs/release-notes/1.0.0.1.41.md` — public Providers Page compact UI/UX candidate record.

@@ -1,6 +1,17 @@
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.40.2` remains the owner-frozen first production release baseline.** **`v1.0.0.1.41` is the scope-locked Providers Page UI/UX update candidate** built directly on that production release. This candidate changes only Providers-page presentation: compact fixed cards, responsive 2–4-column reflow, neutral provider initials, three-line ellided descriptions, capability chips, bottom-anchored actions, and compact hover treatment. Provider install/load/uninstall behavior, provider runtime/API behavior, Odoo/Refrens/Stripe/Agiled contracts, SQLite schema v5, WorkerManager, Task behavior, credentials, and dependencies are unchanged.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.41` is the owner-frozen Official Baseline for this Providers-page polish.** **`v1.0.0.1.41.1` is the scope-locked Providers Page final UI polish candidate.** It adds provider search/filter, real packaged provider logos, the owner-approved Verified badge placement, bottom-right version text, simplified card content, and primary-theme Uninstall styling while preserving the v1.41 220px responsive-card geometry. Provider install/load/uninstall behavior, provider runtime/API behavior, Odoo/Refrens/Stripe/Agiled contracts, SQLite schema v5, WorkerManager, Task behavior, credentials, dependencies and all non-Providers pages remain unchanged.
+
+## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate
+
+- Adds a live Search providers field directly above the card grid.
+- Replaces neutral initials with packaged Stripe, Refrens, Agiled and Odoo logo assets rendered at 40px.
+- Moves status below the logo and uses the owner-approved `Verified` text for installed provider packages; Available remains the non-installed state.
+- Moves the small provider version text to the card footer bottom-right.
+- Removes visible capability chips and visible runtime/credential metadata from cards.
+- Keeps actions bottom-anchored; Providers-page Uninstall now uses primary-theme blue styling rather than the global danger/red treatment.
+- Retains v1.41 card height `220px`, minimum width `280px`, `16px` spacing, 2–4 responsive columns, three-line description ellipsis and `#1A212E` hover surface.
+- No provider/runtime/storage/threading/business/API behavior changes are included.
 
 ## v1.0.0.1.41 Providers Page UI/UX Candidate
 

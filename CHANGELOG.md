@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.0.1.41.1 - Providers Page Final UI Polish
+
+- Freezes `v1.0.0.1.41` as the parent Official Baseline.
+- Adds live provider search/filter above the card grid.
+- Replaces neutral initial placeholders with packaged Stripe/Refrens/Agiled/Odoo logo assets rendered at 40px.
+- Moves installed status under the provider logo and displays the owner-approved `Verified` badge; moves the small version text to the bottom-right footer.
+- Removes visible capability chips plus runtime-adapter/credential-count metadata from Provider cards.
+- Keeps bottom-anchored Install/Uninstall actions and gives Providers-page Uninstall primary-theme blue styling instead of danger/red styling.
+- Retains v1.41 card geometry/responsive reflow/three-line ellipsis/hover surface and preserves all provider runtime, storage, task, threading and API behavior.
+
 ## v1.0.0.1.41 - Providers Page Compact UI/UX Update
 
 - Keeps `v1.0.0.1.40.2` as the frozen production parent baseline.

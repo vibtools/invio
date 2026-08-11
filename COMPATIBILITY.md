@@ -1,5 +1,9 @@
 # Compatibility
 
+## v1.0.0.1.41.1 Providers UI compatibility
+
+`v1.0.0.1.41.1` is a Providers-page presentation/resource hotfix over the owner-frozen `v1.0.0.1.41` baseline. It adds no provider SDK, manifest field, storage migration, configuration key, external dependency or provider API contract. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, P13 external-provider interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, Task state/resend semantics, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. The only new runtime resources are four provider-logo PNG files required by the Providers Page and packaging audits.
+
 ## v1.0.0.1.41 Providers UI compatibility
 
 `v1.0.0.1.41` is a Providers-page presentation-only candidate over the released `v1.0.0.1.40.2` production baseline. Python 3.12+, PySide6, openpyxl, keyring, SQLite schema v5, P13 external-provider interface v1, provider credential contracts, Odoo/Refrens/Stripe/Agiled runtime behavior, Task state/resend semantics, WorkerManager/QThread ownership, Nuitka 4.1.3 and WiX 6.0.2 remain unchanged. The update adds no provider SDK, storage migration, configuration key, external dependency or API contract.

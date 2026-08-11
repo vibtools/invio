@@ -13,3 +13,8 @@
 
 The Odoo live-canary workflow is unchanged. In the v1.0.0.1.41 UI candidate, the installed Odoo provider appears in the same Providers workflow using the compact fixed card, neutral `O` initial, effective capability chips, runtime/credential summary, and bottom-anchored Uninstall action. This visual change does not alter Odoo API Test or invoice sending.
 
+
+
+## Providers Page note for v1.0.0.1.41.1
+
+The shipped Odoo bundle still uses the same explicit trusted-code Load Provider flow. The Providers Page now shows the packaged Odoo logo, the owner-approved Verified badge after installation, and supports Search providers filtering. This is presentation-only and does not change Odoo API execution.

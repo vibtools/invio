@@ -9,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_VERSION = str(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
 REQUIRED_RESOURCES = {
     "assets/icons/checkmark.svg",
+    "assets/icons/providers/stripe.png",
+    "assets/icons/providers/refrens.png",
+    "assets/icons/providers/agiled.png",
+    "assets/icons/providers/odoo.png",
     "providers/packages/stripe/provider.json",
     "providers/packages/refrens/provider.json",
     "providers/packages/agiled/provider.json",

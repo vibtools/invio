@@ -1,8 +1,8 @@
 # Troubleshooting
 
-## Provider cards look clipped or do not reflow
+## Provider cards, logos, or search do not display correctly
 
-On `v1.0.0.1.41`, Provider cards are intentionally fixed at 220px and descriptions are intentionally limited to three visible lines; hover the description for the full tooltip. The grid calculates 2–4 columns from available page width using a 280px minimum card width. If the page does not update after resizing, confirm the exact v1.0.0.1.41 source/build is running before treating it as a runtime issue. Provider install/load/uninstall behavior is unrelated to this visual layout.
+On `v1.0.0.1.41.1`, Provider cards remain fixed at 220px and descriptions remain limited to three visible lines; hover the description for the full tooltip. The grid calculates 2–4 columns from available page width using a 280px minimum card width. The Search providers field filters the currently visible Provider cards by provider identity/description/status. Stripe, Refrens, Agiled and Odoo card logos are packaged under `assets/icons/providers/`; if a released wheel/portable build omits them, treat that build as invalid rather than substituting initials. Provider install/load/uninstall behavior is unrelated to this visual layout.
 
 ## Provider does not appear in Accounts or Tasks
 

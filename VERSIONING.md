@@ -1,12 +1,21 @@
 # Versioning
 
-## v1.0.0.1.41 Providers Page UI/UX Candidate
+## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate
+
+- Parent Official Baseline: `v1.0.0.1.41`
+- Application/source version: `1.0.0.1.41.1`
+- Windows PE file/product version: `1.0.1.4101`
+- MSI product version: `1.1.4101`
+- Reserved exact tag: `v1.0.0.1.41.1` — **not authorized until owner visual acceptance and green candidate CI**
+- Scope: Providers Page final presentation/resource polish only; provider execution/business/storage/threading behavior unchanged.
+
+## v1.0.0.1.41 Providers Page UI/UX Official Baseline
 
 - Parent Official Production Baseline: `v1.0.0.1.40.2`
 - Application/source version: `1.0.0.1.41`
 - Windows PE file/product version: `1.0.1.41`
 - MSI product version: `1.1.41`
-- Reserved exact tag: `v1.0.0.1.41` — **not authorized until owner acceptance and green candidate CI**
+- Status: **OWNER-FROZEN OFFICIAL BASELINE for v1.0.0.1.41.1**
 - Scope: Providers Page UI/UX only; provider execution/business/storage/threading behavior unchanged.
 
 ## v1.0.0.1.40.2 First Production Release

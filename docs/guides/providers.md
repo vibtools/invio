@@ -1,5 +1,9 @@
 # Provider Guide
 
+## v1.0.0.1.41.1 final Providers-page polish
+
+Use **Search providers...** above the card grid to filter the provider list. Current Stripe, Refrens, Agiled and Odoo cards use packaged provider logos. Installed provider packages show the owner-approved **Verified** badge directly under the logo; non-installed bundled packages show **Available**. The version is shown in small text at the footer bottom-right. Capability chips and runtime/credential metadata are intentionally not displayed. Provider install/load/uninstall behavior is unchanged.
+
 ## v1.0.0.1.41 compact Providers page
 
 The Providers page now presents the same provider manifests/runtime truth in equal-height 220px cards. Cards use a 32x32 neutral initial placeholder, title/version/status header, three-line description, compact effective-runtime capability chips, one runtime/credential line and a bottom-anchored Install/Uninstall action. The grid reflows between 2 and 4 columns using a 280px minimum card width. This is a UI-only representation change: Load Provider trust handling, packaged install, external adapter validation and uninstall semantics are unchanged.

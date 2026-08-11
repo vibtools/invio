@@ -8,7 +8,7 @@ Dashboard shows installed providers, accounts, templates, customer count, task a
 
 Install Stripe/Refrens or load an approved external manifest. Provider install/uninstall behavior is unchanged by P02.
 
-In `v1.0.0.1.41`, the Providers page is presentation-only updated for compact scanning: cards use a fixed 220px height, 280px minimum width, responsive 2–4-column reflow, neutral 32x32 provider initials, maximum three-line descriptions with tooltip access to the full text, compact runtime capability chips, and bottom-anchored Install/Uninstall actions. The provider name, version, status, runtime truth, credential count, and the existing Load/Install/Uninstall workflows are unchanged.
+In `v1.0.0.1.41.1`, the Providers page adds a live search field above the cards and uses packaged Stripe, Refrens, Agiled and Odoo logos instead of v1.41 initials. Installed provider packages show the owner-approved **Verified** badge directly below the logo; the version appears as small text at the footer bottom-right. Capability chips and runtime/credential metadata are no longer displayed. Cards remain 220px high with 280px minimum width, responsive 2–4-column reflow, maximum three-line descriptions and bottom-anchored actions. Install/Load/Uninstall behavior is unchanged.
 
 ## 3. Accounts
 

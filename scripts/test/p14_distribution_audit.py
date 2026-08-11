@@ -8,6 +8,10 @@ from pathlib import Path
 REQUIRED_PORTABLE = {
     "Invio/Invio.exe",
     "Invio/assets/icons/checkmark.svg",
+    "Invio/assets/icons/providers/stripe.png",
+    "Invio/assets/icons/providers/refrens.png",
+    "Invio/assets/icons/providers/agiled.png",
+    "Invio/assets/icons/providers/odoo.png",
     "Invio/assets/icons/app.png",
     "Invio/assets/icons/app.ico",
     "Invio/providers/packages/stripe/provider.json",

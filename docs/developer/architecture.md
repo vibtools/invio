@@ -2,13 +2,13 @@
 
 ## 1. Scope
 
-Invio `v1.0.0.1.40.2` is the frozen first production baseline. `v1.0.0.1.41` is a Providers Page UI/UX-only candidate layered on that baseline. The P13 trusted external-provider contract, packaged provider runtime contracts, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership remain frozen. The only implementation delta is within Providers-page presentation plus release/version/test/documentation synchronization.
+Invio `v1.0.0.1.41` is the owner-frozen Providers Page UI baseline. `v1.0.0.1.41.1` is a Providers Page final-polish candidate layered directly on it. The P13 trusted external-provider contract, packaged provider runtime contracts, SQLite schema v5, dependencies, Task state machine, customer/template models and one-QThread-per-Task ownership remain frozen. The implementation delta is limited to Providers-page presentation, four packaged provider-logo resources and directly required packaging/version/test/documentation synchronization.
 
 ## 2. Core Responsibilities
 
-### Providers Page presentation boundary in v1.0.0.1.41
+### Providers Page presentation boundary in v1.0.0.1.41.1
 
-`src/ui/pages/providers_page.py` owns the 220px fixed Provider card geometry, 280px minimum card width, responsive 2–4-column reflow, neutral provider-initial placeholder, three-line ellipsis, runtime/effective capability chips, compact runtime/credential metadata and bottom-anchored card action. `src/ui/styles.py` owns only the matching Provider-card/placeholder/chip/Load Provider QSS. ProviderManager, ProviderRuntime and callbacks supplied by MainWindow are consumed unchanged.
+`src/ui/pages/providers_page.py` retains the v1.41 220px/280px responsive card geometry and owns the live provider search filter, 40px provider-logo rendering, logo-below Verified/Available badge placement, three-line ellipsis, bottom-right version label and bottom-anchored card action. Visible runtime/credential metadata and capability chips are intentionally absent per owner approval. `src/ui/styles.py` owns the matching Provider-card/search/logo/version/Load Provider/Providers-Uninstall QSS. `assets/icons/providers/` contains the shipped provider logo PNGs. ProviderManager, ProviderRuntime and callbacks supplied by MainWindow are consumed unchanged.
 
 - `src/core/provider_manager/`: provider manifest validation/install/load/uninstall.
 - `src/core/provider_runtime/`: packaged adapter registry, P13 external adapter registry/host operation contract, Stripe/Refrens execution, P06 preflight and structured provider log emission.

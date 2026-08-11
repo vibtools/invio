@@ -1,5 +1,9 @@
 # Provider Manifest Contract
 
+## v1.0.0.1.41.1 UI resource boundary
+
+The Providers Page logo polish does **not** add a provider-manifest icon/logo field. Current built-in/Odoo card logos are host-owned packaged UI resources under `assets/icons/providers/`. P13 manifest schema, executable-adapter declaration and trust semantics are unchanged.
+
 Provider manifests are validated JSON files describing provider identity, credentials, account modes, and declared capabilities. Manifest loading itself does not execute provider code.
 
 ## Schema

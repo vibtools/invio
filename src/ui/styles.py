@@ -91,36 +91,14 @@ def app_qss() -> str:
         font-weight: 400;
         color: {c['secondary_text']};
     }}
-    QLabel#ProviderLogoPlaceholder {{
-        background: {c['nested_surface']};
-        color: {c['secondary_text']};
-        border: 1px solid {c['input_border']};
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 600;
+    QLabel#ProviderLogo {{
+        background: transparent;
+        border: none;
     }}
-    QLabel#ProviderCapabilityChip {{
-        background: #1E293B;
-        color: {c['secondary_text']};
-        border: 1px solid #263244;
-        border-radius: 4px;
-        padding: 1px 5px;
-        font-size: 10px;
-        font-weight: 600;
-    }}
-    QLabel#ProviderMeta {{
-        font-size: 10px;
-        font-weight: 400;
+    QLabel#ProviderVersionText {{
+        font-size: 9px;
+        font-weight: 500;
         color: {c['muted_text']};
-    }}
-    QLabel#PluginCategoryChip {{
-        background: #1E293B;
-        color: {c['muted_text']};
-        border: 1px solid #1E293B;
-        border-radius: 4px;
-        padding: 2px 6px;
-        font-size: 10px;
-        font-weight: 600;
     }}
     QFrame#PluginCard QLabel#StatusBadge {{
         background: #1E293B;
@@ -163,6 +141,21 @@ def app_qss() -> str:
     }}
     QPushButton#ProviderLoadButton:hover {{ background: {c['primary_hover']}; }}
     QPushButton#ProviderLoadButton:pressed {{ background: {c['primary_pressed']}; }}
+    QPushButton#ProviderUninstallButton {{
+        background: transparent;
+        border-color: {c['primary']};
+        color: {c['primary_hover']};
+    }}
+    QPushButton#ProviderUninstallButton:hover {{
+        background: rgba(37,99,235,31);
+        border-color: {c['primary_hover']};
+        color: {c['primary_text']};
+    }}
+    QPushButton#ProviderUninstallButton:pressed {{
+        background: {c['primary_pressed']};
+        border-color: {c['primary_pressed']};
+        color: {c['primary_text']};
+    }}
     QPushButton#DangerButton {{ background: transparent; border-color: {c['danger']}; color: #FCA5A5; }}
     QPushButton#DangerButton:hover {{ background: rgba(185,28,28,31); }}
     QPushButton#GhostButton {{ background: transparent; border-color: transparent; color: {c['secondary_text']}; }}
@@ -177,6 +170,11 @@ def app_qss() -> str:
         background: {c['nav_selected']}; color: {c['primary_text']}; font-weight: 600;
         border-left: 2px solid {c['focus']}; padding-left: 6px;
     }}
+    QLineEdit#ProviderSearchInput {{
+        background: {c['nested_surface']};
+        border-color: {c['input_border']};
+    }}
+    QLineEdit#ProviderSearchInput:focus {{ border-color: {c['focus']}; }}
     QLineEdit, QComboBox, QSpinBox {{
         min-height: {CONST.input_height}px; max-height: {CONST.input_height}px;
         border-radius: {CONST.common_radius}px; border: 1px solid {c['input_border']};

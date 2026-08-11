@@ -1,5 +1,9 @@
 # Installation
 
+## v1.0.0.1.41.1 provider logo resources
+
+The Providers Page logo assets are packaged with Invio under `assets/icons/providers/`. No separate icon download or runtime network access is required. Wheel and Windows portable release audits require all four current provider-logo files.
+
 ## Requirements
 
 - Python 3.12+
@@ -21,6 +25,10 @@ On Linux, a usable Secret Service/libsecret or KWallet environment must be avail
 ```bash
 python main.py
 ```
+
+## Upgrade to v1.0.0.1.41.1
+
+Apply the replace-ready v1.41.1 delta only over the exact owner-frozen `v1.0.0.1.41` project root. No dependency, database-schema, credential-store, provider-registry or configuration migration is required. The delta adds only Providers-page UI/resources plus directly required packaging/tests/docs/version synchronization.
 
 ## Upgrade to v1.0.0.1.41
 

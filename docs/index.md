@@ -2,7 +2,7 @@
 
 Official Production Baseline: **v1.0.0.1.40.2 — FIRST PRODUCTION RELEASE**. Owner-confirmed Odoo Provider v1.0.0 end-to-end invoice sending is the production-certified live provider path. P14 is complete by explicit owner acceptance; Refrens P11 live email acceptance is deferred/non-blocking.
 
-Current UI candidate: **v1.0.0.1.41 — Providers Page compact UI/UX only**. Runtime/provider/storage/threading behavior remains the v1.0.0.1.40.2 production contract.
+Current UI baseline/candidate chain: **v1.0.0.1.41 is the owner-frozen Providers Page UI baseline; v1.0.0.1.41.1 is the final Providers Page polish candidate.** v1.41.1 adds search/filter, real provider logos and simplified card presentation only. Runtime/provider/storage/threading behavior remains unchanged.
 
 Invio is a Vib Tools desktop application for provider-managed invoice automation. Current workflow:
 
@@ -22,7 +22,8 @@ Use these documents:
 - `developer/ACTUAL_IMPLEMENTATION_STATUS.md` - exact working/partial/missing inventory.
 - `developer/ERROR_HANDLING.md` - current error-handling inventory and remaining gaps.
 - `troubleshooting/index.md` - operational/storage/provider issues.
-- `release-notes/1.0.0.1.41.md` - Providers Page compact UI/UX candidate.
+- `release-notes/1.0.0.1.41.1.md` - Providers Page final UI polish candidate.
+- `release-notes/1.0.0.1.41.md` - Providers Page compact UI/UX history.
 - `release-notes/1.0.0.1.40.2.md` - first production release, Odoo live acceptance, and provider certification boundaries.
 - `api/agiled-runtime.md` - verified Agiled Bearer API Test boundary and Task-send fail-closed rationale.
 - `release-notes/1.0.0.1.38.md` - historical P14 WiX release-inventory correction release.

@@ -1,6 +1,6 @@
 # Configuration
 
-`v1.0.0.1.41` adds **no configuration keys or storage changes**. Its approved scope is limited to compact Providers-page presentation; all Settings, provider credentials, registry state, SQLite schema v5 and runtime configuration contracts are inherited unchanged from `v1.0.0.1.40.2`.
+`v1.0.0.1.41.1` adds **no configuration keys or storage changes**. Search state is UI-session-only and is not persisted. All Settings, provider credentials, registry state, SQLite schema v5 and runtime configuration contracts remain unchanged from the v1.41 baseline.
 
 Invio `v1.0.0.1.17` separates Settings, durable operational data, provider registry state, and protected provider credentials.
 
