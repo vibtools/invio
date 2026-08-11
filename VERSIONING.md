@@ -1,4 +1,12 @@
-## Current mapping — v1.0.0.1.48.5
+## Current mapping — v1.0.0.1.48.6
+
+- Application: `1.0.0.1.48.6`
+- Git tag: `v1.0.0.1.48.6`
+- PE: `1.0.1.4806`
+- MSI: `1.1.4806`
+- Python package/wheel: `1.0.0.1.48.6`
+
+## Previous mapping — v1.0.0.1.48.5
 
 - Application: `1.0.0.1.48.5`
 - Git tag: `v1.0.0.1.48.5`
@@ -6,7 +14,7 @@
 - MSI: `1.1.4805`
 - Python package/wheel: `1.0.0.1.48.5`
 
-## Previous mapping — v1.0.0.1.48.4
+## Earlier mapping — v1.0.0.1.48.4
 
 - Application: `1.0.0.1.48.4`
 - Git tag: `v1.0.0.1.48.4`

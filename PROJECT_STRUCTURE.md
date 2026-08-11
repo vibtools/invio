@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 Structure Note
+
+No folder/module architecture change is introduced. Runtime UI correction is confined to `src/ui/pages/accounts_page.py` plus Accounts-scoped QSS in `src/ui/styles.py`; directly affected tests, release/version metadata and required documentation are synchronized. Global tokens/widgets and all other runtime modules remain frozen.
+
 ## v1.0.0.1.48.5 Structure Note
 
 No folder/module architecture changes are introduced. The runtime UI change is confined to `src/ui/pages/accounts_page.py`; directly affected tests, release/version metadata and required documentation are synchronized.

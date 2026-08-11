@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 Error-Handling Note
+
+No error-handling semantics change. The screen/window-bounded row menu delegates to the same existing MainWindow Edit/Re-test/Delete handlers, so verification, provider-installation, task-assignment, protected-storage and confirmation failures retain their established behavior.
+
 ## v1.0.0.1.48.5 Error-Handling Note
 
 No error-handling semantics changed. Row menu actions delegate to the existing MainWindow account handlers, so provider-not-installed, task-assignment, verification, protected-storage and delete-confirmation errors continue through the same existing dialogs and exceptions.

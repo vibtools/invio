@@ -1,3 +1,11 @@
+# v1.0.0.1.48.6 Accounts Page — Compact Table / Action Menu Correction
+
+`Invio v1.0.0.1.48.5` is the frozen parent baseline. `v1.0.0.1.48.6` changes only the **Accounts** page presentation and directly required verification/release records. The flat table is rebalanced for compact scanning, the `ACTION` header/control is fully contained, and the existing row `QMenu` is anchored inward and bounded to both the Invio window and current screen available geometry.
+
+Accounts-only status presentation now uses the owner-approved Vib Tools semantic values: success remains the existing success token (`#22C55E`), warning is `#FCD34D`, danger is `#F87171`, and primary interaction remains `#2563EB`. These are scoped to `AccountsDataTable`; global token values and other pages are unchanged. Search, Provider/Status filters, pagination, rows-per-page, Edit/Re-test/Delete callbacks, account/provider data contracts, API verification, protected credentials, task reservations, storage, provider runtime and WorkerManager behavior remain unchanged.
+
+Version mapping: application/tag `1.0.0.1.48.6` / `v1.0.0.1.48.6`, PE `1.0.1.4806`, MSI `1.1.4806`, Python wheel `1.0.0.1.48.6`.
+
 # v1.0.0.1.48.5 Accounts Page — Compact Flat Account Table & Semantic Status UI
 
 `Invio v1.0.0.1.48.4` is the frozen parent baseline. `v1.0.0.1.48.5` changes only the **Accounts** page presentation: the expandable Provider → Account hierarchy is replaced by one flat Account table; the page header keeps only **Add Account**; **Added Accounts List + Search + Provider filter + Status filter** share one compact toolbar row; existing pagination/rows-per-page remain; and **Edit / Re-test / Delete** move to each account row under a compact `⋯` menu.

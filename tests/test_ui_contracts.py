@@ -110,7 +110,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('DataGridPager(', accounts)
         self.assertIn('self.table = QTableWidget(0, 4)', accounts)
         self.assertIn('self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)', accounts)
-        self.assertIn('data_badge_host(status_text, tone)', accounts)
+        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', accounts)
 
         self.assertIn('"Search lists..."', customers)
         self.assertIn('"Search customers..."', customers)
@@ -1039,7 +1039,7 @@ class V1485AccountsFlatTableContractTests(unittest.TestCase):
         self.assertIn('action_button = button("⋯")', page)
         self.assertIn('self.pager = DataGridPager(on_changed=self.refresh)', page)
         self.assertIn('row_status = account.status if provider is not None else "Not Installed"', page)
-        self.assertIn('data_badge_host(status_text, tone)', page)
+        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', page)
 
     def test_v1485_accounts_semantic_status_palette_mapping_is_local_to_accounts(self):
         root = Path(__file__).resolve().parents[1]
@@ -1074,6 +1074,51 @@ class V1485AccountsFlatTableContractTests(unittest.TestCase):
             'action.text() == "Delete"',
         ):
             self.assertIn(token, runtime_test)
+
+
+class V1486AccountsActionMenuCorrectionContractTests(unittest.TestCase):
+    def test_v1486_action_column_is_compact_visible_and_columns_are_balanced(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+
+        self.assertIn('self.table.setHorizontalHeaderLabels(["ACCOUNT", "PROVIDER", "STATUS", "ACTION"])', page)
+        self.assertIn('header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)', page)
+        self.assertIn('header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)', page)
+        self.assertIn('header.resizeSection(2, 132)', page)
+        self.assertIn('header.resizeSection(3, 68)', page)
+        self.assertIn('item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)', page)
+        self.assertIn('action_button.setFixedSize(30, 24)', page)
+        row_actions = page.split('def _row_actions', 1)[1].split('@staticmethod', 1)[0]
+        self.assertEqual(row_actions.count('layout.addStretch(1)'), 2)
+
+    def test_v1486_row_action_popup_is_parented_anchored_and_screen_window_bounded(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+
+        self.assertIn('menu = QMenu(action_button)', page)
+        self.assertIn('menu.setObjectName("AccountsActionMenu")', page)
+        self.assertIn('self._show_row_actions(control, popup)', page)
+        self.assertIn('def _menu_safe_geometry(control: QWidget) -> QRect:', page)
+        self.assertIn('window_rect.intersected(screen.availableGeometry())', page)
+        self.assertIn('preferred_x = anchor.right() - menu_size.width() + 1', page)
+        self.assertIn('menu.exec(self._bounded_menu_position(control, menu))', page)
+        self.assertNotIn('popup.exec(\n                control.mapToGlobal(control.rect().bottomLeft())', page)
+
+    def test_v1486_accounts_status_and_action_colors_follow_approved_brand_values(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        tokens = (root / "src" / "ui" / "tokens.py").read_text(encoding="utf-8")
+
+        self.assertIn('QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess', styles)
+        self.assertIn('border: 1px solid #FCD34D;', styles)
+        self.assertIn('color: #FCD34D;', styles)
+        self.assertIn('border: 1px solid #F87171;', styles)
+        self.assertIn('color: #F87171;', styles)
+        self.assertIn('border-color: #2563EB;', styles)
+        self.assertIn('"success": "#22C55E"', tokens)
+        self.assertIn('"primary": "#2563EB"', tokens)
+        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8"))
+
 
 
 class V14802PopupLifecycleContractTests(unittest.TestCase):

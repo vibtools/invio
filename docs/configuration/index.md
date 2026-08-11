@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 Configuration Note
+
+The Accounts compact table/status/action-menu correction adds no configuration key and changes no account/provider credential setting.
+
 ## v1.0.0.1.48.5 Configuration Note
 
 The Accounts flat-table update adds no configuration key and changes no account/provider credential setting. Existing application and customer defaults remain unchanged.

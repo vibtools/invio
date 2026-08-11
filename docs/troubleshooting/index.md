@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 Accounts Action Menu
+
+The `⋯` row menu is anchored to its row control and constrained to the intersection of the Invio window and current screen available geometry. Near the bottom it may open above the button by design. If Edit, Re-test or Delete is rejected after the menu opens, the existing account/provider validation message remains authoritative because backend behavior is unchanged.
+
 ## v1.0.0.1.48.5 Accounts Page
 
 If an account action is rejected, use the existing error message as the source of truth: provider installation, task assignment, verification and protected credential rules are unchanged. The flat table only relocates actions into the account row's `⋯` menu.

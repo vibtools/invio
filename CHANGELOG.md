@@ -1,3 +1,12 @@
+## v1.0.0.1.48.6 - Accounts Compact Table / Action Menu Correction
+
+- Rebalances the flat Accounts table so `ACCOUNT` and `PROVIDER` share available width while `STATUS` and `ACTION` remain compact fixed columns.
+- Keeps the `ACTION` header fully visible at 68px and centers a compact 30x24 `⋯` row control.
+- Corrects row-menu placement against the intersection of the owning Invio window and the current screen available geometry, with inward/right-aligned anchoring and above-row fallback near the bottom edge.
+- Applies Accounts-only compact semantic status styling using approved Vib Tools values: success token (`#22C55E`), warning `#FCD34D`, danger `#F87171`, primary `#2563EB`; global palette tokens remain unchanged.
+- Preserves all existing Edit/Re-test/Delete callbacks, filtering, pagination, account/provider data, verification, credentials, task reservations, storage, provider runtime and non-Accounts UI behavior.
+- Version mapping: application `1.0.0.1.48.6`, PE `1.0.1.4806`, MSI `1.1.4806`.
+
 ## v1.0.0.1.48.5 - Accounts Flat Table + Semantic Status UI
 
 - Freezes `v1.0.0.1.48.4` as the parent Official Baseline.

@@ -1,3 +1,7 @@
+## Current UI Update — v1.0.0.1.48.6
+
+Accounts retain the v1.48.5 flat table and compact controls with rebalanced columns, approved compact semantic badges, a fully contained Action column, and each existing row menu bounded to the Invio-window/current-screen safe region.
+
 ## Current UI Update — v1.0.0.1.48.5
 
 Accounts now use one compact flat account table with one-row search/provider/status controls, semantic status badges, existing pagination, and per-row `⋯` actions. No account/backend workflow changed.

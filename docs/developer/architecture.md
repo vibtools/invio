@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 UI Architecture Note
+
+`AccountsPage` remains the same flat `QTableWidget` presentation/controller adapter over `AppState` and `ProviderManager`. `ACCOUNT`/`PROVIDER` share stretch space, `STATUS`/`ACTION` remain compact fixed columns, Accounts-only QSS supplies the approved semantic colors, and the existing child `QMenu` is bounded to the intersection of the owning Invio window and active screen available geometry before `exec()`. No backend, global-token, or shared-widget architecture changes.
+
 ## v1.0.0.1.48.5 UI Architecture Note
 
 `AccountsPage` remains a presentation/controller adapter over the existing `AppState` and `ProviderManager`. The prior `QTreeWidget` provider hierarchy is replaced with a `QTableWidget` projection of account records only. Provider installation state is resolved at refresh time solely to derive the visible provider name/status and existing filter semantics. Row actions call the existing `on_edit`, `on_retest`, and `on_delete` callbacks without changing their contracts.

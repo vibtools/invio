@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
@@ -109,11 +109,21 @@ class AccountsPage(QWidget):
         self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         header = self.table.horizontalHeader()
         header.setSectionsClickable(False)
+        header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(2, 132)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        header.resizeSection(3, 48)
+        header.resizeSection(3, 68)
+        for column in (0, 1):
+            item = self.table.horizontalHeaderItem(column)
+            if item is not None:
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        for column in (2, 3):
+            item = self.table.horizontalHeaderItem(column)
+            if item is not None:
+                item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         host.layout().addWidget(self.table)
 
         self.empty = data_grid_empty_label("No accounts found.")
@@ -164,8 +174,9 @@ class AccountsPage(QWidget):
 
     def _row_actions(self, account_id: str) -> QWidget:
         host = QWidget()
+        host.setObjectName("AccountsActionHost")
         layout = QHBoxLayout(host)
-        layout.setContentsMargins(0, 1, 0, 1)
+        layout.setContentsMargins(0, 3, 0, 3)
         layout.setSpacing(0)
         layout.addStretch(1)
 
@@ -173,9 +184,11 @@ class AccountsPage(QWidget):
         action_button.setObjectName("TableActionButton")
         action_button.setAccessibleName("Account actions")
         action_button.setToolTip("Account actions")
-        action_button.setFixedWidth(32)
+        action_button.setFixedSize(30, 24)
 
         menu = QMenu(action_button)
+        menu.setObjectName("AccountsActionMenu")
+        menu.setMinimumWidth(104)
         edit_action = menu.addAction("Edit")
         retest_action = menu.addAction("Re-test")
         delete_action = menu.addAction("Delete")
@@ -183,12 +196,48 @@ class AccountsPage(QWidget):
         retest_action.triggered.connect(lambda _checked=False, aid=account_id: self.on_retest(aid))
         delete_action.triggered.connect(lambda _checked=False, aid=account_id: self.on_delete(aid))
         action_button.clicked.connect(
-            lambda _checked=False, control=action_button, popup=menu: popup.exec(
-                control.mapToGlobal(control.rect().bottomLeft())
-            )
+            lambda _checked=False, control=action_button, popup=menu: self._show_row_actions(control, popup)
         )
         layout.addWidget(action_button)
+        layout.addStretch(1)
         return host
+
+    @staticmethod
+    def _menu_safe_geometry(control: QWidget) -> QRect:
+        window = control.window()
+        window_rect = QRect(window.mapToGlobal(QPoint(0, 0)), window.size())
+        screen = control.screen()
+        if screen is None:
+            return window_rect
+        safe = window_rect.intersected(screen.availableGeometry())
+        return safe if not safe.isEmpty() else window_rect
+
+    @classmethod
+    def _bounded_menu_position(cls, control: QWidget, menu: QMenu) -> QPoint:
+        menu.ensurePolished()
+        menu_size = menu.sizeHint()
+        safe = cls._menu_safe_geometry(control)
+        anchor = QRect(control.mapToGlobal(QPoint(0, 0)), control.size())
+
+        # Right-align the popup to the row control so it naturally opens inward
+        # from the table edge, then clamp to both the app window and screen.
+        preferred_x = anchor.right() - menu_size.width() + 1
+        max_x = max(safe.left(), safe.right() - menu_size.width() + 1)
+        x = min(max(preferred_x, safe.left()), max_x)
+
+        below_y = anchor.bottom() + 1
+        above_y = anchor.top() - menu_size.height()
+        if below_y + menu_size.height() - 1 <= safe.bottom():
+            y = below_y
+        elif above_y >= safe.top():
+            y = above_y
+        else:
+            max_y = max(safe.top(), safe.bottom() - menu_size.height() + 1)
+            y = min(max(below_y, safe.top()), max_y)
+        return QPoint(x, y)
+
+    def _show_row_actions(self, control: QWidget, menu: QMenu) -> None:
+        menu.exec(self._bounded_menu_position(control, menu))
 
     def refresh(self) -> None:
         selected_id = self._selected_account_id()
@@ -277,7 +326,7 @@ class AccountsPage(QWidget):
             tooltip = account.verification_error_summary if account.verification_error_summary else row_status
             status_item.setToolTip(tooltip)
             self.table.setItem(row, 2, status_item)
-            self.table.setCellWidget(row, 2, data_badge_host(status_text, tone))
+            self.table.setCellWidget(row, 2, data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter))
             self.table.setCellWidget(row, 3, self._row_actions(account.id))
 
             if account.id == selected_id:

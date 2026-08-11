@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 — Accounts Compact Table / Action UI Correction
+
+The v1.48.5 flat Accounts structure is retained. Column balance is corrected, Status/Action remain compact, Accounts-only semantic colors use success `#22C55E`, warning `#FCD34D`, danger `#F87171` and primary `#2563EB`, and the existing row menu is bounded to the Invio-window/current-screen safe region. Global tokens and account workflows remain unchanged.
+
 ## v1.0.0.1.48.5 — Accounts Flat Table Scope
 
 The Accounts page now uses a scalable flat list rather than expandable provider groups. The approved compact toolbar, semantic status presentation, pagination and row action menu are implemented without changing the global design system or backend account workflows.

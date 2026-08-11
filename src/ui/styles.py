@@ -444,6 +444,68 @@ def app_qss() -> str:
         font-size: 11px;
         font-weight: 500;
     }}
+
+    /* v1.48.6 Accounts-only compact status/action correction. */
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess,
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusWarning,
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusDanger,
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusNeutral {{
+        background: transparent;
+        border-radius: 4px;
+        padding: 1px 6px;
+        min-height: 16px;
+        max-height: 18px;
+        font-size: 10px;
+        font-weight: 500;
+    }}
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess {{
+        border: 1px solid {c['success']};
+        color: {c['success']};
+    }}
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusWarning {{
+        border: 1px solid #FCD34D;
+        color: #FCD34D;
+    }}
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusDanger {{
+        border: 1px solid #F87171;
+        color: #F87171;
+    }}
+    QTableWidget#AccountsDataTable QLabel#DataGridStatusNeutral {{
+        border: 1px solid {c['button_border']};
+        color: {c['text_muted']};
+    }}
+    QTableWidget#AccountsDataTable QPushButton#TableActionButton {{
+        min-width: 30px;
+        max-width: 30px;
+        min-height: 24px;
+        max-height: 24px;
+        padding: 0px;
+        border-radius: 5px;
+        background: {c['nested_surface']};
+        border: 1px solid {c['button_border']};
+        color: {c['secondary_text']};
+        font-size: 11px;
+        font-weight: 500;
+    }}
+    QTableWidget#AccountsDataTable QPushButton#TableActionButton:hover {{
+        background: rgba(37,99,235,31);
+        border-color: #2563EB;
+        color: {c['primary_text']};
+    }}
+    QTableWidget#AccountsDataTable QPushButton#TableActionButton:pressed {{
+        background: #2563EB;
+        border-color: #2563EB;
+        color: #FFFFFF;
+    }}
+    QMenu#AccountsActionMenu {{
+        min-width: 104px;
+        padding: 4px;
+    }}
+    QMenu#AccountsActionMenu::item {{
+        min-height: 24px;
+        padding: 2px 20px 2px 8px;
+        border-radius: 4px;
+    }}
     QPushButton#TableActionDangerButton {{
         min-height: 28px;
         max-height: 28px;

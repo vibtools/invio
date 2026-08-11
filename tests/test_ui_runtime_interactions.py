@@ -8,7 +8,7 @@ import unittest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PySide6.QtCore import QTimer, Qt
+    from PySide6.QtCore import QRect, QTimer, Qt
     from PySide6.QtWidgets import QApplication, QDialog, QMenu, QMessageBox, QPushButton, QWidget
 
     from src.accounts.models import Account
@@ -362,6 +362,50 @@ class AccountsPageRuntimeInteractionTests(unittest.TestCase):
         badge_host = page.table.cellWidget(0, 2)
         labels = badge_host.findChildren(type(page.empty))
         self.assertTrue(any(item.text() == "! Not Installed" for item in labels))
+
+    def test_action_column_and_popup_geometry_stay_inside_accounts_window(self):
+        page = self.page
+        screen_rect = page.screen().availableGeometry()
+        page.resize(min(1100, max(720, screen_rect.width() - 40)), min(900, max(640, screen_rect.height() - 40)))
+        page_size_index = page.pager.page_size_combo.findData(25)
+        page.pager.page_size_combo.setCurrentIndex(page_size_index)
+        self.app.processEvents()
+
+        self.assertEqual(page.table.horizontalHeaderItem(3).text(), "ACTION")
+        self.assertGreaterEqual(page.table.columnWidth(3), 68)
+        self.assertEqual(page.table.horizontalHeaderItem(2).textAlignment(), int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+        self.assertEqual(page.table.horizontalHeaderItem(3).textAlignment(), int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter))
+
+        rows = (0, page.table.rowCount() // 2, page.table.rowCount() - 1)
+        for row in rows:
+            with self.subTest(row=row):
+                page.table.scrollToItem(page.table.item(row, 0))
+                self.app.processEvents()
+                action_host = page.table.cellWidget(row, 3)
+                action_button = next(button for button in action_host.findChildren(QPushButton) if button.text() == "⋯")
+                menu = action_button.findChild(QMenu)
+                self.assertIsNotNone(menu)
+
+                self.assertGreaterEqual(action_button.x(), 0)
+                self.assertLessEqual(action_button.x() + action_button.width(), action_host.width())
+
+                safe = page._menu_safe_geometry(action_button)
+                expected = page._bounded_menu_position(action_button, menu)
+                expected_rect = QRect(expected, menu.sizeHint())
+                self.assertTrue(safe.contains(expected_rect), (safe, expected_rect))
+                observed: list[QRect] = []
+
+                def inspect_and_close() -> None:
+                    popup = QApplication.activePopupWidget()
+                    if isinstance(popup, QMenu):
+                        observed.append(popup.geometry())
+                        popup.close()
+
+                QTimer.singleShot(0, inspect_and_close)
+                action_button.click()
+                self.app.processEvents()
+                self.assertEqual(len(observed), 1)
+                self.assertTrue(safe.contains(observed[0]), (safe, observed[0]))
 
     def test_provider_status_filters_and_row_action_menu_preserve_callbacks(self):
         page = self.page

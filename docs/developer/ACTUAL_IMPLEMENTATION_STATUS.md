@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 — Accounts Action UI
+
+**IMPLEMENTED:** compact balanced flat Accounts table, visible fixed `ACTION` column, centered per-row `⋯` control, Accounts-only approved semantic badge colors, and row-menu position bounded to the intersection of the owning application window and active screen while preserving existing Edit/Re-test/Delete behavior.
+
 ## v1.0.0.1.48.5 — Accounts Page
 
 **IMPLEMENTED:** flat Account table, one-row title/search/provider/status toolbar, existing pagination/rows-per-page, semantic account/provider status badges, and per-row `Edit / Re-test / Delete` menu.

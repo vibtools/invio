@@ -1,3 +1,7 @@
+## v1.0.0.1.48.6 Compatibility Note
+
+The Accounts correction preserves the v1.48.5 `AccountsPage` constructor, callback signatures, flat-table data projection, filtering/pagination and all account/provider/backend contracts. Only local table geometry, row-menu placement and Accounts-scoped status/action QSS change. Global Vib Tools token values, dependencies and release architecture remain unchanged.
+
 ## v1.0.0.1.48.5 Compatibility Note
 
 The Accounts page keeps the existing `AccountsPage` constructor/callback contract and AppState/provider data contracts. `on_add`, `on_edit`, `on_retest`, and `on_delete` callbacks are unchanged; only their visual placement changes. Existing persistence, provider runtime, credential storage, task reservation and release/build compatibility remain unchanged.
