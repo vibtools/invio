@@ -134,6 +134,21 @@ class RepositoryContractTests(unittest.TestCase):
     def test_project_folder_is_git_ignored(self):
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("/project/", rules)
+        self.assertIn("/project/*", rules)
+        self.assertIn("/project/research/*", rules)
+
+    def test_ci_required_root_cause_verification_records_are_narrowly_allowlisted(self):
+        rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        required = (
+            "ROOT_CAUSE_VERIFICATION_v1.0.0.1.47.0.md",
+            "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.0.md",
+            "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.01.md",
+            "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.02.md",
+        )
+        for name in required:
+            with self.subTest(name=name):
+                self.assertIn(f"!/project/research/{name}", rules)
+                self.assertTrue((ROOT / "project" / "research" / name).is_file())
 
     def test_distribution_build_helpers_are_explicitly_tracked(self):
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")

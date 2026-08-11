@@ -33,5 +33,15 @@ data/exports/
 providers/registry/*
 !providers/registry/.gitkeep
 
-# Personal development material. Never publish this folder.
+# Personal development material remains ignored by default.
+# Narrow exception: repository contract tests require these historical root-cause
+# verification records to exist in a clean GitHub Actions checkout.
 /project/
+!/project/
+/project/*
+!/project/research/
+/project/research/*
+!/project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.47.0.md
+!/project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.0.md
+!/project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.01.md
+!/project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.02.md

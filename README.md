@@ -2,6 +2,8 @@
 
 `Invio v1.0.0.1.48.01` is the owner-frozen Official Baseline. `v1.0.0.1.48.02` fixes the global app-owned `QMessageBox` custom-chrome lifecycle regression: every Invio message box is forced onto Qt's widget-backed path, and custom chrome reacquires the live Qt-owned layout only after frameless/translucent window mutation. Existing warning/error/info/confirmation business flows, Task state, providers, storage, customer/invoice logic and unrelated UI remain unchanged. Real PySide6 interaction tests are included and execute whenever the runtime dependency is available (including the normal dependency-installed CI jobs).
 
+GitHub CI correction: the Linux `ubuntu-24.04` test job now installs the Qt runtime libraries required by the real PySide6 popup interaction suite and runs it with the offscreen QPA platform. The repository contract also narrowly tracks the four historical root-cause verification records that the tests read from `project/research/`; the remainder of `project/` stays ignored. This is CI/test-artifact only and does not change application runtime behavior.
+
 Python wheel packaging note: the public application/tag identity remains `1.0.0.1.48.02` / `v1.0.0.1.48.02`; Python packaging canonically emits wheel metadata/filename version `1.0.0.1.48.2`, which P14 validates explicitly. Portable/MSI naming and PE/MSI identities remain on the public mapping.
 
 # v1.0.0.1.48.01 Task Close Confirmation Hotfix Candidate

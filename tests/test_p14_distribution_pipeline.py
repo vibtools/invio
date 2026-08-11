@@ -168,6 +168,13 @@ class P14DistributionPipelineTests(unittest.TestCase):
             "gh release create",
             "gh release upload",
             "python -m pip wheel . --no-deps --no-build-isolation",
+            "Install Linux Qt runtime dependencies",
+            "QT_QPA_PLATFORM: offscreen",
+            "libegl1",
+            "libgl1",
+            "libopengl0",
+            "libxkbcommon-x11-0",
+            "libxcb-cursor0",
         )
         for fragment in required_fragments:
             with self.subTest(fragment=fragment):

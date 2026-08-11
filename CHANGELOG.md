@@ -1,3 +1,12 @@
+## v1.0.0.1.48.02 - CI Environment / Verification Artifact Correction
+
+- Keeps public/runtime version `1.0.0.1.48.02` unchanged.
+- Installs the Linux Qt runtime libraries required by the real PySide6 popup interaction tests on the Ubuntu 24.04 GitHub Actions test runner, including `libEGL.so.1` via `libegl1`.
+- Runs the Linux UI interaction suite explicitly with `QT_QPA_PLATFORM=offscreen`.
+- Narrowly allowlists only the four historical `ROOT_CAUSE_VERIFICATION_*.md` records already consumed by `tests/test_repository_contracts.py`, while all other `project/` material remains ignored.
+- Adds regression assertions for the CI dependency and repository-artifact contracts.
+- No runtime, UI, business, provider, storage, Task, customer, invoice, settings, version, or feature behavior changes.
+
 ## v1.0.0.1.48.02 - Global QMessageBox / Popup Lifecycle Functional Regression Fix
 
 - Freezes `v1.0.0.1.48.01` as the parent Official Baseline.
