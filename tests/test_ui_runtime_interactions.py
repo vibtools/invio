@@ -9,7 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PySide6.QtCore import QTimer, Qt
-    from PySide6.QtWidgets import QApplication, QDialog, QMessageBox, QPushButton, QWidget
+    from PySide6.QtWidgets import QApplication, QDialog, QMenu, QMessageBox, QPushButton, QWidget
 
     from src.accounts.models import Account
     from src.core.provider_manager import ProviderManifest
@@ -17,11 +17,12 @@ try:
     from src.customers.models import CustomerList
     from src.invoices.templates import InvoiceTemplate
     from src.ui.dialogs import NewTaskDialog, compact_message_box
+    from src.ui.pages.accounts_page import AccountsPage
 
     _PYSIDE6_AVAILABLE = True
 except ModuleNotFoundError:
-    QApplication = QDialog = QMessageBox = QPushButton = QWidget = QTimer = Qt = None  # type: ignore[assignment]
-    Account = ProviderManifest = AppState = CustomerList = InvoiceTemplate = NewTaskDialog = None  # type: ignore[assignment]
+    QApplication = QDialog = QMenu = QMessageBox = QPushButton = QWidget = QTimer = Qt = None  # type: ignore[assignment]
+    Account = ProviderManifest = AppState = CustomerList = InvoiceTemplate = NewTaskDialog = AccountsPage = None  # type: ignore[assignment]
     compact_message_box = None  # type: ignore[assignment]
     _PYSIDE6_AVAILABLE = False
 
@@ -266,6 +267,135 @@ class NewTaskDialogRuntimeInteractionTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(dialog.result(), QDialog.DialogCode.Rejected)
         dialog.deleteLater()
+
+
+@unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")
+class AccountsPageRuntimeInteractionTests(unittest.TestCase):
+    """Exercise the v1.48.5 flat Accounts table through the real Qt widget layer."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.state = AppState()
+        for index in range(1, 206):
+            status = "Verified" if index % 3 else "Not Verified"
+            account = Account(
+                id=f"odoo-{index:03d}",
+                provider_id="odoo",
+                provider_name="Odoo",
+                name=f"Odoo-client{index:03d}",
+                mode="Default",
+                status=status,
+                last_verification_at="2026-08-11T18:57:00+00:00",
+            )
+            self.state.accounts[account.id] = account
+        refrens = Account(
+            id="refrens-main",
+            provider_id="refrens",
+            provider_name="Refrens",
+            name="Refrens-main",
+            mode="Default",
+            status="Verified",
+        )
+        agiled = Account(
+            id="agiled-main",
+            provider_id="agiled",
+            provider_name="Agiled",
+            name="Agiled-main",
+            mode="Default",
+            status="Verified",
+        )
+        self.state.accounts[refrens.id] = refrens
+        self.state.accounts[agiled.id] = agiled
+        self.providers = type(
+            "ProvidersStub",
+            (),
+            {
+                "list_installed": lambda _self: [
+                    ProviderManifest(id="odoo", name="Odoo", version="1.0.0", description="Odoo"),
+                    ProviderManifest(id="refrens", name="Refrens", version="1.0.3", description="Refrens"),
+                ]
+            },
+        )()
+        self.calls: list[tuple[str, str]] = []
+        self.page = AccountsPage(
+            self.state,
+            self.providers,
+            lambda: self.calls.append(("add", "")),
+            lambda account_id: self.calls.append(("edit", account_id)),
+            lambda account_id: self.calls.append(("retest", account_id)),
+            lambda account_id: self.calls.append(("delete", account_id)),
+        )
+        self.page.show()
+        self.app.processEvents()
+
+    def tearDown(self) -> None:
+        self.page.close()
+        self.page.deleteLater()
+        self.app.processEvents()
+
+    def test_flat_table_semantic_status_and_scalable_pagination(self):
+        page = self.page
+        self.assertEqual(page.table.columnCount(), 4)
+        self.assertEqual(
+            [page.table.horizontalHeaderItem(index).text() for index in range(4)],
+            ["ACCOUNT", "PROVIDER", "STATUS", "ACTION"],
+        )
+        self.assertEqual(page.pager.total, 207)
+        self.assertEqual(page.table.rowCount(), 10)
+
+        page_size_index = page.pager.page_size_combo.findData(25)
+        page.pager.page_size_combo.setCurrentIndex(page_size_index)
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 25)
+        page.pager.next.click()
+        self.app.processEvents()
+        self.assertEqual(page.pager.page, 2)
+        self.assertEqual(page.table.rowCount(), 25)
+
+        page.toolbar.search.setText("Agiled-main")
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertEqual(page.table.item(0, 0).text(), "Agiled-main")
+        badge_host = page.table.cellWidget(0, 2)
+        labels = badge_host.findChildren(type(page.empty))
+        self.assertTrue(any(item.text() == "! Not Installed" for item in labels))
+
+    def test_provider_status_filters_and_row_action_menu_preserve_callbacks(self):
+        page = self.page
+        provider_index = page.toolbar.filters[0].findData("refrens")
+        page.toolbar.filters[0].setCurrentIndex(provider_index)
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertEqual(page.table.item(0, 0).text(), "Refrens-main")
+
+        page.toolbar.filters[0].setCurrentIndex(page.toolbar.filters[0].findData("odoo"))
+        page.toolbar.filters[1].setCurrentIndex(page.toolbar.filters[1].findData("Not Verified"))
+        self.app.processEvents()
+        self.assertGreater(page.pager.total, 0)
+        self.assertTrue(all(page.table.item(row, 2).text() == "Not Verified" for row in range(page.table.rowCount())))
+
+        page.toolbar.search.clear()
+        page.toolbar.filters[0].setCurrentIndex(page.toolbar.filters[0].findData("refrens"))
+        page.toolbar.filters[1].setCurrentIndex(page.toolbar.filters[1].findData(""))
+        self.app.processEvents()
+        action_host = page.table.cellWidget(0, 3)
+        action_button = next(button for button in action_host.findChildren(QPushButton) if button.text() == "⋯")
+        menu = action_button.findChild(QMenu)
+        self.assertIsNotNone(menu)
+        for action in menu.actions():
+            if action.text() == "Edit":
+                action.trigger()
+            elif action.text() == "Re-test":
+                action.trigger()
+            elif action.text() == "Delete":
+                action.trigger()
+        self.assertEqual(
+            self.calls,
+            [("edit", "refrens-main"), ("retest", "refrens-main"), ("delete", "refrens-main")],
+        )
 
 
 if __name__ == "__main__":

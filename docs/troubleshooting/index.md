@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Accounts Page
+
+If an account action is rejected, use the existing error message as the source of truth: provider installation, task assignment, verification and protected credential rules are unchanged. The flat table only relocates actions into the account row's `⋯` menu.
+
 ## v1.0.0.1.48.4 New Task Modal
 
 No new operational troubleshooting path is introduced. Existing Task validation messages remain authoritative. UI interaction regression coverage includes modal reopen, provider/filter/search controls, account selection/scrolling and Cancel/Create actions.

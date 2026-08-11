@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Configuration Note
+
+The Accounts flat-table update adds no configuration key and changes no account/provider credential setting. Existing application and customer defaults remain unchanged.
+
 ## v1.0.0.1.48.4 Configuration Note
 
 No configuration keys or defaults are added or changed by the New Task modal UI redesign.

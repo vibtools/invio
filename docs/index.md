@@ -1,4 +1,8 @@
-## Current UI Update — v1.0.0.1.48.4
+## Current UI Update — v1.0.0.1.48.5
+
+Accounts now use one compact flat account table with one-row search/provider/status controls, semantic status badges, existing pagination, and per-row `⋯` actions. No account/backend workflow changed.
+
+## Previous UI Update — v1.0.0.1.48.4
 
 The Tasks → New Task dialog now uses the approved compact single-toolbar / scrollable-account-grid / single-bottom-row layout. Workflow and backend behavior are unchanged.
 

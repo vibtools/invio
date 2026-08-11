@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Compatibility Note
+
+The Accounts page keeps the existing `AccountsPage` constructor/callback contract and AppState/provider data contracts. `on_add`, `on_edit`, `on_retest`, and `on_delete` callbacks are unchanged; only their visual placement changes. Existing persistence, provider runtime, credential storage, task reservation and release/build compatibility remain unchanged.
+
 ## v1.0.0.1.48.4 Compatibility Note
 
 The New Task modal redesign is presentation-only. Python/PySide6 requirements, Windows packaging, SQLite schema v5, provider contracts, external-plugin compatibility, Task payload shape and saved domain compatibility are unchanged.

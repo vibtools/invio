@@ -1,3 +1,11 @@
+# v1.0.0.1.48.5 Accounts Page — Compact Flat Account Table & Semantic Status UI
+
+`Invio v1.0.0.1.48.4` is the frozen parent baseline. `v1.0.0.1.48.5` changes only the **Accounts** page presentation: the expandable Provider → Account hierarchy is replaced by one flat Account table; the page header keeps only **Add Account**; **Added Accounts List + Search + Provider filter + Status filter** share one compact toolbar row; existing pagination/rows-per-page remain; and **Edit / Re-test / Delete** move to each account row under a compact `⋯` menu.
+
+Account/provider relationships, verification data, API-test behavior, protected credentials, task reservations, callbacks, filtering semantics, persistence, provider runtime, WorkerManager and all non-Accounts UI remain unchanged. Status badges reuse the existing palette with green success/ready states, amber verification attention, red provider/error states, gray unavailable states and existing blue primary/selection styling.
+
+Version mapping: application/tag `1.0.0.1.48.5` / `v1.0.0.1.48.5`, PE `1.0.1.4805`, MSI `1.1.4805`, Python wheel `1.0.0.1.48.5`.
+
 # v1.0.0.1.48.4 Compact Add Task Modal UI Redesign
 
 `Invio v1.0.0.1.48.3` is the frozen parent baseline. `v1.0.0.1.48.4` changes only the **Tasks → New Task** modal composition: Provider + account availability/status filters + account search share one compact toolbar row; the existing account table uses a stable 250px scrollable viewport with its existing pagination; Invoice Template + Customer List + Cancel + Create Task share one compact bottom row. Existing colors, typography, borders, custom title bar, dialog shadow, account eligibility, selection, validation, payload, Task creation workflow, provider/runtime/storage/WorkerManager behavior and every other page remain unchanged.

@@ -108,9 +108,9 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('self.setProperty("dataPage", True)', accounts)
         self.assertIn('DataGridToolbar(', accounts)
         self.assertIn('DataGridPager(', accounts)
-        self.assertIn('strftime("%b %d, %Y • %H:%M")', accounts)
-        self.assertIn('setIconSize(QSize(16, 16))', accounts)
-        self.assertIn('data_badge_host(provider_status)', accounts)
+        self.assertIn('self.table = QTableWidget(0, 4)', accounts)
+        self.assertIn('self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)', accounts)
+        self.assertIn('data_badge_host(status_text, tone)', accounts)
 
         self.assertIn('"Search lists..."', customers)
         self.assertIn('"Search customers..."', customers)
@@ -535,10 +535,10 @@ class UiContractTests(unittest.TestCase):
         page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
         dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('button("Edit")', page)
-        self.assertIn('button("Re-test")', page)
-        self.assertIn('button("Delete")', page)
-        self.assertIn('"LAST API TEST"', page)
+        self.assertIn('menu.addAction("Edit")', page)
+        self.assertIn('menu.addAction("Re-test")', page)
+        self.assertIn('menu.addAction("Delete")', page)
+        self.assertIn('self.table.setHorizontalHeaderLabels(["ACCOUNT", "PROVIDER", "STATUS", "ACTION"])', page)
         self.assertIn('"Protected storage"', page)
         self.assertIn('"Not Installed"', page)
         self.assertIn('class AccountRetestDialog(QDialog)', dialogs)
@@ -1015,6 +1015,65 @@ class V1484NewTaskCompactModalContractTests(unittest.TestCase):
         ):
             self.assertIn(token, runtime_test)
 
+
+
+class V1485AccountsFlatTableContractTests(unittest.TestCase):
+    def test_v1485_accounts_page_is_flat_compact_and_row_action_scoped(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+
+        self.assertIn('page_header(', page)
+        self.assertIn('[self.add_button]', page)
+        self.assertNotIn('self.edit_button = button("Edit")', page)
+        self.assertNotIn('self.retest_button = button("Re-test")', page)
+        self.assertNotIn('self.delete_button = button("Delete")', page)
+        self.assertIn('label("Added Accounts List", "CardTitle", False)', page)
+        self.assertIn('self.table = QTableWidget(0, 4)', page)
+        self.assertIn('self.table.setObjectName("AccountsDataTable")', page)
+        self.assertIn('self.table.setHorizontalHeaderLabels(["ACCOUNT", "PROVIDER", "STATUS", "ACTION"])', page)
+        self.assertNotIn('QTreeWidget', page)
+        self.assertNotIn('QTreeWidgetItem', page)
+        self.assertIn('menu.addAction("Edit")', page)
+        self.assertIn('menu.addAction("Re-test")', page)
+        self.assertIn('menu.addAction("Delete")', page)
+        self.assertIn('action_button = button("⋯")', page)
+        self.assertIn('self.pager = DataGridPager(on_changed=self.refresh)', page)
+        self.assertIn('row_status = account.status if provider is not None else "Not Installed"', page)
+        self.assertIn('data_badge_host(status_text, tone)', page)
+
+    def test_v1485_accounts_semantic_status_palette_mapping_is_local_to_accounts(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+
+        self.assertIn('"verified", "ready", "available"', page)
+        self.assertIn('"not verified", "pending"', page)
+        self.assertIn('"not installed", "failed", "error"', page)
+        self.assertIn('"unavailable", "disabled", "n/a"', page)
+        self.assertIn('return f"✓ {value}"', page)
+        self.assertIn('return f"! {value}"', page)
+        self.assertIn('QLabel#DataGridStatusSuccess', styles)
+        self.assertIn('QLabel#DataGridStatusWarning', styles)
+        self.assertIn('QLabel#DataGridStatusDanger', styles)
+        self.assertIn('QLabel#DataGridStatusNeutral', styles)
+
+    def test_v1485_accounts_runtime_suite_covers_flat_table_filters_pagination_and_actions(self):
+        root = Path(__file__).resolve().parents[1]
+        runtime_test = (root / "tests" / "test_ui_runtime_interactions.py").read_text(encoding="utf-8")
+        self.assertIn("class AccountsPageRuntimeInteractionTests", runtime_test)
+        for token in (
+            "page.table.rowCount()",
+            "page.toolbar.search.setText",
+            "page.toolbar.filters[0].findData",
+            "page.toolbar.filters[1].findData",
+            "page.pager.page_size_combo.findData(25)",
+            "page.pager.next.click()",
+            'button.text() == "⋯"',
+            'action.text() == "Edit"',
+            'action.text() == "Re-test"',
+            'action.text() == "Delete"',
+        ):
+            self.assertIn(token, runtime_test)
 
 
 class V14802PopupLifecycleContractTests(unittest.TestCase):

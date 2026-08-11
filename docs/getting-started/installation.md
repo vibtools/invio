@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Installation Note
+
+No dependency or installation workflow changes are introduced by the Accounts UI update. Existing Python, wheel, Nuitka OneDir and WiX MSI requirements remain unchanged.
+
 ## v1.0.0.1.48.4 Installation Note
 
 Installation requirements and commands are unchanged. The compact New Task modal does not add dependencies or configuration steps.

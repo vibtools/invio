@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Error-Handling Note
+
+No error-handling semantics changed. Row menu actions delegate to the existing MainWindow account handlers, so provider-not-installed, task-assignment, verification, protected-storage and delete-confirmation errors continue through the same existing dialogs and exceptions.
+
 ## v1.0.0.1.48.4 Error-Handling Note
 
 No error classification, validation message, exception path or failure-handling behavior is changed. The New Task modal still uses the existing `_validate_and_accept()` validation gates and `compact_message_box()` warnings.

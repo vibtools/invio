@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Structure Note
+
+No folder/module architecture changes are introduced. The runtime UI change is confined to `src/ui/pages/accounts_page.py`; directly affected tests, release/version metadata and required documentation are synchronized.
+
 ## v1.0.0.1.48.4 Structure Note
 
 No project folders, modules, public APIs or architecture boundaries are added, removed or renamed. The runtime UI change remains inside `src/ui/dialogs.py`; regression coverage remains in the existing UI test modules and release records use the established documentation locations.

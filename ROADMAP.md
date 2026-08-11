@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 Scope Status
+
+The approved Accounts-page **Compact Flat Account Table & Semantic Status UI** is the only v1.0.0.1.48.5 scope. It is a presentation restructure only and does not add a production phase or alter provider, account, task, storage or worker architecture.
+
 ## v1.0.0.1.48.4 Scope Status
 
 The approved Tasks-page New Task modal compact UI redesign is the only v1.0.0.1.48.4 scope. It does not introduce a new production phase or alter the existing provider/task/storage roadmap.

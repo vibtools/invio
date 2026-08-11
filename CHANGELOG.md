@@ -1,3 +1,13 @@
+## v1.0.0.1.48.5 - Accounts Flat Table + Semantic Status UI
+
+- Freezes `v1.0.0.1.48.4` as the parent Official Baseline.
+- Replaces only the Accounts page Provider → Account expandable hierarchy with a flat four-column `ACCOUNT / PROVIDER / STATUS / ACTION` table.
+- Keeps only `Add Account` in the page header and moves `Edit`, `Re-test`, and `Delete` into each account row's compact `⋯` action menu.
+- Places `Added Accounts List`, Search, Provider filter, and Status filter on one compact toolbar row.
+- Preserves existing search/filter semantics, pagination, rows-per-page, provider/account relationships, verification/API-test behavior, protected credentials, task-assignment rules and all backend callbacks.
+- Reuses the existing status badge palette semantically; no global palette or shared style redesign is introduced.
+- Version mapping: application `1.0.0.1.48.5`, PE `1.0.1.4805`, MSI `1.1.4805`.
+
 ## v1.0.0.1.48.4 - Compact Add Task Modal UI Redesign
 
 - Freezes `Invio v1.0.0.1.48.3` as the parent Official Baseline.

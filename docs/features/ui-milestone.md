@@ -1,3 +1,7 @@
+## v1.0.0.1.48.5 — Accounts Flat Table Scope
+
+The Accounts page now uses a scalable flat list rather than expandable provider groups. The approved compact toolbar, semantic status presentation, pagination and row action menu are implemented without changing the global design system or backend account workflows.
+
 ## v1.0.0.1.48.4 — New Task Modal Scope
 
 Only the Tasks-page New Task modal is reflowed to the owner-approved compact layout. Existing design tokens, custom dialog chrome/shadow and all other pages remain frozen.

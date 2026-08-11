@@ -1,3 +1,9 @@
+## v1.0.0.1.48.5 — Accounts List
+
+The Accounts page now lists each account as one row with **Account**, **Provider**, **Status**, and **Action**. Use Search plus Provider/Status filters for large account sets, change rows-per-page or page with the existing footer, and open the row `⋯` menu for **Edit**, **Re-test**, or **Delete**. **Add Account** remains the only page-header action.
+
+The underlying account verification, credentials, task-assignment restrictions and confirmation behavior are unchanged.
+
 ## v1.0.0.1.48.4 — Creating a Task
 
 Open **Tasks → New Task**. Provider, account availability/status filters and account search now appear on one compact row. Select eligible accounts in the same checkbox table; use the existing pager for larger result sets and scroll inside the fixed account viewport when needed. Choose the Invoice Template and Customer List on the bottom row, then use **Create Task** or **Cancel**. The underlying selection and creation workflow is unchanged.

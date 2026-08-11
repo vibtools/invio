@@ -1,3 +1,9 @@
+## v1.0.0.1.48.5 — Accounts Page
+
+**IMPLEMENTED:** flat Account table, one-row title/search/provider/status toolbar, existing pagination/rows-per-page, semantic account/provider status badges, and per-row `Edit / Re-test / Delete` menu.
+
+**UNCHANGED:** account persistence, protected credentials, provider install state, API verification/re-test workflow, task reservation behavior, callback/business logic and all other pages.
+
 ## v1.0.0.1.48.4 — New Task Modal
 
 **IMPLEMENTED:** compact New Task modal composition only. Provider/filter/search, account table/pager, selectors and actions retain their existing data bindings and callbacks. No backend capability status changes are introduced.

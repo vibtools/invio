@@ -1,3 +1,9 @@
+## v1.0.0.1.48.5 UI Architecture Note
+
+`AccountsPage` remains a presentation/controller adapter over the existing `AppState` and `ProviderManager`. The prior `QTreeWidget` provider hierarchy is replaced with a `QTableWidget` projection of account records only. Provider installation state is resolved at refresh time solely to derive the visible provider name/status and existing filter semantics. Row actions call the existing `on_edit`, `on_retest`, and `on_delete` callbacks without changing their contracts.
+
+No domain, storage, provider-runtime, task-state or WorkerManager architecture changes are introduced.
+
 ## v1.0.0.1.48.4 UI Architecture Note
 
 `NewTaskDialog` remains the existing `QDialog` owned by the Tasks workflow. The update changes only local widget composition: one local toolbar row, the existing `QTableWidget` + `DataGridPager`, and one local bottom configuration/action row. Shared `DataGridToolbar`, `DataGridPager`, `build_dialog_shell`, styling tokens, AppState, Task creation, ProviderRuntime and WorkerManager contracts are not redesigned.

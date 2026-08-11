@@ -1,35 +1,54 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QBrush, QColor, QFont, QIcon
-from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QHeaderView,
+    QHBoxLayout,
+    QMenu,
+    QTableWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from ...core.paths import asset_path
 from ...core.provider_manager import ProviderManager
 from ...core.state import AppState
-from ..widgets import DataGridPager, DataGridToolbar, button, card, data_badge_host, data_grid_empty_label, page_header
+from ..tokens import CONST
+from ..widgets import (
+    DataGridPager,
+    DataGridToolbar,
+    button,
+    card,
+    data_badge_host,
+    data_grid_empty_label,
+    data_table_item,
+    label,
+    page_header,
+)
 
 
-_PROVIDER_LOGOS = {
-    "stripe": "stripe.png",
-    "refrens": "refrens.png",
-    "agiled": "agiled.png",
-    "odoo": "odoo.png",
-}
+def _account_status_tone(status: str) -> str:
+    value = str(status or "").strip().casefold()
+    if value in {"installed", "verified", "ready", "available", "success", "completed"}:
+        return "success"
+    if value in {"not verified", "pending", "api test required", "attention", "queued", "in use"}:
+        return "warning"
+    if value in {"not installed", "failed", "error"} or value.startswith("http_"):
+        return "danger"
+    if value in {"unavailable", "disabled", "n/a", "na", "none"}:
+        return "neutral"
+    return "neutral"
 
 
-def _compact_timestamp(value: str) -> str:
-    raw = str(value or "").strip()
-    if not raw:
-        return "Never"
-    try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except ValueError:
-        return raw
-    return parsed.strftime("%b %d, %Y • %H:%M")
+def _account_status_text(status: str, tone: str) -> str:
+    value = str(status or "").strip()
+    if tone == "success":
+        return f"✓ {value}"
+    if tone in {"warning", "danger"}:
+        return f"! {value}"
+    return value
 
 
 class AccountsPage(QWidget):
@@ -51,30 +70,22 @@ class AccountsPage(QWidget):
         self.on_delete = on_delete
         self.setObjectName("PageContent")
         self.setProperty("dataPage", True)
+
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
         root.setSpacing(10)
 
         self.add_button = button("Add Account", "primary")
-        self.edit_button = button("Edit")
-        self.retest_button = button("Re-test")
-        self.delete_button = button("Delete")
         self.add_button.clicked.connect(self.on_add)
-        self.edit_button.clicked.connect(self._edit_selected)
-        self.retest_button.clicked.connect(self._retest_selected)
-        self.delete_button.clicked.connect(self._delete_selected)
         root.addWidget(
             page_header(
                 "Accounts",
                 "Added provider accounts are grouped by provider. An account assigned to one task cannot be selected by another task.",
-                [self.add_button, self.edit_button, self.retest_button, self.delete_button],
+                [self.add_button],
             )
         )
 
-        host = card(
-            "Added Accounts",
-            "Installed providers and preserved accounts from uninstalled providers are shown here. Protected credentials are never displayed.",
-        )
+        host = card()
         self.pager = DataGridPager(on_changed=self.refresh)
         self.toolbar = DataGridToolbar(
             "Search accounts...",
@@ -84,23 +95,27 @@ class AccountsPage(QWidget):
                 ("Status", (("All statuses", ""),)),
             ),
         )
+        self._compose_toolbar()
         host.layout().addWidget(self.toolbar)
 
-        self.tree = QTreeWidget()
-        self.tree.setObjectName("AccountsDataTree")
-        self.tree.setColumnCount(6)
-        self.tree.setHeaderLabels(["ACCOUNT / PROVIDER", "MODE", "STATUS", "LAST API TEST", "ASSIGNED TASK", "CREDENTIALS"])
-        self.tree.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tree.setRootIsDecorated(True)
-        self.tree.setAlternatingRowColors(True)
-        self.tree.setIconSize(QSize(16, 16))
-        self.tree.itemSelectionChanged.connect(self._update_actions)
-        header = self.tree.header()
+        self.table = QTableWidget(0, 4)
+        self.table.setObjectName("AccountsDataTable")
+        self.table.setHorizontalHeaderLabels(["ACCOUNT", "PROVIDER", "STATUS", "ACTION"])
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
+        header = self.table.horizontalHeader()
         header.setSectionsClickable(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for column in range(1, 6):
-            header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
-        host.layout().addWidget(self.tree)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(3, 48)
+        host.layout().addWidget(self.table)
+
         self.empty = data_grid_empty_label("No accounts found.")
         self.empty.setVisible(False)
         host.layout().addWidget(self.empty)
@@ -108,22 +123,29 @@ class AccountsPage(QWidget):
         root.addWidget(host, 1)
         self.refresh()
 
+    def _compose_toolbar(self) -> None:
+        layout = self.toolbar.layout()
+        while layout.count():
+            layout.takeAt(0)
+        layout.addWidget(label("Added Accounts List", "CardTitle", False))
+        layout.addStretch(1)
+        layout.addWidget(self.toolbar.search)
+        for combo in self.toolbar.filters:
+            layout.addWidget(combo)
+
     def _controls_changed(self) -> None:
         self.pager.reset()
         self.refresh()
 
     def _selected_account_id(self) -> str:
-        item = self.tree.currentItem()
+        row = self.table.currentRow()
+        if row < 0:
+            return ""
+        item = self.table.item(row, 0)
         if item is None:
             return ""
-        value = item.data(0, Qt.ItemDataRole.UserRole)
+        value = item.data(Qt.ItemDataRole.UserRole)
         return str(value) if value else ""
-
-    def _update_actions(self) -> None:
-        selected = bool(self._selected_account_id())
-        self.edit_button.setEnabled(selected)
-        self.retest_button.setEnabled(selected)
-        self.delete_button.setEnabled(selected)
 
     def _edit_selected(self) -> None:
         account_id = self._selected_account_id()
@@ -140,25 +162,36 @@ class AccountsPage(QWidget):
         if account_id:
             self.on_delete(account_id)
 
-    def _provider_icon(self, provider_id: str) -> QIcon:
-        filename = _PROVIDER_LOGOS.get(provider_id.casefold())
-        if not filename:
-            return QIcon()
-        path = asset_path("icons", "providers", filename)
-        return QIcon(str(path)) if path.is_file() else QIcon()
+    def _row_actions(self, account_id: str) -> QWidget:
+        host = QWidget()
+        layout = QHBoxLayout(host)
+        layout.setContentsMargins(0, 1, 0, 1)
+        layout.setSpacing(0)
+        layout.addStretch(1)
 
-    @staticmethod
-    def _decorate_provider_row(item: QTreeWidgetItem) -> None:
-        font = QFont(item.font(0))
-        font.setWeight(QFont.Weight.DemiBold)
-        brush = QBrush(QColor("#1A212E"))
-        for column in range(item.columnCount()):
-            item.setFont(column, font)
-            item.setBackground(column, brush)
+        action_button = button("⋯")
+        action_button.setObjectName("TableActionButton")
+        action_button.setAccessibleName("Account actions")
+        action_button.setToolTip("Account actions")
+        action_button.setFixedWidth(32)
+
+        menu = QMenu(action_button)
+        edit_action = menu.addAction("Edit")
+        retest_action = menu.addAction("Re-test")
+        delete_action = menu.addAction("Delete")
+        edit_action.triggered.connect(lambda _checked=False, aid=account_id: self.on_edit(aid))
+        retest_action.triggered.connect(lambda _checked=False, aid=account_id: self.on_retest(aid))
+        delete_action.triggered.connect(lambda _checked=False, aid=account_id: self.on_delete(aid))
+        action_button.clicked.connect(
+            lambda _checked=False, control=action_button, popup=menu: popup.exec(
+                control.mapToGlobal(control.rect().bottomLeft())
+            )
+        )
+        layout.addWidget(action_button)
+        return host
 
     def refresh(self) -> None:
         selected_id = self._selected_account_id()
-        self.tree.clear()
         installed = self.providers.list_installed()
         installed_by_id = {provider.id: provider for provider in installed}
         account_provider_ids = {account.provider_id for account in self.state.accounts.values()}
@@ -185,18 +218,11 @@ class AccountsPage(QWidget):
         status_options.extend((status, status) for status in account_statuses if status not in {"Installed", "Not Installed"})
         self.toolbar.set_filter_options(1, status_options)
 
-        if not provider_ids:
-            self.pager.set_total(0)
-            self.empty.setText("No accounts found.")
-            self.empty.setVisible(True)
-            self._update_actions()
-            return
-
         query = self.toolbar.query
         provider_filter = str(self.toolbar.filter_value(0) or "")
         status_filter = str(self.toolbar.filter_value(1) or "")
 
-        records: list[tuple[str, object]] = []
+        records: list[tuple[str, str, str, object]] = []
         for provider_id in provider_ids:
             provider = installed_by_id.get(provider_id)
             accounts = self.state.accounts_for_provider(provider_id)
@@ -221,79 +247,45 @@ class AccountsPage(QWidget):
                         credential_state,
                     )
                 ).casefold()
-                status_match = not status_filter or account.status == status_filter or provider_status == status_filter
+                row_status = account.status if provider is not None else "Not Installed"
+                status_match = not status_filter or row_status == status_filter or provider_status == status_filter
                 if status_match and (not query or query in searchable):
-                    records.append((provider_id, account))
+                    records.append((provider_id, provider_name, row_status, account))
 
         start, end = self.pager.set_total(len(records))
         visible_records = records[start:end]
-        visible_by_provider: dict[str, list[object]] = {}
-        for provider_id, account in visible_records:
-            visible_by_provider.setdefault(provider_id, []).append(account)
 
-        for provider_id in provider_ids:
-            provider = installed_by_id.get(provider_id)
-            all_accounts = self.state.accounts_for_provider(provider_id)
-            provider_name = provider.name if provider is not None else (all_accounts[0].provider_name if all_accounts else provider_id)
-            provider_status = "Installed" if provider is not None else "Not Installed"
-            if provider_filter and provider_id != provider_filter:
-                continue
-            page_accounts = visible_by_provider.get(provider_id, [])
-            provider_search_match = not query or query in f"{provider_name} {provider_id} {provider_status}".casefold()
-            show_empty_provider = (
-                not all_accounts
-                and self.pager.page == 1
-                and provider_search_match
-                and (not status_filter or provider_status == status_filter)
-            )
-            if not page_accounts and not show_empty_provider:
-                continue
+        self.table.setRowCount(0)
+        selected_row = -1
+        for provider_id, provider_name, row_status, account in visible_records:
+            row = self.table.rowCount()
+            self.table.insertRow(row)
 
-            credential_summary = f"{len(provider.credential_fields)} fields" if provider is not None else ""
-            provider_item = QTreeWidgetItem([provider_name, "", provider_status, "", "", credential_summary])
-            provider_item.setIcon(0, self._provider_icon(provider_id))
-            provider_item.setToolTip(0, provider_name)
-            provider_item.setToolTip(2, provider_status)
-            provider_item.setExpanded(True)
-            self._decorate_provider_row(provider_item)
-            self.tree.addTopLevelItem(provider_item)
-            self.tree.setItemWidget(provider_item, 2, data_badge_host(provider_status))
+            account_item = data_table_item(account.name)
+            account_item.setData(Qt.ItemDataRole.UserRole, account.id)
+            account_item.setToolTip(account.name)
+            self.table.setItem(row, 0, account_item)
 
-            for account in page_accounts:
-                task_id = self.state.account_reservations.get(account.id)
-                task_name = self.state.tasks.get(task_id).name if task_id and task_id in self.state.tasks else "Available"
-                credential_state = "Protected storage" if account.credentials else "Unavailable"
-                compact_time = _compact_timestamp(account.last_verification_at or "")
-                child = QTreeWidgetItem(
-                    [
-                        account.name,
-                        account.mode,
-                        account.status,
-                        compact_time,
-                        task_name,
-                        credential_state,
-                    ]
-                )
-                child.setData(0, Qt.ItemDataRole.UserRole, account.id)
-                for column, value in enumerate(
-                    (account.name, account.mode, account.status, account.last_verification_at or "Never", task_name, credential_state)
-                ):
-                    child.setToolTip(column, str(value))
-                if account.verification_error_summary:
-                    child.setToolTip(2, account.verification_error_summary)
-                provider_item.addChild(child)
-                self.tree.setItemWidget(child, 2, data_badge_host(account.status))
-                assigned_tone = "success" if task_name == "Available" else "warning"
-                self.tree.setItemWidget(child, 4, data_badge_host(task_name, assigned_tone))
-                credential_tone = "success" if credential_state == "Protected storage" else "neutral"
-                self.tree.setItemWidget(child, 5, data_badge_host(credential_state, credential_tone))
-                if account.id == selected_id:
-                    self.tree.setCurrentItem(child)
+            provider_item = data_table_item(provider_name)
+            provider_item.setData(Qt.ItemDataRole.UserRole, provider_id)
+            provider_item.setToolTip(provider_name)
+            self.table.setItem(row, 1, provider_item)
 
-            if not all_accounts:
-                provider_item.addChild(QTreeWidgetItem(["No accounts added", "", "", "", "", ""]))
+            tone = _account_status_tone(row_status)
+            status_text = _account_status_text(row_status, tone)
+            status_item = data_table_item(row_status)
+            tooltip = account.verification_error_summary if account.verification_error_summary else row_status
+            status_item.setToolTip(tooltip)
+            self.table.setItem(row, 2, status_item)
+            self.table.setCellWidget(row, 2, data_badge_host(status_text, tone))
+            self.table.setCellWidget(row, 3, self._row_actions(account.id))
 
-        has_rows = bool(self.tree.topLevelItemCount())
+            if account.id == selected_id:
+                selected_row = row
+
+        if selected_row >= 0:
+            self.table.selectRow(selected_row)
+
+        has_rows = self.table.rowCount() > 0
         self.empty.setText("No matching records." if (query or provider_filter or status_filter) else "No accounts found.")
         self.empty.setVisible(not has_rows)
-        self._update_actions()
