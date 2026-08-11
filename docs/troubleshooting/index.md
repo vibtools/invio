@@ -1,3 +1,7 @@
+## GitHub Actions reports many missing `project/...` records after a narrow allowlist
+
+If `tests/test_repository_contracts.py` suddenly reports multiple missing planning/specification/research files while application tests and PySide6 runtime tests pass, verify `.gitignore` first. `project/` is intentionally private. A partial unignore makes `project_root.is_dir()` true and activates private-baseline-only assertions without supplying the complete private tree. `v1.0.0.1.48.3` restores the correct boundary: keep `/project/` fully ignored and make private-record verification conditional on a complete private baseline. Do not publish the private project tree as a CI workaround.
+
 ## v1.0.0.1.47.0 Window / Dialog UI
 
 If custom window controls or sidebar icons are missing in a packaged build, verify the distribution contains `assets/icons/nav/`, `assets/icons/window/`, and the themed chevron SVG files. These resources are part of the required Windows/wheel inventory in v1.47.0.

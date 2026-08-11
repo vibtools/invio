@@ -1,3 +1,15 @@
+## Current Candidate Mapping — v1.0.0.1.48.3
+
+- Application: `1.0.0.1.48.3`
+- PE/File version: `1.0.1.4803`
+- MSI version: `1.1.4803`
+- Exact tag: `v1.0.0.1.48.3`
+- Python wheel identity: `1.0.0.1.48.3`; release filename: `invio-1.0.0.1.48.3-py3-none-any.whl`
+- Parent owner-frozen baseline: `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip`
+- Scope: End-to-end GitHub CI/test/build/release pipeline forensic stabilization only.
+
+The existing six-part hotfix mapping folds revision `48` and hotfix `3` to native revision `4803`, preserving the established PE/MSI version contract without changing the mapping algorithm.
+
 ## Current Candidate Mapping — v1.0.0.1.48.02
 
 - Application: `1.0.0.1.48.02`

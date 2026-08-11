@@ -1,3 +1,7 @@
+## CI/CD stabilization — v1.0.0.1.48.3
+
+There is no new user workflow or user-visible feature in this release. Existing dialogs, pages, Task actions, providers, customer/invoice operations and Settings behavior are unchanged. The update is limited to automated test/build/release reliability and release-version identity.
+
 ## Popup / Confirmation behavior — v1.0.0.1.48.02
 
 Existing warnings, errors, information messages and confirmations retain their previous wording and actions. The hotfix restores their ability to open and return the selected button after the custom-chrome redesign. No new user workflow is introduced.

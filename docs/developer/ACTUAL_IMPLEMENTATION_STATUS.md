@@ -1,3 +1,7 @@
+## v1.0.0.1.48.3 CI/CD stabilization status
+
+**IMPLEMENTED LOCALLY / REMOTE CONFIRMATION PENDING:** GitHub Actions run `31516505105` proves the Linux Qt dependency correction and real PySide6 popup runtime tests are working on both Linux and Windows. The remaining 21 failures are repository-contract failures caused by a partially unignored private `project/` tree. `v1.0.0.1.48.3` restores the established public/private test boundary: public CI no longer materializes `project/`, while a full private baseline continues to validate private records conditionally. Runtime/UI/business/provider/storage behavior is unchanged. A new pushed v1.48.3 run is required before claiming remote Windows wheel/Nuitka/MSI/artifact completion.
+
 ## v1.0.0.1.47.0 UI Candidate Status
 
 **Scope:** UI/UX only. The single-header shell, grouped SVG sidebar, standardized frameless dialog shell, centralized component states and approved Accounts/Customer Lists/Invoice Templates presentation are implemented. Provider runtime, storage, task execution, settings and business logic remain unchanged.

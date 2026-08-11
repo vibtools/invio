@@ -1,3 +1,14 @@
+## v1.0.0.1.48.3 - End-to-End CI/CD & Release Pipeline Stabilization
+
+- Freezes `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip` as the parent Official Baseline.
+- Forensically verifies GitHub Actions run `31516505105`: Linux Qt runtime installation succeeds and all four real PySide6 popup interaction tests pass on Linux and Windows.
+- Fixes the remaining 21 CI repository-contract failures by restoring `/project/` as fully private/Git-ignored and making the four newer v1.47/v1.48 private-record assertions conditional on a full private baseline, matching the existing repository contract introduced in v1.0.0.1.26.
+- Prevents a partially unignored `project/` directory from activating historical private-only verification checks in clean public GitHub checkouts.
+- Keeps the Linux offscreen Qt dependency step, wheel audit, Nuitka OneDir build, protected-credential smoke, WiX MSI build/install/run/uninstall smoke, release checksum audit, artifact upload and exact-tag release gates intact.
+- Synchronizes only required `v1.0.0.1.48.3` release identity and CI/release documentation/tests.
+- Version mapping: application `1.0.0.1.48.3`, PE `1.0.1.4803`, MSI `1.1.4803`, tag `v1.0.0.1.48.3`, wheel `1.0.0.1.48.3`.
+- No runtime/UI/business/provider/storage/Task/customer/invoice/settings behavior, dependency, schema or architecture change.
+
 ## v1.0.0.1.48.02 - CI Environment / Verification Artifact Correction
 
 - Keeps public/runtime version `1.0.0.1.48.02` unchanged.

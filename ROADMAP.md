@@ -1,3 +1,7 @@
+## Current CI/CD Stabilization Candidate — v1.0.0.1.48.3
+
+Parent Official Baseline: `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip`. Scope is limited to GitHub CI/test/build/release stabilization and required version/documentation synchronization. The correction restores the established public/private repository-contract boundary; it does not advance production phases or modify application behavior. A post-push GitHub Actions run remains the authoritative Windows OneDir/MSI/artifact confirmation gate.
+
 ## Current Hotfix Candidate — v1.0.0.1.48.02
 
 Parent Official Baseline: `v1.0.0.1.48.01`. Scope is limited to the global app-owned `QMessageBox` / popup lifecycle regression and real PySide6 interaction regression coverage. Production/provider roadmap ordering and business/runtime phase status are unchanged.

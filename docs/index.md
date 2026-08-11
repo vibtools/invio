@@ -1,3 +1,7 @@
+## v1.0.0.1.48.3 CI/CD Stabilization
+
+The current candidate corrects only the GitHub CI/repository-contract boundary discovered in run `31516505105`. Linux Qt/PySide6 runtime tests already pass; the remaining failure came from partially publishing the private `project/` tree, which activated historical private-only checks in clean Actions checkouts. `v1.0.0.1.48.3` restores the established private-project contract and keeps the existing wheel, Nuitka, WiX MSI, checksum, artifact and exact-tag release pipeline unchanged.
+
 ## v1.0.0.1.48.02 Popup Lifecycle Hotfix
 
 The current candidate repairs all existing Invio-owned warning/error/info/confirmation message boxes after the custom-window-chrome refactor. Business behavior is unchanged; the repair is limited to Qt widget selection, live-layout ownership, and direct interaction regression testing.

@@ -1,3 +1,7 @@
+## v1.0.0.1.48.3 CI/Public-Checkout Verification Boundary
+
+Application architecture is unchanged. The CI contract has two verification contexts: tracked public repository records must always be testable from an Actions checkout, while `project/` is private internal material and may be additionally verified only when the full private baseline is present. The v1.48.02 narrow unignore exception violated that boundary by materializing a partial `project/` tree. `v1.0.0.1.48.3` removes those exceptions and guards the four newer private-record reads exactly like the established historical repository-contract checks. Build flow remains test → wheel → Windows native/wheel smoke → Nuitka OneDir → compiled credential smoke → WiX MSI → MSI smoke → checksum audit → artifact upload → exact-tag release.
+
 ## v1.0.0.1.48.02 QMessageBox Lifecycle Boundary
 
 `compact_message_box()` is still the single app-owned message-box entry point. Custom Invio chrome requires the Qt widget implementation, so it now always enables `DontUseNativeDialog` before configuring/showing the box. `install_dialog_chrome()` no longer accepts an externally captured Qt-owned layout; after frameless/translucent window mutation it reacquires `dialog.layout()` and only then changes margins. This removes the stale Shiboken wrapper lifetime hazard without changing popup semantics.

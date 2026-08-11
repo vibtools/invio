@@ -1,3 +1,7 @@
+## v1.0.0.1.48.3 Compatibility Note
+
+This release changes only CI/repository-contract behavior, current release identity markers, directly related tests, and synchronized documentation. Runtime dependencies, SQLite schema v5, WorkerManager/QThread architecture, provider APIs and execution semantics, Task state, customer/invoice/settings behavior, UI layout/colors and QMessageBox lifecycle behavior remain compatible with the owner-frozen v1.0.0.1.48.02 CI-fix baseline. The public GitHub checkout again omits `project/`; full private baselines continue to verify those records locally when present.
+
 ## v1.0.0.1.48.02 Compatibility Note
 
 This hotfix changes only the app-owned `QMessageBox` widget/chrome lifecycle and directly related runtime regression tests. Existing message texts/buttons/results, Task state machine, WorkerManager/QThread architecture, provider APIs, durable storage/schema v5, customer/invoice processing, settings and non-popup UI behavior remain compatible with v1.48.01.

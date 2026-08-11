@@ -14,13 +14,13 @@ class RepositoryContractTests(unittest.TestCase):
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         docs_meta = (ROOT / "docs" / "docs.manifest.ygit").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('"version": "1.0.0.1.48.02"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.48.02"', project_meta)
-        self.assertIn('"current": "1.0.0.1.48.02"', docs_meta)
-        self.assertIn('"latest": "1.0.0.1.48.02"', docs_meta)
-        self.assertIn('Production • v1.0.0.1.48.02', main_window)
-        self.assertIn('Invio/1.0.0.1.48.02', runtime)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('"version": "1.0.0.1.48.3"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.48.3"', project_meta)
+        self.assertIn('"current": "1.0.0.1.48.3"', docs_meta)
+        self.assertIn('"latest": "1.0.0.1.48.3"', docs_meta)
+        self.assertIn('Production • v1.0.0.1.48.3', main_window)
+        self.assertIn('Invio/1.0.0.1.48.3', runtime)
 
     def test_release_metadata_is_v1001402(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -111,11 +111,8 @@ class RepositoryContractTests(unittest.TestCase):
         dialogs = (ROOT / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.47.0.md").read_text(encoding="utf-8")
-        root_cause = (ROOT / "project" / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.47.0.md").read_text(encoding="utf-8")
-        scope = (ROOT / "project" / "specifications" / "BASELINE_FREEZE_v1.0.0.1.47.0.md").read_text(encoding="utf-8")
-
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('Production • v1.0.0.1.48.02', main_window)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('Production • v1.0.0.1.48.3', main_window)
         self.assertNotIn('root.addWidget(self._build_header())', main_window)
         self.assertIn('for group_name, items in NAV_GROUPS', main_window)
         self.assertIn('class MainTitleBar(TitleBar):', title_bars)
@@ -127,9 +124,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertGreaterEqual(dialogs.count('build_dialog_shell(self)'), 5)
         self.assertIn('"nav/*.svg"', pyproject)
         self.assertIn('"window/*.svg"', pyproject)
-        self.assertIn('description rule A', root_cause)
-        self.assertIn('Inline Status', scope)
         self.assertIn('UI/UX only', release)
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            root_cause = (project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.47.0.md").read_text(encoding="utf-8")
+            scope = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.47.0.md").read_text(encoding="utf-8")
+            self.assertIn('description rule A', root_cause)
+            self.assertIn('Inline Status', scope)
 
     def test_project_folder_is_git_ignored(self):
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
@@ -138,17 +139,19 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("/project/research/*", rules)
 
     def test_ci_required_root_cause_verification_records_are_narrowly_allowlisted(self):
+        """Compatibility test name retained; private project records must stay private."""
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
-        required = (
+        self.assertIn("/project/", rules)
+        self.assertNotIn("!/project/", rules)
+        self.assertNotIn("!/project/research/", rules)
+        for name in (
             "ROOT_CAUSE_VERIFICATION_v1.0.0.1.47.0.md",
             "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.0.md",
             "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.01.md",
             "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.02.md",
-        )
-        for name in required:
+        ):
             with self.subTest(name=name):
-                self.assertIn(f"!/project/research/{name}", rules)
-                self.assertTrue((ROOT / "project" / "research" / name).is_file())
+                self.assertNotIn(f"!/project/research/{name}", rules)
 
     def test_distribution_build_helpers_are_explicitly_tracked(self):
         rules = (ROOT / ".gitignore").read_text(encoding="utf-8")
@@ -191,12 +194,12 @@ class RepositoryContractTests(unittest.TestCase):
         project_meta = (ROOT / "vibproject.ygit").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('"version": "1.0.0.1.48.02"', project_meta)
-        self.assertIn('"latestVersion": "1.0.0.1.48.02"', project_meta)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('"version": "1.0.0.1.48.3"', project_meta)
+        self.assertIn('"latestVersion": "1.0.0.1.48.3"', project_meta)
         self.assertIn('"keyring>=25.7,<26"', project_meta)
-        self.assertIn('Production • v1.0.0.1.48.02', main_window)
-        self.assertIn('Invio/1.0.0.1.48.02', runtime)
+        self.assertIn('Production • v1.0.0.1.48.3', main_window)
+        self.assertIn('Invio/1.0.0.1.48.3', runtime)
 
     def test_release_metadata_is_v100117(self):
         """Compatibility alias retained under the no-removal baseline contract."""
@@ -294,8 +297,8 @@ class RepositoryContractTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.36.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn("P14 CERTIFICATION PENDING", roadmap)
         self.assertIn("Production-ready: NO", release)
         self.assertIn("GitHub Actions run `31371279808`", release)
@@ -310,8 +313,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100137_wix_version_verification_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.37.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('WIX_VERSION: "6.0.2"', workflow)
         self.assertIn("$wixCoreVersion = ($wixVersion -split '\\+', 2)[0]", workflow)
         self.assertIn("GitHub Actions run `31374749523`", release)
@@ -325,8 +328,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100138_wixpdb_release_inventory_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.38.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('WIX_VERSION: "6.0.2"', workflow)
         self.assertIn('wix build build\\Invio.wxs -arch x64 -pdbtype none -o $msi', workflow)
         self.assertIn("31386258538", release)
@@ -341,8 +344,8 @@ class RepositoryContractTests(unittest.TestCase):
     def test_v100139_compiled_keyring_credential_correction_truthfulness(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.39.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertNotIn("user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml", workflow)
         self.assertTrue((ROOT / ".github" / "nuitka-keyring.nuitka-package.config.yml").is_file())
         self.assertIn("Smoke compiled protected credential storage", workflow)
@@ -362,8 +365,8 @@ class RepositoryContractTests(unittest.TestCase):
         styles = (ROOT / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         settings = (ROOT / "src" / "core" / "settings" / "manager.py").read_text(encoding="utf-8")
         importer = (ROOT / "src" / "customers" / "importers" / "email_importer.py").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn("windows-icon-from-ico: assets/icons/app.ico", workflow)
         self.assertNotIn('payload["terms"]', runtime[runtime.index("def build_refrens_invoice_payload"):runtime.index("def create_and_send_refrens_invoice")])
         self.assertIn("QListWidget {", styles)
@@ -386,8 +389,8 @@ class RepositoryContractTests(unittest.TestCase):
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         settings_page = (ROOT / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.40.1.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertNotIn("user-package-configuration-file: .github/nuitka-keyring.nuitka-package.config.yml", workflow)
         self.assertIn('f"/businesses/{url_key}/invoices/{invoice_id}/email"', runtime)
         self.assertIn('stage = "refrens_invoice_create"', runtime)
@@ -407,8 +410,8 @@ class RepositoryContractTests(unittest.TestCase):
         runtime = (ROOT / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
         adapters = (ROOT / "src" / "core" / "provider_runtime" / "adapters.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.40.2.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('AGILED_PUBLIC_API_BASE_URL = "https://api.agiled.ai"', runtime)
         self.assertIn('AGILED_PUBLIC_API_ME_PATH = "/public/v1/me"', runtime)
         self.assertIn('def _test_agiled_account', runtime)
@@ -435,8 +438,8 @@ class RepositoryContractTests(unittest.TestCase):
         providers = (ROOT / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
         styles = (ROOT / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.45.0.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         reflow = providers.split("def _reflow_cards", 1)[1].split("def _apply_filter", 1)[0]
         self.assertIn("item.setVisible(False)", reflow)
         self.assertLess(reflow.index("self.grid.addWidget(item, row, column)"), reflow.index("item.setVisible(True)"))
@@ -455,8 +458,8 @@ class RepositoryContractTests(unittest.TestCase):
         providers = (ROOT / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
         dashboard = (ROOT / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.44.0.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertNotIn('text_layout.addWidget(label(description, "Description", True))', widgets)
         self.assertNotIn('layout.addWidget(label(description, "Description", True))', widgets)
         self.assertEqual(widgets.count("_ = description"), 2)
@@ -476,8 +479,8 @@ class RepositoryContractTests(unittest.TestCase):
         reports = (ROOT / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
         dialogs = (ROOT / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.43.0.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('class DataGridToolbar(QWidget):', widgets)
         self.assertIn('class DataGridPager(QWidget):', widgets)
         self.assertIn('"Search accounts..."', accounts)
@@ -495,8 +498,8 @@ class RepositoryContractTests(unittest.TestCase):
         dialogs = (ROOT / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         styles = (ROOT / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.42.0.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('Search settings... (Ctrl+F)', settings)
         self.assertIn('button("Reset Settings")', settings)
         self.assertIn('def _filter_settings_cards', settings)
@@ -514,8 +517,8 @@ class RepositoryContractTests(unittest.TestCase):
         styles = (ROOT / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.41.1.md").read_text(encoding="utf-8")
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn('PROVIDER_CARD_HEIGHT = 194', page)
         self.assertIn('PROVIDER_LOGO_SIZE = 40', page)
         self.assertIn('"ProviderSearchInput"', page)
@@ -790,17 +793,19 @@ class V1480DialogChromeReleaseContractTests(unittest.TestCase):
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.48.0.md").read_text(encoding="utf-8")
-        root_cause = (ROOT / "project" / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.0.md").read_text(encoding="utf-8")
-        scope = (ROOT / "project" / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.0.md").read_text(encoding="utf-8")
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('Production • v1.0.0.1.48.02', main_window)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('Production • v1.0.0.1.48.3', main_window)
         self.assertIn("right margin", release)
         self.assertIn("subtle shadow", release)
         self.assertIn("title duplication", release)
-        self.assertIn("zero right margin", root_cause)
-        self.assertIn("duplicate body PageTitle", root_cause)
-        self.assertIn("v1.0.0.1.47.0", scope)
-        self.assertIn("chrome/dialog presentation only", scope)
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            root_cause = (project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.0.md").read_text(encoding="utf-8")
+            scope = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.0.md").read_text(encoding="utf-8")
+            self.assertIn("zero right margin", root_cause)
+            self.assertIn("duplicate body PageTitle", root_cause)
+            self.assertIn("v1.0.0.1.47.0", scope)
+            self.assertIn("chrome/dialog presentation only", scope)
 
 
 
@@ -811,18 +816,19 @@ class V14801TaskCloseHotfixContractTests(unittest.TestCase):
         main_window = (ROOT / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
         dialogs = (ROOT / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.48.01.md").read_text(encoding="utf-8")
-        root_cause = (ROOT / "project" / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.01.md").read_text(encoding="utf-8")
-        scope = (ROOT / "project" / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.01.md").read_text(encoding="utf-8")
-
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         close = main_window.split("def close_task", 1)[1].split("def _task_persistence_failure", 1)[0]
         self.assertIn("force_widget_dialog=True", close)
         self.assertIn("QMessageBox.Option.DontUseNativeDialog", dialogs)
         self.assertIn("Task Close confirmation", release)
-        self.assertIn("backend close path remained valid", root_cause)
-        self.assertIn("Tasks subsystem only", scope)
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            root_cause = (project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.01.md").read_text(encoding="utf-8")
+            scope = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.01.md").read_text(encoding="utf-8")
+            self.assertIn("backend close path remained valid", root_cause)
+            self.assertIn("Tasks subsystem only", scope)
 
 
 class V14802PopupLifecycleReleaseContractTests(unittest.TestCase):
@@ -832,22 +838,49 @@ class V14802PopupLifecycleReleaseContractTests(unittest.TestCase):
         dialogs = (ROOT / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
         chrome = (ROOT / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.48.02.md").read_text(encoding="utf-8")
-        root_cause = (ROOT / "project" / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.02.md").read_text(encoding="utf-8")
-        scope = (ROOT / "project" / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.02.md").read_text(encoding="utf-8")
         wheel_audit = (ROOT / "scripts" / "test" / "p14_wheel_audit.py").read_text(encoding="utf-8")
         distribution_audit = (ROOT / "scripts" / "test" / "p14_distribution_audit.py").read_text(encoding="utf-8")
 
-        self.assertIn('version = "1.0.0.1.48.02"', pyproject)
-        self.assertIn('INVIO_VERSION: "1.0.0.1.48.02"', workflow)
-        self.assertIn('INVIO_PE_VERSION: "1.0.1.4802"', workflow)
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
         self.assertIn("box.setOption(QMessageBox.Option.DontUseNativeDialog, True)", dialogs)
         self.assertIn("install_dialog_chrome(box, preserve_client_height=False)", dialogs)
         self.assertIn("layout = dialog.layout()", chrome)
         self.assertIn("caller-captured Qt-owned `QMessageBox.layout()`", release)
         self.assertIn("wrapper stale", release)
-        self.assertIn("libshiboken", root_cause)
-        self.assertIn("Global QMessageBox / Popup Lifecycle", scope)
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            root_cause = (project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.02.md").read_text(encoding="utf-8")
+            scope = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.02.md").read_text(encoding="utf-8")
+            self.assertIn("libshiboken", root_cause)
+            self.assertIn("Global QMessageBox / Popup Lifecycle", scope)
         self.assertIn("1.0.0.1.48.2", release)
         self.assertIn("invio-1.0.0.1.48.2-py3-none-any.whl", release)
         self.assertIn("EXPECTED_WHEEL_VERSION", wheel_audit)
         self.assertIn('f"invio-{wheel_version}-py3-none-any.whl"', distribution_audit)
+
+
+class V1483CICDPipelineStabilizationContractTests(unittest.TestCase):
+    def test_v1483_current_identity_and_public_private_ci_boundary_are_truthful(self):
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        release = (ROOT / "docs" / "release-notes" / "1.0.0.1.48.3.md").read_text(encoding="utf-8")
+
+        self.assertIn('version = "1.0.0.1.48.3"', pyproject)
+        self.assertIn('INVIO_VERSION: "1.0.0.1.48.3"', workflow)
+        self.assertIn('INVIO_PE_VERSION: "1.0.1.4803"', workflow)
+        self.assertIn("Install Linux Qt runtime dependencies", workflow)
+        self.assertIn("QT_QPA_PLATFORM: offscreen", workflow)
+        self.assertIn("/project/", gitignore)
+        self.assertNotIn("!/project/", gitignore)
+        self.assertNotIn("!/project/research/", gitignore)
+        self.assertIn("17 errors and 4 failures", release)
+        self.assertIn("1.1.4803", release)
+        self.assertIn("invio", pyproject)
+
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            self.assertTrue((project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.48.3.md").is_file())
+            self.assertTrue((project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.48.3.md").is_file())

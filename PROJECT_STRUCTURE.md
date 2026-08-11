@@ -1,3 +1,7 @@
+## v1.0.0.1.48.3 CI/CD Stabilization Structure Note
+
+No application folder/module architecture is added, removed, renamed or reorganized. `project/` remains private internal material and is fully Git-ignored. Public repository-contract tests depend only on tracked public files; private project records are verified only when a full private baseline provides the complete `project/` tree. Existing `scripts/build/`, `scripts/test/`, `.github/workflows/ci.yml`, runtime source structure and distribution architecture are otherwise unchanged.
+
 ## v1.0.0.1.48.02 Popup Lifecycle Hotfix Scope
 
 No folder/module architecture is reorganized. `src/ui/dialogs.py` retains the shared compact message-box entry point; `src/ui/title_bars.py` retains the custom chrome helper with a safer live-layout contract. `tests/test_ui_runtime_interactions.py` adds real PySide6 modal lifecycle coverage.
