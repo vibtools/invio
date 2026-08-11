@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Error-Handling Note
+
+No error-classification, exception, provider or persistence handling changes. The release corrects only a UI geometry contract exposed by the real Windows PySide6 runtime test.
+
+## v1.0.0.1.48.7 Error-Handling Note
+
+No exception, retry, provider, storage or transport error-handling behavior changed. Error/failed UI states are only mapped to the canonical danger badge renderer.
+
 ## v1.0.0.1.48.6 Error-Handling Note
 
 No error-handling semantics change. The screen/window-bounded row menu delegates to the same existing MainWindow Edit/Re-test/Delete handlers, so verification, provider-installation, task-assignment, protected-storage and confirmation failures retain their established behavior.

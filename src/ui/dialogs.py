@@ -42,7 +42,7 @@ from .widgets import (
     DataGridToolbar,
     button,
     card,
-    data_badge_host,
+    set_data_status_cell,
     data_table_item,
     form_group,
     inline_status,
@@ -1160,9 +1160,14 @@ class NewTaskDialog(QDialog):
             self.accounts.setItem(row, 0, checkbox)
             self.accounts.setItem(row, 1, data_table_item(account.name))
             self.accounts.setItem(row, 2, data_table_item(account.mode))
-            status_item = data_table_item(display_status, tooltip=tooltip_status)
-            self.accounts.setItem(row, 3, status_item)
-            self.accounts.setCellWidget(row, 3, data_badge_host(display_status, "success" if available else "warning"))
+            set_data_status_cell(
+                self.accounts,
+                row,
+                3,
+                display_status,
+                "success" if available else "warning",
+                tooltip=tooltip_status,
+            )
         self.accounts.blockSignals(False)
         self._adjust_accounts_height(len(visible))
 

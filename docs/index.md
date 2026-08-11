@@ -1,3 +1,11 @@
+## Current UI Correction — v1.0.0.1.48.8
+
+The Accounts `STATUS` column now honors the shared canonical status badge size hint instead of using a fixed 132px width. This is a runtime geometry correction only; status semantics and workflows are unchanged.
+
+## Current UI Update — v1.0.0.1.48.7
+
+Global status rendering now uses one shared semantic component path. Duplicate raw status text underneath table badges is removed without changing backend status values or workflows.
+
 ## Current UI Update — v1.0.0.1.48.6
 
 Accounts retain the v1.48.5 flat table and compact controls with rebalanced columns, approved compact semantic badges, a fully contained Action column, and each existing row menu bounded to the Invio-window/current-screen safe region.

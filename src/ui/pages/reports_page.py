@@ -19,10 +19,9 @@ from ..widgets import (
     DataGridToolbar,
     button,
     card,
-    data_badge_host,
     data_grid_empty_label,
-    data_status_tone,
     data_table_item,
+    set_data_status_cell,
     page_header,
 )
 
@@ -218,9 +217,7 @@ class ReportsPage(QWidget):
             ]
             for col, value in enumerate(values):
                 if col == 8:
-                    status_item = data_table_item(value)
-                    self.table.setItem(row, col, status_item)
-                    self.table.setCellWidget(row, col, data_badge_host(value))
+                    set_data_status_cell(self.table, row, col, value)
                 else:
                     self.table.setItem(row, col, data_table_item(value, right_align=col in {5, 6, 7}))
 
@@ -287,10 +284,10 @@ class ReportsPage(QWidget):
             ]
             badge_columns = {3, 8, 9, 10}
             for col, value in enumerate(values):
-                self.recipient_table.setItem(row, col, data_table_item(value, right_align=col == 4))
                 if col in badge_columns and value:
-                    tone = data_status_tone(value)
-                    self.recipient_table.setCellWidget(row, col, data_badge_host(value, tone))
+                    set_data_status_cell(self.recipient_table, row, col, value)
+                else:
+                    self.recipient_table.setItem(row, col, data_table_item(value, right_align=col == 4))
 
         self.recipient_empty.setText(
             "No matching records." if (query or provider_filter or safe_filter) else "No delivery records found."

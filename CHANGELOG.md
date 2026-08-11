@@ -1,3 +1,23 @@
+## v1.0.0.1.48.8 - Canonical Status Column Natural-Width Runtime Correction
+
+- Freezes the latest updated `v1.0.0.1.48.7` delta state as the parent baseline for this correction.
+- Fixes the only confirmed Windows runtime failure: the Accounts `STATUS` column was hard-fixed at 132px while the canonical shared status badge measured 180px in the owner's real Qt/font environment.
+- Changes only the Accounts `STATUS` header resize policy from a fixed pixel width to `ResizeToContents`, allowing the existing canonical `QTableWidgetItem.sizeHint()` from `set_data_status_cell()` to determine the natural compact width.
+- Preserves the v1.48.7 single-renderer status contract, approved semantic colors, `ACTION` geometry/menu behavior, filtering, pagination, callbacks, providers, storage, Task/WorkerManager architecture and all business logic.
+- Version mapping: application `1.0.0.1.48.8`, PE `1.0.1.4808`, MSI `1.1.4808`.
+
+## v1.0.0.1.48.7 - Global Status Badge Rendering & Table Cell Alignment Fix
+
+- Centralizes UI status tone/display rendering in the existing shared `src/ui/widgets.py` component layer.
+- Adds `set_data_status_cell()` so table status values are stored as non-visible item metadata and rendered exactly once as a badge.
+- Removes duplicated raw-text + badge rendering from Accounts, New Task account selection, Reports task status and Reports delivery status cells.
+- Removes the Accounts-only duplicated status-to-tone/display mapping and uses the shared global mapping.
+- Keeps compact success/warning/danger/neutral status styling globally consistent with approved Vib Tools colors.
+- Corrects status-cell sizing to use the visible badge hint rather than the centering host hint, preserving compact columns without clipping or artificial ResizeToContents expansion.
+- Keeps provider/task status badges on the same shared semantic mapping; removes the redundant raw Task status metric while retaining the canonical Task status badge.
+- No backend, provider, storage, database, API, WorkerManager, Task state-machine or business-logic changes.
+- Version mapping: application `1.0.0.1.48.7`, PE `1.0.1.4807`, MSI `1.1.4807`.
+
 ## v1.0.0.1.48.6 - Accounts Compact Table / Action Menu Correction
 
 - Rebalances the flat Accounts table so `ACCOUNT` and `PROVIDER` share available width while `STATUS` and `ACTION` remain compact fixed columns.

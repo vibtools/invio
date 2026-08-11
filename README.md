@@ -1,3 +1,21 @@
+# v1.0.0.1.48.8 Canonical Status Column Natural-Width Runtime Correction
+
+`Invio v1.0.0.1.48.7` is the frozen parent state. The only confirmed failing Windows runtime contract was the Accounts `STATUS` column: it was fixed at 132px while the canonical shared badge reported a 180px natural width in the real PySide6 environment. `v1.0.0.1.48.8` removes that unsafe fixed-width assumption and lets the existing canonical table-status item size hint drive the Status column through `QHeaderView.ResizeToContents`.
+
+The shared v1.48.7 status renderer, one-visible-badge rule, colors, table data, filters, pagination, row actions, backend/provider/storage/task behavior and every unrelated page remain unchanged.
+
+Version mapping: application/tag `1.0.0.1.48.8` / `v1.0.0.1.48.8`, PE `1.0.1.4808`, MSI `1.1.4808`, Python wheel `1.0.0.1.48.8`.
+
+# v1.0.0.1.48.7 Global Status Badge Rendering & Table Cell Alignment Fix
+
+`Invio v1.0.0.1.48.6` is the frozen parent baseline. `v1.0.0.1.48.7` fixes status presentation through the existing shared UI layer: `widgets.py` now owns canonical status tone mapping, status display text, badge refresh, and `set_data_status_cell()` for table cells. Status table cells keep the raw value only in `Qt.UserRole`/tooltip metadata while the visible cell text is rendered exactly once by the badge widget.
+
+Accounts, New Task account selection, Reports task status, and Reports delivery status consumers now use the shared table-status renderer. Task and Provider status badges share the same semantic mapping path. Existing account/provider/task/storage/API/business behavior, action menus, pagination, filtering and layouts remain unchanged.
+
+Canonical semantic presentation remains inside the approved Vib Tools palette: success uses the existing `#22C55E` token, warning uses `#FCD34D`, danger uses `#F87171`, neutral uses the existing neutral border/text tokens, and primary interaction remains `#2563EB`.
+
+Version mapping: application/tag `1.0.0.1.48.7` / `v1.0.0.1.48.7`, PE `1.0.1.4807`, MSI `1.1.4807`, Python wheel `1.0.0.1.48.7`.
+
 # v1.0.0.1.48.6 Accounts Page — Compact Table / Action Menu Correction
 
 `Invio v1.0.0.1.48.5` is the frozen parent baseline. `v1.0.0.1.48.6` changes only the **Accounts** page presentation and directly required verification/release records. The flat table is rebalanced for compact scanning, the `ACTION` header/control is fully contained, and the existing row `QMenu` is anchored inward and bounded to both the Invio window and current screen available geometry.

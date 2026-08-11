@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Compatibility Note
+
+This correction changes only the Accounts Status-column header resize policy so the v1.48.7 canonical badge size hint is honored across real Qt font/DPI environments. No model status strings, shared badge semantics, callbacks, provider/runtime APIs, persistence, storage schema, Task/WorkerManager behavior, dependencies or public interfaces change.
+
+## v1.0.0.1.48.7 Compatibility Note
+
+Global status rendering is a presentation-only correction. Existing model status strings, filters, callbacks, persistence, provider contracts and public/runtime APIs are unchanged. Table item status values remain available as `Qt.UserRole` metadata for UI inspection without duplicate visible text.
+
 ## v1.0.0.1.48.6 Compatibility Note
 
 The Accounts correction preserves the v1.48.5 `AccountsPage` constructor, callback signatures, flat-table data projection, filtering/pagination and all account/provider/backend contracts. Only local table geometry, row-menu placement and Accounts-scoped status/action QSS change. Global Vib Tools token values, dependencies and release architecture remain unchanged.

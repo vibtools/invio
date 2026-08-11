@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Configuration Note
+
+No configuration key or setting changes. Status-column width remains runtime-derived from the existing UI component and requires no user configuration.
+
+## v1.0.0.1.48.7 Configuration Note
+
+No configuration keys or persisted settings changed. Status rendering remains UI-only and requires no migration or user configuration.
+
 ## v1.0.0.1.48.6 Configuration Note
 
 The Accounts compact table/status/action-menu correction adds no configuration key and changes no account/provider credential setting.

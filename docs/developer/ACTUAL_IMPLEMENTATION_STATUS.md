@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 — Status Column Runtime Sizing Correction
+
+The global status renderer remains centralized in `src/ui/widgets.py`. Accounts now consumes its existing item size hint with `QHeaderView.ResizeToContents` instead of overriding it with a fixed 132px Status column.
+
+## v1.0.0.1.48.7 — Global Status Rendering
+
+Status tone classification, display markers and table status-cell composition are centralized in `src/ui/widgets.py`. Table consumers no longer keep a visible raw `QTableWidgetItem` status underneath a badge. Backend and domain status values are unchanged.
+
 ## v1.0.0.1.48.6 — Accounts Action UI
 
 **IMPLEMENTED:** compact balanced flat Accounts table, visible fixed `ACTION` column, centered per-row `⋯` control, Accounts-only approved semantic badge colors, and row-menu position bounded to the intersection of the owning application window and active screen while preserving existing Edit/Re-test/Delete behavior.

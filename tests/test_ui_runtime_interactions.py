@@ -233,6 +233,27 @@ class NewTaskDialogRuntimeInteractionTests(unittest.TestCase):
         dialog.reject()
         dialog.deleteLater()
 
+    def test_status_cells_render_one_badge_without_raw_text_overlap(self):
+        dialog = self._dialog()
+        dialog.show()
+        self.app.processEvents()
+
+        for row in range(dialog.accounts.rowCount()):
+            item = dialog.accounts.item(row, 3)
+            host = dialog.accounts.cellWidget(row, 3)
+            self.assertIsNotNone(item)
+            self.assertIsNotNone(host)
+            self.assertEqual(item.text(), "")
+            raw = str(item.data(Qt.ItemDataRole.UserRole) or "")
+            self.assertTrue(raw)
+            # Locate the canonical badge by its shared status object name.
+            badge = host.findChild(QWidget, "DataGridStatusSuccess") or host.findChild(QWidget, "DataGridStatusWarning")
+            self.assertIsNotNone(badge)
+            self.assertIn(raw, badge.text())
+
+        dialog.reject()
+        dialog.deleteLater()
+
     def test_account_template_customer_selection_and_create_payload_are_preserved(self):
         dialog = self._dialog()
         dialog.show()
@@ -361,7 +382,16 @@ class AccountsPageRuntimeInteractionTests(unittest.TestCase):
         self.assertEqual(page.table.item(0, 0).text(), "Agiled-main")
         badge_host = page.table.cellWidget(0, 2)
         labels = badge_host.findChildren(type(page.empty))
-        self.assertTrue(any(item.text() == "! Not Installed" for item in labels))
+        badge = next(item for item in labels if item.text() == "✕ Not Installed")
+        status_item = page.table.item(0, 2)
+        self.assertEqual(status_item.text(), "")
+        self.assertEqual(status_item.data(Qt.ItemDataRole.UserRole), "Not Installed")
+        # The host contains centering stretches, so its aggregate sizeHint is not
+        # the badge's clipping requirement. Verify the visible badge itself fits
+        # inside the real status cell/host without forcing an oversized column.
+        self.assertGreaterEqual(page.table.columnWidth(2), badge.sizeHint().width() + 4)
+        self.app.processEvents()
+        self.assertTrue(badge_host.rect().contains(badge.geometry()))
 
     def test_action_column_and_popup_geometry_stay_inside_accounts_window(self):
         page = self.page
@@ -419,7 +449,13 @@ class AccountsPageRuntimeInteractionTests(unittest.TestCase):
         page.toolbar.filters[1].setCurrentIndex(page.toolbar.filters[1].findData("Not Verified"))
         self.app.processEvents()
         self.assertGreater(page.pager.total, 0)
-        self.assertTrue(all(page.table.item(row, 2).text() == "Not Verified" for row in range(page.table.rowCount())))
+        self.assertTrue(all(page.table.item(row, 2).text() == "" for row in range(page.table.rowCount())))
+        self.assertTrue(
+            all(
+                page.table.item(row, 2).data(Qt.ItemDataRole.UserRole) == "Not Verified"
+                for row in range(page.table.rowCount())
+            )
+        )
 
         page.toolbar.search.clear()
         page.toolbar.filters[0].setCurrentIndex(page.toolbar.filters[0].findData("refrens"))

@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 UI Architecture Note
+
+Canonical status rendering remains in the existing shared widget layer. The Accounts table now respects the renderer's natural status-cell size hint instead of imposing a consumer-specific fixed width.
+
+## v1.0.0.1.48.7 UI Architecture Note
+
+The existing shared UI component layer is the single source for semantic status rendering. `data_status_tone()` classifies status values, `status_display_text()` applies the approved visible marker, `set_status_badge()` updates badges, and `set_data_status_cell()` owns table-cell composition without duplicate raw visible text.
+
 ## v1.0.0.1.48.6 UI Architecture Note
 
 `AccountsPage` remains the same flat `QTableWidget` presentation/controller adapter over `AppState` and `ProviderManager`. `ACCOUNT`/`PROVIDER` share stretch space, `STATUS`/`ACTION` remain compact fixed columns, Accounts-only QSS supplies the approved semantic colors, and the existing child `QMenu` is bounded to the intersection of the owning Invio window and active screen available geometry before `exec()`. No backend, global-token, or shared-widget architecture changes.

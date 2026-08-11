@@ -183,7 +183,7 @@ class ProvidersPage(QWidget):
         identity_host = QWidget()
         identity = vbox(identity_host, (0, 1, 0, 0), PROVIDER_IDENTITY_GAP)
         identity.addWidget(label(provider.name, "PluginCardTitle", False))
-        status = status_badge("Verified" if installed else "Available", "success" if installed else "neutral")
+        status = status_badge("Verified" if installed else "Available")
         status.setFixedHeight(PROVIDER_STATUS_HEIGHT)
         status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         identity.addWidget(status, 0, Qt.AlignmentFlag.AlignLeft)

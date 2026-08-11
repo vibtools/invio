@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QHBoxLayout, QProgressBar, QScrollArea, QVBoxLayou
 from ...core.state import AppState
 from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, Task
 from ...tasks.state_machine import TaskActionPolicy, task_action_policy
-from ..widgets import button, card, divider, label, metric_card, page_header, status_badge
+from ..widgets import button, card, divider, label, metric_card, page_header, set_status_badge, status_badge
 
 
 class TaskCard(QWidget):
@@ -90,7 +90,6 @@ class TaskCard(QWidget):
         metrics = QHBoxLayout()
         self.metric_values: dict[str, object] = {}
         for key, title_text, value, tone in (
-            ("status", "Status", task.status, "neutral"),
             ("total", "Total", str(task.total), "neutral"),
             ("success", "Success", str(task.success), "success"),
             ("failed", "Failed", str(task.failed), "danger"),
@@ -106,8 +105,7 @@ class TaskCard(QWidget):
 
     def refresh(self, task: Task) -> None:
         self.task = task
-        self.status_badge.setText(task.status)
-        self.metric_values["status"].setText(task.status)
+        set_status_badge(self.status_badge, task.status)
         self.metric_values["total"].setText(str(task.total))
         self.metric_values["success"].setText(str(task.success))
         self.metric_values["failed"].setText(str(task.failed))

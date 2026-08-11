@@ -21,34 +21,13 @@ from ..widgets import (
     DataGridToolbar,
     button,
     card,
-    data_badge_host,
     data_grid_empty_label,
     data_table_item,
+    set_data_status_cell,
     label,
     page_header,
 )
 
-
-def _account_status_tone(status: str) -> str:
-    value = str(status or "").strip().casefold()
-    if value in {"installed", "verified", "ready", "available", "success", "completed"}:
-        return "success"
-    if value in {"not verified", "pending", "api test required", "attention", "queued", "in use"}:
-        return "warning"
-    if value in {"not installed", "failed", "error"} or value.startswith("http_"):
-        return "danger"
-    if value in {"unavailable", "disabled", "n/a", "na", "none"}:
-        return "neutral"
-    return "neutral"
-
-
-def _account_status_text(status: str, tone: str) -> str:
-    value = str(status or "").strip()
-    if tone == "success":
-        return f"✓ {value}"
-    if tone in {"warning", "danger"}:
-        return f"! {value}"
-    return value
 
 
 class AccountsPage(QWidget):
@@ -112,8 +91,10 @@ class AccountsPage(QWidget):
         header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        header.resizeSection(2, 132)
+        # v1.48.8: let the canonical status cell item size hint drive the
+        # Status column. A fixed pixel width is not portable across real Qt
+        # font/DPI environments and can clip otherwise-correct shared badges.
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         header.resizeSection(3, 68)
         for column in (0, 1):
@@ -320,13 +301,15 @@ class AccountsPage(QWidget):
             provider_item.setToolTip(provider_name)
             self.table.setItem(row, 1, provider_item)
 
-            tone = _account_status_tone(row_status)
-            status_text = _account_status_text(row_status, tone)
-            status_item = data_table_item(row_status)
             tooltip = account.verification_error_summary if account.verification_error_summary else row_status
-            status_item.setToolTip(tooltip)
-            self.table.setItem(row, 2, status_item)
-            self.table.setCellWidget(row, 2, data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter))
+            set_data_status_cell(
+                self.table,
+                row,
+                2,
+                row_status,
+                tooltip=tooltip,
+                align=Qt.AlignmentFlag.AlignHCenter,
+            )
             self.table.setCellWidget(row, 3, self._row_actions(account.id))
 
             if account.id == selected_id:

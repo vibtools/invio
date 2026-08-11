@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 — Accounts Status Visibility
+
+Accounts status badges now receive enough natural column width for the active Qt font/DPI environment. Status values, colors, actions, filtering and pagination are otherwise unchanged.
+
+## v1.0.0.1.48.7 — Status Display
+
+Status values throughout the shared UI use consistent semantic badges: success, warning, danger and neutral. Table status cells show the status exactly once; filtering and underlying status behavior are unchanged.
+
 ## v1.0.0.1.48.6 — Accounts Compact Table / Row Actions
 
 The Accounts flat table keeps the same data and workflow with improved compact presentation: Account/Provider share available width, Status/Action stay compact, and status badges use the approved Accounts-only Vib Tools colors (success `#22C55E`, warning `#FCD34D`, danger `#F87171`, primary `#2563EB`). Clicking `⋯` opens the existing **Edit**, **Re-test**, and **Delete** menu inside the safe intersection of the Invio window and current screen; near the bottom it may open above the row.

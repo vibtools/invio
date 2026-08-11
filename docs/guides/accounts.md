@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Status Column Sizing
+
+The flat Accounts table is unchanged except that the `STATUS` column now sizes to the canonical badge's natural width. This prevents clipping on Windows font/DPI environments while keeping `ACCOUNT`, `PROVIDER`, `ACTION`, search, filters and pagination behavior unchanged.
+
+## v1.0.0.1.48.7 Status Rendering
+
+Accounts retains the v1.48.6 flat compact layout and row actions. The Status column now uses the global shared table-status renderer, so each row displays exactly one centered badge while the raw status is retained only as item metadata/tooltip.
+
 # Accounts — Flat Account List
 
 As of `v1.0.0.1.48.6`, Accounts retain the v1.48.5 flat list with a compact balanced table. `ACCOUNT` and `PROVIDER` share available width; `STATUS` and `ACTION` remain compact. The row `⋯` menu uses the existing Edit/Re-test/Delete callbacks and is positioned inside the safe intersection of the Invio window and current screen.

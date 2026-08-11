@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Installation Note
+
+Installation/runtime dependencies are unchanged from v1.48.7. Apply the replace-ready delta to the exact v1.48.7 project root and run the existing audit before commit/release.
+
+## v1.0.0.1.48.7 Installation Note
+
+No installation or dependency changes. Apply this delta over the exact `v1.0.0.1.48.6` project root.
+
 ## v1.0.0.1.48.6 Installation Note
 
 No dependency or installation workflow change is introduced by the Accounts action-menu UI correction. Existing Python, wheel, Nuitka OneDir and WiX MSI requirements remain unchanged.

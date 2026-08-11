@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Structure Note
+
+No folders, modules, APIs or architecture boundaries are changed. Runtime behavior changes only in the existing `src/ui/pages/accounts_page.py` header sizing policy; directly required tests, version metadata and documentation are synchronized.
+
+## v1.0.0.1.48.7 Structure Note
+
+No folders or modules were renamed or reorganized. The existing `src/ui/widgets.py` shared component module now owns canonical status mapping and table-status cell rendering; existing consumers call that shared path instead of duplicating raw item text plus a badge.
+
 ## v1.0.0.1.48.6 Structure Note
 
 No folder/module architecture change is introduced. Runtime UI correction is confined to `src/ui/pages/accounts_page.py` plus Accounts-scoped QSS in `src/ui/styles.py`; directly affected tests, release/version metadata and required documentation are synchronized. Global tokens/widgets and all other runtime modules remain frozen.

@@ -99,9 +99,9 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('QLineEdit#DataGridSearchInput', styles)
         self.assertIn('QPushButton#DataGridPageButton', styles)
         self.assertIn('QLabel#DataGridStatusSuccess', styles)
-        self.assertIn('background: #064E3B; color: #34D399;', styles)
-        self.assertIn('background: #7F1D1D; color: #F87171;', styles)
-        self.assertIn('background: #78350F; color: #FBBF24;', styles)
+        self.assertIn("QLabel#DataGridStatusSuccess {{ border: 1px solid {c['success']}; color: {c['success']}; }}", styles)
+        self.assertIn('QLabel#DataGridStatusDanger {{ border: 1px solid #F87171; color: #F87171; }}', styles)
+        self.assertIn('QLabel#DataGridStatusWarning {{ border: 1px solid #FCD34D; color: #FCD34D; }}', styles)
         self.assertIn("alternate-background-color: {c['row_alternate']}", styles)
         self.assertIn("letter-spacing: 0.2px", styles)
 
@@ -110,7 +110,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('DataGridPager(', accounts)
         self.assertIn('self.table = QTableWidget(0, 4)', accounts)
         self.assertIn('self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)', accounts)
-        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', accounts)
+        self.assertIn('set_data_status_cell(', accounts)
 
         self.assertIn('"Search lists..."', customers)
         self.assertIn('"Search customers..."', customers)
@@ -125,7 +125,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('"Search tasks..."', reports)
         self.assertIn('"Search delivery history..."', reports)
         self.assertIn('setObjectName("RecipientReportTable")', reports)
-        self.assertIn('data_badge_host(value)', reports)
+        self.assertIn('set_data_status_cell(self.table, row, col, value)', reports)
 
         new_task = dialogs[dialogs.index("class NewTaskDialog") :]
         self.assertIn('self.accounts = QTableWidget(0, 4)', new_task)
@@ -1039,19 +1039,27 @@ class V1485AccountsFlatTableContractTests(unittest.TestCase):
         self.assertIn('action_button = button("⋯")', page)
         self.assertIn('self.pager = DataGridPager(on_changed=self.refresh)', page)
         self.assertIn('row_status = account.status if provider is not None else "Not Installed"', page)
-        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', page)
+        self.assertIn('set_data_status_cell(', page)
 
     def test_v1485_accounts_semantic_status_palette_mapping_is_local_to_accounts(self):
+        # Compatibility test name retained; v1.48.7 centralizes the mapping globally.
         root = Path(__file__).resolve().parents[1]
         page = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
         styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
 
-        self.assertIn('"verified", "ready", "available"', page)
-        self.assertIn('"not verified", "pending"', page)
-        self.assertIn('"not installed", "failed", "error"', page)
-        self.assertIn('"unavailable", "disabled", "n/a"', page)
-        self.assertIn('return f"✓ {value}"', page)
-        self.assertIn('return f"! {value}"', page)
+        self.assertNotIn('def _account_status_tone', page)
+        self.assertIn('"verified": "success"', widgets)
+        self.assertIn('"ready": "success"', widgets)
+        self.assertIn('"available": "success"', widgets)
+        self.assertIn('"not verified": "warning"', widgets)
+        self.assertIn('"pending": "warning"', widgets)
+        self.assertIn('"not installed": "danger"', widgets)
+        self.assertIn('"failed": "danger"', widgets)
+        self.assertIn('"unavailable": "neutral"', widgets)
+        self.assertIn('return f"✓ {value}"', widgets)
+        self.assertIn('return f"! {value}"', widgets)
+        self.assertIn('return f"✕ {value}"', widgets)
         self.assertIn('QLabel#DataGridStatusSuccess', styles)
         self.assertIn('QLabel#DataGridStatusWarning', styles)
         self.assertIn('QLabel#DataGridStatusDanger', styles)
@@ -1084,7 +1092,7 @@ class V1486AccountsActionMenuCorrectionContractTests(unittest.TestCase):
         self.assertIn('self.table.setHorizontalHeaderLabels(["ACCOUNT", "PROVIDER", "STATUS", "ACTION"])', page)
         self.assertIn('header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)', page)
         self.assertIn('header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)', page)
-        self.assertIn('header.resizeSection(2, 132)', page)
+        self.assertIn('header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)', page)
         self.assertIn('header.resizeSection(3, 68)', page)
         self.assertIn('item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)', page)
         self.assertIn('action_button.setFixedSize(30, 24)', page)
@@ -1109,7 +1117,7 @@ class V1486AccountsActionMenuCorrectionContractTests(unittest.TestCase):
         styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         tokens = (root / "src" / "ui" / "tokens.py").read_text(encoding="utf-8")
 
-        self.assertIn('QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess', styles)
+        self.assertIn('QLabel#DataGridStatusSuccess', styles)
         self.assertIn('border: 1px solid #FCD34D;', styles)
         self.assertIn('color: #FCD34D;', styles)
         self.assertIn('border: 1px solid #F87171;', styles)
@@ -1117,8 +1125,70 @@ class V1486AccountsActionMenuCorrectionContractTests(unittest.TestCase):
         self.assertIn('border-color: #2563EB;', styles)
         self.assertIn('"success": "#22C55E"', tokens)
         self.assertIn('"primary": "#2563EB"', tokens)
-        self.assertIn('data_badge_host(status_text, tone, align=Qt.AlignmentFlag.AlignHCenter)', (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8"))
+        self.assertIn('set_data_status_cell(', (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8"))
 
+
+
+class V1487GlobalStatusRenderingContractTests(unittest.TestCase):
+    def test_v1487_shared_status_renderer_owns_tone_text_and_table_cell_rendering(self):
+        root = Path(__file__).resolve().parents[1]
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+
+        self.assertIn('def data_status_tone(text: str) -> str:', widgets)
+        self.assertIn('def status_display_text(text: object, tone: str | None = None) -> str:', widgets)
+        self.assertIn('def set_status_badge(item: QLabel', widgets)
+        self.assertIn('def set_data_status_cell(', widgets)
+        cell = widgets.split('def set_data_status_cell(', 1)[1].split('def data_table_item(', 1)[0]
+        self.assertIn('item = data_table_item(""', cell)
+        self.assertIn('item.setData(Qt.ItemDataRole.UserRole, raw_value)', cell)
+        self.assertIn('host, badge = _data_badge_host_parts(raw_value, tone, align=align)', cell)
+        self.assertIn('badge_hint = badge.sizeHint()', cell)
+        self.assertIn('item.setSizeHint(QSize(badge_hint.width() + 8', cell)
+        self.assertIn('table.setCellWidget(row, column, host)', cell)
+        self.assertNotIn('data_table_item(raw_value', cell)
+        self.assertIn('return f"✓ {value}"', widgets)
+        self.assertIn('return f"! {value}"', widgets)
+        self.assertIn('return f"✕ {value}"', widgets)
+
+    def test_v1487_status_table_consumers_use_only_shared_cell_renderer(self):
+        root = Path(__file__).resolve().parents[1]
+        accounts = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        reports = (root / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+
+        self.assertIn('set_data_status_cell(', accounts)
+        self.assertNotIn('def _account_status_tone', accounts)
+        self.assertNotIn('def _account_status_text', accounts)
+        self.assertNotIn('data_badge_host(', accounts)
+        self.assertGreaterEqual(reports.count('set_data_status_cell('), 2)
+        self.assertNotIn('data_badge_host(', reports)
+        new_task = dialogs[dialogs.index('class NewTaskDialog') :]
+        self.assertIn('set_data_status_cell(', new_task)
+        self.assertNotIn('data_badge_host(', new_task)
+
+    def test_v1487_global_badge_palette_is_canonical_and_accounts_override_is_removed(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        tokens = (root / "src" / "ui" / "tokens.py").read_text(encoding="utf-8")
+
+        self.assertIn("QLabel#DataGridStatusSuccess {{ border: 1px solid {c[\'success\']}; color: {c[\'success\']}; }}", styles)
+        self.assertIn('QLabel#DataGridStatusWarning {{ border: 1px solid #FCD34D; color: #FCD34D; }}', styles)
+        self.assertIn('QLabel#DataGridStatusDanger {{ border: 1px solid #F87171; color: #F87171; }}', styles)
+        self.assertIn('QLabel#StatusBadgeWarning {{ border: 1px solid #FCD34D; color: #FCD34D; }}', styles)
+        self.assertIn('QLabel#StatusBadgeDanger {{ border: 1px solid #F87171; color: #F87171; }}', styles)
+        self.assertNotIn('QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess', styles)
+        self.assertIn('"success": "#22C55E"', tokens)
+        self.assertIn('"primary": "#2563EB"', tokens)
+
+    def test_v1487_task_and_provider_status_values_use_shared_badge_path(self):
+        root = Path(__file__).resolve().parents[1]
+        tasks = (root / "src" / "ui" / "pages" / "tasks_page.py").read_text(encoding="utf-8")
+        providers = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+
+        self.assertIn('self.status_badge = status_badge(task.status)', tasks)
+        self.assertIn('set_status_badge(self.status_badge, task.status)', tasks)
+        self.assertNotIn('("status", "Status", task.status', tasks)
+        self.assertIn('status = status_badge("Verified" if installed else "Available")', providers)
 
 
 class V14802PopupLifecycleContractTests(unittest.TestCase):
@@ -1151,3 +1221,16 @@ class V14802PopupLifecycleContractTests(unittest.TestCase):
         self.assertIn("QMessageBox.Icon.Question", runtime_test)
         self.assertIn("Question One", runtime_test)
         self.assertIn("Question Two", runtime_test)
+
+class V1488StatusColumnNaturalWidthContractTests(unittest.TestCase):
+    def test_v1488_accounts_status_column_honors_canonical_badge_size_hint(self):
+        root = Path(__file__).resolve().parents[1]
+        accounts = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+
+        self.assertIn('header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)', accounts)
+        self.assertNotIn('header.resizeSection(2, 132)', accounts)
+        self.assertIn('header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)', accounts)
+        self.assertIn('header.resizeSection(3, 68)', accounts)
+        self.assertIn('item.setSizeHint(QSize(badge_hint.width() + 8', widgets)
+        self.assertIn('set_data_status_cell(', accounts)

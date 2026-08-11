@@ -57,7 +57,7 @@ def app_qss() -> str:
     QLabel#MetricValue {{ font-size: 15px; font-weight: 600; color: {c['primary_text']}; }}
     QLabel#MetricValueSuccess {{ font-size: 15px; font-weight: 600; color: {c['success']}; }}
     QLabel#MetricValueDanger {{ font-size: 15px; font-weight: 600; color: #EF4444; }}
-    QLabel#StatusBadge, QLabel#TokenChip {{
+    QLabel#TokenChip {{
         background: #1E293B;
         color: {c['secondary_text']};
         border: 1px solid #334155;
@@ -66,9 +66,22 @@ def app_qss() -> str:
         font-size: 10px;
         font-weight: 600;
     }}
-    QLabel#StatusBadgeSuccess {{ background: rgba(22,101,52,64); color: #86EFAC; border: 1px solid rgba(34,197,94,76); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600; }}
-    QLabel#StatusBadgeWarning {{ background: rgba(245,158,11,35); color: #FCD34D; border: 1px solid rgba(245,158,11,70); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600; }}
-    QLabel#StatusBadgeDanger {{ background: rgba(185,28,28,45); color: #FCA5A5; border: 1px solid rgba(239,68,68,80); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 600; }}
+    QLabel#StatusBadge,
+    QLabel#StatusBadgeSuccess,
+    QLabel#StatusBadgeWarning,
+    QLabel#StatusBadgeDanger {{
+        background: transparent;
+        border-radius: 4px;
+        padding: 1px 6px;
+        min-height: 16px;
+        max-height: 18px;
+        font-size: 10px;
+        font-weight: 500;
+    }}
+    QLabel#StatusBadge {{ border: 1px solid {c['button_border']}; color: {c['text_muted']}; }}
+    QLabel#StatusBadgeSuccess {{ border: 1px solid {c['success']}; color: {c['success']}; }}
+    QLabel#StatusBadgeWarning {{ border: 1px solid #FCD34D; color: #FCD34D; }}
+    QLabel#StatusBadgeDanger {{ border: 1px solid #F87171; color: #F87171; }}
     QFrame#Card, QFrame#Panel {{
         background: {c['surface']};
         border: 1px solid {c['border']};
@@ -427,15 +440,18 @@ def app_qss() -> str:
     QLabel#DataGridStatusDanger,
     QLabel#DataGridStatusWarning,
     QLabel#DataGridStatusNeutral {{
+        background: transparent;
         border-radius: 4px;
-        padding: 2px 6px;
+        padding: 1px 6px;
+        min-height: 16px;
+        max-height: 18px;
         font-size: 10px;
         font-weight: 500;
     }}
-    QLabel#DataGridStatusSuccess {{ background: #064E3B; color: #34D399; }}
-    QLabel#DataGridStatusDanger {{ background: #7F1D1D; color: #F87171; }}
-    QLabel#DataGridStatusWarning {{ background: #78350F; color: #FBBF24; }}
-    QLabel#DataGridStatusNeutral {{ background: #1E293B; color: {c['text_muted']}; }}
+    QLabel#DataGridStatusSuccess {{ border: 1px solid {c['success']}; color: {c['success']}; }}
+    QLabel#DataGridStatusDanger {{ border: 1px solid #F87171; color: #F87171; }}
+    QLabel#DataGridStatusWarning {{ border: 1px solid #FCD34D; color: #FCD34D; }}
+    QLabel#DataGridStatusNeutral {{ border: 1px solid {c['button_border']}; color: {c['text_muted']}; }}
     QPushButton#TableActionButton {{
         min-height: 28px;
         max-height: 28px;
@@ -445,35 +461,7 @@ def app_qss() -> str:
         font-weight: 500;
     }}
 
-    /* v1.48.6 Accounts-only compact status/action correction. */
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess,
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusWarning,
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusDanger,
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusNeutral {{
-        background: transparent;
-        border-radius: 4px;
-        padding: 1px 6px;
-        min-height: 16px;
-        max-height: 18px;
-        font-size: 10px;
-        font-weight: 500;
-    }}
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusSuccess {{
-        border: 1px solid {c['success']};
-        color: {c['success']};
-    }}
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusWarning {{
-        border: 1px solid #FCD34D;
-        color: #FCD34D;
-    }}
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusDanger {{
-        border: 1px solid #F87171;
-        color: #F87171;
-    }}
-    QTableWidget#AccountsDataTable QLabel#DataGridStatusNeutral {{
-        border: 1px solid {c['button_border']};
-        color: {c['text_muted']};
-    }}
+    /* v1.48.6 compact Accounts action control; status rendering is global from v1.48.7. */
     QTableWidget#AccountsDataTable QPushButton#TableActionButton {{
         min-width: 30px;
         max-width: 30px;

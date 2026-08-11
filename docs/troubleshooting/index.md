@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Status Column Width
+
+If a canonical Accounts status badge is clipped, verify the Status header uses `QHeaderView.ResizeToContents` and that the cell is created through `set_data_status_cell()`. Do not restore the v1.48.7 fixed 132px section width.
+
+## v1.0.0.1.48.7 Status Badge Rendering
+
+If a status cell appears duplicated, verify the consumer uses `set_data_status_cell()` and does not separately set visible status text on the same table item. The canonical renderer keeps the raw value in `Qt.UserRole` and renders one badge.
+
 ## v1.0.0.1.48.6 Accounts Action Menu
 
 The `⋯` row menu is anchored to its row control and constrained to the intersection of the Invio window and current screen available geometry. Near the bottom it may open above the button by design. If Edit, Re-test or Delete is rejected after the menu opens, the existing account/provider validation message remains authoritative because backend behavior is unchanged.

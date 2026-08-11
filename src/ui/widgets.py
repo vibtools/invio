@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from math import ceil
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QComboBox,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSizePolicy,
+    QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -80,18 +81,37 @@ def divider() -> QFrame:
     return line
 
 
-def status_badge(text: str, tone: str = "neutral") -> QLabel:
-    item = label(text, "StatusBadge", False)
-    mapping = {
-        "success": "StatusBadgeSuccess",
-        "warning": "StatusBadgeWarning",
-        "danger": "StatusBadgeDanger",
-        "neutral": "StatusBadge",
-        "info": "StatusBadge",
-    }
-    item.setObjectName(mapping.get(tone, "StatusBadge"))
+def status_badge(text: str, tone: str | None = None) -> QLabel:
+    item = label("", "StatusBadge", False)
+    set_status_badge(item, text, tone)
     item.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
     return item
+
+
+def set_status_badge(item: QLabel, text: object, tone: str | None = None, *, data_grid: bool = False) -> None:
+    selected_tone = tone or data_status_tone(str(text))
+    if data_grid:
+        mapping = {
+            "success": "DataGridStatusSuccess",
+            "warning": "DataGridStatusWarning",
+            "danger": "DataGridStatusDanger",
+            "neutral": "DataGridStatusNeutral",
+        }
+        role = mapping.get(selected_tone, "DataGridStatusNeutral")
+    else:
+        mapping = {
+            "success": "StatusBadgeSuccess",
+            "warning": "StatusBadgeWarning",
+            "danger": "StatusBadgeDanger",
+            "neutral": "StatusBadge",
+            "info": "StatusBadge",
+        }
+        role = mapping.get(selected_tone, "StatusBadge")
+    item.setText(status_display_text(text, selected_tone))
+    item.setObjectName(role)
+    item.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    item.style().unpolish(item)
+    item.style().polish(item)
 
 
 
@@ -167,6 +187,8 @@ _DATA_STATUS_TONES = {
     "completed": "success",
     "installed": "success",
     "protected storage": "success",
+    "provider accepted": "success",
+    "ready": "success",
     "sent": "success",
     "succeeded": "success",
     "success": "success",
@@ -174,12 +196,27 @@ _DATA_STATUS_TONES = {
     "error": "danger",
     "failed": "danger",
     "not installed": "danger",
-    "http_400": "danger",
+    "blocked": "danger",
     "not verified": "warning",
     "api test required": "warning",
+    "attention": "warning",
+    "pending": "warning",
+    "paused": "warning",
+    "stopping": "warning",
     "queued": "warning",
     "uncertain": "warning",
+    "warning": "warning",
     "in use": "warning",
+    "disabled": "neutral",
+    "n/a": "neutral",
+    "na": "neutral",
+    "none": "neutral",
+    "not reached": "neutral",
+    "not confirmed": "neutral",
+    "not independently confirmed": "neutral",
+    "running": "neutral",
+    "stopped": "neutral",
+    "unavailable": "neutral",
 }
 
 
@@ -187,29 +224,40 @@ def data_status_tone(text: str) -> str:
     value = str(text).strip().casefold()
     if value in _DATA_STATUS_TONES:
         return _DATA_STATUS_TONES[value]
-    if value.startswith("http_"):
+    if value.startswith("http_") or value.startswith("http "):
         return "danger"
     if value.startswith("in use by "):
         return "warning"
     return "neutral"
 
 
+def status_display_text(text: object, tone: str | None = None) -> str:
+    value = str(text).strip()
+    selected_tone = tone or data_status_tone(value)
+    if not value:
+        return ""
+    if selected_tone == "success":
+        return f"✓ {value}"
+    if selected_tone == "warning":
+        return f"! {value}"
+    if selected_tone == "danger":
+        return f"✕ {value}"
+    return value
+
+
 def data_status_badge(text: str, tone: str | None = None) -> QLabel:
-    item = label(str(text), "DataGridStatusNeutral", False)
-    selected_tone = tone or data_status_tone(text)
-    mapping = {
-        "success": "DataGridStatusSuccess",
-        "warning": "DataGridStatusWarning",
-        "danger": "DataGridStatusDanger",
-        "neutral": "DataGridStatusNeutral",
-    }
-    item.setObjectName(mapping.get(selected_tone, "DataGridStatusNeutral"))
+    item = label("", "DataGridStatusNeutral", False)
+    set_status_badge(item, text, tone, data_grid=True)
     item.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
-    item.setAlignment(Qt.AlignmentFlag.AlignCenter)
     return item
 
 
-def data_badge_host(text: str, tone: str | None = None, *, align: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft) -> QWidget:
+def _data_badge_host_parts(
+    text: str,
+    tone: str | None = None,
+    *,
+    align: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft,
+) -> tuple[QWidget, QLabel]:
     host = QWidget()
     host.setObjectName("DataGridBadgeHost")
     layout = hbox(host, (2, 2, 2, 2), 0)
@@ -224,7 +272,38 @@ def data_badge_host(text: str, tone: str | None = None, *, align: Qt.AlignmentFl
     else:
         layout.addWidget(badge)
         layout.addStretch(1)
+    return host, badge
+
+
+def data_badge_host(text: str, tone: str | None = None, *, align: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignLeft) -> QWidget:
+    host, _badge = _data_badge_host_parts(text, tone, align=align)
     return host
+
+
+def set_data_status_cell(
+    table: QTableWidget,
+    row: int,
+    column: int,
+    text: object,
+    tone: str | None = None,
+    *,
+    tooltip: str | None = None,
+    align: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignHCenter,
+) -> QTableWidgetItem:
+    """Render one canonical status badge without duplicate raw item text."""
+    raw_value = str(text)
+    host, badge = _data_badge_host_parts(raw_value, tone, align=align)
+    badge_hint = badge.sizeHint()
+    host_hint = host.sizeHint()
+    item = data_table_item("", tooltip=raw_value if tooltip is None else tooltip)
+    item.setData(Qt.ItemDataRole.UserRole, raw_value)
+    # Size status columns from the visible badge, not from the host's centering
+    # stretches. This keeps compact fixed columns valid and prevents
+    # ResizeToContents consumers from expanding to an artificial host hint.
+    item.setSizeHint(QSize(badge_hint.width() + 8, max(CONST.table_row_height, host_hint.height())))
+    table.setItem(row, column, item)
+    table.setCellWidget(row, column, host)
+    return item
 
 
 def data_table_item(

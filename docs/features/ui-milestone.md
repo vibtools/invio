@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 — Canonical Status Column Runtime Correction
+
+Accounts Status-column sizing now follows the canonical status badge's real Qt size requirement. The existing one-badge renderer and visual palette are unchanged.
+
+## v1.0.0.1.48.7 — Global Status Badge Rendering & Table Cell Alignment
+
+Status presentation is now centralized across shared UI consumers. Table status cells show one badge only, preserve raw status metadata, remain vertically centered, and use the established success/warning/danger/neutral palette.
+
 ## v1.0.0.1.48.6 — Accounts Compact Table / Action UI Correction
 
 The v1.48.5 flat Accounts structure is retained. Column balance is corrected, Status/Action remain compact, Accounts-only semantic colors use success `#22C55E`, warning `#FCD34D`, danger `#F87171` and primary `#2563EB`, and the existing row menu is bounded to the Invio-window/current-screen safe region. Global tokens and account workflows remain unchanged.

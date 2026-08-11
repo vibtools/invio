@@ -1,3 +1,11 @@
+## v1.0.0.1.48.8 Scope Status
+
+Completed scope: correct the confirmed v1.48.7 Windows Accounts status-column clipping contract by removing the 132px fixed-width assumption. No new feature or production phase is introduced.
+
+## v1.0.0.1.48.7 Scope Status
+
+The only approved scope is the global status-badge rendering/table-cell alignment correction. No production phase, provider capability, storage contract, Task workflow or architecture change is introduced.
+
 ## v1.0.0.1.48.6 Scope Status
 
 The approved Accounts-page compact table/status/action-menu correction is the only v1.0.0.1.48.6 scope. It includes Accounts-scoped semantic QSS and screen/window-safe menu geometry only; it does not add a production phase or alter provider, account, task, storage or worker architecture.
