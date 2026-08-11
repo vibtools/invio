@@ -141,6 +141,16 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('self.items_pager = DataGridPager', invoice)
         self.assertIn('self.items.setRowHidden(row, row not in visible_rows)', invoice)
 
+    def test_v145_provider_cards_are_reparented_before_becoming_visible(self):
+        root = Path(__file__).resolve().parents[1]
+        page_source = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        reflow = page_source.split("def _reflow_cards", 1)[1].split("def _apply_filter", 1)[0]
+        self.assertIn("item.setVisible(False)", reflow)
+        self.assertIn("self.grid.addWidget(item, row, column)", reflow)
+        self.assertIn("item.setVisible(True)", reflow)
+        self.assertLess(reflow.index("self.grid.addWidget(item, row, column)"), reflow.index("item.setVisible(True)"))
+        self.assertNotIn("item.setVisible(item in visible_cards)", reflow)
+
     def test_application_icon_contract_uses_owner_asset_paths_and_windows_build_icon(self):
         root = Path(__file__).resolve().parents[1]
         app_source = (root / "src" / "app.py").read_text(encoding="utf-8")
@@ -170,11 +180,12 @@ class UiContractTests(unittest.TestCase):
         page_source = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
         style_source = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
         pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertIn('PROVIDER_CARD_HEIGHT = 220', page_source)
+        self.assertIn('PROVIDER_CARD_HEIGHT = 194', page_source)
         self.assertIn('PROVIDER_CARD_MIN_WIDTH = 280', page_source)
         self.assertIn('PROVIDER_CARD_PADDING = 16', page_source)
         self.assertIn('PROVIDER_GRID_GAP = 16', page_source)
         self.assertIn('PROVIDER_LOGO_SIZE = 40', page_source)
+        self.assertIn('PROVIDER_STATUS_HEIGHT = 18', page_source)
         self.assertIn('PROVIDER_MIN_COLUMNS = 2', page_source)
         self.assertIn('PROVIDER_MAX_COLUMNS = 4', page_source)
         self.assertIn('self.search_input = QLineEdit()', page_source)
@@ -187,6 +198,8 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('_PROVIDER_LOGO_FILES', page_source)
         self.assertIn('asset_path("icons", "providers", filename)', page_source)
         self.assertIn('status_badge("Verified" if installed else "Available"', page_source)
+        self.assertIn('identity.addWidget(status, 0, Qt.AlignmentFlag.AlignLeft)', page_source)
+        self.assertNotIn('brand.addWidget(status', page_source)
         self.assertIn('"ProviderVersionText"', page_source)
         self.assertIn('"PluginCardTitle"', page_source)
         self.assertIn('class _ElidedDescriptionLabel(QLabel):', page_source)
@@ -206,6 +219,8 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('QLineEdit#ProviderSearchInput', style_source)
         self.assertIn('QPushButton#ProviderUninstallButton', style_source)
         self.assertIn('QPushButton#ProviderLoadButton', style_source)
+        self.assertIn('QFrame#PluginCard QLabel#StatusBadgeSuccess', style_source)
+        self.assertIn('font-size: 9px;', style_source)
         self.assertNotIn('QLabel#ProviderLogoPlaceholder', style_source)
         self.assertNotIn('QLabel#ProviderCapabilityChip', style_source)
         self.assertIn('"providers/*.png"', pyproject)
@@ -545,6 +560,19 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('self.providers.get_installed(task.provider_id)', runner)
         self.assertIn('Reinstall the provider before starting or retrying this task.', runner)
 
+    def test_v1440_intro_and_subtitle_cleanup_is_scope_locked(self):
+        root = Path(__file__).resolve().parents[1]
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+        tasks = (root / "src" / "ui" / "pages" / "tasks_page.py").read_text(encoding="utf-8")
+        providers = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        dashboard = (root / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
+        self.assertNotIn('text_layout.addWidget(label(description, "Description", True))', widgets)
+        self.assertNotIn('layout.addWidget(label(description, "Description", True))', widgets)
+        self.assertEqual(widgets.count("_ = description"), 2)
+        self.assertNotIn("Independent provider task with dedicated account reservation and worker-thread slot.", tasks)
+        self.assertIn('self.setObjectName("PluginCardDescription")', providers)
+        self.assertIn('self.next_step = label("", "Description")', dashboard)
+
     def test_worker_manager_declares_task_scoped_qthreads(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
         self.assertIn("self._slots: dict[str, _WorkerSlot]", source)
@@ -591,6 +619,116 @@ class UiContractTests(unittest.TestCase):
         block = source[source.index("def _runtime_capabilities_for_provider"):source.index("def _provider_manifest_contract_error")]
         self.assertIn("manifest_runtime_contract_matches", block)
         self.assertIn("effective_capabilities(provider)", block)
+
+
+
+class V1460TitleBarContractTests(unittest.TestCase):
+    def test_v1460_main_window_uses_custom_frameless_title_bar(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        self.assertIn("enable_frameless_window(self)", window)
+        self.assertIn('MainTitleBar(self, "Invio", "Home / Accounts")', window)
+        self.assertIn('self.main_title_bar.set_context(f"Home / {name}")', window)
+        self.assertIn("class MainTitleBar(TitleBar):", chrome)
+        self.assertIn("FramelessWindowHint", chrome)
+        self.assertIn("startSystemMove", chrome)
+        self.assertIn("startSystemResize", chrome)
+        self.assertIn("showMinimized", chrome)
+        self.assertIn("showMaximized", chrome)
+
+    def test_v1460_app_owned_dialogs_use_compact_custom_title_bar(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        app = (root / "src" / "app.py").read_text(encoding="utf-8")
+        self.assertIn("class DialogTitleBar(TitleBar):", chrome)
+        self.assertIn("build_dialog_shell", dialogs)
+        self.assertGreaterEqual(dialogs.count("build_dialog_shell(self)"), 5)
+        self.assertIn("install_dialog_chrome(box, preserve_client_height=False)", dialogs)
+        self.assertNotIn("install_dialog_chrome(box, box.layout()", dialogs)
+        self.assertIn('compact_message_box(None, "Invio Runtime Resources"', app)
+        self.assertNotIn("QMessageBox.critical(", app)
+
+    def test_v1460_title_bar_styles_are_scoped_to_custom_chrome(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        tokens = (root / "src" / "ui" / "tokens.py").read_text(encoding="utf-8")
+        self.assertIn("QFrame#MainTitleBar", styles)
+        self.assertIn("QFrame#DialogTitleBar", styles)
+        self.assertIn("QPushButton#MainTitleClose:hover", styles)
+        self.assertIn("QPushButton#DialogTitleClose:hover", styles)
+        self.assertIn("main_titlebar_height: int = 32", tokens)
+        self.assertIn("dialog_titlebar_height: int = 30", tokens)
+
+
+
+class V1470DesktopDesignSystemContractTests(unittest.TestCase):
+    def test_v147_single_global_app_header_replaces_legacy_double_header(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        self.assertIn('MainTitleBar(self, "Invio", "Home / Accounts")', window)
+        shell = window.split("def _build_shell", 1)[1].split("def _nav_icon", 1)[0]
+        self.assertNotIn("_build_header()", shell)
+        self.assertNotIn('setObjectName("WindowHeader")', window)
+        self.assertIn('self.main_title_bar.set_context(f"Home / {name}")', window)
+        self.assertIn('asset_path("icons", "window", icon_name)', chrome)
+        self.assertIn('TitleBarContextDivider', chrome)
+
+    def test_v147_sidebar_is_grouped_and_uses_packaged_svg_icon_family(self):
+        root = Path(__file__).resolve().parents[1]
+        window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        tokens = (root / "src" / "ui" / "tokens.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("NAV_GROUPS", tokens)
+        self.assertIn('("MAIN", (', tokens)
+        self.assertIn('("OPERATIONS", (', tokens)
+        self.assertIn('("SETTINGS", (', tokens)
+        self.assertIn('asset_path("icons", "nav", f"{icon_key}.svg")', window)
+        self.assertIn('label(group_name, "SidebarSectionLabel", False)', window)
+        self.assertIn('setObjectName("SidebarFooter")', window)
+        self.assertIn('QLabel#SidebarSectionLabel', styles)
+        self.assertIn('QFrame#SidebarFooter', styles)
+        for name in ("dashboard", "accounts", "invoice", "customers", "tasks", "providers", "reports", "logs", "settings"):
+            self.assertTrue((root / "assets" / "icons" / "nav" / f"{name}.svg").is_file(), name)
+
+    def test_v147_dialog_shell_overlay_footer_and_focus_contract(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("def build_dialog_shell", chrome)
+        self.assertIn('body.setObjectName("DialogBody")', chrome)
+        self.assertIn('setObjectName("ModalOverlay")', chrome)
+        self.assertGreaterEqual(dialogs.count("build_dialog_shell(self)"), 5)
+        self.assertIn('host.setObjectName("DialogActionFooter")', dialogs)
+        self.assertIn('primary_button.setDefault(True)', dialogs)
+        self.assertIn('QTimer.singleShot(0, self.name_edit.setFocus)', dialogs)
+        self.assertIn('QWidget#ModalOverlay', styles)
+        self.assertIn('QWidget#DialogActionFooter', styles)
+
+    def test_v147_component_states_dropdown_icons_and_inline_feedback_are_centralized(self):
+        root = Path(__file__).resolve().parents[1]
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        self.assertIn('validationState="error"', styles)
+        self.assertIn('validationState="success"', styles)
+        self.assertIn('QComboBox::down-arrow', styles)
+        self.assertIn('QSpinBox::up-arrow', styles)
+        self.assertIn('QLabel#InlineStatusSuccess', styles)
+        self.assertIn('def set_inline_status', widgets)
+        self.assertIn('inline_status("API test has not been run.", "neutral")', dialogs)
+        self.assertIn('set_inline_status(self.validation_label, safe, "success")', dialogs)
+        for name in ("chevron-down.svg", "chevron-up.svg"):
+            self.assertTrue((root / "assets" / "icons" / name).is_file(), name)
+
+    def test_v147_accounts_empty_state_is_not_rendered_as_a_fake_tree_record(self):
+        root = Path(__file__).resolve().parents[1]
+        accounts = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        self.assertIn('data_grid_empty_label("No accounts found.")', accounts)
+        self.assertNotIn('QTreeWidgetItem(["No matching records."', accounts)
 
 
 
@@ -670,6 +808,25 @@ class P07UiContractTests(unittest.TestCase):
         self.assertIn("self.close_btn.setEnabled(policy.close_enabled)", page)
         self.assertNotIn('task.status in {"Ready", "Stopped", "Failed", "Completed"}', page)
 
+    def test_v10014801_task_close_confirmation_forces_widget_message_box_before_custom_chrome(self):
+        root = Path(__file__).resolve().parents[1]
+        dialog_source = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        window_source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+
+        compact = dialog_source.split("def compact_message_box", 1)[1].split("def _invoice_wrapped_label", 1)[0]
+        self.assertIn("force_widget_dialog: bool = False", compact)
+        self.assertIn("QMessageBox.Option.DontUseNativeDialog", compact)
+        self.assertLess(
+            compact.index("box.setOption(QMessageBox.Option.DontUseNativeDialog, True)"),
+            compact.index("box.setWindowTitle(title)"),
+        )
+
+        close = window_source.split("def close_task", 1)[1].split("def _task_persistence_failure", 1)[0]
+        self.assertIn('"Close Task"', close)
+        self.assertIn("force_widget_dialog=True", close)
+        self.assertIn("self.state.close_task(task_id)", close)
+        self.assertLess(close.index("force_widget_dialog=True"), close.index("self.state.close_task(task_id)"))
+
     def test_p07_start_routes_stopped_task_to_resume_remaining_and_never_rewrites_blocked_status(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
@@ -737,3 +894,78 @@ class P07UiContractTests(unittest.TestCase):
         self.assertIn("thread = QThread(self)", source)
         self.assertIn('thread.setObjectName(f"InvioTaskThread-{task.id}")', source)
         self.assertNotIn("ThreadPoolExecutor", source)
+
+
+class V1480DialogChromePolishContractTests(unittest.TestCase):
+    def test_v148_title_bars_keep_compact_right_margin_after_close_controls(self):
+        root = Path(__file__).resolve().parents[1]
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        self.assertGreaterEqual(
+            chrome.count("layout.setContentsMargins(10, 0, CONST.space_compact, 0)"), 2
+        )
+
+    def test_v148_dialog_surface_has_subtle_border_shadow_and_transparent_outer_chrome(self):
+        root = Path(__file__).resolve().parents[1]
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+        self.assertIn("QGraphicsDropShadowEffect", chrome)
+        self.assertIn("shadow.setBlurRadius(12.0)", chrome)
+        self.assertIn("shadow.setOffset(0.0, 2.0)", chrome)
+        self.assertIn("QColor(0, 0, 0, 96)", chrome)
+        self.assertIn('surface.setObjectName("DialogSurface")', chrome)
+        self.assertIn("WA_TranslucentBackground", chrome)
+        self.assertIn("QFrame#DialogSurface", styles)
+        self.assertIn("border: 1px solid #2D3748", styles)
+
+    def test_v148_form_dialog_title_is_rendered_once_by_custom_title_bar(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        for window_title in (
+            'self.setWindowTitle("New Customer List")',
+            'self.setWindowTitle("Re-test Account")',
+            'self.setWindowTitle("Invoice Template")',
+            'self.setWindowTitle("New Task")',
+        ):
+            self.assertIn(window_title, dialogs)
+        self.assertIn('self.setWindowTitle("Edit Account" if account is not None else "Add Account")', dialogs)
+        for duplicate in (
+            'label("Create Customer List", "PageTitle", False)',
+            'label("Edit Provider Account" if account is not None else "Add Provider Account", "PageTitle", False)',
+            'label("Re-test Provider Account", "PageTitle", False)',
+            'label("Invoice Template", "PageTitle", False)',
+            'label("Create Task", "PageTitle", False)',
+        ):
+            self.assertNotIn(duplicate, dialogs)
+
+
+
+class V14802PopupLifecycleContractTests(unittest.TestCase):
+    def test_v14802_message_box_chrome_reacquires_live_layout_after_window_mutation(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        chrome = (root / "src" / "ui" / "title_bars.py").read_text(encoding="utf-8")
+
+        compact = dialogs.split("def compact_message_box", 1)[1].split("def _invoice_wrapped_label", 1)[0]
+        self.assertIn("box.setOption(QMessageBox.Option.DontUseNativeDialog, True)", compact)
+        self.assertNotIn("install_dialog_chrome(box, box.layout()", compact)
+        self.assertIn("install_dialog_chrome(box, preserve_client_height=False)", compact)
+
+        install = chrome.split("def install_dialog_chrome", 1)[1]
+        self.assertIn("layout = dialog.layout()", install)
+        self.assertIn('raise RuntimeError("Custom dialog chrome requires a live dialog layout.")', install)
+        self.assertLess(install.index("enable_frameless_window(dialog)"), install.index("layout = dialog.layout()"))
+        self.assertLess(install.index("layout = dialog.layout()"), install.index("margins = layout.contentsMargins()"))
+
+    def test_v14802_real_runtime_test_module_exercises_modal_exec_and_button_clicks(self):
+        root = Path(__file__).resolve().parents[1]
+        runtime_test = (root / "tests" / "test_ui_runtime_interactions.py").read_text(encoding="utf-8")
+        self.assertIn('os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")', runtime_test)
+        self.assertIn("QApplication.activeModalWidget()", runtime_test)
+        self.assertIn("target.click()", runtime_test)
+        self.assertIn("compact_message_box(", runtime_test)
+        self.assertIn("QMessageBox.Icon.Information", runtime_test)
+        self.assertIn("QMessageBox.Icon.Warning", runtime_test)
+        self.assertIn("QMessageBox.Icon.Critical", runtime_test)
+        self.assertIn("QMessageBox.Icon.Question", runtime_test)
+        self.assertIn("Question One", runtime_test)
+        self.assertIn("Question Two", runtime_test)

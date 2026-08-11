@@ -1,6 +1,24 @@
+## Current Hotfix Candidate — v1.0.0.1.48.02
+
+Parent Official Baseline: `v1.0.0.1.48.01`. Scope is limited to the global app-owned `QMessageBox` / popup lifecycle regression and real PySide6 interaction regression coverage. Production/provider roadmap ordering and business/runtime phase status are unchanged.
+
+## Current Hotfix Candidate — v1.0.0.1.48.01
+
+Parent Official Baseline: `v1.0.0.1.48.0`. This candidate fixes only the Tasks `Close Task` confirmation boundary. Production/provider roadmap ordering and phase status are unchanged.
+
+## Current UI Candidate — v1.0.0.1.48.0
+
+Parent Official Baseline: `v1.0.0.1.47.0`. This candidate is limited to custom Main/Dialog chrome spacing, app-owned dialog visual separation and duplicate dialog-title cleanup. Runtime/provider/business roadmap ordering is unchanged.
+
+## Current UI Candidate — v1.0.0.1.47.0
+
+Parent Official Baseline: `v1.0.0.1.46.0`. This candidate is limited to the owner-approved Vib Tools desktop design-system refinement. Runtime/provider/business roadmap ordering is unchanged.
+
+**Current owner-frozen baseline:** `Invio v1.0.0.1.45.0`. **Active approved UI candidate:** `v1.0.0.1.46.0 — custom Main Window and app-owned Dialog title bars only`. Provider/runtime roadmap status is unchanged.
+
 # Roadmap
 
-**Current owner-frozen UI baseline:** `Invio v1.0.0.1.42.0`. **Active approved UI candidate:** `Invio v1.0.0.1.43.0 — Global Data Tables + Lists + Fonts only`. Production/runtime phase status is inherited unchanged; this UI candidate does not reopen or advance any provider/runtime phase.
+**Current owner-frozen UI baseline:** `Invio v1.0.0.1.44.0`. **Active approved UI candidate:** `Invio v1.0.0.1.45.0 — Providers Page transient-window/card-layout fix only`. Production/runtime phase status is inherited unchanged; this UI candidate does not reopen or advance any provider/runtime phase.
 
 Current owner-frozen Official UI Baseline: **Invio v1.0.0.1.41 — Providers Page UI/UX baseline**. The first production-release lineage remains rooted in v1.0.0.1.40.2.
 

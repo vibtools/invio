@@ -11,12 +11,13 @@ from ...core.provider_manager import ProviderManager, ProviderManifest
 from ..widgets import button, card, label, page_header, status_badge, vbox
 
 
-PROVIDER_CARD_HEIGHT = 220
+PROVIDER_CARD_HEIGHT = 194
 PROVIDER_CARD_MIN_WIDTH = 280
 PROVIDER_CARD_PADDING = 16
 PROVIDER_GRID_GAP = 16
 PROVIDER_SECTION_GAP = 12
-PROVIDER_IDENTITY_GAP = 6
+PROVIDER_IDENTITY_GAP = 4
+PROVIDER_STATUS_HEIGHT = 18
 PROVIDER_LOGO_SIZE = 40
 PROVIDER_MIN_COLUMNS = 2
 PROVIDER_MAX_COLUMNS = 4
@@ -177,18 +178,15 @@ class ProvidersPage(QWidget):
         header.setContentsMargins(0, 0, 0, 0)
         header.setSpacing(10)
 
-        brand_host = QWidget()
-        brand = vbox(brand_host, (0, 0, 0, 0), 4)
-        brand.addWidget(self._provider_logo(provider), 0, Qt.AlignmentFlag.AlignHCenter)
-        status = status_badge("Verified" if installed else "Available", "success" if installed else "neutral")
-        status.setFixedHeight(22)
-        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        brand.addWidget(status, 0, Qt.AlignmentFlag.AlignHCenter)
-        header.addWidget(brand_host, 0, Qt.AlignmentFlag.AlignTop)
+        header.addWidget(self._provider_logo(provider), 0, Qt.AlignmentFlag.AlignTop)
 
         identity_host = QWidget()
         identity = vbox(identity_host, (0, 1, 0, 0), PROVIDER_IDENTITY_GAP)
         identity.addWidget(label(provider.name, "PluginCardTitle", False))
+        status = status_badge("Verified" if installed else "Available", "success" if installed else "neutral")
+        status.setFixedHeight(PROVIDER_STATUS_HEIGHT)
+        status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        identity.addWidget(status, 0, Qt.AlignmentFlag.AlignLeft)
         identity.addStretch(1)
         header.addWidget(identity_host, 1, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header)
@@ -237,14 +235,18 @@ class ProvidersPage(QWidget):
         self._current_columns = columns
         while self.grid.count():
             self.grid.takeAt(0)
+        # Provider cards can be newly constructed and parentless at this point.
+        # Never show them until QGridLayout has re-parented them into self.host;
+        # otherwise Windows briefly exposes the card as a top-level "Invio" window.
         for item in self._cards:
-            item.setVisible(item in visible_cards)
+            item.setVisible(False)
         for column in range(PROVIDER_MAX_COLUMNS):
             self.grid.setColumnMinimumWidth(column, PROVIDER_CARD_MIN_WIDTH if column < columns else 0)
             self.grid.setColumnStretch(column, 1 if column < columns else 0)
         for index, item in enumerate(visible_cards):
             row, column = divmod(index, columns)
             self.grid.addWidget(item, row, column)
+            item.setVisible(True)
 
     def _apply_filter(self, _text: str) -> None:
         self._reflow_cards(force=True)

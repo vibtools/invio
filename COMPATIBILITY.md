@@ -1,4 +1,32 @@
+## v1.0.0.1.48.02 Compatibility Note
+
+This hotfix changes only the app-owned `QMessageBox` widget/chrome lifecycle and directly related runtime regression tests. Existing message texts/buttons/results, Task state machine, WorkerManager/QThread architecture, provider APIs, durable storage/schema v5, customer/invoice processing, settings and non-popup UI behavior remain compatible with v1.48.01.
+
+## v1.0.0.1.48.01 Compatibility Note
+
+This hotfix changes only the UI confirmation transport used by `Close Task`. The state-machine close contract, WorkerManager/QThread ownership, durable task/snapshot deletion, account-reservation release, delivery-ledger retention, providers, SQLite schema v5, dependencies and every other application workflow remain compatible with the v1.48.0 baseline.
+
+## v1.0.0.1.48.0 Compatibility Note
+
+The v1.48 candidate is presentation-only: custom Main/Dialog title-bar spacing, app-owned dialog border/shadow separation, and duplicate dialog-title removal. Python/PySide6 requirements, Windows distribution model, database schema v5, provider interfaces and business/runtime compatibility are unchanged from v1.47.
+
+## v1.0.0.1.47.0 Compatibility Boundary
+
+The update is UI/UX-only. Existing provider manifests/adapters, API behavior, database schema v5, task execution/retry semantics, customer and invoice models, Settings persistence, Windows distribution architecture and runtime dependencies remain compatible with the `v1.0.0.1.46.0` baseline.
+
+## v1.0.0.1.46.0 Window Chrome compatibility
+
+The v1.46.0 candidate is a presentation-only window-chrome update over owner-frozen v1.45.0. Native file dialogs, page layouts, dialog fields/actions, persistence, provider contracts, SQLite schema, WorkerManager, Task behavior and dependencies are unchanged. Frameless windows delegate move/resize back to Qt/OS system operations.
+
 # Compatibility
+
+## v1.0.0.1.45.0 Providers Page compatibility
+
+`v1.0.0.1.45.0` is a Providers Page presentation/lifecycle hotfix over owner-frozen `v1.0.0.1.44.0`. It changes no provider manifest/API/runtime contract, P13 interface, persistence key, SQLite schema, CredentialStore, Task state, WorkerManager ownership, account/invoice/customer behavior, dependency, Settings/Forms/Data Grid behavior or non-Providers page workflow. Provider cards are simply kept hidden until grid re-parenting is complete, and the existing Available/Verified visual mark is relocated/compacted within the existing card.
+
+## v1.0.0.1.44.0 Intro/Subtitle compatibility
+
+`v1.0.0.1.44.0` is a presentation-only candidate over owner-frozen `v1.0.0.1.43.0`. It removes static intro/subtitle rendering only and adds no persistence key, schema migration, provider API/plugin contract, dependency, Task/customer/invoice/report semantic change, data-grid behavior change or Settings/Providers workflow change. SQLite remains schema v5; P13 remains interface v1.
 
 ## v1.0.0.1.43.0 Data Grid compatibility
 

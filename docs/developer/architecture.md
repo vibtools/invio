@@ -1,4 +1,32 @@
+## v1.0.0.1.48.02 QMessageBox Lifecycle Boundary
+
+`compact_message_box()` is still the single app-owned message-box entry point. Custom Invio chrome requires the Qt widget implementation, so it now always enables `DontUseNativeDialog` before configuring/showing the box. `install_dialog_chrome()` no longer accepts an externally captured Qt-owned layout; after frameless/translucent window mutation it reacquires `dialog.layout()` and only then changes margins. This removes the stale Shiboken wrapper lifetime hazard without changing popup semantics.
+
+## v1.0.0.1.48.01 Task Close Confirmation Boundary
+
+The close engine remains `TaskCard.clicked -> MainWindow.close_task -> TaskAction.CLOSE guard -> active-worker guard -> confirmation -> AppState.close_task -> DomainStore.delete_task_and_release -> ProviderRuntime.clear_task -> page refresh`. The hotfix changes only the confirmation construction: Close Task opts into a widget-backed `QMessageBox` before custom chrome is installed; no state-machine, worker, persistence or provider-runtime architecture changes.
+
+## v1.0.0.1.48.0 UI Architecture Note
+
+The existing frameless-window architecture is preserved. `title_bars.py` now gives title-bar controls a compact right inset and renders app-owned form dialogs inside a translucent shadow margin with one `DialogSurface`; `dialogs.py` no longer adds duplicate body `PageTitle` headings. No runtime/data architecture changes.
+
+## v1.0.0.1.47.0 UI Architecture Note
+
+The existing PySide6 architecture is preserved. `MainWindow` owns one `MainTitleBar`; app-owned form dialogs use `build_dialog_shell()` to compose `DialogTitleBar -> DialogBody`, while `compact_message_box()` keeps its Qt-owned body and receives custom overlay chrome. Shared visual states remain QSS/token driven. No new UI framework or dependency is introduced.
+
+## v1.0.0.1.46.0 window-chrome boundary
+
+`src/ui/title_bars.py` owns `TitleBar`, `MainTitleBar`, `DialogTitleBar` and scoped frameless move/resize handoff. MainWindow and application-owned dialogs opt into this layer without changing their existing body layouts, callbacks, persistence or runtime architecture. Native file dialogs remain outside this boundary.
+
 # Developer Architecture
+
+## v1.0.0.1.45.0 UI boundary
+
+Providers Page retains the existing `QGridLayout`/card architecture. The reflow lifecycle now hides cards before layout removal/rebuild and only shows visible cards after `grid.addWidget(...)` has established parent ownership, preventing an unparented card from becoming a transient top-level Windows window. No provider/runtime architecture changes.
+
+## v1.0.0.1.44.0 UI boundary
+
+The shared `page_header()` and `card()` APIs keep their existing signatures but no longer render static description arguments. This is a presentation-only behavior inside frozen UI helpers; models, state, provider runtime, WorkerManager and data-grid architecture are unchanged.
 
 ## v1.0.0.1.43.0 Data Grid UI boundary
 

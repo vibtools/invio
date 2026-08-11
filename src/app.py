@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .core.paths import RuntimeResourceError, application_root, asset_path, validate_runtime_resources
 from .core.storage import CredentialStore, CredentialStoreError, DomainStoreError
+from .ui.dialogs import compact_message_box
 from .ui.main_window import MainWindow
 from .ui.styles import app_qss
 
@@ -83,14 +84,15 @@ def main() -> int:
         validate_runtime_resources()
         window = MainWindow(project_root())
     except DomainStoreError as exc:
-        QMessageBox.critical(
+        compact_message_box(
             None,
             "Invio Operational Storage",
             f"Invio could not start because its operational storage is unavailable or unsafe to use. No operational database was overwritten.\n\n{exc}",
+            icon=QMessageBox.Icon.Critical,
         )
         return 1
     except RuntimeResourceError as exc:
-        QMessageBox.critical(None, "Invio Runtime Resources", str(exc))
+        compact_message_box(None, "Invio Runtime Resources", str(exc), icon=QMessageBox.Icon.Critical)
         return 1
     window.show()
     return app.exec()

@@ -44,7 +44,6 @@ class TaskCard(QWidget):
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_layout.setSpacing(3)
         title_layout.addWidget(label(task.name, "CardTitle", False))
-        title_layout.addWidget(label("Independent provider task with dedicated account reservation and worker-thread slot.", "Description"))
         header.addWidget(title_host, 1)
 
         self.start_btn = button("Start", "primary")

@@ -9,17 +9,27 @@ from pathlib import Path
 from version_info import current_release_version
 
 REQUIRED_RELATIVE_RESOURCES = (
-    Path("assets/icons/checkmark.svg"),
-    Path("assets/icons/search.svg"),
-    Path("assets/icons/providers/stripe.png"),
-    Path("assets/icons/providers/refrens.png"),
-    Path("assets/icons/providers/agiled.png"),
-    Path("assets/icons/providers/odoo.png"),
-    Path("providers/packages/stripe/provider.json"),
-    Path("providers/packages/refrens/provider.json"),
-    Path("providers/packages/agiled/provider.json"),
+    Path('assets/icons/checkmark.svg'),
+    Path('assets/icons/search.svg'),
+    Path('assets/icons/chevron-down.svg'),
+    Path('assets/icons/chevron-up.svg'),
+    Path('assets/icons/nav/dashboard.svg'),
+    Path('assets/icons/nav/accounts.svg'),
+    Path('assets/icons/nav/invoice.svg'),
+    Path('assets/icons/nav/customers.svg'),
+    Path('assets/icons/nav/tasks.svg'),
+    Path('assets/icons/nav/providers.svg'),
+    Path('assets/icons/nav/reports.svg'),
+    Path('assets/icons/nav/logs.svg'),
+    Path('assets/icons/nav/settings.svg'),
+    Path('assets/icons/window/minimize.svg'),
+    Path('assets/icons/window/maximize.svg'),
+    Path('assets/icons/window/restore.svg'),
+    Path('assets/icons/window/close.svg'),
+    Path('providers/packages/stripe/provider.json'),
+    Path('providers/packages/refrens/provider.json'),
+    Path('providers/packages/agiled/provider.json'),
 )
-
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()

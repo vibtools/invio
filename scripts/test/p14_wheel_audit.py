@@ -6,7 +6,18 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_VERSION = str(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
+PUBLIC_APPLICATION_VERSION = str(tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
+
+
+def canonical_python_wheel_version(version: str) -> str:
+    """Return the canonical numeric wheel version for Invio's dot-separated application identity."""
+    parts = version.split(".")
+    if not parts or any(not part.isdigit() for part in parts):
+        raise ValueError(f"Unsupported Invio application version for wheel canonicalization: {version}")
+    return ".".join(str(int(part)) for part in parts)
+
+
+EXPECTED_WHEEL_VERSION = canonical_python_wheel_version(PUBLIC_APPLICATION_VERSION)
 REQUIRED_RESOURCES = {
     "assets/icons/checkmark.svg",
     "assets/icons/search.svg",
@@ -51,8 +62,11 @@ def main() -> int:
         if len(dist_info) != 1:
             raise SystemExit("Wheel has an unexpected dist-info metadata layout.")
         metadata = archive.read(dist_info[0]).decode("utf-8", errors="replace")
-        if f"Version: {EXPECTED_VERSION}" not in metadata:
-            raise SystemExit(f"Wheel metadata version is not {EXPECTED_VERSION}.")
+        if f"Version: {EXPECTED_WHEEL_VERSION}" not in metadata:
+            raise SystemExit(
+                "Wheel metadata version is not the canonical Python wheel identity "
+                f"{EXPECTED_WHEEL_VERSION} for public Invio version {PUBLIC_APPLICATION_VERSION}."
+            )
         entry_name = dist_info[0].rsplit("/", 1)[0] + "/entry_points.txt"
         if entry_name not in names:
             raise SystemExit("Wheel is missing console entrypoint metadata.")

@@ -7,6 +7,8 @@ from .tokens import COLORS as c, CONST
 
 def app_qss() -> str:
     check_icon = asset_path("icons", "checkmark.svg").as_posix()
+    chevron_down = asset_path("icons", "chevron-down.svg").as_posix()
+    chevron_up = asset_path("icons", "chevron-up.svg").as_posix()
     return f"""
     * {{
         font-family: 'Segoe UI Variable', 'Segoe UI';
@@ -105,8 +107,14 @@ def app_qss() -> str:
         color: {c['secondary_text']};
         border: 1px solid #263244;
         border-radius: 4px;
-        padding: 2px 6px;
-        font-size: 10px;
+        padding: 1px 5px;
+        font-size: 9px;
+        font-weight: 600;
+    }}
+    QFrame#PluginCard QLabel#StatusBadgeSuccess {{
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 9px;
         font-weight: 600;
     }}
     QFrame#NestedCard, QFrame#MetricCard {{
@@ -459,6 +467,311 @@ def app_qss() -> str:
         background: {c['primary']};
         border-color: {c['primary_hover']};
         image: url("{check_icon}");
+    }}
+
+    /* v1.46.0 custom frameless window chrome. */
+    QMainWindow#InvioMainWindow {{
+        background: {c['window_background']};
+        border: 1px solid {c['border']};
+    }}
+    QDialog[customChrome="true"] {{
+        background: {c['window_background']};
+        border: 1px solid {c['input_border']};
+    }}
+    QFrame#MainTitleBar {{
+        background: #0D121B;
+        border: none;
+        border-bottom: 1px solid {c['border']};
+    }}
+    QFrame#DialogTitleBar {{
+        background: {c['surface']};
+        border: none;
+        border-bottom: 1px solid {c['border']};
+    }}
+    QLabel#TitleBarIcon {{ background: transparent; border: none; }}
+    QLabel#MainTitleText {{
+        color: {c['text_title']};
+        font-size: 12px;
+        font-weight: 500;
+    }}
+    QLabel#MainTitleContext {{
+        color: {c['text_muted']};
+        font-size: 11px;
+        font-weight: 400;
+    }}
+    QLabel#MainTitleBrand {{
+        background: #1E293B;
+        color: {c['secondary_text']};
+        border: 1px solid #334155;
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 9px;
+        font-weight: 500;
+    }}
+    QLabel#DialogTitleText {{
+        color: {c['text_title']};
+        font-size: 12px;
+        font-weight: 500;
+    }}
+    QFrame#MainTitleBar QPushButton,
+    QFrame#DialogTitleBar QPushButton {{
+        min-width: 0px;
+        background: transparent;
+        color: {c['secondary_text']};
+        border: none;
+        border-radius: 0px;
+        padding: 0px;
+        font-size: 13px;
+        font-weight: 400;
+    }}
+    QFrame#MainTitleBar QPushButton {{
+        min-height: {CONST.main_titlebar_height}px;
+        max-height: {CONST.main_titlebar_height}px;
+    }}
+    QFrame#DialogTitleBar QPushButton {{
+        min-height: {CONST.dialog_titlebar_height}px;
+        max-height: {CONST.dialog_titlebar_height}px;
+    }}
+    QFrame#MainTitleBar QPushButton:hover,
+    QFrame#DialogTitleBar QPushButton:hover {{
+        background: {c['hover']};
+        color: {c['primary_text']};
+    }}
+    QPushButton#MainTitleClose:hover,
+    QPushButton#DialogTitleClose:hover {{
+        background: {c['danger']};
+        color: #FFFFFF;
+    }}
+    QPushButton#MainTitleClose:pressed,
+    QPushButton#DialogTitleClose:pressed {{
+        background: {c['danger_hover']};
+        color: #FFFFFF;
+    }}
+
+    /* v1.47.0 Vib Tools desktop design-system refinement. */
+    QWidget#ModalOverlay {{
+        background: rgba(0, 0, 0, 82);
+        border: none;
+    }}
+    QWidget#DialogBody {{
+        background: transparent;
+        border: none;
+    }}
+    QWidget#DialogActionFooter {{
+        background: transparent;
+        border: none;
+        border-top: 1px solid #1E2633;
+    }}
+    QFrame#PageHeader {{
+        background: transparent;
+        border: none;
+    }}
+    QLabel#PageTitle {{
+        font-size: 15px;
+        font-weight: 500;
+        color: #E6EDF3;
+    }}
+    QLabel#SectionTitle, QLabel#CardTitle {{
+        font-size: 13px;
+        font-weight: 500;
+        color: #E6EDF3;
+    }}
+    QLabel#Description {{
+        font-size: 12px;
+        font-weight: 400;
+        color: #C9D1D9;
+    }}
+    QLabel#Caption, QLabel#Muted, QLabel#Breadcrumb, QLabel#FormLabel {{
+        color: #8B949E;
+    }}
+    QLabel#FormLabel {{
+        font-size: 11px;
+        font-weight: 500;
+    }}
+    QLabel#SidebarSectionLabel {{
+        color: #64748B;
+        font-size: 9px;
+        font-weight: 500;
+        padding: 4px 8px 2px 8px;
+    }}
+    QFrame#SidebarFooter {{
+        background: #0D121B;
+        border: 1px solid #18202C;
+        border-radius: 6px;
+    }}
+    QLabel#SidebarFooterTitle {{
+        color: #E6EDF3;
+        font-size: 11px;
+        font-weight: 500;
+    }}
+    QLabel#SidebarFooterMeta {{
+        color: #64748B;
+        font-size: 9px;
+        font-weight: 400;
+    }}
+    QPushButton#NavItem {{
+        min-height: 28px;
+        max-height: 28px;
+        border-radius: 6px;
+        padding: 1px 8px;
+        font-size: 11px;
+        font-weight: 400;
+        color: #C9D1D9;
+    }}
+    QPushButton#NavItem:hover {{
+        background: rgba(255,255,255,10);
+        color: #F8FAFC;
+    }}
+    QPushButton#NavItem:checked {{
+        background: rgba(37,99,235,34);
+        color: #F8FAFC;
+        font-weight: 500;
+        border: 1px solid rgba(59,130,246,40);
+        border-left: 2px solid #38BDF8;
+        padding-left: 7px;
+    }}
+    QFrame#Card, QFrame#Panel {{
+        background: #111722;
+        border-color: #1E2633;
+        border-radius: 8px;
+    }}
+    QFrame#NestedCard, QFrame#MetricCard {{
+        background: #151C27;
+        border-color: #1E2633;
+        border-radius: 8px;
+    }}
+    QLineEdit, QComboBox, QSpinBox, QTextEdit, QPlainTextEdit {{
+        font-weight: 400;
+    }}
+    QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {{
+        color: #64748B;
+        background: #111722;
+        border-color: #1E2633;
+    }}
+    QLineEdit[readOnly="true"], QTextEdit[readOnly="true"], QPlainTextEdit[readOnly="true"] {{
+        color: #94A3B8;
+        background: #111722;
+        border-color: #1E2633;
+    }}
+    QLineEdit[validationState="error"], QComboBox[validationState="error"], QSpinBox[validationState="error"], QTextEdit[validationState="error"] {{
+        border-color: #B91C1C;
+    }}
+    QLineEdit[validationState="success"], QComboBox[validationState="success"], QSpinBox[validationState="success"], QTextEdit[validationState="success"] {{
+        border-color: #166534;
+    }}
+    QComboBox::drop-down {{
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 24px;
+        border: none;
+        background: transparent;
+    }}
+    QComboBox::down-arrow {{
+        image: url("{chevron_down}");
+        width: 14px;
+        height: 14px;
+    }}
+    QSpinBox::up-button, QSpinBox::down-button {{
+        width: 22px;
+        border: none;
+        background: transparent;
+    }}
+    QSpinBox::up-arrow {{
+        image: url("{chevron_up}");
+        width: 12px;
+        height: 12px;
+    }}
+    QSpinBox::down-arrow {{
+        image: url("{chevron_down}");
+        width: 12px;
+        height: 12px;
+    }}
+    QCheckBox:hover {{ color: #F8FAFC; }}
+    QCheckBox:focus {{ color: #F8FAFC; }}
+    QPushButton#GhostButton {{
+        background: transparent;
+        border-color: #283345;
+        color: #C9D1D9;
+    }}
+    QPushButton#GhostButton:hover {{
+        background: rgba(255,255,255,8);
+        border-color: #334155;
+        color: #F8FAFC;
+    }}
+    QLabel#InlineStatusNeutral,
+    QLabel#InlineStatusInfo,
+    QLabel#InlineStatusSuccess,
+    QLabel#InlineStatusWarning,
+    QLabel#InlineStatusDanger {{
+        font-size: 11px;
+        font-weight: 400;
+        padding: 2px 0px;
+    }}
+    QLabel#InlineStatusNeutral {{ color: #8B949E; }}
+    QLabel#InlineStatusInfo {{ color: #93C5FD; }}
+    QLabel#InlineStatusSuccess {{ color: #34D399; }}
+    QLabel#InlineStatusWarning {{ color: #FBBF24; }}
+    QLabel#InlineStatusDanger {{ color: #F87171; }}
+    QFrame#MainTitleBar {{
+        background: #0B111A;
+        border-bottom: 1px solid #1E2633;
+    }}
+    QFrame#DialogTitleBar {{
+        background: #111722;
+        border-bottom: 1px solid #263244;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }}
+    QFrame#TitleBarContextDivider {{
+        background: #263244;
+        border: none;
+    }}
+    QLabel#MainTitleText, QLabel#DialogTitleText {{
+        color: #E6EDF3;
+        font-weight: 500;
+    }}
+    QLabel#MainTitleContext {{
+        color: #8B949E;
+        font-size: 10px;
+        font-weight: 400;
+    }}
+    QLabel#MainTitleBrand {{
+        background: transparent;
+        color: #C9D1D9;
+        border: none;
+        padding: 0px 7px;
+        font-size: 10px;
+        font-weight: 500;
+    }}
+    QDialog[customChrome="true"] {{
+        background: transparent;
+        border: none;
+    }}
+    QFrame#DialogSurface {{
+        background: #090D14;
+        border: 1px solid #2D3748;
+        border-radius: 8px;
+    }}
+    QFrame#MainTitleBar QPushButton,
+    QFrame#DialogTitleBar QPushButton {{
+        border-radius: 4px;
+    }}
+    QFrame#MainTitleBar QPushButton:hover,
+    QFrame#DialogTitleBar QPushButton:hover {{
+        background: rgba(255,255,255,10);
+    }}
+    QTableWidget, QTreeWidget, QListWidget {{
+        border-color: #1E2633;
+        selection-background-color: rgba(37,99,235,38);
+    }}
+    QHeaderView::section {{
+        color: #CBD5E1;
+        font-size: 11px;
+        font-weight: 600;
+    }}
+    QScrollBar::handle:vertical:hover,
+    QScrollBar::handle:horizontal:hover {{
+        background: #475569;
     }}
 
     QProgressBar {{

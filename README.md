@@ -1,6 +1,43 @@
+# v1.0.0.1.48.02 Global QMessageBox / Popup Lifecycle Hotfix Candidate
+
+`Invio v1.0.0.1.48.01` is the owner-frozen Official Baseline. `v1.0.0.1.48.02` fixes the global app-owned `QMessageBox` custom-chrome lifecycle regression: every Invio message box is forced onto Qt's widget-backed path, and custom chrome reacquires the live Qt-owned layout only after frameless/translucent window mutation. Existing warning/error/info/confirmation business flows, Task state, providers, storage, customer/invoice logic and unrelated UI remain unchanged. Real PySide6 interaction tests are included and execute whenever the runtime dependency is available (including the normal dependency-installed CI jobs).
+
+Python wheel packaging note: the public application/tag identity remains `1.0.0.1.48.02` / `v1.0.0.1.48.02`; Python packaging canonically emits wheel metadata/filename version `1.0.0.1.48.2`, which P14 validates explicitly. Portable/MSI naming and PE/MSI identities remain on the public mapping.
+
+# v1.0.0.1.48.01 Task Close Confirmation Hotfix Candidate
+
+`Invio v1.0.0.1.48.0` is the owner-frozen Official Baseline. `v1.0.0.1.48.01` changes only the Tasks subsystem Close Task confirmation boundary: the confirmation is forced onto Qt's widget-backed `QMessageBox` path before custom chrome/properties are applied, restoring reliable Windows confirmation and allowing the existing verified backend close/release pipeline to execute. Task state rules, WorkerManager, storage, provider runtime, delivery ledger, account reservations, all other confirmation workflows and unrelated UI remain unchanged.
+
+# v1.0.0.1.48.0 Dialog Chrome Polish Candidate
+
+`Invio v1.0.0.1.47.0` is the owner-frozen Official Baseline. `v1.0.0.1.48.0` changes only custom Main/Dialog chrome presentation: compact right inset after Close, subtle bordered/shadowed app-owned dialog separation, and removal of duplicated body-level dialog titles. All fields, actions, page/data-grid UI, runtime/provider/storage/task/customer/invoice/settings behavior remain unchanged.
+
+# v1.0.0.1.47.0 Vib Tools Desktop Design System Candidate
+
+`Invio v1.0.0.1.46.0` is the owner-frozen Official Baseline. `v1.0.0.1.47.0` refines only the approved desktop UI/UX system: one global frameless application header, grouped SVG-based sidebar navigation, standardized app-owned dialog chrome/body/footer/overlay, centralized compact component states, and aligned Accounts / Customer Lists / Invoice Templates presentation. Existing provider/runtime/storage/task/customer/invoice/settings behavior remains unchanged.
+
+# v1.0.0.1.46.0 Custom Window Chrome Candidate
+
+`Invio v1.0.0.1.45.0` is the owner-frozen baseline. `v1.0.0.1.46.0` changes only the main-window and application-owned dialog title bars: native Windows chrome is replaced by compact branded frameless title bars while existing window controls, modal workflows, content, provider/runtime behavior and all page UI remain unchanged.
+
 # Invio
 
-**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.42.0` is the owner-frozen Official Baseline.** **`v1.0.0.1.43.0` is the scope-locked Global Data Tables + Lists + Fonts candidate.** It adds compact search/filter/pagination, semantic status badges, 28px data controls/headers, 30px rows, tooltip-backed text elision, unified report surfaces, a bounded tabular New Task account selector and the Invoice Templates action-column clip correction while preserving the approved Providers/Forms/Settings UI and all provider/runtime/storage/business behavior.
+**Invio** is a Vib Tools desktop application for provider-based invoice automation. **`v1.0.0.1.44.0` is the owner-frozen Official Baseline.** **`v1.0.0.1.45.0` is the scope-locked Providers Page transient-window/card-layout fix candidate.** It prevents newly constructed provider cards from being shown as parentless top-level windows before grid re-parenting, moves the compact Available/Verified badge below the provider name, and reduces only the Provider card height implied by that header compaction. Provider/runtime/storage/business behavior and every non-Providers UI surface remain unchanged.
+
+## v1.0.0.1.45.0 Providers Page Transient-Window Fix Candidate
+
+- Fixes the brief white `Invio` window seen during application construction and on each Providers Page refresh by ensuring provider cards become visible only after `QGridLayout` has re-parented them into the Providers Page host.
+- Moves `Available` / `Verified` from below the logo to directly below the Provider Name.
+- Uses a compact 18px provider-status mark and reduces Provider card height from 220px to 194px; logo size, minimum card width, search, responsive grid, description ellipsis, version footer and Install/Uninstall workflows are preserved.
+- Adds no provider API/runtime, storage, Task, plugin, dependency, schema, page-navigation or non-Providers UI change.
+
+## v1.0.0.1.44.0 Intro/Subtitle Cleanup Candidate
+
+- Removes the static `description` visual row from shared page headers while retaining the frozen helper signature.
+- Removes static card/section subtitle rows from shared Cards while retaining the frozen helper signature.
+- Removes the one static Task-card subtitle identified in the owner screenshots.
+- Preserves provider package descriptions and dynamic operational/status/validation text.
+- No layout redesign, data-grid change, provider/runtime/storage/business change, dependency or schema change is included.
 
 ## v1.0.0.1.41.1 Providers Page Final UI Polish Candidate
 

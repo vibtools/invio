@@ -1,4 +1,64 @@
+## v1.0.0.1.48.02 - Global QMessageBox / Popup Lifecycle Functional Regression Fix
+
+- Freezes `v1.0.0.1.48.01` as the parent Official Baseline.
+- Fixes the stale Qt-owned `QMessageBox` layout wrapper that raised `libshiboken: Internal C++ object ... already deleted` after custom frameless chrome mutation.
+- Forces every Invio-owned compact message box onto `QMessageBox.Option.DontUseNativeDialog` before title/text/button/chrome configuration.
+- Changes `install_dialog_chrome()` so it reacquires `dialog.layout()` after frameless/translucent mutation instead of accepting a caller-captured layout wrapper.
+- Adds real PySide6 modal interaction tests for information, warning, critical and Yes/No question boxes, including reopen behavior and parented dialogs.
+- Preserves all business logic, Task engine, WorkerManager, storage/schema, providers, invoice/customer logic and unrelated UI/UX.
+- Version mapping: application `1.0.0.1.48.02`, PE `1.0.1.4802`, MSI `1.1.4802`.
+- P14 packaging compatibility: preserve public `1.0.0.1.48.02` / `v1.0.0.1.48.02`, PE `1.0.1.4802` and MSI `1.1.4802`, while accepting Python packaging's canonical wheel identity `1.0.0.1.48.2` and release filename `invio-1.0.0.1.48.2-py3-none-any.whl`.
+
+## v1.0.0.1.48.01 - Task Close Confirmation Hotfix
+
+- Freezes `v1.0.0.1.48.0` as the parent Official Baseline.
+- Fixes `Close Task` by forcing only that confirmation onto Qt's non-native/widget `QMessageBox` path before custom dialog chrome/properties are applied.
+- Preserves the existing `TaskAction.CLOSE` policy, active-worker guard, durable task deletion, account-reservation release, historical delivery-ledger retention and UI refresh sequence.
+- Does not change any other confirmation workflow, provider/API behavior, Task execution semantics, storage schema, Data Grid, dialog design or dependency.
+- Version mapping: application `1.0.0.1.48.01`, PE `1.0.1.4801`, MSI `1.1.4801`.
+
+## v1.0.0.1.48.0 - Main/Dialog Chrome Polish
+
+- Freezes `v1.0.0.1.47.0` as the parent Official Baseline.
+- Adds compact right spacing after Main and Dialog Close controls.
+- Adds a restrained dialog surface border and soft drop shadow for modal separation.
+- Removes duplicate body `PageTitle` headings from app-owned form dialogs; the custom title bar is the single dialog title.
+- Preserves dialog content, controls, validation, workflows and all backend/runtime/business behavior.
+- Version mapping: application `1.0.0.1.48.0`, PE `1.0.1.4800`, MSI `1.1.4800`.
+
+## v1.0.0.1.47.0 - Vib Tools Desktop Design System Refinement
+
+- Freezes `v1.0.0.1.46.0` as the parent Official Baseline.
+- Removes the redundant legacy second application header and keeps one compact branded `MainTitleBar` with page context and native-equivalent window controls.
+- Groups sidebar navigation under MAIN / OPERATIONS / SETTINGS, uses one packaged SVG icon family, and moves production/version identity into the compact sidebar footer.
+- Standardizes app-owned dialogs on `DialogTitleBar -> DialogBody -> DialogActionFooter`, adds the approved subtle modal overlay, consistent focus/default action behavior, and inline API verification feedback.
+- Centralizes compact control states, custom combo/spin arrows, hover/focus/disabled/error/success styling, and keeps the v1.44 no-description rule.
+- Preserves existing Data Grid search/filter/pagination, all columns, business workflows, provider APIs, storage, WorkerManager, SQLite schema v5 and dependencies.
+- Version mapping: application `1.0.0.1.47.0`, PE `1.0.1.4700`, MSI `1.1.4700`.
+
+## v1.0.0.1.46.0 - Custom Main/Dialog Title Bars
+
+- Replaced the Main Window native title bar with a compact branded `MainTitleBar`.
+- Replaced app-owned QDialog/QMessageBox native title bars with compact `DialogTitleBar` chrome.
+- Preserved minimize/maximize/close, modal behavior, system move/resize handoff, dialog content and all non-title-bar UI/runtime behavior.
+- Version mapping: application `1.0.0.1.46.0`, PE `1.0.1.4600`, MSI `1.1.4600`.
+
 # Changelog
+
+## v1.0.0.1.45.0 - Providers Page Transient-Window + Compact Status Fix
+
+- Freezes `v1.0.0.1.44.0` as the parent Official Baseline.
+- Fixes the transient white `Invio` window at app construction and Providers Page entry by hiding cards until after their grid re-parenting step.
+- Moves `Available` / `Verified` directly below Provider Name, compacts the mark to 18px, and reduces Provider card height from 220px to 194px.
+- Preserves provider card logo size/search/responsive grid/actions/version/description behavior and all provider/runtime/storage/business behavior.
+- Version mapping: application `1.0.0.1.45.0`, PE `1.0.1.4500`, MSI `1.1.4500`.
+
+## v1.0.0.1.44.0 - Intro/Subtitle Cleanup
+
+- Freezes `v1.0.0.1.43.0` as the parent Official Baseline.
+- Removes only static page-header intros, shared card/section subtitles and the static Task-card subtitle.
+- Preserves titles, labels, provider package body descriptions, dynamic operational/validation text, all v1.43 Data Grid behavior and all backend/runtime/business behavior.
+- Version mapping: application `1.0.0.1.44.0`, PE `1.0.1.4400`, MSI `1.1.4400`.
 
 ## v1.0.0.1.43.0 - Global Data Tables + Lists + Fonts
 

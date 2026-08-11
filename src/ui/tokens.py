@@ -7,8 +7,10 @@ COLORS = {
     "window_background": "#090D14",
     "page_background": "#090D14",
     "surface": "#111722",
+    "elevated_surface": "#151C27",
     "nested_surface": "#1A212E",
     "border": "#1E2633",
+    "border_subtle": "#18202C",
     "input_border": "#2D3748",
     "primary": "#2563EB",
     "primary_hover": "#3B82F6",
@@ -46,9 +48,14 @@ class UiConstants:
     sidebar_width: int = 220
     sidebar_padding: int = 8
     nav_height: int = 28
+    main_titlebar_height: int = 32
+    dialog_titlebar_height: int = 30
     header_height: int = 44
     status_height: int = 24
     page_padding: int = 14
+    space_tight: int = 4
+    space_compact: int = 6
+    space_standard: int = 8
     section_gap: int = 10
     content_gap: int = 12
     card_padding: int = 14
@@ -89,4 +96,23 @@ NAV_ITEMS = (
     ("Reports", "reports"),
     ("Live Logs", "logs"),
     ("Settings", "settings"),
+)
+
+
+NAV_GROUPS = (
+    ("MAIN", (
+        ("Dashboard", "dashboard"),
+        ("Accounts", "accounts"),
+        ("Invoice Templates", "invoice"),
+        ("Customer Lists", "customers"),
+        ("Tasks", "tasks"),
+    )),
+    ("OPERATIONS", (
+        ("Providers", "providers"),
+        ("Reports", "reports"),
+        ("Live Logs", "logs"),
+    )),
+    ("SETTINGS", (
+        ("Settings", "settings"),
+    )),
 )

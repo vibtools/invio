@@ -1,4 +1,16 @@
+## v1.0.0.1.47.0 Configuration Note
+
+No new configuration key or persisted setting is added. The design-system refinement is presentation-only and uses the existing centralized UI tokens/QSS.
+
 # Configuration
+
+## v1.0.0.1.45.0 configuration note
+
+No configuration key/default/persistence behavior changes. The Providers Page transient-window fix and badge relocation require no setting.
+
+## v1.0.0.1.44.0 note
+
+No configuration or Settings key is added or changed. Intro/subtitle cleanup is presentation-only.
 
 ## v1.0.0.1.43.0 configuration boundary
 

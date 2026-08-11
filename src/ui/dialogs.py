@@ -36,6 +36,7 @@ from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
 from ..core.state import AppState
 from ..invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCIES
 from .tokens import CONST
+from .title_bars import build_dialog_shell, install_dialog_chrome
 from .widgets import (
     DataGridPager,
     DataGridToolbar,
@@ -44,7 +45,9 @@ from .widgets import (
     data_badge_host,
     data_table_item,
     form_group,
+    inline_status,
     label,
+    set_inline_status,
 )
 
 
@@ -123,14 +126,22 @@ def compact_message_box(
     icon: QMessageBox.Icon = QMessageBox.Icon.Information,
     buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
     default_button: QMessageBox.StandardButton | None = None,
+    force_widget_dialog: bool = False,
 ) -> QMessageBox.StandardButton:
     box = QMessageBox(parent)
+    # Custom Invio chrome is QWidget-based, so every app-owned message box must
+    # use Qt's widget implementation.  ``force_widget_dialog`` is retained for
+    # internal call compatibility with v1.48.01, but the safe behavior is now
+    # global for all warning/error/info/confirmation flows.
+    _ = force_widget_dialog
+    box.setOption(QMessageBox.Option.DontUseNativeDialog, True)
     box.setWindowTitle(title)
     box.setText(text)
     box.setIcon(icon)
     box.setStandardButtons(buttons)
     if default_button is not None:
         box.setDefaultButton(default_button)
+    install_dialog_chrome(box, preserve_client_height=False)
     width = 520
     if parent is not None and parent.width() > 0:
         width = max(440, min(640, int(parent.width() * 0.42)))
@@ -178,12 +189,16 @@ def _dialog_card(title_text: str) -> QWidget:
 
 def _dialog_footer(primary_text: str, primary_handler: Callable[[], None], cancel_handler: Callable[[], None]) -> QWidget:
     host = QWidget()
+    host.setObjectName("DialogActionFooter")
     layout = QHBoxLayout(host)
-    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setContentsMargins(0, CONST.dialog_gap, 0, 0)
     layout.setSpacing(CONST.dialog_gap)
     layout.addStretch(1)
     cancel_button = button("Cancel")
+    cancel_button.setObjectName("GhostButton")
     primary_button = button(primary_text, "primary")
+    primary_button.setDefault(True)
+    primary_button.setAutoDefault(True)
     cancel_button.clicked.connect(cancel_handler)
     primary_button.clicked.connect(primary_handler)
     layout.addWidget(cancel_button)
@@ -197,16 +212,14 @@ class NewCustomerListDialog(QDialog):
         self.setWindowTitle("New Customer List")
         self.setModal(True)
         _apply_compact_dialog_geometry(
-            self, parent, width_ratio=0.48, preferred_height=250, min_width=480, max_width=680, min_height=230
+            self, parent, width_ratio=0.48, preferred_height=220, min_width=480, max_width=680, min_height=210
         )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding)
-        layout.setSpacing(CONST.dialog_gap)
-        layout.addWidget(label("Create Customer List", "PageTitle", False))
+        layout = build_dialog_shell(self)
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Example: August Renewals")
         layout.addWidget(form_group("List name", self.name_edit))
         layout.addWidget(_dialog_footer("Create List", self.accept, self.reject))
+        QTimer.singleShot(0, self.name_edit.setFocus)
 
     def list_name(self) -> str:
         return self.name_edit.text().strip()
@@ -240,10 +253,7 @@ class AddAccountDialog(QDialog):
             self, parent, width_ratio=0.64, preferred_height=450, min_width=760, max_width=920, min_height=390
         )
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding)
-        root.setSpacing(CONST.dialog_gap)
-        root.addWidget(label("Edit Provider Account" if account is not None else "Add Provider Account", "PageTitle", False))
+        root = build_dialog_shell(self)
 
         self.provider_combo = QComboBox()
         for provider in providers:
@@ -275,22 +285,27 @@ class AddAccountDialog(QDialog):
         self.credentials_card.layout().addWidget(self.credentials_host)
         root.addWidget(self.credentials_card)
 
-        self.validation_label = label("API test has not been run.", "Caption")
+        self.validation_label = inline_status("API test has not been run.", "neutral")
         root.addWidget(self.validation_label)
 
-        action_row = QHBoxLayout()
+        action_host = QWidget()
+        action_host.setObjectName("DialogActionFooter")
+        action_row = QHBoxLayout(action_host)
+        action_row.setContentsMargins(0, CONST.dialog_gap, 0, 0)
         action_row.setSpacing(CONST.dialog_gap)
         action_row.addStretch(1)
-        self.cancel_button = button("Cancel")
+        self.cancel_button = button("Cancel", "ghost")
         self.test_button = button("API Test")
         self.add_button = button("Save Changes" if account is not None else "Add Account", "primary")
+        self.add_button.setDefault(True)
+        self.add_button.setAutoDefault(True)
         self.cancel_button.clicked.connect(self.reject)
         self.test_button.clicked.connect(self._ui_validate_credentials)
         self.add_button.clicked.connect(self._accept_if_valid)
         action_row.addWidget(self.cancel_button)
         action_row.addWidget(self.test_button)
         action_row.addWidget(self.add_button)
-        root.addLayout(action_row)
+        root.addWidget(action_host)
 
         self.provider_combo.currentIndexChanged.connect(lambda _index: self._reset_validation())
         self.account_name.textChanged.connect(lambda _text: self._reset_validation())
@@ -306,6 +321,7 @@ class AddAccountDialog(QDialog):
                 if field is not None:
                     field.setText(value)
             self._reset_validation()
+        QTimer.singleShot(0, (self.account_name if self._provider_locked else self.provider_combo).setFocus)
 
     def _current_provider(self) -> ProviderManifest | None:
         provider_id = self.provider_combo.currentData()
@@ -355,8 +371,10 @@ class AddAccountDialog(QDialog):
             self.test_button.setEnabled(available)
         if not available:
             self._validated = False
-            self.validation_label.setText(
-                "API Test is unavailable for this provider because no executable API-test adapter is installed."
+            set_inline_status(
+                self.validation_label,
+                "API Test is unavailable for this provider because no executable API-test adapter is installed.",
+                "warning",
             )
 
     def _reset_validation(self) -> None:
@@ -365,10 +383,12 @@ class AddAccountDialog(QDialog):
         self._validated = False
         self._last_verification_at = ""
         if self._has_api_test_adapter():
-            self.validation_label.setText("API test has not been run.")
+            set_inline_status(self.validation_label, "API test has not been run.", "neutral")
         else:
-            self.validation_label.setText(
-                "API Test is unavailable for this provider because no executable API-test adapter is installed."
+            set_inline_status(
+                self.validation_label,
+                "API Test is unavailable for this provider because no executable API-test adapter is installed.",
+                "warning",
             )
         self._update_api_test_availability()
 
@@ -439,7 +459,7 @@ class AddAccountDialog(QDialog):
         credentials = self._credential_values()
         self._verification_credentials = dict(credentials)
         mode = self.mode_combo.currentText().strip()
-        self.validation_label.setText(f"Testing {provider.name} connection...")
+        set_inline_status(self.validation_label, f"Testing {provider.name} connection...", "info")
         self._set_verification_controls_enabled(False)
         self._log_verification(
             f"API Test started: {provider.name}/{self.account_name.text().strip()} ({mode or 'Default'})."
@@ -465,20 +485,19 @@ class AddAccountDialog(QDialog):
         safe = self._safe_verification_message(message)
         self._validated = True
         self._last_verification_at = _verification_timestamp()
-        self.validation_label.setText(safe)
+        set_inline_status(self.validation_label, safe, "success")
         provider = self._current_provider()
         provider_name = provider.name if provider is not None else "Provider"
         self._log_verification(
             f"API Test verified: {provider_name}/{self.account_name.text().strip()} ({self.mode_combo.currentText().strip() or 'Default'})."
         )
-        compact_message_box(self, "API Test", safe, icon=QMessageBox.Icon.Information)
 
     @Slot(str)
     def _verification_failed(self, message: str) -> None:
         safe = self._safe_verification_message(message)
         self._validated = False
         self._last_verification_at = ""
-        self.validation_label.setText(f"Verification failed: {safe}")
+        set_inline_status(self.validation_label, f"Verification failed: {safe}", "danger")
         provider = self._current_provider()
         provider_name = provider.name if provider is not None else "Provider"
         self._log_verification(
@@ -572,20 +591,20 @@ class AccountRetestDialog(QDialog):
             self, parent, width_ratio=0.46, preferred_height=250, min_width=520, max_width=680, min_height=230
         )
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding)
-        root.setSpacing(CONST.dialog_gap)
-        root.addWidget(label("Re-test Provider Account", "PageTitle", False))
-        self.status_label = label("Starting API Test...", "Caption")
+        root = build_dialog_shell(self)
+        self.status_label = inline_status("Starting API Test...", "info")
         root.addWidget(self.status_label)
         root.addStretch(1)
         self.close_button = button("Close")
         self.close_button.setEnabled(False)
         self.close_button.clicked.connect(self.reject)
-        actions = QHBoxLayout()
+        action_host = QWidget()
+        action_host.setObjectName("DialogActionFooter")
+        actions = QHBoxLayout(action_host)
+        actions.setContentsMargins(0, CONST.dialog_gap, 0, 0)
         actions.addStretch(1)
         actions.addWidget(self.close_button)
-        root.addLayout(actions)
+        root.addWidget(action_host)
         QTimer.singleShot(0, self._start_api_test)
 
     def _safe_verification_message(self, message: str) -> str:
@@ -605,14 +624,14 @@ class AccountRetestDialog(QDialog):
             self.verified = False
             self.result_message = "API Test is unavailable because no executable API-test adapter is installed."
             self.last_verification_at = _verification_timestamp()
-            self.status_label.setText(self.result_message)
+            set_inline_status(self.status_label, self.result_message, "warning")
             self.close_button.setEnabled(True)
             return
         if not self._verification_credentials:
             self.verified = False
             self.result_message = "Protected provider credentials are unavailable."
             self.last_verification_at = _verification_timestamp()
-            self.status_label.setText(self.result_message)
+            set_inline_status(self.status_label, self.result_message, "warning")
             self.close_button.setEnabled(True)
             return
 
@@ -641,7 +660,7 @@ class AccountRetestDialog(QDialog):
         self.verified = True
         self.result_message = self._safe_verification_message(message)
         self.last_verification_at = _verification_timestamp()
-        self.status_label.setText(self.result_message)
+        set_inline_status(self.status_label, self.result_message, "success")
         self._log_verification(
             f"API Re-test verified: {self.account.provider_name}/{self.account.name} ({self.account.mode or 'Default'})."
         )
@@ -651,7 +670,7 @@ class AccountRetestDialog(QDialog):
         self.verified = False
         self.result_message = self._safe_verification_message(message)
         self.last_verification_at = _verification_timestamp()
-        self.status_label.setText(f"Verification failed: {self.result_message}")
+        set_inline_status(self.status_label, f"Verification failed: {self.result_message}", "danger")
         self._log_verification(
             f"API Re-test failed: {self.account.provider_name}/{self.account.name} ({self.account.mode or 'Default'}): {self.result_message}"
         )
@@ -666,13 +685,13 @@ class AccountRetestDialog(QDialog):
 
     def reject(self) -> None:  # type: ignore[override]
         if self._verification_thread is not None and self._verification_thread.isRunning():
-            self.status_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+            set_inline_status(self.status_label, "API Test is still running. Wait for it to finish before closing this dialog.", "warning")
             return
         super().reject()
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
         if self._verification_thread is not None and self._verification_thread.isRunning():
-            self.status_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+            set_inline_status(self.status_label, "API Test is still running. Wait for it to finish before closing this dialog.", "warning")
             event.ignore()
             return
         super().closeEvent(event)
@@ -688,10 +707,7 @@ class InvoiceTemplateDialog(QDialog):
             self, parent, width_ratio=0.74, preferred_height=620, min_width=900, max_width=1080, min_height=520
         )
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding)
-        root.setSpacing(CONST.dialog_gap)
-        root.addWidget(label("Invoice Template", "PageTitle", False))
+        root = build_dialog_shell(self)
 
         scroll = QScrollArea()
         scroll.setObjectName("MinimalScrollArea")
@@ -871,6 +887,7 @@ class InvoiceTemplateDialog(QDialog):
         root.addWidget(scroll, 1)
 
         root.addWidget(_dialog_footer("Save", self._validate_and_accept, self.reject))
+        QTimer.singleShot(0, self.name_edit.setFocus)
 
     def _item_controls_changed(self) -> None:
         self.items_pager.reset()
@@ -964,10 +981,7 @@ class NewTaskDialog(QDialog):
             self, parent, width_ratio=0.60, preferred_height=520, min_width=700, max_width=860, min_height=450
         )
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding, CONST.dialog_padding)
-        root.setSpacing(CONST.dialog_gap)
-        root.addWidget(label("Create Task", "PageTitle", False))
+        root = build_dialog_shell(self)
 
         self.provider_combo = QComboBox()
         for provider in providers:
@@ -1023,6 +1037,7 @@ class NewTaskDialog(QDialog):
 
         root.addWidget(_dialog_footer("Create Task", self._validate_and_accept, self.reject))
         self._refresh_accounts()
+        QTimer.singleShot(0, self.provider_combo.setFocus)
 
     def _provider_changed(self, _index: int) -> None:
         self._checked_account_ids.clear()

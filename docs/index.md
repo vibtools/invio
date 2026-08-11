@@ -1,4 +1,28 @@
+## v1.0.0.1.48.02 Popup Lifecycle Hotfix
+
+The current candidate repairs all existing Invio-owned warning/error/info/confirmation message boxes after the custom-window-chrome refactor. Business behavior is unchanged; the repair is limited to Qt widget selection, live-layout ownership, and direct interaction regression testing.
+
+## v1.0.0.1.48.01 Task Close Hotfix
+
+The current candidate fixes only the Tasks-page `Close Task` confirmation path on Windows while preserving the existing backend close/release engine and every unrelated workflow.
+
+## v1.0.0.1.48.0 Current UI Candidate
+
+Parent baseline: `v1.0.0.1.47.0`. The candidate polishes only custom Main/Dialog chrome and app-owned dialog title/separation presentation. See `release-notes/1.0.0.1.48.0.md`.
+
+## Current UI Candidate — v1.0.0.1.47.0
+
+The current UI candidate builds on the owner-frozen `v1.0.0.1.46.0` baseline and standardizes the application shell, navigation, app-owned dialogs and shared visual states without changing business workflows.
+
+## v1.0.0.1.46.0 UI candidate
+
+Custom branded frameless chrome replaces the native white Main Window and application-owned dialog title bars only. See `release-notes/1.0.0.1.46.0.md`.
+
 # Invio Documentation
+
+Current UI baseline/candidate chain: **v1.0.0.1.44.0 is owner-frozen; v1.0.0.1.45.0 is the Providers Page transient-window/card-layout fix candidate.** The candidate prevents provider cards from becoming transient top-level windows before grid re-parenting and relocates/compacts the existing Available/Verified mark; runtime/business behavior is unchanged.
+
+- `release-notes/1.0.0.1.45.0.md` - Providers Page transient-window/card-layout fix candidate.
 
 Current UI baseline/candidate chain: **v1.0.0.1.42.0 is owner-frozen; v1.0.0.1.43.0 is the Global Data Tables + Lists + Fonts candidate.** The candidate adds compact in-memory search/filter/pagination and data-surface presentation only; runtime/provider/storage/task business behavior is unchanged.
 

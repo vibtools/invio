@@ -1,4 +1,46 @@
+## v1.0.0.1.48.02 Popup Lifecycle Hotfix Scope
+
+No folder/module architecture is reorganized. `src/ui/dialogs.py` retains the shared compact message-box entry point; `src/ui/title_bars.py` retains the custom chrome helper with a safer live-layout contract. `tests/test_ui_runtime_interactions.py` adds real PySide6 modal lifecycle coverage.
+
+## v1.0.0.1.48.01 Task Close Hotfix Scope
+
+No folder/module reorganization is introduced. Product behavior changes are confined to the existing `src/ui/main_window.py` Close Task call site and the optional widget-dialog flag in `src/ui/dialogs.py`; tests and documentation remain in existing locations.
+
+## v1.0.0.1.48.0 UI Scope
+
+No folders/modules are renamed or reorganized. The existing `src/ui/title_bars.py`, `src/ui/dialogs.py` and `src/ui/styles.py` own the approved chrome/dialog presentation correction; no architecture change is introduced.
+
+## v1.0.0.1.47.0 UI Structure Additions
+
+- `src/ui/title_bars.py` — single application title bar, compact dialog title bar, frameless move/resize and modal-overlay presentation.
+- `assets/icons/nav/*.svg` — consistent navigation icon family.
+- `assets/icons/window/*.svg` — compact minimize/maximize/restore/close controls.
+- `assets/icons/chevron-*.svg` — themed dropdown/spin arrows.
+
+No folders/modules were renamed or reorganized.
+
+## v1.0.0.1.46.0 records
+
+- `src/ui/title_bars.py` — scope-approved `TitleBar`, `MainTitleBar`, `DialogTitleBar` and frameless move/resize support.
+- `docs/release-notes/1.0.0.1.46.0.md` — custom window-chrome release note.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.46.0.md` — native-frame root cause.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.46.0.md` — final verification record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.46.0.md` — parent baseline/scope boundary.
+
 # Invio Project Structure
+
+## v1.0.0.1.45.0 records
+
+- `docs/release-notes/1.0.0.1.45.0.md` — Providers Page transient-window and compact badge/card correction.
+- `examples/providers_transient_window_fix.md` — owner desktop visual canary checklist.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.45.0.md` — parentless-card visibility root cause.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.45.0.md` — final scoped verification record.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.45.0.md` — v1.44.0 parent baseline and v1.45.0 candidate boundary.
+- `PATCH_MANIFEST_v1.0.0.1.45.0.md` — replace-ready overlay inventory.
+
+## v1.0.0.1.44.0 records
+
+No folder/module reorganization is introduced. The only product-source presentation changes remain in `src/ui/widgets.py` and `src/ui/pages/tasks_page.py`; release/scope/verification records are added under existing documentation/project locations.
 
 ```text
 .

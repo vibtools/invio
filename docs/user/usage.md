@@ -1,4 +1,36 @@
+## Popup / Confirmation behavior — v1.0.0.1.48.02
+
+Existing warnings, errors, information messages and confirmations retain their previous wording and actions. The hotfix restores their ability to open and return the selected button after the custom-chrome redesign. No new user workflow is introduced.
+
+## Closing a Task — v1.0.0.1.48.01
+
+For a Ready, Stopped, Failed or Completed Task, **Close Task** uses the existing optional confirmation setting. When confirmed, Invio removes the operational Task, releases its reserved accounts and retains historical recipient-delivery evidence according to the existing ledger policy. Running, Paused or Stopping Tasks must still be stopped first.
+
+## v1.0.0.1.48.0 Dialog Presentation
+
+App-owned dialogs now have clearer subtle separation from the parent window and display their dialog name once in the custom title bar. Dialog fields, buttons, keyboard behavior and workflows are unchanged.
+
+## v1.0.0.1.47.0 UI Notes
+
+- Invio now uses one compact application title bar; the duplicate legacy header is removed.
+- Sidebar destinations are grouped as MAIN, OPERATIONS and SETTINGS. Navigation destinations and workflows are unchanged.
+- App-owned dialogs use the same dark title bar, compact footer and modal background treatment. `Esc`, Tab navigation, close, drag and required resize behavior remain available.
+- Account API Test progress/results use the existing inline status area as the primary feedback surface; provider verification semantics are unchanged.
+- Data Grid search/filter/pagination and all existing columns remain unchanged from v1.43.0.
+
+## v1.0.0.1.46.0 window controls
+
+The Main Window now uses Invio-branded controls for minimize, maximize/restore and close. Application-owned dialogs use a compact branded title bar with Close. Drag title bars to move windows; resize remains available from window edges.
+
 # User Guide
+
+## v1.0.0.1.45.0 Providers Page usage
+
+Providers Page navigation/search/install/uninstall usage is unchanged. Provider cards no longer appear as transient top-level windows during app startup/page refresh; Available/Verified is now shown compactly below the Provider Name.
+
+## v1.0.0.1.44.0 UI usage
+
+Static page introductions and card/section subtitles are intentionally omitted for a cleaner desktop surface. Titles, controls, provider package descriptions, dynamic status/validation text, data-grid search/filter/pagination and all workflows behave as in v1.0.0.1.43.0.
 
 ## v1.0.0.1.43.0 Data Grid usage
 

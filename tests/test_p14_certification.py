@@ -39,7 +39,7 @@ class P14CertificationTests(unittest.TestCase):
         self.assertTrue((root / "src").is_dir())
         validate_runtime_resources()
         required = required_runtime_resources()
-        self.assertEqual(len(required), 4)
+        self.assertEqual(len(required), 20)
         self.assertTrue(all(path.is_file() for path in required))
 
     def test_setuptools_inventory_covers_existing_settings_and_runtime_resources(self):
@@ -61,7 +61,7 @@ class P14CertificationTests(unittest.TestCase):
         package_data = config["tool"]["setuptools"]["package-data"]
         self.assertEqual(
             package_data["assets.icons"],
-            ["checkmark.svg", "search.svg", "app.png", "app.ico", "providers/*.png"],
+            ["checkmark.svg", "search.svg", "chevron-*.svg", "app.png", "app.ico", "providers/*.png", "nav/*.svg", "window/*.svg"],
         )
         for provider in ("stripe", "refrens", "agiled"):
             self.assertEqual(package_data[f"providers.packages.{provider}"], ["provider.json"])

@@ -5,8 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QPoint, QSize, Qt
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -17,14 +17,13 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QStackedWidget,
-    QStyle,
     QVBoxLayout,
     QWidget,
 )
 
 from ..core.observability import StructuredLogEvent, atomic_write_csv, atomic_write_text, redact_sensitive_text
+from ..core.paths import asset_path
 from ..core.provider_manager import ProviderManager, ProviderManifest, ProviderManifestError
 from ..core.provider_runtime import (
     ProviderRuntime,
@@ -67,8 +66,9 @@ from .pages import (
     TasksPage,
 )
 from .styles import app_qss
-from .tokens import CONST, NAV_ITEMS
-from .widgets import hbox, label, status_badge, token_chip, vbox
+from .title_bars import MainTitleBar, enable_frameless_window
+from .tokens import CONST, NAV_GROUPS
+from .widgets import hbox, label, vbox
 
 
 class MainWindow(QMainWindow):
@@ -96,18 +96,19 @@ class MainWindow(QMainWindow):
         self._shutdown_pending = False
         self._last_report_load_error = ""
 
+        self.setObjectName("InvioMainWindow")
         self.setWindowTitle("Invio — Vib Tools")
+        self._frameless_resize_filter = enable_frameless_window(self)
         self.setMinimumSize(CONST.min_window_width, CONST.min_window_height)
         self.resize(CONST.default_window_width, CONST.default_window_height)
         self._restore_window_geometry()
         self.setStyleSheet(app_qss())
 
         self._build_shell()
-        self._build_status_bar()
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.43.0 started.")
+        self.log("Invio v1.0.0.1.48.02 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -124,7 +125,8 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        root.addWidget(self._build_header())
+        self.main_title_bar = MainTitleBar(self, "Invio", "Home / Accounts")
+        root.addWidget(self.main_title_bar)
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
@@ -137,54 +139,32 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root_widget)
         self._register_pages()
 
-    def _build_header(self) -> QWidget:
-        header = QFrame()
-        header.setObjectName("WindowHeader")
-        layout = hbox(header, (12, 0, 12, 0), 5)
-        layout.addWidget(status_badge("VT", "info"))
-        layout.addWidget(label("Invio", "WindowTitle", False))
-        self.breadcrumb = label("Home / Accounts", "Breadcrumb", False)
-        self.breadcrumb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        layout.addWidget(self.breadcrumb, 1)
-        layout.addWidget(token_chip("Vib Tools"))
-        self.viewport_chip = token_chip("Medium")
-        layout.addWidget(self.viewport_chip)
-        return header
-
-    def _icon_for(self, key: str):
-        style = QApplication.style()
-        mapping = {
-            "dashboard": QStyle.StandardPixmap.SP_ComputerIcon,
-            "accounts": QStyle.StandardPixmap.SP_DirHomeIcon,
-            "invoice": QStyle.StandardPixmap.SP_FileDialogDetailedView,
-            "customers": QStyle.StandardPixmap.SP_FileDialogListView,
-            "tasks": QStyle.StandardPixmap.SP_BrowserReload,
-            "providers": QStyle.StandardPixmap.SP_DriveNetIcon,
-            "reports": QStyle.StandardPixmap.SP_FileIcon,
-            "logs": QStyle.StandardPixmap.SP_MessageBoxInformation,
-            "settings": QStyle.StandardPixmap.SP_FileDialogContentsView,
-        }
-        return style.standardIcon(mapping.get(key, QStyle.StandardPixmap.SP_FileIcon))
+    def _nav_icon(self, icon_key: str) -> QIcon:
+        path = asset_path("icons", "nav", f"{icon_key}.svg")
+        return QIcon(str(path)) if path.is_file() else QIcon()
 
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
         sidebar.setObjectName("Sidebar")
-        layout = vbox(sidebar, (8, 8, 8, 8), 4)
-        layout.addWidget(label("Invio", "SidebarTitle", False))
-        layout.addWidget(label("Vib Tools • Invoice Automation", "Caption", False))
+        layout = vbox(sidebar, (CONST.sidebar_padding,) * 4, CONST.space_compact)
 
         nav_host = QWidget()
         nav_host.setObjectName("SidebarNavHost")
-        nav_layout = vbox(nav_host, (0, 8, 0, 0), 2)
-        for page_name, icon_key in NAV_ITEMS:
-            item = QPushButton(page_name)
-            item.setObjectName("NavItem")
-            item.setCheckable(True)
-            item.setAutoExclusive(True)
-            item.setIcon(self._icon_for(icon_key))
-            item.clicked.connect(lambda _checked=False, name=page_name: self.navigate(name))
-            self.nav_buttons[page_name] = item
-            nav_layout.addWidget(item)
+        nav_layout = vbox(nav_host, (0, 2, 0, 0), 2)
+        for group_name, items in NAV_GROUPS:
+            section = label(group_name, "SidebarSectionLabel", False)
+            nav_layout.addWidget(section)
+            for page_name, icon_key in items:
+                item = QPushButton(page_name)
+                item.setObjectName("NavItem")
+                item.setCheckable(True)
+                item.setAutoExclusive(True)
+                item.setIcon(self._nav_icon(icon_key))
+                item.setIconSize(QSize(15, 15))
+                item.clicked.connect(lambda _checked=False, name=page_name: self.navigate(name))
+                self.nav_buttons[page_name] = item
+                nav_layout.addWidget(item)
+            nav_layout.addSpacing(CONST.space_standard)
         nav_layout.addStretch(1)
 
         scroll = QScrollArea()
@@ -194,10 +174,12 @@ class MainWindow(QMainWindow):
         scroll.setWidget(nav_host)
         layout.addWidget(scroll, 1)
 
-        separator = QFrame()
-        separator.setObjectName("Divider")
-        layout.addWidget(separator)
-        layout.addWidget(label("Vib Tools • Production", "Caption", False))
+        footer = QFrame()
+        footer.setObjectName("SidebarFooter")
+        footer_layout = vbox(footer, (8, 8, 8, 8), 2)
+        footer_layout.addWidget(label("Vib Tools", "SidebarFooterTitle", False))
+        footer_layout.addWidget(label("Production • v1.0.0.1.48.02", "SidebarFooterMeta", False))
+        layout.addWidget(footer)
         return sidebar
 
     def _register_pages(self) -> None:
@@ -252,12 +234,6 @@ class MainWindow(QMainWindow):
             self.page_indexes[name] = index
             self.stack.addWidget(page)
 
-    def _build_status_bar(self) -> None:
-        self.status_label = QLabel("Viewing: Accounts")
-        self.statusBar().addWidget(self.status_label, 1)
-        self.runtime_status = QLabel("Production • v1.0.0.1.43.0")
-        self.statusBar().addPermanentWidget(self.runtime_status)
-
     def _connect_workers(self) -> None:
         self.worker_manager.progress_changed.connect(self._worker_progress)
         self.worker_manager.status_changed.connect(self._worker_status)
@@ -270,8 +246,8 @@ class MainWindow(QMainWindow):
         if name not in self.page_indexes:
             return
         self.stack.setCurrentIndex(self.page_indexes[name])
-        self.breadcrumb.setText(f"Home / {name}")
-        self.status_label.setText(f"Viewing: {name}")
+        if hasattr(self, "main_title_bar"):
+            self.main_title_bar.set_context(f"Home / {name}")
         if name in self.nav_buttons:
             self.nav_buttons[name].setChecked(True)
         if name == "Dashboard":
@@ -289,18 +265,6 @@ class MainWindow(QMainWindow):
         elif name == "Reports":
             self.reports_page.refresh()
         self.settings_manager.record_last_page(name)
-
-    def resizeEvent(self, event) -> None:  # type: ignore[override]
-        width = self.width()
-        if width < CONST.compact_breakpoint:
-            text = "Compact"
-        elif width < CONST.medium_breakpoint:
-            text = "Medium"
-        else:
-            text = "Large"
-        if hasattr(self, "viewport_chip"):
-            self.viewport_chip.setText(text)
-        super().resizeEvent(event)
 
     def _restore_window_geometry(self) -> None:
         state = self.settings_manager.window_state()
@@ -1234,7 +1198,15 @@ class MainWindow(QMainWindow):
             self._message("Task", "Stop the task before closing it.", QMessageBox.Icon.Warning)
             return
         if self.app_settings.confirm_close_task:
-            answer = self._question("Close Task", f"Close {task.name} and release its selected accounts?")
+            answer = compact_message_box(
+                self,
+                "Close Task",
+                f"Close {task.name} and release its selected accounts?",
+                icon=QMessageBox.Icon.Question,
+                buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                default_button=QMessageBox.StandardButton.No,
+                force_widget_dialog=True,
+            )
             if answer != QMessageBox.StandardButton.Yes:
                 return
         try:

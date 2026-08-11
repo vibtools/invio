@@ -1,4 +1,20 @@
+## v1.0.0.1.47.0 Window / Dialog UI
+
+If custom window controls or sidebar icons are missing in a packaged build, verify the distribution contains `assets/icons/nav/`, `assets/icons/window/`, and the themed chevron SVG files. These resources are part of the required Windows/wheel inventory in v1.47.0.
+
+## v1.0.0.1.46.0 title-bar note
+
+Invio no longer relies on the white native Windows title bar for its Main Window or application-owned dialogs. If window chrome appears native, confirm the exact v1.46.0 source/build and runtime resources are being used. Native OS file dialogs are intentionally unchanged.
+
 # Troubleshooting
+
+## v1.0.0.1.45.0 Providers Page transient-window correction
+
+A brief blank/white `Invio` window during startup or Providers Page entry was traced to newly-created provider cards being made visible while still parentless. v1.45.0 keeps cards hidden until `QGridLayout` has re-parented them into the Providers Page host.
+
+## v1.0.0.1.44.0 Intro/Subtitle troubleshooting
+
+Page header introductions and shared card/section subtitles are intentionally absent. Provider package descriptions and dynamic operational/validation messages should still display; if those are missing, treat it as a source/package mismatch rather than expected v1.44 behavior.
 
 ## v1.0.0.1.43.0 Data Grid troubleshooting
 

@@ -51,12 +51,27 @@ def asset_path(*parts: str) -> Path:
 def required_runtime_resources() -> tuple[Path, ...]:
     root = application_root()
     return (
-        root / "assets" / "icons" / "checkmark.svg",
-        root / "providers" / "packages" / "stripe" / "provider.json",
-        root / "providers" / "packages" / "refrens" / "provider.json",
-        root / "providers" / "packages" / "agiled" / "provider.json",
+        root / 'assets' / 'icons' / 'checkmark.svg',
+        root / 'assets' / 'icons' / 'search.svg',
+        root / 'assets' / 'icons' / 'chevron-down.svg',
+        root / 'assets' / 'icons' / 'chevron-up.svg',
+        root / 'assets' / 'icons' / 'nav' / 'dashboard.svg',
+        root / 'assets' / 'icons' / 'nav' / 'accounts.svg',
+        root / 'assets' / 'icons' / 'nav' / 'invoice.svg',
+        root / 'assets' / 'icons' / 'nav' / 'customers.svg',
+        root / 'assets' / 'icons' / 'nav' / 'tasks.svg',
+        root / 'assets' / 'icons' / 'nav' / 'providers.svg',
+        root / 'assets' / 'icons' / 'nav' / 'reports.svg',
+        root / 'assets' / 'icons' / 'nav' / 'logs.svg',
+        root / 'assets' / 'icons' / 'nav' / 'settings.svg',
+        root / 'assets' / 'icons' / 'window' / 'minimize.svg',
+        root / 'assets' / 'icons' / 'window' / 'maximize.svg',
+        root / 'assets' / 'icons' / 'window' / 'restore.svg',
+        root / 'assets' / 'icons' / 'window' / 'close.svg',
+        root / 'providers' / 'packages' / 'stripe' / 'provider.json',
+        root / 'providers' / 'packages' / 'refrens' / 'provider.json',
+        root / 'providers' / 'packages' / 'agiled' / 'provider.json',
     )
-
 
 def validate_runtime_resources() -> None:
     missing = [path for path in required_runtime_resources() if not path.is_file()]

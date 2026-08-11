@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QAbstractItemView, QHeaderView, QTreeWidget, QTree
 from ...core.paths import asset_path
 from ...core.provider_manager import ProviderManager
 from ...core.state import AppState
-from ..widgets import DataGridPager, DataGridToolbar, button, card, data_badge_host, page_header
+from ..widgets import DataGridPager, DataGridToolbar, button, card, data_badge_host, data_grid_empty_label, page_header
 
 
 _PROVIDER_LOGOS = {
@@ -101,6 +101,9 @@ class AccountsPage(QWidget):
         for column in range(1, 6):
             header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
         host.layout().addWidget(self.tree)
+        self.empty = data_grid_empty_label("No accounts found.")
+        self.empty.setVisible(False)
+        host.layout().addWidget(self.empty)
         host.layout().addWidget(self.pager)
         root.addWidget(host, 1)
         self.refresh()
@@ -183,9 +186,9 @@ class AccountsPage(QWidget):
         self.toolbar.set_filter_options(1, status_options)
 
         if not provider_ids:
-            placeholder = QTreeWidgetItem(["No accounts found.", "", "", "", "", ""])
-            self.tree.addTopLevelItem(placeholder)
             self.pager.set_total(0)
+            self.empty.setText("No accounts found.")
+            self.empty.setVisible(True)
             self._update_actions()
             return
 
@@ -290,6 +293,7 @@ class AccountsPage(QWidget):
             if not all_accounts:
                 provider_item.addChild(QTreeWidgetItem(["No accounts added", "", "", "", "", ""]))
 
-        if not self.tree.topLevelItemCount():
-            self.tree.addTopLevelItem(QTreeWidgetItem(["No matching records.", "", "", "", "", ""]))
+        has_rows = bool(self.tree.topLevelItemCount())
+        self.empty.setText("No matching records." if (query or provider_filter or status_filter) else "No accounts found.")
+        self.empty.setVisible(not has_rows)
         self._update_actions()

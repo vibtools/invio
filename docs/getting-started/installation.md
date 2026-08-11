@@ -1,4 +1,16 @@
+## v1.0.0.1.47.0 Distribution Note
+
+No installation or dependency change is introduced. The Windows/wheel resource inventory now includes the packaged navigation, window-control and dropdown SVG assets required by the approved design system.
+
 # Installation
+
+## v1.0.0.1.45.0 note
+
+No installation, dependency, provider-bundle, database or credential-store change is introduced. This candidate is a Providers Page presentation/lifecycle hotfix only.
+
+## v1.0.0.1.44.0 note
+
+Installation/runtime requirements are unchanged from v1.0.0.1.43.0. This candidate changes only static intro/subtitle presentation.
 
 ## Upgrade to v1.0.0.1.43.0
 

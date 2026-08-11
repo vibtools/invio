@@ -68,8 +68,9 @@ def card(title: str | None = None, description: str | None = None, nested: bool 
     layout = vbox(frame, (CONST.card_padding,) * 4, CONST.card_gap)
     if title:
         layout.addWidget(label(title, "CardTitle", False))
-    if description:
-        layout.addWidget(label(description, "Description", True))
+    # v1.44.0 UI scope: static card intro/subtitle descriptions are intentionally hidden.
+    # Keep the argument for backward compatibility with frozen callers and helper API shape.
+    _ = description
     return frame
 
 
@@ -93,6 +94,26 @@ def status_badge(text: str, tone: str = "neutral") -> QLabel:
     return item
 
 
+
+def inline_status(text: str, tone: str = "neutral") -> QLabel:
+    item = label(text, "InlineStatusNeutral", True)
+    set_inline_status(item, text, tone)
+    return item
+
+
+def set_inline_status(item: QLabel, text: str, tone: str = "neutral") -> None:
+    mapping = {
+        "neutral": "InlineStatusNeutral",
+        "info": "InlineStatusInfo",
+        "success": "InlineStatusSuccess",
+        "warning": "InlineStatusWarning",
+        "danger": "InlineStatusDanger",
+    }
+    item.setText(str(text))
+    item.setObjectName(mapping.get(tone, "InlineStatusNeutral"))
+    item.style().unpolish(item)
+    item.style().polish(item)
+
 def token_chip(text: str) -> QLabel:
     item = label(text, "TokenChip", False)
     item.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
@@ -113,18 +134,18 @@ def metric_card(title_text: str, value: str, tone: str = "neutral") -> tuple[QFr
 def page_header(title_text: str, description: str, actions: Iterable[QWidget] | None = None) -> QFrame:
     header = QFrame()
     header.setObjectName("PageHeader")
-    root = hbox(header, (0, 0, 0, 0), 10)
-    text_host = QWidget()
-    text_layout = vbox(text_host, (0, 0, 0, 0), 3)
-    text_layout.addWidget(label(title_text, "PageTitle", False))
-    text_layout.addWidget(label(description, "Description", True))
-    root.addWidget(text_host, 1)
+    root = hbox(header, (0, 0, 0, 0), CONST.section_gap)
+    title = label(title_text, "PageTitle", False)
+    root.addWidget(title, 1, Qt.AlignmentFlag.AlignVCenter)
+    # v1.44.0 clean-header rule: static page subtitles stay hidden.
+    _ = description
     if actions:
         action_host = QWidget()
-        action_layout = hbox(action_host, (0, 2, 0, 0), 5)
+        action_host.setObjectName("PageHeaderActions")
+        action_layout = hbox(action_host, (0, 0, 0, 0), CONST.space_compact)
         for action in actions:
             action_layout.addWidget(action)
-        root.addWidget(action_host, 0, Qt.AlignmentFlag.AlignTop)
+        root.addWidget(action_host, 0, Qt.AlignmentFlag.AlignVCenter)
     return header
 
 

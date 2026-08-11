@@ -1,6 +1,22 @@
+## v1.0.0.1.47.0 UI Candidate Status
+
+**Scope:** UI/UX only. The single-header shell, grouped SVG sidebar, standardized frameless dialog shell, centralized component states and approved Accounts/Customer Lists/Invoice Templates presentation are implemented. Provider runtime, storage, task execution, settings and business logic remain unchanged.
+
+## v1.0.0.1.46.0 candidate
+
+Window-chrome scope implemented: custom MainTitleBar and DialogTitleBar; all provider/runtime/storage/business phases retain their prior status.
+
 # Actual Implementation Status
 
-**Current UI baseline/candidate:** `Invio v1.0.0.1.42.0` owner-frozen baseline → `Invio v1.0.0.1.43.0` Global Data Tables + Lists + Fonts candidate. Provider/runtime/storage/business behavior unchanged.
+## v1.0.0.1.45.0 candidate
+
+Owner-frozen parent: `v1.0.0.1.44.0`. Candidate scope is limited to the Providers Page transient top-level-card prevention and compact Available/Verified placement/card-height correction. Provider/runtime/storage/business architecture remains unchanged.
+
+## v1.0.0.1.44.0 candidate
+
+Parent baseline `v1.0.0.1.43.0` remains architecturally frozen. Candidate scope is limited to static intro/subtitle rendering plus version/tests/docs; no runtime/business/persistence architecture is reopened.
+
+**Current UI baseline/candidate:** `Invio v1.0.0.1.44.0` owner-frozen baseline → `Invio v1.0.0.1.45.0` Providers Page transient-window/card-layout fix candidate. Provider/runtime/storage/business behavior unchanged.
 
 
 **Official Production Baseline:** `Invio v1.0.0.1.40.2`  

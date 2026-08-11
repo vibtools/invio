@@ -20,6 +20,14 @@ REQUIRED_PORTABLE = {
 }
 
 
+def canonical_python_wheel_version(version: str) -> str:
+    """Return the canonical numeric wheel version for Invio's dot-separated application identity."""
+    parts = version.split(".")
+    if not parts or any(not part.isdigit() for part in parts):
+        raise ValueError(f"Unsupported Invio application version for wheel canonicalization: {version}")
+    return ".".join(str(int(part)) for part in parts)
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     return digest
@@ -31,10 +39,11 @@ def main() -> int:
     parser.add_argument("--version", required=True)
     args = parser.parse_args()
     root = args.release_dir.resolve()
+    wheel_version = canonical_python_wheel_version(args.version)
     expected = {
         f"Invio_v{args.version}_windows_x64_portable.zip",
         f"Invio_v{args.version}_windows_x64_setup.msi",
-        f"invio-{args.version}-py3-none-any.whl",
+        f"invio-{wheel_version}-py3-none-any.whl",
         "SHA256SUMS.txt",
     }
     missing = sorted(name for name in expected if not (root / name).is_file())

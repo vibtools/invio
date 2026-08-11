@@ -1,4 +1,56 @@
+## Current Candidate Mapping — v1.0.0.1.48.02
+
+- Application: `1.0.0.1.48.02`
+- PE/File version: `1.0.1.4802`
+- MSI version: `1.1.4802`
+- Future exact tag: `v1.0.0.1.48.02`
+- Python wheel canonical identity: `1.0.0.1.48.2`; wheel release filename: `invio-1.0.0.1.48.2-py3-none-any.whl` (public application/tag identity remains `1.0.0.1.48.02` / `v1.0.0.1.48.02`).
+- Parent owner-frozen baseline: `1.0.0.1.48.01`
+- Scope: Global QMessageBox / popup lifecycle functional-regression hotfix only.
+
+## Current Candidate Mapping — v1.0.0.1.48.01
+
+- Application: `1.0.0.1.48.01`
+- PE/File version: `1.0.1.4801`
+- MSI version: `1.1.4801`
+- Future exact tag: `v1.0.0.1.48.01`
+- Parent owner-frozen baseline: `1.0.0.1.48.0`
+- Scope: Tasks subsystem Close Task confirmation hotfix only.
+
+## Current Candidate Mapping
+
+- Application: `1.0.0.1.47.0`
+- PE/File version: `1.0.1.4700`
+- MSI version: `1.1.4700`
+- Future exact tag: `v1.0.0.1.47.0`
+- Parent owner-frozen baseline: `1.0.0.1.46.0`
+
+## Current candidate mapping — v1.0.0.1.46.0
+
+- Application: `1.0.0.1.46.0`
+- Windows PE: `1.0.1.4600`
+- MSI: `1.1.4600`
+- Reserved tag: `v1.0.0.1.46.0`
+- Parent Official Baseline: `v1.0.0.1.45.0`
+
 # Versioning
+
+## Current candidate mapping — v1.0.0.1.45.0
+
+- Application: `1.0.0.1.45.0`
+- Windows PE: `1.0.1.4500`
+- MSI: `1.1.4500`
+- Reserved tag: `v1.0.0.1.45.0`
+- Parent Official Baseline: `v1.0.0.1.44.0`
+- Scope: Providers Page transient top-level window prevention plus compact Available/Verified badge relocation/card-height correction only.
+
+## v1.0.0.1.44.0 Intro/Subtitle Cleanup Candidate
+
+- Application: `1.0.0.1.44.0`
+- Windows PE: `1.0.1.4400`
+- MSI: `1.1.4400`
+- Reserved tag: `v1.0.0.1.44.0`
+- Parent Official Baseline: `v1.0.0.1.43.0`
 
 ## v1.0.0.1.43.0 Global Data Tables + Lists + Fonts Candidate
 

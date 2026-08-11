@@ -23,17 +23,32 @@ from version_info import parse_release_version  # noqa: E402
 class P14DistributionPipelineTests(unittest.TestCase):
     def _populate_resources(self, root: Path) -> None:
         for relative in (
-            Path("assets/icons/checkmark.svg"),
-            Path("assets/icons/search.svg"),
-            Path("assets/icons/providers/stripe.png"),
-            Path("assets/icons/providers/refrens.png"),
-            Path("assets/icons/providers/agiled.png"),
-            Path("assets/icons/providers/odoo.png"),
-            Path("assets/icons/app.png"),
-            Path("assets/icons/app.ico"),
-            Path("providers/packages/stripe/provider.json"),
-            Path("providers/packages/refrens/provider.json"),
-            Path("providers/packages/agiled/provider.json"),
+            Path('assets/icons/checkmark.svg'),
+            Path('assets/icons/search.svg'),
+            Path('assets/icons/chevron-down.svg'),
+            Path('assets/icons/chevron-up.svg'),
+            Path('assets/icons/nav/dashboard.svg'),
+            Path('assets/icons/nav/accounts.svg'),
+            Path('assets/icons/nav/invoice.svg'),
+            Path('assets/icons/nav/customers.svg'),
+            Path('assets/icons/nav/tasks.svg'),
+            Path('assets/icons/nav/providers.svg'),
+            Path('assets/icons/nav/reports.svg'),
+            Path('assets/icons/nav/logs.svg'),
+            Path('assets/icons/nav/settings.svg'),
+            Path('assets/icons/window/minimize.svg'),
+            Path('assets/icons/window/maximize.svg'),
+            Path('assets/icons/window/restore.svg'),
+            Path('assets/icons/window/close.svg'),
+            Path('assets/icons/providers/stripe.png'),
+            Path('assets/icons/providers/refrens.png'),
+            Path('assets/icons/providers/agiled.png'),
+            Path('assets/icons/providers/odoo.png'),
+            Path('assets/icons/app.png'),
+            Path('assets/icons/app.ico'),
+            Path('providers/packages/stripe/provider.json'),
+            Path('providers/packages/refrens/provider.json'),
+            Path('providers/packages/agiled/provider.json'),
         ):
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,7 +101,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             app_dir, portable = prepare_distribution(nuitka, root / "dist" / "windows", root / "dist" / "release")
             self.assertTrue((app_dir / "Invio.exe").is_file())
             self.assertFalse((app_dir / "main.exe").exists())
-            self.assertEqual(portable.name, "Invio_v1.0.0.1.43.0_windows_x64_portable.zip")
+            self.assertEqual(portable.name, "Invio_v1.0.0.1.48.02_windows_x64_portable.zip")
             with zipfile.ZipFile(portable) as archive:
                 self.assertIsNone(archive.testzip())
                 names = set(archive.namelist())
@@ -111,7 +126,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), second.read_bytes())
             text = first.read_text(encoding="utf-8")
             self.assertIn('Scope="perUser"', text)
-            self.assertIn('Version="1.1.4300"', text)
+            self.assertIn('Version="1.1.4802"', text)
             self.assertIn(f'UpgradeCode="{UPGRADE_CODE}"', text)
             self.assertIn('Id="LocalAppDataFolder"', text)
             self.assertIn('Name="Vib Tools"', text)
@@ -124,8 +139,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
     def test_github_workflow_builds_wheel_nuitka_onedir_wix_msi_and_tag_release(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         required_fragments = (
-            'INVIO_VERSION: "1.0.0.1.43.0"',
-            'INVIO_PE_VERSION: "1.0.1.4300"',
+            'INVIO_VERSION: "1.0.0.1.48.02"',
+            'INVIO_PE_VERSION: "1.0.1.4802"',
             'NUITKA_VERSION: "4.1.3"',
             'WIX_VERSION: "6.0.2"',
             "$wixVersion = (wix --version).Trim()",
@@ -200,8 +215,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
             (nuitka / "main.exe").write_bytes(b"MZ-INVIO")
             self._populate_resources(nuitka)
             _app_dir, portable = prepare_distribution(nuitka, root / "windows", root / "release")
-            (root / "release" / "Invio_v1.0.0.1.43.0_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
-            (root / "release" / "invio-1.0.0.1.43.0-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "Invio_v1.0.0.1.48.02_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "invio-1.0.0.1.48.2-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "build" / "finalize_release_checksums.py"), str(root / "release")],
                 check=True,
@@ -216,7 +231,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
                     "--release-dir",
                     str(root / "release"),
                     "--version",
-                    "1.0.0.1.43.0",
+                    "1.0.0.1.48.02",
                 ],
                 check=True,
                 cwd=ROOT,
@@ -225,6 +240,16 @@ class P14DistributionPipelineTests(unittest.TestCase):
             )
             self.assertIn("P14 Windows release payload audit PASS", completed.stdout)
             self.assertTrue(portable.is_file())
+
+    def test_p14_audits_preserve_public_version_but_expect_canonical_python_wheel_version(self):
+        wheel_audit = (ROOT / "scripts" / "test" / "p14_wheel_audit.py").read_text(encoding="utf-8")
+        distribution_audit = (ROOT / "scripts" / "test" / "p14_distribution_audit.py").read_text(encoding="utf-8")
+        self.assertIn("canonical_python_wheel_version", wheel_audit)
+        self.assertIn("EXPECTED_WHEEL_VERSION", wheel_audit)
+        self.assertIn("canonical_python_wheel_version(args.version)", distribution_audit)
+        self.assertIn('f"Invio_v{args.version}_windows_x64_portable.zip"', distribution_audit)
+        self.assertIn('f"Invio_v{args.version}_windows_x64_setup.msi"', distribution_audit)
+        self.assertIn('f"invio-{wheel_version}-py3-none-any.whl"', distribution_audit)
 
     def test_release_pipeline_files_are_build_only_and_runtime_dependencies_unchanged(self):
         requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8").casefold()
