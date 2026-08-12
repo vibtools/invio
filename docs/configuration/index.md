@@ -1,3 +1,7 @@
+## v1.0.0.1.49 configuration impact
+
+No configuration keys or defaults change. Provider/Settings compact-header geometry and Invoice Templates/Reports table layout are presentation-only.
+
 ## v1.0.0.1.48.9 configuration impact
 
 None. The compact Customer Lists/header rollout adds no setting, environment variable, provider configuration, storage option or dependency.

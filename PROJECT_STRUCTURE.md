@@ -1,3 +1,7 @@
+## v1.0.0.1.49 structure note
+
+No folder/module/API architecture change. Runtime UI changes are confined to existing Provider, Settings, Invoice Templates and Reports page composition plus their existing scoped QSS. Directly required tests, version metadata and documentation are synchronized.
+
 ## v1.0.0.1.48.9 UI structure note
 
 No folder/module reorganization is introduced. `src/ui/widgets.py` remains the shared component layer; Customer Lists stays in `src/ui/pages/customer_lists_page.py`. The update only adds compact section-toolbar composition and Customer Lists presentation wiring.

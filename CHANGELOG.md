@@ -1,3 +1,10 @@
+## v1.0.0.1.49 — Provider/Settings Header + Template/Reports Table Layout Correction
+
+- Compact Provider and Settings page/section header spacing without changing any controls, callbacks or persistence.
+- Preserve every Invoice Templates column/value and Edit/Delete action; correct header alignment, Action-column containment and horizontal overflow handling.
+- Preserve every Reports Task Summary and Recipient Delivery History column/value; use content-driven column widths and horizontal scrolling instead of compressing/hiding authoritative report data.
+- No provider API, business logic, storage/schema, task execution, authentication, data-model or dependency changes.
+
 ## v1.0.0.1.48.9 — Customer Lists Compact UI + Global Header Standardization
 
 - Replaced the Customer Lists two-column list table with a compact scrollable navigation panel while preserving list search/state filtering and selection.

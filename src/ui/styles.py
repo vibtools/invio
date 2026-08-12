@@ -192,8 +192,13 @@ def app_qss() -> str:
         border-left: 2px solid {c['focus']}; padding-left: 6px;
     }}
     QLineEdit#ProviderSearchInput {{
+        min-height: {CONST.data_grid_control_height}px;
+        max-height: {CONST.data_grid_control_height}px;
+        border-radius: 6px;
         background: {c['nested_surface']};
         border-color: {c['input_border']};
+        padding: 0px 8px;
+        font-size: 11px;
     }}
     QLineEdit#ProviderSearchInput:focus {{ border-color: {c['focus']}; }}
     QLineEdit, QComboBox, QSpinBox {{
@@ -345,9 +350,14 @@ def app_qss() -> str:
     QWidget#SettingsPage QCheckBox {{ color: {c['text_body']}; font-weight: 400; }}
     QWidget#SettingsHeader {{ background: transparent; border: none; }}
     QWidget#SettingsPage QLineEdit#SettingsSearchInput {{
+        min-height: {CONST.data_grid_control_height}px;
+        max-height: {CONST.data_grid_control_height}px;
+        border-radius: 6px;
         background: {c['nested_surface']};
         color: {c['text_body']};
         border-color: {c['input_border']};
+        padding: 0px 8px;
+        font-size: 11px;
         placeholder-text-color: {c['text_placeholder']};
     }}
     QWidget#SettingsPage QLineEdit#SettingsSearchInput:focus {{ border-color: {c['focus']}; }}

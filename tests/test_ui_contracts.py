@@ -118,7 +118,7 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('"No matching records."', customers)
 
         self.assertIn('"Search templates..."', templates)
-        self.assertIn('self.table.setColumnWidth(6, 80)', templates)
+        self.assertIn('self.table.setColumnWidth(6, 96)', templates)
         self.assertIn('edit.setFixedWidth(32)', templates)
         self.assertIn('delete.setFixedWidth(44)', templates)
 
@@ -1301,3 +1301,73 @@ class V1489CustomerListsAndGlobalHeaderContractTests(unittest.TestCase):
         self.assertNotIn('state.add_customer_list(', page)
         self.assertNotIn('state.delete_customer_list(', page)
 
+
+
+class V149ProviderSettingsTemplatesReportsUiCorrectionContractTests(unittest.TestCase):
+    def test_v149_provider_and_settings_headers_use_compact_frozen_controls(self):
+        root = Path(__file__).resolve().parents[1]
+        providers = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        settings = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+
+        self.assertIn('page_header(\n                "Providers"', providers)
+        self.assertIn('section_toolbar("Provider Catalog", (self.search_input,))', providers)
+        self.assertIn('root.setSpacing(CONST.space_compact)', providers)
+        self.assertIn('self.search_input.setMaximumWidth(CONST.data_grid_search_width)', providers)
+        self.assertIn('page_header("Settings", "Persistent application preferences.", [restore, save])', settings)
+        self.assertIn('section_toolbar("Preferences", (self.search_input,))', settings)
+        self.assertIn('root.setSpacing(CONST.space_compact)', settings)
+        self.assertIn('self.search_input.setMaximumWidth(CONST.data_grid_search_width)', settings)
+        self.assertIn('QLineEdit#ProviderSearchInput', styles)
+        self.assertIn('QWidget#SettingsPage QLineEdit#SettingsSearchInput', styles)
+        self.assertIn('min-height: {CONST.data_grid_control_height}px;', styles)
+
+    def test_v149_invoice_templates_preserves_all_columns_and_actions_while_fixing_layout(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "invoice_templates_page.py").read_text(encoding="utf-8")
+
+        self.assertIn(
+            'self.table.setHorizontalHeaderLabels(["TEMPLATE", "CURRENCY", "TYPE", "DUE", "ITEMS", "TAX", "ACTIONS"])',
+            page,
+        )
+        self.assertIn('self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)', page)
+        self.assertIn('self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)', page)
+        self.assertIn('header.setStretchLastSection(False)', page)
+        self.assertIn('header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)', page)
+        self.assertIn('header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)', page)
+        self.assertIn('self.table.setColumnWidth(6, 96)', page)
+        self.assertIn('edit.clicked.connect(lambda _checked=False, tid=template.id: self.on_edit(tid))', page)
+        self.assertIn('delete.clicked.connect(lambda _checked=False, tid=template.id: self.on_delete(tid))', page)
+        for preserved in (
+            'template.name',
+            'template.currency.upper()',
+            'template.invoice_type',
+            'f"{template.days_until_due} days"',
+            'str(len(template.items))',
+            '"Auto" if template.automatic_tax else "Off"',
+        ):
+            self.assertIn(preserved, page)
+
+    def test_v149_reports_preserves_authoritative_columns_and_uses_horizontal_overflow(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+
+        for heading in (
+            '"TASK", "PROVIDER", "TEMPLATE", "ACCOUNTS", "CUSTOMER LIST", "TOTAL", "SUCCESS", "FAILED", "STATUS"',
+            '"RECIPIENT"',
+            '"SAFE STATUS"',
+            '"ACCOUNT REFERENCE"',
+            '"PROVIDER INVOICE"',
+            '"LAST STAGE"',
+            '"ERROR CODE"',
+            '"PROVIDER SEND ACCEPTANCE"',
+            '"EMAIL DELIVERY"',
+        ):
+            self.assertIn(heading, page)
+        self.assertGreaterEqual(page.count('setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)'), 2)
+        self.assertGreaterEqual(page.count('setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)'), 2)
+        self.assertIn('for col in range(self.table.columnCount()):', page)
+        self.assertIn('for col in range(self.recipient_table.columnCount()):', page)
+        self.assertIn('QHeaderView.ResizeMode.ResizeToContents', page)
+        self.assertNotIn('setColumnHidden(', page)
+        self.assertNotIn('removeColumn(', page)

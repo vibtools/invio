@@ -55,18 +55,28 @@ class InvoiceTemplatesPage(QWidget):
         self.table = QTableWidget(0, 7)
         self.table.setObjectName("InvoiceTemplatesDataTable")
         self.table.setHorizontalHeaderLabels(["TEMPLATE", "CURRENCY", "TYPE", "DUE", "ITEMS", "TAX", "ACTIONS"])
+        for column in range(7):
+            alignment = (
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                if column == 0
+                else Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+            )
+            self.table.horizontalHeaderItem(column).setTextAlignment(alignment)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         header = self.table.horizontalHeader()
         header.setSectionsClickable(False)
+        header.setStretchLastSection(False)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for col in range(1, 6):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(6, 80)
+        self.table.setColumnWidth(6, 96)
         host.layout().addWidget(self.table)
         self.empty = data_grid_empty_label("No templates found.")
         self.empty.setVisible(False)
@@ -130,7 +140,7 @@ class InvoiceTemplatesPage(QWidget):
                 self.table.setItem(row, column, cell)
             actions = QWidget()
             layout = QHBoxLayout(actions)
-            layout.setContentsMargins(0, 1, 0, 1)
+            layout.setContentsMargins(4, 1, 4, 1)
             layout.setSpacing(4)
             edit = button("Edit")
             edit.setObjectName("TableActionButton")

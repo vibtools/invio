@@ -1,3 +1,7 @@
+## v1.0.0.1.49 completed scope
+
+UI-only compact-header and table-layout correction for Providers, Settings, Invoice Templates and Reports. No production phase, provider capability, storage contract or task workflow changes.
+
 ## v1.0.0.1.48.9 completed scope
 
 Customer Lists compact two-panel presentation and the frozen compact page/section header rollout are completed without changing backend/provider/storage/task architecture.

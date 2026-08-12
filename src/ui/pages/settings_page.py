@@ -42,13 +42,15 @@ class SettingsPage(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(CONST.page_padding, CONST.page_padding, CONST.page_padding, CONST.page_padding)
-        root.setSpacing(CONST.section_gap)
+        root.setSpacing(CONST.space_compact)
 
         # Frozen compact page header + section toolbar.
         self.search_input = QLineEdit()
         self.search_input.setObjectName("SettingsSearchInput")
         self.search_input.setPlaceholderText("Search settings... (Ctrl+F)")
         self.search_input.setClearButtonEnabled(True)
+        self.search_input.setMinimumWidth(180)
+        self.search_input.setMaximumWidth(CONST.data_grid_search_width)
         self.search_input.textChanged.connect(self._filter_settings_cards)
 
         restore = button("Reset Settings")

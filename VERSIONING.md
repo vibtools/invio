@@ -1,4 +1,12 @@
-## Current mapping — v1.0.0.1.48.9
+## Current mapping — v1.0.0.1.49
+
+- Application: `1.0.0.1.49`
+- Git tag: `v1.0.0.1.49`
+- PE: `1.0.1.49`
+- MSI: `1.1.49`
+- Python package/wheel: `1.0.0.1.49`
+
+## Previous mapping — v1.0.0.1.48.9
 
 - Application: `1.0.0.1.48.9`
 - Git tag: `v1.0.0.1.48.9`

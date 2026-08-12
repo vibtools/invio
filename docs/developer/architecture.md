@@ -1,3 +1,7 @@
+## v1.0.0.1.49 UI architecture note
+
+No new UI subsystem is introduced. Existing `page_header`, `section_toolbar`, `DataGridToolbar`, `QTableWidget`, provider cards and settings cards remain the architecture. The change adjusts local spacing/search geometry and table header resize/scroll policies only.
+
 ## v1.0.0.1.48.9 UI composition
 
 `page_header()` remains the shared page-header component. `DataGridToolbar` now optionally owns a section title/actions on the same row, and `section_toolbar()` provides the same hierarchy for non-table controls. Customer Lists remains a view over the existing `AppState` callbacks and introduces no domain/service layer.

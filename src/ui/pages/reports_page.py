@@ -84,15 +84,15 @@ class ReportsPage(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         header = self.table.horizontalHeader()
         header.setSectionsClickable(False)
-        for col in (0, 1, 5, 6, 7, 8):
+        header.setStretchLastSection(False)
+        for col in range(self.table.columnCount()):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         host.layout().setContentsMargins(8, 8, 8, 8)
         host.layout().addWidget(self.table)
         self.task_empty = data_grid_empty_label("No task records found.")
@@ -134,14 +134,15 @@ class ReportsPage(QWidget):
         self.recipient_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.recipient_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.recipient_table.setAlternatingRowColors(True)
+        self.recipient_table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.recipient_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.recipient_table.verticalHeader().setVisible(False)
         self.recipient_table.verticalHeader().setDefaultSectionSize(CONST.table_row_height)
         recipient_header = self.recipient_table.horizontalHeader()
         recipient_header.setSectionsClickable(False)
-        for col in (2, 3, 4, 8, 9):
+        recipient_header.setStretchLastSection(False)
+        for col in range(self.recipient_table.columnCount()):
             recipient_header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
-        for col in (0, 1, 5, 6, 7, 10):
-            recipient_header.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
         recipient_host.layout().setContentsMargins(8, 8, 8, 8)
         recipient_host.layout().addWidget(self.recipient_table)
         self.recipient_empty = data_grid_empty_label("No delivery records found.")

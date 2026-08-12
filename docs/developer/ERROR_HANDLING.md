@@ -1,3 +1,7 @@
+## v1.0.0.1.49
+
+No error-handling behavior changes. Provider install/uninstall errors, Settings save feedback, Invoice Template validation/actions, Reports export/clear-history handling and all backend failure semantics remain unchanged.
+
 ## v1.0.0.1.48.9
 
 No error-handling semantics change. Customer List delete/import actions continue to delegate to the existing MainWindow confirmation/error paths; the UI update only relocates their controls.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49 wide-table behavior
+
+Invoice Templates and Reports intentionally preserve all authoritative columns. On narrower windows or with long values, use the table horizontal scrollbar rather than expecting columns to be removed. Full cell values remain available through the existing table tooltip behavior.
+
 ## v1.0.0.1.48.9 Customer Lists UI
 
 If a Customer List is not visible, clear the Lists search/record-state filter. If customer rows are not visible, clear the Customers search/Country filter and confirm the selected list. Existing import/delete confirmation and error messages remain authoritative.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49 table layout
+
+The Invoice Templates table continues to show `TEMPLATE / CURRENCY / TYPE / DUE / ITEMS / TAX / ACTIONS` with every existing row value and Edit/Delete action. The Actions column has safe containment and the table explicitly supports horizontal overflow when needed; no template data representation changes.
+
 # Invoice Template Guide
 
 Invoice Templates contain reusable invoice content only. They intentionally exclude customer identity, billing, shipping, and payment details so one template can be reused for a bulk customer list.

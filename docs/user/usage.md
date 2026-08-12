@@ -1,3 +1,7 @@
+## v1.0.0.1.49 — Compact Headers and Wide Tables
+
+Providers and Settings keep the same actions/controls with tighter frozen header spacing. Invoice Templates retains all seven columns and Edit/Delete actions. Reports retains all Task Summary and Recipient Delivery History columns; wide content can be reached through horizontal scrolling without losing report data.
+
 ## v1.0.0.1.48.9 — Customer Lists
 
 Open **Customer Lists** to work in two compact panels. The left Lists panel keeps list search/state filtering, shows each list with a muted customer count and a row `⋯` menu, and scrolls for larger list sets. The Customers panel keeps Search, Country filter, Upload, `# / EMAIL / NAME / COUNTRY`, rows-per-page and pagination. Existing create/select/delete/import behavior is unchanged.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49 compact header
+
+The Providers page keeps `Providers + Load Provider` and `Provider Catalog + Search providers...` as two compact rows. Provider cards, descriptions, status, versions, Install/Uninstall and Load Provider behavior are unchanged.
+
 # Provider Guide
 
 ## v1.0.0.1.41.1 final Providers-page polish

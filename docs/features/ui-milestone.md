@@ -1,3 +1,7 @@
+## v1.0.0.1.49 — Provider/Settings Headers + Authoritative Table Layouts
+
+Provider Catalog and Preferences controls follow the frozen compact header spacing. Invoice Templates and Reports preserve every existing column and value; wide authoritative report content uses horizontal scrolling rather than removal or semantic simplification.
+
 ## v1.0.0.1.48.9
 
 The frozen compact desktop hierarchy is applied to Customer Lists and the remaining applicable page/section toolbars. No unrelated visual redesign or backend change is included.

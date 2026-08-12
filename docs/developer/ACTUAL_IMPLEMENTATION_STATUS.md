@@ -1,3 +1,7 @@
+## v1.0.0.1.49
+
+Implemented the locked UI-only Provider/Settings compact-header correction and Invoice Templates/Reports table-layout correction. Existing data projection, callbacks, provider/runtime, storage and task architecture remain unchanged.
+
 ## v1.0.0.1.48.9
 
 Implemented UI-only Customer Lists final compact layout and shared compact section-toolbar rollout. Backend/provider/storage/task architecture remains unchanged.

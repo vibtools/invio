@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdi
 
 from ...core.paths import asset_path
 from ...core.provider_manager import ProviderManager, ProviderManifest
+from ..tokens import CONST
 from ..widgets import button, card, label, page_header, section_toolbar, status_badge, vbox
 
 
@@ -109,7 +110,7 @@ class ProvidersPage(QWidget):
         self.setObjectName("PageContent")
         root = QVBoxLayout(self)
         root.setContentsMargins(14, 14, 14, 14)
-        root.setSpacing(10)
+        root.setSpacing(CONST.space_compact)
 
         load = button("Load Provider", "primary")
         load.setObjectName("ProviderLoadButton")
@@ -127,6 +128,8 @@ class ProvidersPage(QWidget):
         self.search_input.setPlaceholderText("Search providers...")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setAccessibleName("Search providers")
+        self.search_input.setMinimumWidth(180)
+        self.search_input.setMaximumWidth(CONST.data_grid_search_width)
         self.search_input.textChanged.connect(self._apply_filter)
         root.addWidget(section_toolbar("Provider Catalog", (self.search_input,)))
 

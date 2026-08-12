@@ -101,7 +101,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             app_dir, portable = prepare_distribution(nuitka, root / "dist" / "windows", root / "dist" / "release")
             self.assertTrue((app_dir / "Invio.exe").is_file())
             self.assertFalse((app_dir / "main.exe").exists())
-            self.assertEqual(portable.name, "Invio_v1.0.0.1.48.9_windows_x64_portable.zip")
+            self.assertEqual(portable.name, "Invio_v1.0.0.1.49_windows_x64_portable.zip")
             with zipfile.ZipFile(portable) as archive:
                 self.assertIsNone(archive.testzip())
                 names = set(archive.namelist())
@@ -126,7 +126,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), second.read_bytes())
             text = first.read_text(encoding="utf-8")
             self.assertIn('Scope="perUser"', text)
-            self.assertIn('Version="1.1.4809"', text)
+            self.assertIn('Version="1.1.49"', text)
             self.assertIn(f'UpgradeCode="{UPGRADE_CODE}"', text)
             self.assertIn('Id="LocalAppDataFolder"', text)
             self.assertIn('Name="Vib Tools"', text)
@@ -139,8 +139,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
     def test_github_workflow_builds_wheel_nuitka_onedir_wix_msi_and_tag_release(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         required_fragments = (
-            'INVIO_VERSION: "1.0.0.1.48.9"',
-            'INVIO_PE_VERSION: "1.0.1.4809"',
+            'INVIO_VERSION: "1.0.0.1.49"',
+            'INVIO_PE_VERSION: "1.0.1.49"',
             'NUITKA_VERSION: "4.1.3"',
             'WIX_VERSION: "6.0.2"',
             "$wixVersion = (wix --version).Trim()",
@@ -222,8 +222,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
             (nuitka / "main.exe").write_bytes(b"MZ-INVIO")
             self._populate_resources(nuitka)
             _app_dir, portable = prepare_distribution(nuitka, root / "windows", root / "release")
-            (root / "release" / "Invio_v1.0.0.1.48.9_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
-            (root / "release" / "invio-1.0.0.1.48.9-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "Invio_v1.0.0.1.49_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "invio-1.0.0.1.49-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "build" / "finalize_release_checksums.py"), str(root / "release")],
                 check=True,
@@ -238,7 +238,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
                     "--release-dir",
                     str(root / "release"),
                     "--version",
-                    "1.0.0.1.48.9",
+                    "1.0.0.1.49",
                 ],
                 check=True,
                 cwd=ROOT,

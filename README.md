@@ -1,3 +1,7 @@
+## v1.0.0.1.49 — Provider/Settings Compact Headers + Template/Reports Table Layout Correction
+
+UI-only correction on the frozen `v1.0.0.1.48.9` baseline. Providers and Settings retain their existing page/section hierarchy with compact search controls and reduced header spacing. Invoice Templates preserves all seven existing columns/row values/actions while widening the Actions cell safely and enabling explicit horizontal overflow handling. Reports preserves every Task Summary and Recipient Delivery History column/value and switches wide report tables to content-driven column widths with horizontal scrolling rather than hiding data. Backend/provider/storage/task behavior is unchanged.
+
 ## v1.0.0.1.48.9 — Customer Lists + Compact Header Standardization
 
 Customer Lists now uses a compact scrollable list-navigation panel with inline count badges and row-scoped list actions. The Customers panel keeps `# / EMAIL / NAME / COUNTRY` and places Search, Country and Upload on one section row. The already-frozen compact Page Header / Section Toolbar hierarchy is also applied to remaining applicable UI pages. Backend/provider/storage/task behavior is unchanged.

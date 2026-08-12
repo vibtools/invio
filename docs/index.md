@@ -1,3 +1,7 @@
+## v1.0.0.1.49 UI correction
+
+Providers and Settings now use the frozen compact header spacing consistently. Invoice Templates and Reports retain all authoritative columns/data while using safer action sizing and horizontal overflow handling for narrow windows and long values.
+
 ## v1.0.0.1.48.9 UI update
 
 Customer Lists now follows the compact two-panel design, and applicable pages use the same compact page/section header hierarchy. Runtime/business behavior remains unchanged.

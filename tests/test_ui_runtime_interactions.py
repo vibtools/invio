@@ -13,17 +13,26 @@ try:
 
     from src.accounts.models import Account
     from src.core.provider_manager import ProviderManifest
+    from src.core.settings import SettingsManager
     from src.core.state import AppState
     from src.customers.models import CustomerList, CustomerRecord
     from src.invoices.templates import InvoiceTemplate
+    from src.tasks.delivery_ledger import RecipientDeliveryReportRecord
+    from src.tasks.models.task import Task
     from src.ui.dialogs import NewTaskDialog, compact_message_box
     from src.ui.pages.accounts_page import AccountsPage
     from src.ui.pages.customer_lists_page import CustomerListsPage
+    from src.ui.pages.invoice_templates_page import InvoiceTemplatesPage
+    from src.ui.pages.providers_page import ProvidersPage
+    from src.ui.pages.reports_page import ReportsPage
+    from src.ui.pages.settings_page import SettingsPage
+    from src.ui.tokens import CONST
 
     _PYSIDE6_AVAILABLE = True
 except ModuleNotFoundError:
     QApplication = QDialog = QMenu = QMessageBox = QPushButton = QWidget = QTimer = Qt = None  # type: ignore[assignment]
     Account = ProviderManifest = AppState = CustomerList = CustomerRecord = InvoiceTemplate = NewTaskDialog = AccountsPage = CustomerListsPage = None  # type: ignore[assignment]
+    SettingsManager = RecipientDeliveryReportRecord = Task = InvoiceTemplatesPage = ProvidersPage = ReportsPage = SettingsPage = CONST = None  # type: ignore[assignment]
     compact_message_box = None  # type: ignore[assignment]
     _PYSIDE6_AVAILABLE = False
 
@@ -633,3 +642,207 @@ class CustomerListsPageRuntimeInteractionTests(unittest.TestCase):
         self.assertGreater(page.lists.width(), 0)
         self.assertGreater(page.email_table.width(), page.lists.width())
 
+
+
+@unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")
+class V149LayoutRuntimeInteractionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    @staticmethod
+    def _button(widget, text: str):
+        for control in widget.findChildren(QPushButton):
+            if control.text() == text:
+                return control
+        raise AssertionError(f"Button not found: {text}")
+
+    def test_provider_and_settings_compact_headers_preserve_primary_actions(self):
+        provider_a = ProviderManifest(
+            id="provider-a", name="Provider A", version="1.0.0", description="Provider A description"
+        )
+        provider_b = ProviderManifest(
+            id="provider-b", name="Provider B", version="1.0.0", description="Provider B description"
+        )
+
+        class ManagerStub:
+            def list_installed(self):
+                return [provider_a]
+
+            def list_available(self):
+                return [provider_a, provider_b]
+
+        provider_calls: list[tuple[str, str]] = []
+        providers = ProvidersPage(
+            ManagerStub(),
+            lambda provider_id: provider_calls.append(("install", provider_id)),
+            lambda provider_id: provider_calls.append(("uninstall", provider_id)),
+            lambda: provider_calls.append(("load", "")),
+        )
+        providers.resize(1100, 720)
+        providers.show()
+        self.app.processEvents()
+        self.assertEqual(providers.search_input.maximumWidth(), CONST.data_grid_search_width)
+        self.assertLessEqual(providers.search_input.height(), CONST.input_height)
+        self._button(providers, "Load Provider").click()
+        self.assertIn(("load", ""), provider_calls)
+        providers.search_input.setText("Provider B")
+        self.app.processEvents()
+        self.assertEqual(len([card for card in providers._cards if card.isVisible()]), 1)
+        providers.close()
+        providers.deleteLater()
+
+        saved = []
+        settings = SettingsPage(SettingsManager.defaults(), lambda value: (saved.append(value) or True, "Saved"))
+        settings.resize(1100, 720)
+        settings.show()
+        self.app.processEvents()
+        self.assertEqual(settings.search_input.maximumWidth(), CONST.data_grid_search_width)
+        self.assertLessEqual(settings.search_input.height(), CONST.input_height)
+        settings.search_input.setText("Customer Defaults")
+        self.app.processEvents()
+        self.assertTrue(settings._customer_defaults_card.isVisible())
+        self._button(settings, "Save Changes").click()
+        self.assertEqual(len(saved), 1)
+        self._button(settings, "Reset Settings").click()
+        self.assertEqual(settings.feedback.text(), "Default values loaded. Select Save Changes to apply them.")
+        settings.close()
+        settings.deleteLater()
+        self.app.processEvents()
+
+    def test_invoice_template_table_preserves_columns_values_filters_actions_and_action_containment(self):
+        state = AppState()
+        state.invoice_templates["tpl-a"] = InvoiceTemplate(
+            id="tpl-a",
+            name="Very Long Template Name That Must Remain Accessible",
+            currency="USD",
+            days_until_due=30,
+            automatic_tax=False,
+            invoice_type="INVOICE",
+        )
+        state.invoice_templates["tpl-b"] = InvoiceTemplate(
+            id="tpl-b",
+            name="Template B",
+            currency="EUR",
+            days_until_due=14,
+            automatic_tax=True,
+            invoice_type="CREDIT_NOTE",
+        )
+        calls: list[tuple[str, str]] = []
+        page = InvoiceTemplatesPage(
+            state,
+            lambda: calls.append(("new", "")),
+            lambda template_id: calls.append(("edit", template_id)),
+            lambda template_id: calls.append(("delete", template_id)),
+        )
+        page.resize(980, 640)
+        page.show()
+        self.app.processEvents()
+        self.assertEqual(page.table.columnCount(), 7)
+        self.assertEqual(
+            [page.table.horizontalHeaderItem(index).text() for index in range(7)],
+            ["TEMPLATE", "CURRENCY", "TYPE", "DUE", "ITEMS", "TAX", "ACTIONS"],
+        )
+        self.assertEqual(page.table.rowCount(), 2)
+        self.assertEqual(page.table.item(0, 0).toolTip(), page.table.item(0, 0).text())
+        self.assertGreaterEqual(page.table.columnWidth(6), 96)
+        for row in range(page.table.rowCount()):
+            host = page.table.cellWidget(row, 6)
+            self.assertIsNotNone(host)
+            for control in host.findChildren(QPushButton):
+                self.assertGreaterEqual(control.x(), 0)
+                self.assertLessEqual(control.x() + control.width(), host.width())
+
+        page.toolbar.search.setText("Template B")
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertEqual(page.table.item(0, 0).text(), "Template B")
+        page.toolbar.search.clear()
+        currency = page.toolbar.filters[0]
+        currency.setCurrentIndex(currency.findData("EUR"))
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 1)
+        action_host = page.table.cellWidget(0, 6)
+        self._button(action_host, "Edit").click()
+        self._button(action_host, "Delete").click()
+        self.assertEqual(calls, [("edit", "tpl-b"), ("delete", "tpl-b")])
+        page.close()
+        page.deleteLater()
+        self.app.processEvents()
+
+    def test_reports_preserves_all_columns_records_filters_actions_and_horizontal_overflow(self):
+        state = AppState()
+        task = Task(
+            id="task-1",
+            name="Task 1 With A Long Name",
+            provider_id="odoo",
+            provider_name="Odoo",
+            account_ids=["account-1"],
+            account_names=["A very long account name for report overflow"],
+            customer_list_id="list-1",
+            customer_list_name="Customer List With Long Name",
+            invoice_template_id="tpl-1",
+            invoice_template_name="Template With Long Name",
+            status="Ready",
+            total=10,
+            success=4,
+            failed=1,
+            processed=5,
+        )
+        state.tasks[task.id] = task
+        recipient = RecipientDeliveryReportRecord(
+            task_id="task-1",
+            task_name="Task 1 With A Long Name",
+            recipient_email="recipient-with-a-very-long-email-address@example.com",
+            provider_id="odoo",
+            safe_status="Uncertain",
+            attempts=2,
+            account_reference="account-reference-with-a-long-provider-specific-value",
+            provider_invoice_reference="provider-invoice-reference-with-a-long-value",
+            last_stage="external_mutation:invoice_send_with_long_stage_name",
+            error_code="provider_error_code_with_long_value",
+            provider_send_acceptance="Not Reached",
+            email_delivery="Not confirmed",
+        )
+        calls: list[str] = []
+        page = ReportsPage(
+            state,
+            lambda: calls.append("task-export"),
+            on_load_recipients=lambda: [recipient],
+            on_export_recipients=lambda: calls.append("recipient-export"),
+            on_clear_delivery_history=lambda: calls.append("clear"),
+        )
+        page.resize(980, 680)
+        page.show()
+        self.app.processEvents()
+        self.assertEqual(page.table.columnCount(), 9)
+        self.assertEqual(page.recipient_table.columnCount(), 11)
+        self.assertEqual(
+            [page.table.horizontalHeaderItem(index).text() for index in range(9)],
+            ["TASK", "PROVIDER", "TEMPLATE", "ACCOUNTS", "CUSTOMER LIST", "TOTAL", "SUCCESS", "FAILED", "STATUS"],
+        )
+        self.assertEqual(
+            [page.recipient_table.horizontalHeaderItem(index).text() for index in range(11)],
+            [
+                "TASK", "RECIPIENT", "PROVIDER", "SAFE STATUS", "ATTEMPTS", "ACCOUNT REFERENCE",
+                "PROVIDER INVOICE", "LAST STAGE", "ERROR CODE", "PROVIDER SEND ACCEPTANCE", "EMAIL DELIVERY",
+            ],
+        )
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertEqual(page.recipient_table.rowCount(), 1)
+        self.assertEqual(page.table.item(0, 0).text(), task.name)
+        self.assertEqual(page.recipient_table.item(0, 1).text(), recipient.recipient_email)
+        self.assertGreater(page.recipient_table.horizontalScrollBar().maximum(), 0)
+
+        page.task_toolbar.search.setText("Task 1")
+        page.recipient_toolbar.search.setText("recipient-with")
+        self.app.processEvents()
+        self.assertEqual(page.table.rowCount(), 1)
+        self.assertEqual(page.recipient_table.rowCount(), 1)
+        self._button(page, "Export Task CSV").click()
+        self._button(page, "Export Recipient CSV").click()
+        self._button(page, "Clear Delivery History").click()
+        self.assertEqual(calls, ["task-export", "recipient-export", "clear"])
+        page.close()
+        page.deleteLater()
+        self.app.processEvents()

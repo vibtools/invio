@@ -1,3 +1,7 @@
+## v1.0.0.1.49
+
+Installation requirements and dependency set are unchanged from v1.0.0.1.48.9. This update changes UI layout only.
+
 ## v1.0.0.1.48.9
 
 Installation requirements are unchanged from v1.0.0.1.48.8. This release introduces no dependency or platform requirement.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49 UI compatibility
+
+Presentation-only correction. Provider install/load/uninstall behavior, Settings persistence, Invoice Template records/actions, Reports generation/export/clear-history behavior, all backend contracts and persisted data remain compatible with v1.0.0.1.48.9. No table columns or row values are removed.
+
 ## v1.0.0.1.48.9 UI compatibility
 
 The Customer Lists and compact-header rollout is presentation-only. Existing list creation, selection, deletion, customer import, customer filtering/pagination, provider/task/storage APIs and persisted data contracts remain compatible with v1.0.0.1.48.8.
