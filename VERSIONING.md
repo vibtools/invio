@@ -1,3 +1,23 @@
+## v1.0.0.1.49.4 Mapping
+
+- Application: `1.0.0.1.49.4`
+- Tag: `v1.0.0.1.49.4`
+- PE: `1.0.1.4904`
+- MSI: `1.1.4904`
+- Python wheel: `1.0.0.1.49.4`
+- Provider archive contract: `IVX Format v1` unchanged.
+
+This is a verification/correction release over the owner-frozen v1.0.0.1.49.3 IVX baseline; it does not change provider runtime versions or IVX format version.
+
+## v1.0.0.1.49.3 Mapping
+
+- Application: `1.0.0.1.49.3`
+- Tag: `v1.0.0.1.49.3`
+- PE: `1.0.1.4903`
+- MSI: `1.1.4903`
+- Python wheel: `1.0.0.1.49.3`
+- Provider archive contract: `IVX Format v1` (provider runtime versions remain independent).
+
 ## v1.0.0.1.49.2 Mapping
 
 - Application: `1.0.0.1.49.2`

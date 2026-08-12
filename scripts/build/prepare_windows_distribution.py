@@ -26,6 +26,7 @@ REQUIRED_RELATIVE_RESOURCES = (
     Path('assets/icons/window/maximize.svg'),
     Path('assets/icons/window/restore.svg'),
     Path('assets/icons/window/close.svg'),
+    Path('assets/icons/providers/fallback.png'),
     Path('providers/packages/stripe/provider.json'),
     Path('providers/packages/refrens/provider.json'),
     Path('providers/packages/agiled/provider.json'),

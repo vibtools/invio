@@ -68,6 +68,7 @@ def required_runtime_resources() -> tuple[Path, ...]:
         root / 'assets' / 'icons' / 'window' / 'maximize.svg',
         root / 'assets' / 'icons' / 'window' / 'restore.svg',
         root / 'assets' / 'icons' / 'window' / 'close.svg',
+        root / 'assets' / 'icons' / 'providers' / 'fallback.png',
         root / 'providers' / 'packages' / 'stripe' / 'provider.json',
         root / 'providers' / 'packages' / 'refrens' / 'provider.json',
         root / 'providers' / 'packages' / 'agiled' / 'provider.json',

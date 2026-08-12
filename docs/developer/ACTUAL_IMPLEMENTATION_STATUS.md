@@ -1,3 +1,11 @@
+## v1.0.0.1.49.4 IVX verification status
+
+The v1.49.3 IVX implementation was native-Windows audited. Confirmed failures were isolated to IVX path inspection and ProvidersPage optional logo-resolution compatibility. Additional IVX-only forensic cases exposed canonical path aliases, Windows-unsafe filenames, unsupported compression exception leakage, incomplete PNG validation and builder final-output publication before validation. All corrections remain within Provider IVX Package System V1; provider execution/runtime contracts are frozen.
+
+## v1.0.0.1.49.3
+
+Implemented: secure IVX Format v1 import, atomic imported-package storage, legacy JSON compatibility, package-logo resolution/fallback contract, deterministic IVX build tooling, and companion IVX artifacts for the current v1.2.0 external OAuth providers. Native Qt and release CI remain acceptance gates after owner application of the replace-ready delta.
+
 ## v1.0.0.1.49.2 status
 
 Provider Easy Onboarding V1 remains implemented. The v1.49.2 correction fixes one Windows-native regression where Add Account unconditionally called the optional onboarding capability method on a Browser-OAuth-only runtime test/collaborator. Capability absence now fails closed as unsupported and preserves Browser OAuth. Provider v1.2.0 bundles require no change after deterministic re-audit.

@@ -197,6 +197,10 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('"ProviderLogo"', page_source)
         self.assertIn('_PROVIDER_LOGO_FILES', page_source)
         self.assertIn('asset_path("icons", "providers", filename)', page_source)
+        self.assertIn('logo_resolver = getattr(self.manager, "provider_logo_path", None)', page_source)
+        self.assertIn('if callable(logo_resolver):', page_source)
+        self.assertNotIn('self.manager.provider_logo_path(provider.id)', page_source)
+        self.assertIn('asset_path("icons", "providers", "fallback.png")', page_source)
         self.assertIn('status_badge("Verified" if installed else "Available"', page_source)
         self.assertIn('identity.addWidget(status, 0, Qt.AlignmentFlag.AlignLeft)', page_source)
         self.assertNotIn('brand.addWidget(status', page_source)
@@ -224,8 +228,25 @@ class UiContractTests(unittest.TestCase):
         self.assertNotIn('QLabel#ProviderLogoPlaceholder', style_source)
         self.assertNotIn('QLabel#ProviderCapabilityChip', style_source)
         self.assertIn('"providers/*.png"', pyproject)
-        for name in ("stripe.png", "refrens.png", "agiled.png", "odoo.png"):
+        for name in ("stripe.png", "refrens.png", "agiled.png", "odoo.png", "fallback.png"):
             self.assertTrue((root / "assets" / "icons" / "providers" / name).is_file())
+
+    def test_provider_ivx_loader_is_additive_and_keeps_legacy_manifest_path(self):
+        root = Path(__file__).resolve().parents[1]
+        main_window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        manager = (root / "src" / "core" / "provider_manager" / "manager.py").read_text(encoding="utf-8")
+        ivx = (root / "src" / "core" / "provider_manager" / "ivx.py").read_text(encoding="utf-8")
+        self.assertIn('Invio Provider Extension (*.ivx)', main_window)
+        self.assertIn('Provider Manifest (*.json)', main_window)
+        self.assertIn('def _load_ivx_provider(self, path: str)', main_window)
+        self.assertIn('def _load_legacy_provider_manifest(self, path: str)', main_window)
+        self.assertIn('"Install Executable Provider"', main_window)
+        self.assertIn('Install only code you trust.', main_window)
+        self.assertIn('def import_ivx(self, path: str | Path)', manager)
+        self.assertIn('Loading an IVX package must never import/execute adapter.py', manager)
+        self.assertIn('MAX_IVX_COMPRESSED_BYTES = 50 * 1024 * 1024', ivx)
+        self.assertIn('MAX_IVX_EXTRACTED_BYTES = 200 * 1024 * 1024', ivx)
+        self.assertIn('IVX_MARKER_FILENAME = ".invio-ivx.json"', ivx)
 
     def test_current_runtime_surfaces_have_no_ui_only_release_markers(self):
         root = Path(__file__).resolve().parents[1]

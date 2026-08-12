@@ -1,3 +1,17 @@
+## IVX validation correction — v1.0.0.1.49.4
+
+Continue loading providers with **Providers → Load Provider → `*.ivx`**. Provider authors should build packages with `scripts/provider/build_ivx.py`; the builder now validates its temporary archive before publishing the final file. Archive paths must be canonical forward-slash names and portable to Windows. A provider package with an unsupported compression method or unsafe path is rejected with a normal Provider error. Plugin `logo.png` remains optional; malformed or unsafe-dimension logos use the host fallback icon.
+
+## Loading a provider with IVX (recommended)
+
+1. Obtain a trusted `*.ivx` provider file. IVX is a ZIP-based Invio Provider Extension; do not manually extract it.
+2. Open **Providers → Load Provider** and select **Invio Provider Extension (*.ivx)**.
+3. Invio validates the archive and imports it into the Provider Catalog without executing Python code.
+4. Select **Install**. If the provider contains executable `adapter.py`, Invio shows the existing trusted-code warning before P13 adapter validation and activation.
+5. Configure the account using the provider's existing Easy Onboarding, Browser OAuth or manual credential contract.
+
+IVX root requirements: `provider.json` is required; `adapter.py` is required only when `runtime_adapter` is declared; `logo.png`, `README.md`, `LICENSE`, `docs/` and `SHA256SUMS.txt` are optional. Wrapper folders are not supported. Missing/invalid provider logos use the host fallback icon. Direct `provider.json` loading remains available as the legacy/manual path.
+
 ## v1.0.0.1.49.2 provider compatibility note
 
 Easy Onboarding remains an optional additive capability. Host UI capability detection must not require `supports_onboarding()` from older Browser-OAuth-only collaborators. Missing onboarding capability is equivalent to “not supported”; no external adapter interface or provider execution contract changed.

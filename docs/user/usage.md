@@ -1,3 +1,11 @@
+## Provider IVX usage — v1.0.0.1.49.4
+
+The end-user workflow is unchanged: select one `.ivx` file with **Load Provider**, then Install after review/trust confirmation. v1.49.4 changes only validation and compatibility behind that workflow. Unsafe archives are rejected before import, while missing/invalid provider logos transparently use the host fallback icon.
+
+## Provider IVX files
+
+For external providers, prefer a single `.ivx` file instead of manually extracting a folder and selecting `provider.json`. Use **Providers → Load Provider**, choose the `.ivx`, then use the existing **Install** action. Provider logos travel inside the IVX as optional `logo.png`; otherwise Invio shows the generic fallback provider icon.
+
 ## v1.0.0.1.49.2
 
 Provider Easy Onboarding behavior is unchanged for supported providers. Browser-OAuth-only providers continue to use their existing Connect flow even when they do not implement the newer Easy Onboarding capability.

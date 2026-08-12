@@ -1,3 +1,11 @@
+## IVX correction — v1.0.0.1.49.4
+
+All archive-validation failures, including unsupported ZIP compression, are normalized to `IvxPackageError`/`ProviderManifestError` instead of leaking implementation exceptions to the Provider UI. Raw archive names are validated before platform normalization. Invalid/oversized optional logos continue to fall back rather than disabling a valid provider package. The IVX builder validates a temporary `.ivx` before publishing the final output, so a failed final validation does not leave a newly published invalid artifact.
+
+## IVX package errors — v1.0.0.1.49.3
+
+IVX failures are fail-closed before package activation. Invalid ZIP structure, unsafe paths, encrypted/symlink entries, duplicate/case-collision names, CRC/checksum failures, resource-limit violations, root-manifest errors, built-in ID collisions and atomic materialization failures surface as `ProviderManifestError` to the existing Provider UI. Staging is removed and an earlier imported package is restored on replacement failure. Invalid/missing optional `logo.png` does not disable a functional provider; the host fallback visual is used.
+
 ## v1.0.0.1.49.2 optional capability handling
 
 Missing Easy Onboarding methods on a Browser-OAuth-only runtime are not exceptional failures. The Add Account UI treats an absent `supports_onboarding`/`onboarding_profile` method as “capability unavailable”; actual errors from a declared/available onboarding implementation remain surfaced by the existing preparation worker/error path.

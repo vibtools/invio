@@ -1,3 +1,16 @@
+## v1.0.0.1.49.4 structure note
+
+No architecture or folder reorganization is introduced. Corrections stay inside the existing IVX distribution layer (`src/core/provider_manager/ivx.py`), existing provider-card visual resolver (`src/ui/pages/providers_page.py`), IVX developer builder and directly required tests/version/docs. New v1.49.4 forensic/release records are added; Task/storage/OAuth/MSI modules remain frozen.
+
+## v1.0.0.1.49.3 additions
+
+- `src/core/provider_manager/ivx.py` — IVX Format v1 archive inspection, checksum/path/resource-limit validation, safe staging extraction and import metadata.
+- `scripts/provider/build_ivx.py` — deterministic provider-folder → `.ivx` build/verification helper.
+- `assets/icons/providers/fallback.png` — owner-supplied generic provider-card fallback visual.
+- `tests/test_provider_ivx.py` — IVX security, atomicity, trust-boundary and deterministic-builder regression suite.
+
+Imported runtime packages materialize at `providers/packages/<provider_id>/` and receive an internal `.invio-ivx.json` marker; built-in provider directories remain unchanged.
+
 ## v1.0.0.1.49.2 structure delta
 
 No folder/module reorganization is introduced. The runtime correction is confined to `src/ui/dialogs.py`; directly required regression/version metadata and documentation are synchronized. New release evidence is `PATCH_MANIFEST_v1.0.0.1.49.2.md`, `docs/release-notes/1.0.0.1.49.2.md`, and private `/project/` forensic records carried only in the replace-ready delta.

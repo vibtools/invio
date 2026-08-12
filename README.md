@@ -1,3 +1,17 @@
+## v1.0.0.1.49.4 — Provider IVX Windows Security & Compatibility Correction
+
+`Invio v1.0.0.1.49.3 Provider IVX Package System V1` is the frozen parent baseline. Native Windows verification exposed two release-blocking defects: raw ZIP backslash paths were normalized by Python before the IVX validator inspected `ZipInfo.filename`, and the Providers page treated the new `ProviderManager.provider_logo_path()` capability as mandatory for legacy manager collaborators. The correction validates raw `ZipInfo.orig_filename`, keeps plugin-logo lookup additive via `getattr`, and adds non-GUI regression coverage so these contracts are checked even when PySide6 runtime tests are unavailable.
+
+The same IVX-only forensic pass also closes verified package-boundary gaps: non-canonical path aliases and Windows-unsafe path components are rejected, unsupported ZIP compression is converted to a normal fail-closed IVX validation error, optional PNG logos receive structural/CRC/dimension checks before materialization, and the deterministic IVX builder validates its temporary archive before publishing the final `.ivx`. Task execution, WorkerManager, storage/schema, OAuth/Easy Onboarding, provider API/send logic, MSI/WiX and unrelated UI remain unchanged. Version mapping: application/tag `1.0.0.1.49.4` / `v1.0.0.1.49.4`, PE `1.0.1.4904`, MSI `1.1.4904`, wheel `1.0.0.1.49.4`.
+
+## v1.0.0.1.49.3 — Provider IVX Package System V1
+
+`Invio v1.0.0.1.49.2` is the frozen parent baseline. Provider distribution can now use a single `.ivx` file: a standard ZIP container with Invio's custom extension, root-level `provider.json`, conditional `adapter.py`, optional `logo.png`, and optional documentation/checksum files. `Load Provider` prefers `.ivx` while the existing direct `provider.json` path remains available for backward compatibility.
+
+IVX import is non-executing and security-gated: archive paths, encryption, symlinks, duplicates/case collisions, CRCs, size/file-count limits and optional `SHA256SUMS.txt` are validated before safe staging. Packages are atomically materialized at `providers/packages/<provider_id>/`; executable adapter trust and P13 adapter validation remain at the separate Install step. Imported provider logos are used when valid, existing built-in provider icons remain unchanged, and missing/invalid plugin logos resolve to `assets/icons/providers/fallback.png`.
+
+No Task, WorkerManager, storage/schema, Browser OAuth, Easy Onboarding, provider send/API semantics, MSI/WiX or unrelated UI behavior is changed. Version mapping: application/tag `1.0.0.1.49.3` / `v1.0.0.1.49.3`, PE `1.0.1.4903`, MSI `1.1.4903`, wheel `1.0.0.1.49.3`.
+
 ## v1.0.0.1.49.2 — Provider Easy Onboarding compatibility correction
 
 `Invio v1.0.0.1.49.1 Provider Easy Onboarding V1` is the frozen parent baseline. This correction keeps Easy Onboarding optional at the Add/Edit Account UI boundary: an existing Browser-OAuth-only runtime collaborator that predates `supports_onboarding()` is treated as not supporting onboarding instead of raising `AttributeError` while the dialog is constructed. Full `ProviderRuntime` Quick Connect behavior is unchanged.

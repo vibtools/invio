@@ -4,9 +4,21 @@ import json
 import re
 import os
 import shutil
+import tempfile
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+
+from .ivx import (
+    IVX_ADAPTER_FILENAME,
+    IVX_LOGO_FILENAME,
+    IVX_MARKER_FILENAME,
+    IvxPackageError,
+    extract_ivx,
+    inspect_ivx,
+    read_ivx_marker,
+    write_ivx_marker,
+)
 
 _PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{1,63}$")
 
@@ -95,6 +107,7 @@ class ProviderManager:
         self.project_root = Path(project_root)
         self.packages_dir = self.project_root / "providers" / "packages"
         self.registry_dir = self.project_root / "providers" / "registry"
+        self.ivx_staging_dir = self.project_root / "providers" / ".staging"
         self.registry_dir.mkdir(parents=True, exist_ok=True)
 
     def _parse_manifest(self, path: Path) -> ProviderManifest:
@@ -218,6 +231,119 @@ class ProviderManager:
         """Parse a provider manifest without installing or executing provider code."""
         return self._parse_manifest(Path(path))
 
+    @staticmethod
+    def _manifests_equal(left: ProviderManifest, right: ProviderManifest) -> bool:
+        return replace(left, source_path=None) == replace(right, source_path=None)
+
+    def package_root(self, provider_id: str) -> Path:
+        return self.packages_dir / provider_id.strip().lower()
+
+    def is_imported_package(self, provider_id: str) -> bool:
+        return read_ivx_marker(self.package_root(provider_id)) is not None
+
+    def provider_logo_path(self, provider_id: str) -> Path | None:
+        package = self.package_root(provider_id)
+        if read_ivx_marker(package) is None:
+            return None
+        logo = package / IVX_LOGO_FILENAME
+        return logo if logo.is_file() else None
+
+    def inspect_ivx_manifest(self, path: str | Path) -> ProviderManifest:
+        try:
+            inspection = inspect_ivx(path)
+        except IvxPackageError as exc:
+            raise ProviderManifestError(str(exc)) from exc
+        self.ivx_staging_dir.mkdir(parents=True, exist_ok=True)
+        probe: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", suffix=".json", prefix=".ivx-manifest-", dir=self.ivx_staging_dir, delete=False
+            ) as handle:
+                handle.write(inspection.manifest_bytes)
+                probe = Path(handle.name)
+            manifest = self._parse_manifest(probe)
+        finally:
+            if probe is not None:
+                try:
+                    probe.unlink(missing_ok=True)
+                except OSError:
+                    pass
+        if manifest.runtime_adapter is not None and not inspection.has_adapter:
+            raise ProviderManifestError("Executable IVX provider package is missing root-level adapter.py.")
+        return replace(manifest, source_path=Path(path))
+
+    def import_ivx(self, path: str | Path) -> ProviderManifest:
+        """Validate and atomically import an IVX package without executing adapter code."""
+        source = Path(path)
+        try:
+            inspection = inspect_ivx(source)
+        except IvxPackageError as exc:
+            raise ProviderManifestError(str(exc)) from exc
+
+        candidate = self.inspect_ivx_manifest(source)
+        target = self.package_root(candidate.id)
+        if target.exists() and read_ivx_marker(target) is None:
+            try:
+                protected = self._parse_manifest(target / "provider.json")
+                protected_name = protected.name
+            except Exception:
+                protected_name = candidate.id
+            raise ProviderManifestError(
+                f"Provider ID '{candidate.id}' is reserved by the packaged {protected_name} integration. "
+                "IVX import cannot replace built-in provider packages."
+            )
+
+        token = uuid.uuid4().hex
+        session_root = self.ivx_staging_dir / token
+        staged_package = session_root / "package"
+        backup = session_root / "rollback"
+        moved_old = False
+        moved_new = False
+        self.ivx_staging_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            extract_ivx(inspection, staged_package)
+            staged_manifest = self._parse_manifest(staged_package / "provider.json")
+            if not self._manifests_equal(candidate, staged_manifest):
+                raise ProviderManifestError("IVX provider manifest changed while the package was staged; import was cancelled.")
+            if staged_manifest.runtime_adapter is not None and not (staged_package / IVX_ADAPTER_FILENAME).is_file():
+                raise ProviderManifestError("Executable IVX provider package is missing root-level adapter.py.")
+            # Loading an IVX package must never import/execute adapter.py. Existing
+            # P13 trusted-code validation remains exclusively at the Install step.
+            write_ivx_marker(staged_package, inspection=inspection)
+
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists():
+                os.replace(target, backup)
+                moved_old = True
+            os.replace(staged_package, target)
+            moved_new = True
+        except (ProviderManifestError, IvxPackageError) as exc:
+            if moved_old and not moved_new and backup.exists() and not target.exists():
+                try:
+                    os.replace(backup, target)
+                except OSError as rollback_exc:
+                    raise ProviderManifestError(
+                        f"IVX import failed and the previous package could not be restored safely: {rollback_exc}"
+                    ) from exc
+            if isinstance(exc, ProviderManifestError):
+                raise
+            raise ProviderManifestError(str(exc)) from exc
+        except OSError as exc:
+            try:
+                if moved_new and target.exists():
+                    shutil.rmtree(target)
+                if moved_old and backup.exists():
+                    os.replace(backup, target)
+            except OSError as rollback_exc:
+                raise ProviderManifestError(
+                    f"IVX import failed and rollback could not be completed safely: {rollback_exc}"
+                ) from exc
+            raise ProviderManifestError(f"Could not import IVX provider '{candidate.name}'.") from exc
+        finally:
+            shutil.rmtree(session_root, ignore_errors=True)
+        imported = self._parse_manifest(target / "provider.json")
+        return imported
+
     def _find_package_manifests(self) -> list[Path]:
         if not self.packages_dir.exists():
             return []
@@ -243,14 +369,38 @@ class ProviderManager:
         return next((item for item in self.list_installed() if item.id == wanted), None)
 
     def get_packaged(self, provider_id: str) -> ProviderManifest | None:
-        """Return the canonical packaged manifest for a provider ID, if present."""
+        """Return only a host-shipped packaged manifest, not an imported IVX package.
+
+        Existing runtime/preflight code uses this method to distinguish built-in
+        providers from external executable providers. Keeping imported IVX
+        packages out of this result preserves that frozen execution boundary.
+        """
+        wanted = provider_id.strip().lower()
+        item = next((entry for entry in self.list_available() if entry.id == wanted), None)
+        if item is None or self.is_imported_package(wanted):
+            return None
+        return item
+
+    def get_available(self, provider_id: str) -> ProviderManifest | None:
         wanted = provider_id.strip().lower()
         return next((item for item in self.list_available() if item.id == wanted), None)
 
-    def install_packaged(self, provider_id: str) -> ProviderManifest:
-        manifest = next((item for item in self.list_available() if item.id == provider_id), None)
+    def install_packaged(
+        self,
+        provider_id: str,
+        *,
+        allow_executable: bool = False,
+        adapter_validator=None,
+    ) -> ProviderManifest:
+        manifest = self.get_available(provider_id)
         if manifest is None or manifest.source_path is None:
             raise ProviderManifestError(f"Provider package '{provider_id}' was not found.")
+        if self.is_imported_package(manifest.id):
+            return self.load_external(
+                manifest.source_path,
+                allow_executable=allow_executable,
+                adapter_validator=adapter_validator,
+            )
         target = self.registry_dir / f"{manifest.id}.json"
         shutil.copyfile(manifest.source_path, target)
         return self._parse_manifest(target)

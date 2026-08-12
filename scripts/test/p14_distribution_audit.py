@@ -12,6 +12,7 @@ REQUIRED_PORTABLE = {
     "Invio/assets/icons/providers/refrens.png",
     "Invio/assets/icons/providers/agiled.png",
     "Invio/assets/icons/providers/odoo.png",
+    "Invio/assets/icons/providers/fallback.png",
     "Invio/assets/icons/app.png",
     "Invio/assets/icons/app.ico",
     "Invio/providers/packages/stripe/provider.json",

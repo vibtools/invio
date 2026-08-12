@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.49.2 started.")
+        self.log("Invio v1.0.0.1.49.4 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("SidebarFooter")
         footer_layout = vbox(footer, (8, 8, 8, 8), 2)
         footer_layout.addWidget(label("Vib Tools", "SidebarFooterTitle", False))
-        footer_layout.addWidget(label("Production • v1.0.0.1.49.2", "SidebarFooterMeta", False))
+        footer_layout.addWidget(label("Production • v1.0.0.1.49.4", "SidebarFooterMeta", False))
         layout.addWidget(footer)
         return sidebar
 
@@ -451,11 +451,41 @@ class MainWindow(QMainWindow):
         return ""
 
     def install_provider(self, provider_id: str) -> None:
+        candidate = self.providers.get_available(provider_id)
+        if candidate is None:
+            self._message("Provider", f"Provider package '{provider_id}' was not found.", QMessageBox.Icon.Warning)
+            return
+        imported_ivx = self.providers.is_imported_package(provider_id)
+        allow_executable = bool(imported_ivx and candidate.runtime_adapter is not None)
+        if allow_executable:
+            referenced = [task for task in self.state.tasks.values() if task.provider_id == candidate.id]
+            if referenced:
+                names = ", ".join(task.name for task in referenced)
+                self._message(
+                    "Provider",
+                    f"Close all Tasks that reference external provider {candidate.name} before installing or "
+                    f"reinstalling its executable adapter. Referenced: {names}.",
+                    QMessageBox.Icon.Warning,
+                )
+                return
+            answer = self._question(
+                "Install Executable Provider",
+                f"{candidate.name} includes executable Python adapter code. It will run in-process with Invio's "
+                "application permissions and is not sandboxed. Install only code you trust. Continue?",
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
         try:
-            provider = self.providers.install_packaged(provider_id)
+            provider = self.providers.install_packaged(
+                provider_id,
+                allow_executable=allow_executable,
+                adapter_validator=self.provider_runtime.validate_external_adapter if allow_executable else None,
+            )
         except ProviderManifestError as exc:
             self._message("Provider", str(exc), QMessageBox.Icon.Warning)
             return
+        if imported_ivx:
+            self.provider_runtime.reload_external_adapters()
         self.log(f"Provider installed: {provider.name} v{provider.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
@@ -521,12 +551,41 @@ class MainWindow(QMainWindow):
     def load_provider(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Load Provider Manifest",
+            "Load Provider",
             self._dialog_directory(),
-            "Provider Manifest (*.json);;JSON (*.json)",
+            "Invio Provider Extension (*.ivx);;Provider Manifest (*.json);;All Files (*.*)",
         )
         if not path:
             return
+        if Path(path).suffix.casefold() == ".ivx":
+            self._load_ivx_provider(path)
+            return
+        self._load_legacy_provider_manifest(path)
+
+    def _load_ivx_provider(self, path: str) -> None:
+        try:
+            candidate = self.providers.inspect_ivx_manifest(path)
+            provider = self.providers.import_ivx(path)
+        except ProviderManifestError as exc:
+            self._message("Provider", str(exc), QMessageBox.Icon.Warning)
+            return
+        self._remember_dialog_path(path)
+        logo_note = ""
+        if self.providers.provider_logo_path(provider.id) is None:
+            logo_note = " The host fallback provider icon will be used unless a valid root-level logo.png is supplied."
+        self.log(
+            f"IVX provider package loaded: {provider.name} v{provider.version}; available for installation.{logo_note}",
+            severity="INFO",
+            category="APPLICATION",
+        )
+        self.providers_page.refresh()
+        self._message(
+            "Provider Package Loaded",
+            f"{candidate.name} v{candidate.version} was validated and added to the Provider Catalog. "
+            "Install it when you are ready to trust and activate the provider.",
+        )
+
+    def _load_legacy_provider_manifest(self, path: str) -> None:
         try:
             candidate = self.providers.inspect_manifest(path)
         except ProviderManifestError as exc:

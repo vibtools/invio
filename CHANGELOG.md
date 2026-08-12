@@ -1,3 +1,25 @@
+## v1.0.0.1.49.4 — Provider IVX Windows Security & Compatibility Correction
+
+- Fix native Windows IVX raw-path validation by inspecting `ZipInfo.orig_filename` before Python platform normalization can convert backslashes to `/`.
+- Fix Providers-page additive compatibility: plugin-logo lookup no longer requires every manager collaborator/stub to implement `provider_logo_path()`.
+- Reject non-canonical aliases such as `./name` and repeated separators plus Windows-unsafe/ADS/device-name path components before staging.
+- Wrap unsupported ZIP compression methods as normal fail-closed IVX package validation errors instead of allowing `NotImplementedError` to escape to UI/runtime.
+- Strengthen optional `logo.png` checks with PNG chunk/CRC, non-zero dimensions and a 4096px dimension ceiling; invalid logos remain non-fatal and use the host fallback.
+- Make `scripts/provider/build_ivx.py` validate the temporary `.ivx` before atomically publishing the final artifact, preserving an existing final artifact on validation failure.
+- Correct the Windows-oriented IVX test fixture so the exact raw backslash central-directory spelling is tested on every platform.
+- Preserve all Task, WorkerManager, storage, OAuth/Easy Onboarding, provider-send, account/business, MSI/WiX and unrelated UI behavior.
+
+## v1.0.0.1.49.3 — Provider IVX Package System V1
+
+- Add secure ZIP-based `.ivx` provider package import with root-level `provider.json`, conditional `adapter.py`, optional `logo.png`, documentation and verified optional `SHA256SUMS.txt`.
+- Validate archive traversal/absolute/drive/UNC paths, symlinks, encryption, duplicate/case-collision names, CRC integrity and explicit compressed/extracted/file-count/file-size limits before staging.
+- Materialize imported packages atomically at `providers/packages/<provider_id>/` with rollback-safe replacement and a host-owned IVX marker; built-in package identities cannot be replaced.
+- Keep IVX Load non-executing. Executable Python trust confirmation and the existing P13 staged-adapter validation remain at Install.
+- Preserve legacy direct `provider.json` loading.
+- Add plugin-owned `logo.png` resolution with existing built-in icon preservation and `assets/icons/providers/fallback.png` fallback.
+- Add deterministic `scripts/provider/build_ivx.py` tooling and IVX artifacts for Zoho Books, Zoho Invoice, Xero, QuickBooks Online and Square v1.2.0 without changing their adapter/API behavior.
+- Preserve Task, WorkerManager, storage, OAuth, Easy Onboarding, provider-send and MSI/WiX behavior.
+
 ## v1.0.0.1.49.2 — Provider Easy Onboarding compatibility correction
 
 - Fix Add/Edit Account construction for existing Browser-OAuth-only runtime collaborators that do not implement the newer optional `supports_onboarding()` / `onboarding_profile()` methods.

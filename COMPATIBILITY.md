@@ -1,3 +1,20 @@
+## v1.0.0.1.49.4 compatibility
+
+- IVX Format remains version 1; existing valid v1.49.3-generated IVX packages remain compatible.
+- ProvidersPage constructor/callback behavior remains compatible with legacy manager collaborators that expose only `list_available()` / `list_installed()`.
+- Existing built-in provider logos and the host `fallback.png` contract remain unchanged.
+- Previously accepted non-canonical/Windows-unsafe archive names are now correctly rejected as invalid IVX input; this is a security validation correction, not a provider API change.
+- External Adapter V1, Browser OAuth V1, Easy Onboarding V1, Task state, SQLite schema v5, WorkerManager and MSI/WiX contracts remain unchanged.
+
+## v1.0.0.1.49.3 compatibility
+
+- Existing built-in packages and their host-owned icons remain compatible.
+- Existing direct `provider.json` loading remains supported unchanged as the legacy/manual path.
+- External Adapter V1, Browser OAuth V1 and Provider Easy Onboarding V1 contracts remain unchanged.
+- Imported `.ivx` packages are treated as external packages for runtime/preflight purposes even though their source files are stored under `providers/packages/<provider_id>/`.
+- Existing installed external providers and saved accounts do not require migration solely because IVX support exists.
+- Provider v1.2.0 bundles can be repackaged as IVX without changing their provider version or send semantics.
+
 ## v1.0.0.1.49.2 compatibility
 
 Backward compatibility is restored at the Add Account runtime-collaborator boundary. Browser OAuth support remains independently usable when the supplied runtime object has no Easy Onboarding methods; missing optional onboarding capability is interpreted as unsupported. Existing provider manifests, saved credential keys, External Provider Adapter interface v1, Browser OAuth v1, provider onboarding v1, Task snapshots, SQLite schema v5, WorkerManager and distribution architecture remain unchanged.

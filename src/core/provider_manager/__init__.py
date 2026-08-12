@@ -1,3 +1,11 @@
+from .ivx import (
+    IVX_FORMAT_VERSION,
+    IVX_LOGO_FILENAME,
+    IVX_MARKER_FILENAME,
+    IvxArchiveInspection,
+    IvxPackageError,
+    inspect_ivx,
+)
 from .manager import (
     BrowserAuthDeclaration,
     CREDENTIAL_OWNERSHIP_DISCOVERED,
@@ -28,4 +36,10 @@ __all__ = [
     "CREDENTIAL_OWNERSHIP_GENERATED",
     "CREDENTIAL_OWNERSHIP_DISCOVERED",
     "CREDENTIAL_OWNERSHIP_MANAGED",
+    "IVX_FORMAT_VERSION",
+    "IVX_LOGO_FILENAME",
+    "IVX_MARKER_FILENAME",
+    "IvxArchiveInspection",
+    "IvxPackageError",
+    "inspect_ivx",
 ]

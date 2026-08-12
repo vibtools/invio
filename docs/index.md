@@ -1,3 +1,11 @@
+## Current version — v1.0.0.1.49.4
+
+Provider IVX Package System V1 remains the active provider-distribution contract. v1.49.4 corrects native Windows raw ZIP path validation, additive provider-logo lookup compatibility, canonical/portable archive-path validation, unsupported-compression error containment, optional PNG safety checks and IVX builder publication atomicity. No provider API/send or application business workflow changed.
+
+## v1.0.0.1.49.3
+
+Provider IVX Package System V1 adds secure single-file external provider distribution while retaining all existing provider execution and legacy manifest-loading contracts. See the Provider Guide and Provider Manifest reference for IVX Format v1.
+
 ## Current release candidate — v1.0.0.1.49.2
 
 v1.49.2 is a narrow compatibility correction on the frozen Provider Easy Onboarding V1 baseline. Existing Browser-OAuth-only runtime collaborators can open Add/Edit Account without implementing Easy Onboarding methods; the real Invio `ProviderRuntime` continues to expose the complete Quick Connect flow unchanged.

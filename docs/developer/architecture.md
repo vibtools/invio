@@ -1,3 +1,13 @@
+## v1.0.0.1.49.4 IVX boundary correction
+
+Architecture is unchanged. Archive trust decisions now use the central-directory raw name (`ZipInfo.orig_filename`) while extraction continues only after the raw spelling is proven canonical and portable. Provider-card logo lookup remains an optional capability of `ProviderManager`; UI code uses duck-typed capability detection so older manager collaborators remain valid. IVX build tooling now validates the temporary archive before atomic publication.
+
+## v1.0.0.1.49.3 Provider IVX Package System V1
+
+`src/core/provider_manager/ivx.py` owns IVX container safety and staging. `ProviderManager.import_ivx()` parses the root manifest without executing adapter code, rejects built-in package collisions, safely extracts to staging, verifies staged manifest identity, writes host import metadata, and atomically replaces only imported package directories. `ProviderManager.get_packaged()` intentionally excludes IVX-imported packages so existing external-provider runtime/preflight semantics are preserved.
+
+Executable IVX providers become active only through the existing Install path, which retains explicit trust confirmation and `ProviderRuntime.validate_external_adapter()` before registry replacement.
+
 ## v1.0.0.1.49.2 architecture correction
 
 The provider-account setup architecture is unchanged. `AddAccountDialog` now probes the optional Easy Onboarding runtime capability defensively through one local helper. This restores the additive boundary promised by v1.49.1: Browser OAuth-only collaborators remain valid, while a full `ProviderRuntime` still composes OAuth, `prepare_external_account()`, and API verification. No core provider runtime, Task/WorkerManager, storage, delivery-ledger, MSI or dependency architecture changes are introduced.

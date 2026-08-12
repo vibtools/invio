@@ -1,3 +1,11 @@
+## v1.0.0.1.49.4
+
+IVX verification/correction only. Native Windows path-validation and provider-card compatibility defects plus IVX package hardening discovered by forensic audit are corrected without reopening provider execution, OAuth, Task, storage, MSI or business-workflow roadmap scope.
+
+## v1.0.0.1.49.3
+
+Provider IVX Package System V1 is a scope-locked provider distribution/import improvement. It does not reopen or modify Task, provider execution, OAuth, storage, MSI or business-logic roadmap phases.
+
 ## v1.0.0.1.49.2
 
 Scope-locked Provider Easy Onboarding compatibility correction: preserve the v1.49.1 generic onboarding architecture while restoring Browser-OAuth-only runtime compatibility at Add/Edit Account dialog construction. No P06+ Task behavior, provider send semantics, MSI behavior, architecture redesign, or unrelated feature work is included.

@@ -1,3 +1,11 @@
+## v1.0.0.1.49.4 installation note
+
+No dependency, Python, wheel, Nuitka or WiX/MSI installation change is introduced. Apply this replace-ready delta over the exact v1.0.0.1.49.3 project root, run `python scripts/test/audit.py`, and require native Windows tests plus non-tag GitHub CI to pass before tagging.
+
+## Provider extensions (`.ivx`)
+
+Application installation is unchanged. After Invio is installed, external providers may be distributed as a single `.ivx` file and loaded from the Providers page. IVX packages remain runtime provider data and do not require rebuilding the Invio MSI.
+
 ## v1.0.0.1.49.2 release identity
 
 The application identity advances to v1.0.0.1.49.2 (PE `1.0.1.4902`, MSI `1.1.4902`). MSI topology, Start Menu shortcut behavior, per-user LocalAppData installation, UpgradeCode policy and unsigned Signing Option C remain unchanged.

@@ -1,3 +1,19 @@
+## v1.0.0.1.49.4 IVX troubleshooting
+
+- **Unsafe/non-canonical archive path:** rebuild the IVX from a clean provider folder using `scripts/provider/build_ivx.py`; do not hand-author backslashes, `./`, repeated `/`, drive paths or Windows-reserved names.
+- **Unsupported ZIP compression:** rebuild with the Invio builder, which uses the supported deterministic DEFLATE format.
+- **Provider card opens with fallback icon:** ensure root `logo.png` is a structurally valid PNG within the 5 MB and 4096px-per-dimension limits.
+- **Provider page compatibility:** v1.49.4 no longer requires legacy manager collaborators to expose the optional `provider_logo_path()` method.
+
+## IVX provider package troubleshooting
+
+- **provider.json was not found at the package root:** rebuild the IVX without a wrapper folder.
+- **Unsafe archive path / duplicate path / symbolic link / encrypted member:** the package is rejected by design; obtain a corrected provider package.
+- **Executable package is missing adapter.py:** the manifest declares `runtime_adapter`, so root-level `adapter.py` is required.
+- **Provider ID is reserved:** an IVX package cannot replace a host-shipped built-in package identity.
+- **Provider logo is missing or invalid:** provider functionality remains available and the host fallback icon is used.
+- **Install asks for trusted-code approval:** expected for executable external providers; IVX Load itself does not execute adapter code.
+
 ## v1.0.0.1.49.2 Add Account startup correction
 
 If a Browser-OAuth-capable provider/runtime does not implement Easy Onboarding V1, Add/Edit Account must still open normally and expose its existing OAuth action. v1.49.2 corrects the v1.49.1 `AttributeError: ... supports_onboarding` regression. Qt offscreen-plugin/font-directory warnings seen in automated GUI tests are not this failure and do not indicate an onboarding exception.

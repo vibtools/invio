@@ -1,3 +1,11 @@
+## v1.0.0.1.49.4 configuration note
+
+No new application setting or provider credential field is introduced. IVX validation hardening and provider-logo compatibility are automatic host behavior; existing Provider, OAuth and Easy Onboarding configuration remains unchanged.
+
+## Provider package configuration
+
+IVX import has no new application preference. Security/resource limits are fixed by IVX Format v1: 50 MB compressed archive, 200 MB total extracted data, 256 regular files, 50 MB per regular file and 5 MB for optional `logo.png`.
+
 ## v1.0.0.1.49.2 configuration compatibility
 
 No new setting or credential field is introduced. Easy Onboarding remains provider-declared and optional; Browser OAuth remains independently usable when onboarding is absent.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontMetrics, QPixmap
@@ -147,25 +148,36 @@ class ProvidersPage(QWidget):
         status = "verified" if installed else "available"
         return " ".join((provider.id, provider.name, provider.description, status)).casefold()
 
-    @staticmethod
-    def _provider_logo(provider: ProviderManifest) -> QLabel:
+    def _provider_logo(self, provider: ProviderManifest) -> QLabel:
         logo = QLabel()
         logo.setObjectName("ProviderLogo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo.setFixedSize(PROVIDER_LOGO_SIZE, PROVIDER_LOGO_SIZE)
         logo.setToolTip(provider.name)
 
+        candidates: list[Path] = []
+        logo_resolver = getattr(self.manager, "provider_logo_path", None)
+        if callable(logo_resolver):
+            plugin_logo = logo_resolver(provider.id)
+            if plugin_logo is not None:
+                candidates.append(Path(plugin_logo))
         filename = _PROVIDER_LOGO_FILES.get(provider.id.strip().lower())
         if filename:
-            pixmap = QPixmap(str(asset_path("icons", "providers", filename)))
-            if not pixmap.isNull():
-                scaled = pixmap.scaled(
-                    PROVIDER_LOGO_SIZE,
-                    PROVIDER_LOGO_SIZE,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                logo.setPixmap(scaled)
+            candidates.append(asset_path("icons", "providers", filename))
+        candidates.append(asset_path("icons", "providers", "fallback.png"))
+
+        for path in candidates:
+            pixmap = QPixmap(str(path))
+            if pixmap.isNull():
+                continue
+            scaled = pixmap.scaled(
+                PROVIDER_LOGO_SIZE,
+                PROVIDER_LOGO_SIZE,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            logo.setPixmap(scaled)
+            break
         return logo
 
     def _provider_card(self, provider: ProviderManifest, installed: bool) -> QFrame:

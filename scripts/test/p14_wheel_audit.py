@@ -25,6 +25,7 @@ REQUIRED_RESOURCES = {
     "assets/icons/providers/refrens.png",
     "assets/icons/providers/agiled.png",
     "assets/icons/providers/odoo.png",
+    "assets/icons/providers/fallback.png",
     "providers/packages/stripe/provider.json",
     "providers/packages/refrens/provider.json",
     "providers/packages/agiled/provider.json",

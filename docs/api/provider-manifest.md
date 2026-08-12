@@ -1,3 +1,13 @@
+## IVX Format v1 portability correction — v1.0.0.1.49.4
+
+The manifest schema is unchanged. IVX archive member names must use canonical forward-slash POSIX spelling. Backslashes, absolute/drive paths, `.`/`..` components, repeated empty components, Windows forbidden filename characters, trailing dot/space components and reserved Windows device names are rejected before staging. This keeps a single IVX byte stream deterministic and safe on both Windows and POSIX hosts. Unsupported ZIP compression also fails closed as an IVX validation error.
+
+## IVX Format v1 packaging
+
+The provider manifest schema is unchanged. A manifest can be distributed inside a ZIP-based `.ivx` container without adding any new mandatory `provider.json` property. `provider.json` must be at archive root. If `runtime_adapter` is declared, root-level `adapter.py` is required. Optional package files include `logo.png`, `README.md`, `LICENSE`, `docs/` and `SHA256SUMS.txt`. Canonical provider identity and storage directory are always derived from manifest `id`, never from the IVX filename.
+
+IVX import never executes adapter code. Executable adapter validation and activation remain part of the existing trusted Install path.
+
 ## v1.0.0.1.49.2 host compatibility note
 
 `onboarding.interface_version = 1` remains optional. The host UI must treat a missing Easy Onboarding runtime capability as unsupported rather than requiring it from Browser-OAuth-only integrations. Manifest schema, ownership values, Browser OAuth v1, External Provider Adapter v1 and provider Task execution contracts are unchanged.
