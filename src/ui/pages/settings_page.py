@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 
 from ...core.settings import START_PAGE_LAST, START_PAGES, AppSettings, SettingsManager
 from ..tokens import CONST
-from ..widgets import button, card, form_group, label
+from ..widgets import button, card, form_group, label, page_header, section_toolbar
 
 SaveSettingsHandler = Callable[[AppSettings], tuple[bool, str]]
 
@@ -44,29 +44,20 @@ class SettingsPage(QWidget):
         root.setContentsMargins(CONST.page_padding, CONST.page_padding, CONST.page_padding, CONST.page_padding)
         root.setSpacing(CONST.section_gap)
 
-        # Header --------------------------------------------------------
-        header = QWidget()
-        header.setObjectName("SettingsHeader")
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(8)
-        header_layout.addWidget(label("Settings", "PageTitle", False))
-
+        # Frozen compact page header + section toolbar.
         self.search_input = QLineEdit()
         self.search_input.setObjectName("SettingsSearchInput")
         self.search_input.setPlaceholderText("Search settings... (Ctrl+F)")
         self.search_input.setClearButtonEnabled(True)
         self.search_input.textChanged.connect(self._filter_settings_cards)
-        header_layout.addWidget(self.search_input, 1)
 
         restore = button("Reset Settings")
         restore.setObjectName("SettingsResetButton")
         save = button("Save Changes", "primary")
         restore.clicked.connect(self._restore_defaults)
         save.clicked.connect(self._save)
-        header_layout.addWidget(restore)
-        header_layout.addWidget(save)
-        root.addWidget(header)
+        root.addWidget(page_header("Settings", "Persistent application preferences.", [restore, save]))
+        root.addWidget(section_toolbar("Preferences", (self.search_input,)))
 
         find_shortcut = QShortcut(QKeySequence.StandardKey.Find, self)
         find_shortcut.activated.connect(self._focus_search)

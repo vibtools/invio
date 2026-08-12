@@ -14,15 +14,16 @@ try:
     from src.accounts.models import Account
     from src.core.provider_manager import ProviderManifest
     from src.core.state import AppState
-    from src.customers.models import CustomerList
+    from src.customers.models import CustomerList, CustomerRecord
     from src.invoices.templates import InvoiceTemplate
     from src.ui.dialogs import NewTaskDialog, compact_message_box
     from src.ui.pages.accounts_page import AccountsPage
+    from src.ui.pages.customer_lists_page import CustomerListsPage
 
     _PYSIDE6_AVAILABLE = True
 except ModuleNotFoundError:
     QApplication = QDialog = QMenu = QMessageBox = QPushButton = QWidget = QTimer = Qt = None  # type: ignore[assignment]
-    Account = ProviderManifest = AppState = CustomerList = InvoiceTemplate = NewTaskDialog = AccountsPage = None  # type: ignore[assignment]
+    Account = ProviderManifest = AppState = CustomerList = CustomerRecord = InvoiceTemplate = NewTaskDialog = AccountsPage = CustomerListsPage = None  # type: ignore[assignment]
     compact_message_box = None  # type: ignore[assignment]
     _PYSIDE6_AVAILABLE = False
 
@@ -480,3 +481,155 @@ class AccountsPageRuntimeInteractionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+@unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")
+class CustomerListsPageRuntimeInteractionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def setUp(self) -> None:
+        self.state = AppState()
+        for index in range(1, 36):
+            customers = []
+            total = 62 if index == 1 else (index % 7)
+            for customer_index in range(total):
+                country = "US" if customer_index % 2 == 0 else "UK"
+                customers.append(
+                    CustomerRecord(
+                        f"customer{index:02d}-{customer_index:03d}@example.com",
+                        f"Customer {customer_index:03d}",
+                        country,
+                    )
+                )
+            item = CustomerList(id=f"list-{index:02d}", name=f"List {index:02d}", customers=customers)
+            self.state.customer_lists[item.id] = item
+        self.calls: list[tuple[str, str]] = []
+        self.page = CustomerListsPage(
+            self.state,
+            lambda: self.calls.append(("new", "")),
+            lambda list_id: self.calls.append(("upload", list_id)),
+            lambda list_id: self.calls.append(("delete", list_id)),
+        )
+        self.page.resize(1100, 720)
+        self.page.show()
+        self.app.processEvents()
+
+    def tearDown(self) -> None:
+        self.page.close()
+        self.page.deleteLater()
+        self.app.processEvents()
+
+    def test_compact_list_navigation_selection_search_filter_upload_and_pagination(self):
+        page = self.page
+        self.assertEqual(page.lists.count(), 35)
+        self.assertGreater(page.lists.verticalScrollBar().maximum(), 0)
+        self.assertEqual(page.selected_list_id, "list-01")
+        self.assertEqual(page.customer_pager.total, 62)
+        self.assertEqual(page.email_table.rowCount(), 10)
+        self.assertEqual(
+            [page.email_table.horizontalHeaderItem(index).text() for index in range(4)],
+            ["#", "EMAIL", "NAME", "COUNTRY"],
+        )
+
+        first_item = page.lists.item(0)
+        first_row = page.lists.itemWidget(first_item)
+        count_badge = first_row.findChild(QWidget, "CustomerListCountBadge")
+        self.assertIsNotNone(count_badge)
+        self.assertEqual(count_badge.text(), "62")
+
+        page.lists_toolbar.search.setText("List 20")
+        self.app.processEvents()
+        self.assertEqual(page.lists.count(), 1)
+        self.assertEqual(page.selected_list_id, "list-20")
+        page.lists_toolbar.search.clear()
+        self.app.processEvents()
+
+        state_filter = page.lists_toolbar.filters[0]
+        state_filter.setCurrentIndex(state_filter.findData("empty"))
+        self.app.processEvents()
+        self.assertTrue(all(self.state.customer_lists[str(page.lists.item(i).data(Qt.ItemDataRole.UserRole))].count == 0 for i in range(page.lists.count())))
+        state_filter.setCurrentIndex(state_filter.findData(""))
+        self.app.processEvents()
+        page._select_list("list-01")
+        self.app.processEvents()
+
+        country_filter = page.customer_toolbar.filters[0]
+        country_filter.setCurrentIndex(country_filter.findData("UK"))
+        self.app.processEvents()
+        self.assertEqual(page.customer_pager.total, 31)
+        page.customer_toolbar.search.setText("customer000")
+        self.app.processEvents()
+        self.assertLessEqual(page.customer_pager.total, 31)
+        page.customer_toolbar.search.clear()
+        country_filter.setCurrentIndex(country_filter.findData(""))
+        self.app.processEvents()
+
+        size_index = page.customer_pager.page_size_combo.findData(25)
+        page.customer_pager.page_size_combo.setCurrentIndex(size_index)
+        self.app.processEvents()
+        self.assertEqual(page.email_table.rowCount(), 25)
+        page.customer_pager.next.click()
+        self.app.processEvents()
+        self.assertEqual(page.customer_pager.page, 2)
+
+        page.import_button.click()
+        self.assertIn(("upload", "list-01"), self.calls)
+        new_buttons = [item for item in page.findChildren(QPushButton) if item.text() in {"New List", "＋"}]
+        self.assertEqual(len(new_buttons), 2)
+        for control in new_buttons:
+            control.click()
+        self.assertEqual(self.calls.count(("new", "")), 2)
+
+    def test_list_action_menu_is_row_scoped_and_bounded(self):
+        page = self.page
+        for index in (0, page.lists.count() // 2, page.lists.count() - 1):
+            with self.subTest(index=index):
+                item = page.lists.item(index)
+                page.lists.scrollToItem(item)
+                self.app.processEvents()
+                row_widget = page.lists.itemWidget(item)
+                action_button = next(control for control in row_widget.findChildren(QPushButton) if control.text() == "⋯")
+                menu = action_button.findChild(QMenu)
+                self.assertIsNotNone(menu)
+                safe = page.window().frameGeometry().intersected(page.screen().availableGeometry())
+                observed: list[QRect] = []
+
+                def inspect_and_close() -> None:
+                    popup = QApplication.activePopupWidget()
+                    if isinstance(popup, QMenu):
+                        observed.append(popup.geometry())
+                        popup.close()
+
+                QTimer.singleShot(0, inspect_and_close)
+                action_button.click()
+                self.app.processEvents()
+                self.assertEqual(len(observed), 1)
+                self.assertTrue(safe.contains(observed[0]), (safe, observed[0]))
+
+        target_item = page.lists.item(0)
+        target_id = str(target_item.data(Qt.ItemDataRole.UserRole))
+        row_widget = page.lists.itemWidget(target_item)
+        action_button = next(control for control in row_widget.findChildren(QPushButton) if control.text() == "⋯")
+        menu = action_button.findChild(QMenu)
+        delete_action = next(action for action in menu.actions() if action.text() == "Delete List")
+        delete_action.trigger()
+        self.app.processEvents()
+        self.assertIn(("delete", target_id), self.calls)
+        self.assertEqual(page.selected_list_id, target_id)
+
+    def test_customer_lists_empty_state_and_resize_remain_stable(self):
+        page = self.page
+        page.lists_toolbar.search.setText("no-such-list")
+        self.app.processEvents()
+        self.assertEqual(page.lists.count(), 0)
+        self.assertTrue(page.lists_empty.isVisible())
+        self.assertFalse(page.import_button.isEnabled())
+        page.lists_toolbar.search.clear()
+        self.app.processEvents()
+        self.assertGreater(page.lists.count(), 0)
+        page.resize(900, 640)
+        self.app.processEvents()
+        self.assertGreater(page.lists.width(), 0)
+        self.assertGreater(page.email_table.width(), page.lists.width())
+

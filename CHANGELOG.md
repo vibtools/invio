@@ -1,3 +1,11 @@
+## v1.0.0.1.48.9 — Customer Lists Compact UI + Global Header Standardization
+
+- Replaced the Customer Lists two-column list table with a compact scrollable navigation panel while preserving list search/state filtering and selection.
+- Added inline muted customer counts and a row-scoped bounded `⋯` Delete List menu.
+- Moved Customers title, search, Country filter and Upload onto one compact section row; preserved the four customer columns and pagination.
+- Extended the existing shared compact toolbar helpers and aligned Invoice Templates, Reports, Providers and Settings with the frozen page/section header hierarchy.
+- No backend, provider, storage, task, API, validation, schema or dependency changes.
+
 ## v1.0.0.1.48.8 - Canonical Status Column Natural-Width Runtime Correction
 
 - Freezes the latest updated `v1.0.0.1.48.7` delta state as the parent baseline for this correction.

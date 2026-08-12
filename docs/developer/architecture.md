@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 UI composition
+
+`page_header()` remains the shared page-header component. `DataGridToolbar` now optionally owns a section title/actions on the same row, and `section_toolbar()` provides the same hierarchy for non-table controls. Customer Lists remains a view over the existing `AppState` callbacks and introduces no domain/service layer.
+
 ## v1.0.0.1.48.8 UI Architecture Note
 
 Canonical status rendering remains in the existing shared widget layer. The Accounts table now respects the renderer's natural status-cell size hint instead of imposing a consumer-specific fixed width.

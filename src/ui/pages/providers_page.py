@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdi
 
 from ...core.paths import asset_path
 from ...core.provider_manager import ProviderManager, ProviderManifest
-from ..widgets import button, card, label, page_header, status_badge, vbox
+from ..widgets import button, card, label, page_header, section_toolbar, status_badge, vbox
 
 
 PROVIDER_CARD_HEIGHT = 194
@@ -128,7 +128,7 @@ class ProvidersPage(QWidget):
         self.search_input.setClearButtonEnabled(True)
         self.search_input.setAccessibleName("Search providers")
         self.search_input.textChanged.connect(self._apply_filter)
-        root.addWidget(self.search_input)
+        root.addWidget(section_toolbar("Provider Catalog", (self.search_input,)))
 
         self.host = QWidget()
         self.grid = QGridLayout(self.host)

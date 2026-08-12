@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 consistency note
+
+The Accounts flat-table behavior is unchanged. Its existing compact header pattern is now reused as the visual hierarchy reference for other applicable page/section toolbars.
+
 # Accounts Flat Table UI — v1.0.0.1.48.8
 
 The v1.48.7 canonical one-badge status renderer is preserved. The `STATUS` column now uses content-driven width rather than a fixed 132px section so labels such as `✕ Not Installed` remain fully contained without widening unrelated columns.

@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9
+
+Implemented UI-only Customer Lists final compact layout and shared compact section-toolbar rollout. Backend/provider/storage/task architecture remains unchanged.
+
 ## v1.0.0.1.48.8 — Status Column Runtime Sizing Correction
 
 The global status renderer remains centralized in `src/ui/widgets.py`. Accounts now consumes its existing item size hint with `QHeaderView.ResizeToContents` instead of overriding it with a fixed 132px Status column.

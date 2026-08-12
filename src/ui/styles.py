@@ -381,12 +381,14 @@ def app_qss() -> str:
         font-weight: 400;
     }}
     QWidget#DataGridToolbar,
+    QFrame#SectionToolbar,
     QWidget#DataGridFooter,
     QWidget#DataGridBadgeHost {{
         background: transparent;
         border: none;
     }}
-    QWidget#DataGridToolbar {{
+    QWidget#DataGridToolbar,
+    QFrame#SectionToolbar {{
         border-bottom: 1px solid {c['data_divider']};
         padding-bottom: {CONST.data_grid_padding}px;
     }}
@@ -420,6 +422,55 @@ def app_qss() -> str:
         color: {c['text_muted']};
         font-size: 11px;
         font-weight: 400;
+    }}
+    QListWidget#CustomerListsNavigationList {{
+        background: {c['surface']};
+        border: 1px solid {c['data_divider']};
+        border-radius: 6px;
+        outline: none;
+        padding: 0px;
+    }}
+    QListWidget#CustomerListsNavigationList::item {{
+        border-bottom: 1px solid {c['data_divider']};
+        padding: 0px;
+        margin: 0px;
+    }}
+    QListWidget#CustomerListsNavigationList::item:selected {{
+        background: transparent;
+    }}
+    QWidget#CustomerListNavigationRow {{
+        background: transparent;
+        border: none;
+    }}
+    QWidget#CustomerListNavigationRow[selected="true"] {{
+        background: {c['selection']};
+    }}
+    QLabel#CustomerListName {{
+        color: {c['text_body']};
+        font-size: 11px;
+        font-weight: 400;
+        background: transparent;
+        border: none;
+    }}
+    QLabel#CustomerListCountBadge {{
+        color: {c['text_muted']};
+        background: {c['nested_surface']};
+        border: 1px solid {c['button_border']};
+        border-radius: 6px;
+        min-width: 18px;
+        max-height: 18px;
+        padding: 0px 5px;
+        font-size: 10px;
+        font-weight: 500;
+    }}
+    QPushButton#SectionIconButton {{
+        min-width: {CONST.data_grid_control_height}px;
+        max-width: {CONST.data_grid_control_height}px;
+        min-height: {CONST.data_grid_control_height}px;
+        max-height: {CONST.data_grid_control_height}px;
+        padding: 0px;
+        border-radius: 6px;
+        font-size: 14px;
     }}
     QPushButton#DataGridPageButton {{
         min-width: {CONST.data_grid_control_height}px;

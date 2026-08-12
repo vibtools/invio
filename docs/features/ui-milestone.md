@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9
+
+The frozen compact desktop hierarchy is applied to Customer Lists and the remaining applicable page/section toolbars. No unrelated visual redesign or backend change is included.
+
 ## v1.0.0.1.48.8 — Canonical Status Column Runtime Correction
 
 Accounts Status-column sizing now follows the canonical status badge's real Qt size requirement. The existing one-badge renderer and visual palette are unchanged.

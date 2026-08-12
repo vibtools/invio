@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 completed scope
+
+Customer Lists compact two-panel presentation and the frozen compact page/section header rollout are completed without changing backend/provider/storage/task architecture.
+
 ## v1.0.0.1.48.8 Scope Status
 
 Completed scope: correct the confirmed v1.48.7 Windows Accounts status-column clipping contract by removing the 132px fixed-width assumption. No new feature or production phase is introduced.

@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 UI structure note
+
+No folder/module reorganization is introduced. `src/ui/widgets.py` remains the shared component layer; Customer Lists stays in `src/ui/pages/customer_lists_page.py`. The update only adds compact section-toolbar composition and Customer Lists presentation wiring.
+
 ## v1.0.0.1.48.8 Structure Note
 
 No folders, modules, APIs or architecture boundaries are changed. Runtime behavior changes only in the existing `src/ui/pages/accounts_page.py` header sizing policy; directly required tests, version metadata and documentation are synchronized.

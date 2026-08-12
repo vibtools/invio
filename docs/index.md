@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 UI update
+
+Customer Lists now follows the compact two-panel design, and applicable pages use the same compact page/section header hierarchy. Runtime/business behavior remains unchanged.
+
 ## Current UI Correction — v1.0.0.1.48.8
 
 The Accounts `STATUS` column now honors the shared canonical status badge size hint instead of using a fixed 132px width. This is a runtime geometry correction only; status semantics and workflows are unchanged.

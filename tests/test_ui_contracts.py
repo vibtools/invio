@@ -587,7 +587,7 @@ class UiContractTests(unittest.TestCase):
         importer = (Path(__file__).resolve().parents[1] / "src" / "customers" / "importers" / "email_importer.py").read_text(encoding="utf-8")
         model = (Path(__file__).resolve().parents[1] / "src" / "customers" / "models" / "customer_list.py").read_text(encoding="utf-8")
         self.assertIn('["#", "EMAIL", "NAME", "COUNTRY"]', page)
-        self.assertIn('button("Upload Customers")', page)
+        self.assertIn('button("Upload")', page)
         self.assertIn('import_customers(path)', main_window)
         self.assertIn('class CustomerRecord', model)
         self.assertIn('def import_emails', importer)
@@ -1234,3 +1234,70 @@ class V1488StatusColumnNaturalWidthContractTests(unittest.TestCase):
         self.assertIn('header.resizeSection(3, 68)', accounts)
         self.assertIn('item.setSizeHint(QSize(badge_hint.width() + 8', widgets)
         self.assertIn('set_data_status_cell(', accounts)
+
+class V1489CustomerListsAndGlobalHeaderContractTests(unittest.TestCase):
+    def test_v1489_customer_lists_uses_compact_navigation_and_customer_toolbar(self):
+        root = Path(__file__).resolve().parents[1]
+        page = (root / "src" / "ui" / "pages" / "customer_lists_page.py").read_text(encoding="utf-8")
+        styles = (root / "src" / "ui" / "styles.py").read_text(encoding="utf-8")
+
+        self.assertIn('page_header(\n                "Customer Lists"', page)
+        self.assertIn('self.lists = QListWidget()', page)
+        self.assertIn('self.lists.setObjectName("CustomerListsNavigationList")', page)
+        self.assertNotIn('self.lists = QTableWidget', page)
+        self.assertNotIn('setHorizontalHeaderLabels(["LIST", "CUSTOMERS"])', page)
+        self.assertIn('title_text="Lists"', page)
+        self.assertIn('actions=(add_list,)', page)
+        self.assertIn('count_badge = label(str(count), "CustomerListCountBadge", False)', page)
+        self.assertIn('menu = QMenu(action_button)', page)
+        self.assertIn('menu.addAction("Delete List")', page)
+        self.assertIn('menu.exec(bounded_popup_position(control, menu))', page)
+        self.assertIn('title_text="Customers"', page)
+        self.assertIn('self.import_button = button("Upload")', page)
+        self.assertIn('self.email_table.setHorizontalHeaderLabels(["#", "EMAIL", "NAME", "COUNTRY"])', page)
+        self.assertNotIn('"ACTION"', page)
+        self.assertIn('customers_card.layout().addWidget(self.customer_pager)', page)
+        self.assertIn('QListWidget#CustomerListsNavigationList', styles)
+        self.assertIn('QLabel#CustomerListCountBadge', styles)
+
+    def test_v1489_shared_compact_header_toolbar_rollout_is_consistent(self):
+        root = Path(__file__).resolve().parents[1]
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+        providers = (root / "src" / "ui" / "pages" / "providers_page.py").read_text(encoding="utf-8")
+        settings = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        templates = (root / "src" / "ui" / "pages" / "invoice_templates_page.py").read_text(encoding="utf-8")
+        reports = (root / "src" / "ui" / "pages" / "reports_page.py").read_text(encoding="utf-8")
+        accounts = (root / "src" / "ui" / "pages" / "accounts_page.py").read_text(encoding="utf-8")
+        dashboard = (root / "src" / "ui" / "pages" / "dashboard_page.py").read_text(encoding="utf-8")
+        tasks = (root / "src" / "ui" / "pages" / "tasks_page.py").read_text(encoding="utf-8")
+        logs = (root / "src" / "ui" / "pages" / "logs_page.py").read_text(encoding="utf-8")
+
+        self.assertIn('def section_toolbar(title_text: str, controls: Sequence[QWidget] = ()) -> QFrame:', widgets)
+        self.assertIn('title_text: str = ""', widgets)
+        self.assertIn('actions: Sequence[QWidget] = ()', widgets)
+        self.assertIn('section_toolbar("Provider Catalog", (self.search_input,))', providers)
+        self.assertIn('page_header("Settings", "Persistent application preferences.", [restore, save])', settings)
+        self.assertIn('section_toolbar("Preferences", (self.search_input,))', settings)
+        self.assertIn('title_text="Templates"', templates)
+        self.assertIn('title_text="Task Summary"', reports)
+        self.assertIn('title_text="Recipient Delivery History"', reports)
+        self.assertIn('label("Added Accounts List", "CardTitle", False)', accounts)
+        self.assertIn('page_header(', dashboard)
+        self.assertIn('page_header(', tasks)
+        self.assertIn('setObjectName("CompactControlBar")', logs)
+
+    def test_v1489_popup_and_backend_boundaries_remain_scope_locked(self):
+        root = Path(__file__).resolve().parents[1]
+        widgets = (root / "src" / "ui" / "widgets.py").read_text(encoding="utf-8")
+        page = (root / "src" / "ui" / "pages" / "customer_lists_page.py").read_text(encoding="utf-8")
+        self.assertIn('def popup_safe_geometry(control: QWidget) -> QRect:', widgets)
+        self.assertIn('window_rect.intersected(screen.availableGeometry())', widgets)
+        self.assertIn('def bounded_popup_position(control: QWidget, popup: QWidget) -> QPoint:', widgets)
+        self.assertIn('menu.exec(bounded_popup_position(control, menu))', page)
+        # Customer Lists still delegates all mutations to the frozen MainWindow callbacks.
+        self.assertIn('self.on_new = on_new', page)
+        self.assertIn('self.on_import = on_import', page)
+        self.assertIn('self.on_delete = on_delete', page)
+        self.assertNotIn('state.add_customer_list(', page)
+        self.assertNotIn('state.delete_customer_list(', page)
+

@@ -63,7 +63,7 @@ class ReportsPage(QWidget):
             )
         )
 
-        host = card("Task Summary", "Current operational Task counters are preserved unchanged.")
+        host = card()
         host.setObjectName("ReportTableSurface")
         self.task_pager = DataGridPager(on_changed=self._refresh_task_table)
         self.task_toolbar = DataGridToolbar(
@@ -73,6 +73,7 @@ class ReportsPage(QWidget):
                 ("Provider", (("All providers", ""),)),
                 ("Status", (("All statuses", ""),)),
             ),
+            title_text="Task Summary",
         )
         host.layout().addWidget(self.task_toolbar)
         self.table = QTableWidget(0, 9)
@@ -100,10 +101,7 @@ class ReportsPage(QWidget):
         host.layout().addWidget(self.task_pager)
         root.addWidget(host, 1)
 
-        recipient_host = card(
-            "Recipient Delivery History",
-            "Provider acceptance is shown separately from independently confirmed email delivery.",
-        )
+        recipient_host = card()
         recipient_host.setObjectName("RecipientReportTableSurface")
         self.recipient_pager = DataGridPager(on_changed=self._refresh_recipient_table)
         self.recipient_toolbar = DataGridToolbar(
@@ -113,6 +111,7 @@ class ReportsPage(QWidget):
                 ("Provider", (("All providers", ""),)),
                 ("Safe status", (("All statuses", ""),)),
             ),
+            title_text="Recipient Delivery History",
         )
         recipient_host.layout().addWidget(self.recipient_toolbar)
         self.recipient_table = QTableWidget(0, 11)

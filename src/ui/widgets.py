@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Sequence
 from math import ceil
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QComboBox,
@@ -169,6 +169,18 @@ def page_header(title_text: str, description: str, actions: Iterable[QWidget] | 
     return header
 
 
+def section_toolbar(title_text: str, controls: Sequence[QWidget] = ()) -> QFrame:
+    """Shared compact section header for non-table content controls."""
+    frame = QFrame()
+    frame.setObjectName("SectionToolbar")
+    layout = hbox(frame, (0, 0, 0, 0), CONST.data_grid_gap)
+    layout.addWidget(label(title_text, "CardTitle", False))
+    layout.addStretch(1)
+    for control in controls:
+        layout.addWidget(control)
+    return frame
+
+
 def form_group(label_text: str, field: QWidget, help_text: str = "") -> QWidget:
     host = QWidget()
     layout = vbox(host, (0, 0, 0, 0), 4)
@@ -322,8 +334,42 @@ def data_table_item(
     return item
 
 
+def popup_safe_geometry(control: QWidget) -> QRect:
+    """Return the usable popup rectangle shared by app-owned row menus."""
+    window = control.window()
+    window_rect = QRect(window.mapToGlobal(QPoint(0, 0)), window.size())
+    screen = control.screen()
+    if screen is None:
+        return window_rect
+    safe = window_rect.intersected(screen.availableGeometry())
+    return safe if not safe.isEmpty() else window_rect
+
+
+def bounded_popup_position(control: QWidget, popup: QWidget) -> QPoint:
+    """Anchor a popup to a control while keeping it inside Invio and the screen."""
+    popup.ensurePolished()
+    popup_size = popup.sizeHint()
+    safe = popup_safe_geometry(control)
+    anchor = QRect(control.mapToGlobal(QPoint(0, 0)), control.size())
+
+    preferred_x = anchor.right() - popup_size.width() + 1
+    max_x = max(safe.left(), safe.right() - popup_size.width() + 1)
+    x = min(max(preferred_x, safe.left()), max_x)
+
+    below_y = anchor.bottom() + 1
+    above_y = anchor.top() - popup_size.height()
+    if below_y + popup_size.height() - 1 <= safe.bottom():
+        y = below_y
+    elif above_y >= safe.top():
+        y = above_y
+    else:
+        max_y = max(safe.top(), safe.bottom() - popup_size.height() + 1)
+        y = min(max(below_y, safe.top()), max_y)
+    return QPoint(x, y)
+
+
 class DataGridToolbar(QWidget):
-    """Compact search/filter strip for presentation-only in-memory data grids."""
+    """Compact section/search/filter/action strip for in-memory data grids."""
 
     def __init__(
         self,
@@ -331,11 +377,20 @@ class DataGridToolbar(QWidget):
         *,
         on_changed: Callable[[], None],
         filters: Sequence[tuple[str, Sequence[tuple[str, object]]]] = (),
+        title_text: str = "",
+        actions: Sequence[QWidget] = (),
     ) -> None:
         super().__init__()
         self.setObjectName("DataGridToolbar")
         self._on_changed = on_changed
         layout = hbox(self, (0, 0, 0, 0), CONST.data_grid_gap)
+
+        if title_text:
+            self.title = label(title_text, "CardTitle", False)
+            layout.addWidget(self.title)
+            layout.addStretch(1)
+        else:
+            self.title = None
 
         self.search = QLineEdit()
         self.search.setObjectName("DataGridSearchInput")
@@ -348,7 +403,8 @@ class DataGridToolbar(QWidget):
         self.search.textChanged.connect(lambda _text: self._on_changed())
         layout.addWidget(self.search)
 
-        layout.addStretch(1)
+        if not title_text:
+            layout.addStretch(1)
         self.filters: list[QComboBox] = []
         for placeholder, options in filters:
             combo = QComboBox()
@@ -359,6 +415,8 @@ class DataGridToolbar(QWidget):
             combo.currentIndexChanged.connect(lambda _index: self._on_changed())
             self.filters.append(combo)
             layout.addWidget(combo)
+        for action in actions:
+            layout.addWidget(action)
 
     @property
     def query(self) -> str:

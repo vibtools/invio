@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 — Customer Lists + Compact Header Standardization
+
+Customer Lists now uses a compact scrollable list-navigation panel with inline count badges and row-scoped list actions. The Customers panel keeps `# / EMAIL / NAME / COUNTRY` and places Search, Country and Upload on one section row. The already-frozen compact Page Header / Section Toolbar hierarchy is also applied to remaining applicable UI pages. Backend/provider/storage/task behavior is unchanged.
+
 # v1.0.0.1.48.8 Canonical Status Column Natural-Width Runtime Correction
 
 `Invio v1.0.0.1.48.7` is the frozen parent state. The only confirmed failing Windows runtime contract was the Accounts `STATUS` column: it was fixed at 132px while the canonical shared badge reported a 180px natural width in the real PySide6 environment. `v1.0.0.1.48.8` removes that unsafe fixed-width assumption and lets the existing canonical table-status item size hint drive the Status column through `QHeaderView.ResizeToContents`.

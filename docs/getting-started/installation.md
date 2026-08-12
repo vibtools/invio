@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9
+
+Installation requirements are unchanged from v1.0.0.1.48.8. This release introduces no dependency or platform requirement.
+
 ## v1.0.0.1.48.8 Installation Note
 
 Installation/runtime dependencies are unchanged from v1.48.7. Apply the replace-ready delta to the exact v1.48.7 project root and run the existing audit before commit/release.

@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9
+
+No error-handling semantics change. Customer List delete/import actions continue to delegate to the existing MainWindow confirmation/error paths; the UI update only relocates their controls.
+
 ## v1.0.0.1.48.8 Error-Handling Note
 
 No error-classification, exception, provider or persistence handling changes. The release corrects only a UI geometry contract exposed by the real Windows PySide6 runtime test.

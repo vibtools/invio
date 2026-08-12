@@ -39,7 +39,7 @@ class InvoiceTemplatesPage(QWidget):
             )
         )
 
-        host = card("Templates", "Each task selects one template; provider adapters map supported fields when invoices are created and sent.")
+        host = card()
         self.pager = DataGridPager(on_changed=self.refresh)
         self.toolbar = DataGridToolbar(
             "Search templates...",
@@ -48,6 +48,7 @@ class InvoiceTemplatesPage(QWidget):
                 ("Currency", (("All currencies", ""),)),
                 ("Type", (("All types", ""),)),
             ),
+            title_text="Templates",
         )
         host.layout().addWidget(self.toolbar)
 

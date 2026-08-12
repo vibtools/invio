@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 UI compatibility
+
+The Customer Lists and compact-header rollout is presentation-only. Existing list creation, selection, deletion, customer import, customer filtering/pagination, provider/task/storage APIs and persisted data contracts remain compatible with v1.0.0.1.48.8.
+
 ## v1.0.0.1.48.8 Compatibility Note
 
 This correction changes only the Accounts Status-column header resize policy so the v1.48.7 canonical badge size hint is honored across real Qt font/DPI environments. No model status strings, shared badge semantics, callbacks, provider/runtime APIs, persistence, storage schema, Task/WorkerManager behavior, dependencies or public interfaces change.

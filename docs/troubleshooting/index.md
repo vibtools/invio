@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 Customer Lists UI
+
+If a Customer List is not visible, clear the Lists search/record-state filter. If customer rows are not visible, clear the Customers search/Country filter and confirm the selected list. Existing import/delete confirmation and error messages remain authoritative.
+
 ## v1.0.0.1.48.8 Status Column Width
 
 If a canonical Accounts status badge is clipped, verify the Status header uses `QHeaderView.ResizeToContents` and that the cell is created through `set_data_status_cell()`. Do not restore the v1.48.7 fixed 132px section width.

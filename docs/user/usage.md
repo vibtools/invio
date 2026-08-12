@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 — Customer Lists
+
+Open **Customer Lists** to work in two compact panels. The left Lists panel keeps list search/state filtering, shows each list with a muted customer count and a row `⋯` menu, and scrolls for larger list sets. The Customers panel keeps Search, Country filter, Upload, `# / EMAIL / NAME / COUNTRY`, rows-per-page and pagination. Existing create/select/delete/import behavior is unchanged.
+
 ## v1.0.0.1.48.8 — Accounts Status Visibility
 
 Accounts status badges now receive enough natural column width for the active Qt font/DPI environment. Status values, colors, actions, filtering and pagination are otherwise unchanged.

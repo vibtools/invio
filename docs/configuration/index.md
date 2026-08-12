@@ -1,3 +1,7 @@
+## v1.0.0.1.48.9 configuration impact
+
+None. The compact Customer Lists/header rollout adds no setting, environment variable, provider configuration, storage option or dependency.
+
 ## v1.0.0.1.48.8 Configuration Note
 
 No configuration key or setting changes. Status-column width remains runtime-derived from the existing UI component and requires no user configuration.
