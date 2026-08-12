@@ -6,6 +6,7 @@
 - Preserve manual provider credential setup and all current provider Task/send/API-test behavior.
 - Add per-user Start Menu `Vib Tools/Invio` MSI shortcut, validate its target in Windows CI, and verify removal on uninstall.
 - Approved Signing Option C: no signing service/certificate is introduced; Windows `Unknown Publisher` may remain.
+- CI correction: the v1.49.1 repository contract now treats `/project/` forensic records as optional/private, matching the existing Git-ignore/privacy contract so clean GitHub checkouts validate only tracked release evidence.
 
 ## v1.0.0.1.49 — Provider/Settings Header + Template/Reports Table Layout Correction
 

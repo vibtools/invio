@@ -1036,8 +1036,7 @@ class V1491PersistentBrowserOAuthMsiReleaseContractTests(unittest.TestCase):
         oauth = (ROOT / "src" / "core" / "provider_runtime" / "oauth.py").read_text(encoding="utf-8")
         wix = (ROOT / "scripts" / "build" / "generate_wix_source.py").read_text(encoding="utf-8")
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.49.1.md").read_text(encoding="utf-8")
-        baseline = (ROOT / "project" / "specifications" / "BASELINE_FREEZE_v1.0.0.1.49.1.md").read_text(encoding="utf-8")
-        root_cause = (ROOT / "project" / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.49.1.md").read_text(encoding="utf-8")
+        manifest = (ROOT / "PATCH_MANIFEST_v1.0.0.1.49.1.md").read_text(encoding="utf-8")
 
         self.assertIn('version = "1.0.0.1.49.1"', pyproject)
         self.assertIn('INVIO_VERSION: "1.0.0.1.49.1"', workflow)
@@ -1050,6 +1049,16 @@ class V1491PersistentBrowserOAuthMsiReleaseContractTests(unittest.TestCase):
         self.assertIn('ProgramMenuFolder', wix)
         self.assertIn('Start Menu', release)
         self.assertIn('Signing Option C', release)
-        self.assertIn('no signing integration', baseline)
-        self.assertIn('Browser OAuth', root_cause)
+        self.assertIn('Host-managed Browser OAuth authorization system', manifest)
+        self.assertIn('Signing Option C is frozen', manifest)
         self.assertNotIn('signtool', workflow.casefold())
+
+        # /project is a deliberately private, Git-ignored forensic workspace.
+        # Validate those records only when a full private baseline is present;
+        # clean public GitHub checkouts must never depend on ignored files.
+        project_root = ROOT / "project"
+        if project_root.is_dir():
+            baseline = (project_root / "specifications" / "BASELINE_FREEZE_v1.0.0.1.49.1.md").read_text(encoding="utf-8")
+            root_cause = (project_root / "research" / "ROOT_CAUSE_VERIFICATION_v1.0.0.1.49.1.md").read_text(encoding="utf-8")
+            self.assertIn('no signing integration', baseline)
+            self.assertIn('Browser OAuth', root_cause)

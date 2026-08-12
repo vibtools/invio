@@ -68,6 +68,14 @@ Final deterministic provider tests: **37 / 37 PASS**. Final packaged-bundle vali
 - Final provider ZIP host validation: **5 / 5 PASS**.
 - Native Windows MSI shortcut/install/uninstall and native PySide6 interaction execution remain the required non-tag GitHub Windows CI certification gate; they are not fabricated as locally executed results.
 
+## Same-version CI correction after first push
+
+- Frozen GitHub baseline for this correction: commit `2bbd7635f77ed4bc2a0f7f4d36bc84c9b3b05b88` on `main`.
+- GitHub Actions run `31602199589` failed in both `test` and `windows-build` at the same repository-contract test before build/package stages.
+- Confirmed root cause: `V1491PersistentBrowserOAuthMsiReleaseContractTests` unconditionally opened two `/project/` forensic files even though `/project/` is deliberately Git-ignored/private. Local owner audit passed only because those private files existed locally; clean CI checkout correctly omitted them.
+- Correction is limited to the repository truthfulness contract: tracked v1.49.1 release note/manifest evidence is authoritative in public checkout, while private `/project/` evidence is validated only when that private workspace exists.
+- Version identity remains `1.0.0.1.49.1`; no app/runtime/OAuth/MSI/provider/UI/storage/business implementation is changed.
+
 ## Delta policy
 
 The final ZIP has no wrapper folder and contains only changed/new project-root files. Runtime/build caches are excluded. `SHA256SUMS.txt` hashes every other delta payload path and excludes itself.
@@ -135,3 +143,21 @@ None.
 - Removed: 0
 - Total delta paths: 46
 - `SHA256SUMS.txt` payload entries: 45
+
+## CI correction delta inventory
+
+This same-version correction is applied on top of the frozen `2bbd7635f77ed4bc2a0f7f4d36bc84c9b3b05b88` v1.49.1 candidate. It does not repeat the original v1.49.1 feature payload.
+
+### Public tracked correction files
+- `tests/test_repository_contracts.py`
+- `CHANGELOG.md`
+- `docs/release-notes/1.0.0.1.49.1.md`
+- `PATCH_MANIFEST_v1.0.0.1.49.1.md`
+- `SHA256SUMS.txt`
+
+### Private forensic records carried in the replace-ready delta but intentionally remaining Git-ignored
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.49.1.md`
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.49.1.md`
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.49.1.md`
+
+No runtime/source implementation file, workflow file, version marker, dependency file or provider bundle is modified by this CI correction.
