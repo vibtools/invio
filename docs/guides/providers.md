@@ -1,3 +1,9 @@
+## Browser OAuth v1 provider capability — v1.0.0.1.49.1
+
+Trusted executable provider bundles may optionally declare `"browser_auth": {"interface_version": 1}` and expose one `BrowserOAuthProfile` plus `build_oauth_authorization_url()` and `complete_oauth_authorization()` methods. The existing External Provider Adapter v1 `test_account / validate_task / execute_recipient` contract is unchanged.
+
+The host owns state generation, PKCE verifier/challenge generation when requested, redirect validation, loopback callback reception, authorization timeout/cancel, and output-field validation. Provider code owns provider-specific authorization/token/discovery endpoints. The browser-auth result may populate only credential keys already declared in the manifest and may not persist an access-token field. Refresh/bootstrap credentials are saved only when the normal Add/Edit Account workflow saves the account to the existing OS-protected credential store.
+
 ## v1.0.0.1.49 compact header
 
 The Providers page keeps `Providers + Load Provider` and `Provider Catalog + Search providers...` as two compact rows. Provider cards, descriptions, status, versions, Install/Uninstall and Load Provider behavior are unchanged.

@@ -21,6 +21,11 @@ class CredentialField:
 
 
 @dataclass(frozen=True, slots=True)
+class BrowserAuthDeclaration:
+    interface_version: int
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderManifest:
     id: str
     name: str
@@ -31,6 +36,7 @@ class ProviderManifest:
     capabilities: tuple[str, ...] = field(default_factory=tuple)
     source_path: Path | None = None
     runtime_adapter: RuntimeAdapterDeclaration | None = None
+    browser_auth: BrowserAuthDeclaration | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +115,21 @@ class ProviderManager:
                     "runtime_adapter requires interface_version >= 1, adapter_version and entrypoint 'create_adapter'."
                 )
             runtime_adapter = RuntimeAdapterDeclaration(interface_version, adapter_version, entrypoint)
+
+        browser_auth = None
+        browser_raw = raw.get("browser_auth")
+        if browser_raw is not None:
+            if not isinstance(browser_raw, dict):
+                raise ProviderManifestError("browser_auth must be an object when provided.")
+            try:
+                browser_interface_version = int(browser_raw.get("interface_version"))
+            except (TypeError, ValueError) as exc:
+                raise ProviderManifestError("browser_auth.interface_version must be an integer.") from exc
+            if browser_interface_version != 1:
+                raise ProviderManifestError("browser_auth.interface_version must be 1 for the current Invio host contract.")
+            if runtime_adapter is None:
+                raise ProviderManifestError("browser_auth requires an executable runtime_adapter.")
+            browser_auth = BrowserAuthDeclaration(browser_interface_version)
         return ProviderManifest(
             id=provider_id,
             name=name,
@@ -119,6 +140,7 @@ class ProviderManager:
             capabilities=capabilities,
             source_path=path,
             runtime_adapter=runtime_adapter,
+            browser_auth=browser_auth,
         )
 
     def inspect_manifest(self, path: str | Path) -> ProviderManifest:
@@ -216,6 +238,7 @@ class ProviderManager:
                 or staged.account_modes != manifest.account_modes
                 or staged.capabilities != manifest.capabilities
                 or staged.runtime_adapter != manifest.runtime_adapter
+                or staged.browser_auth != manifest.browser_auth
             ):
                 raise ProviderManifestError("Provider manifest changed while it was being staged; load was cancelled.")
             staged_packaged = self.get_packaged(staged.id)

@@ -96,3 +96,21 @@ The source bundle must contain fixed sibling `adapter.py`. Invio stages both fil
 ## Bundled external provider source — Odoo v1.0.0
 
 Invio v1.0.0.1.40.2 ships a validated external P13 bundle under `providers/plugins/odoo/`. This directory is intentionally **not** part of `providers/packages/`; therefore the `odoo` provider ID is not reserved as a packaged provider and the bundle is not auto-installed. Its `provider.json` + sibling `adapter.py` continue to use external adapter interface v1 and the existing explicit trusted-code installation path.
+
+## Browser OAuth declaration (v1.0.0.1.49.1)
+
+An executable external provider may opt into host browser authorization with:
+
+```json
+"browser_auth": {
+  "interface_version": 1
+}
+```
+
+Rules:
+- `runtime_adapter` is mandatory when `browser_auth` is present.
+- Browser OAuth interface version must be `1`.
+- The adapter must expose a valid `BrowserOAuthProfile`, `build_oauth_authorization_url(context)`, and `complete_oauth_authorization(context)`.
+- The profile defines exactly one redirect source: a fixed `redirect_uri` or a `redirect_uri_credential_key`.
+- Returned credential updates are restricted to manifest-declared credential keys; access-token persistence is rejected by the host.
+- This declaration is optional and does not alter the External Provider Adapter v1 task interface.

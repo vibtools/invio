@@ -1,3 +1,7 @@
+## Current release candidate — v1.0.0.1.49.1
+
+This hotfix adds optional browser-based provider authorization with persistent protected refresh credentials and corrects the Windows MSI Start Menu launch entry. Existing provider sending and application business workflows remain frozen.
+
 ## v1.0.0.1.49 UI correction
 
 Providers and Settings now use the frozen compact header spacing consistently. Invoice Templates and Reports retain all authoritative columns/data while using safer action sizing and horizontal overflow handling for narrow windows and long values.

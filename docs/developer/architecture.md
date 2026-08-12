@@ -1,3 +1,9 @@
+## v1.0.0.1.49.1 — Optional browser OAuth boundary
+
+Browser OAuth extends P13 without replacing External Provider Adapter v1. `ProviderManager` parses the optional manifest declaration; `ExternalAdapterRegistry` validates provider OAuth hooks; `ProviderRuntime` creates authorization sessions, restricts OAuth network endpoints to HTTPS, validates completion output and never persists access tokens; `oauth.py` owns state, PKCE, redirect identity and loopback callback primitives; `AddAccountDialog` orchestrates the system browser and transfers only approved credential updates into the existing account form. Account persistence remains the unchanged AppState/DomainStore/OS-keyring path.
+
+MSI packaging remains per-user LocalAppData. WiX now adds only a Start Menu launch component and uninstall cleanup; no installer architecture or UpgradeCode change is made.
+
 ## v1.0.0.1.49 UI architecture note
 
 No new UI subsystem is introduced. Existing `page_header`, `section_toolbar`, `DataGridToolbar`, `QTableWidget`, provider cards and settings cards remain the architecture. The change adjusts local spacing/search geometry and table header resize/scroll policies only.

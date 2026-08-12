@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  INVIO_VERSION: "1.0.0.1.49"
-  INVIO_PE_VERSION: "1.0.1.49"
+  INVIO_VERSION: "1.0.0.1.49.1"
+  INVIO_PE_VERSION: "1.0.1.4901"
   NUITKA_VERSION: "4.1.3"
   WIX_VERSION: "6.0.2"
 
@@ -185,6 +185,11 @@ jobs:
           if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed with exit code $($install.ExitCode)." }
           $installedExe = Join-Path $env:LOCALAPPDATA "Vib Tools\Invio\Invio.exe"
           if (-not (Test-Path $installedExe)) { throw "MSI did not install Invio.exe at the expected per-user location." }
+          $shortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Vib Tools\Invio.lnk"
+          if (-not (Test-Path $shortcut)) { throw "MSI did not create the expected per-user Start Menu shortcut." }
+          $shell = New-Object -ComObject WScript.Shell
+          $shortcutTarget = $shell.CreateShortcut($shortcut).TargetPath
+          if ((Resolve-Path $shortcutTarget).Path -ne (Resolve-Path $installedExe).Path) { throw "MSI Start Menu shortcut does not target the installed Invio.exe." }
 
           $credentialSmoke = Join-Path $env:RUNNER_TEMP "invio-msi-credential-smoke"
           Remove-Item $credentialSmoke -Recurse -Force -ErrorAction SilentlyContinue
@@ -218,6 +223,7 @@ jobs:
 
           $uninstall = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart') -PassThru -Wait
           if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed with exit code $($uninstall.ExitCode)." }
+          if (Test-Path $shortcut) { throw "MSI uninstall left the Invio Start Menu shortcut behind." }
 
       - name: Assemble release payloads and checksums
         shell: pwsh

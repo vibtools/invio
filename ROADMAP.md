@@ -1,3 +1,7 @@
+## v1.0.0.1.49.1
+
+Approved maintenance scope only: Windows MSI launch-entry correction plus optional persistent browser OAuth authorization for P13 external provider plugins. No production phase is reopened and no Task/provider-send/storage roadmap semantics are changed.
+
 ## v1.0.0.1.49 completed scope
 
 UI-only compact-header and table-layout correction for Providers, Settings, Invoice Templates and Reports. No production phase, provider capability, storage contract or task workflow changes.

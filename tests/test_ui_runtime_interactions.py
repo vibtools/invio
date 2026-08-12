@@ -12,14 +12,15 @@ try:
     from PySide6.QtWidgets import QApplication, QDialog, QMenu, QMessageBox, QPushButton, QWidget
 
     from src.accounts.models import Account
-    from src.core.provider_manager import ProviderManifest
+    from src.core.provider_manager import BrowserAuthDeclaration, CredentialField, ProviderManifest, RuntimeAdapterDeclaration
+    from src.core.provider_runtime import BrowserOAuthProfile
     from src.core.settings import SettingsManager
     from src.core.state import AppState
     from src.customers.models import CustomerList, CustomerRecord
     from src.invoices.templates import InvoiceTemplate
     from src.tasks.delivery_ledger import RecipientDeliveryReportRecord
     from src.tasks.models.task import Task
-    from src.ui.dialogs import NewTaskDialog, compact_message_box
+    from src.ui.dialogs import AddAccountDialog, NewTaskDialog, compact_message_box
     from src.ui.pages.accounts_page import AccountsPage
     from src.ui.pages.customer_lists_page import CustomerListsPage
     from src.ui.pages.invoice_templates_page import InvoiceTemplatesPage
@@ -31,7 +32,7 @@ try:
     _PYSIDE6_AVAILABLE = True
 except ModuleNotFoundError:
     QApplication = QDialog = QMenu = QMessageBox = QPushButton = QWidget = QTimer = Qt = None  # type: ignore[assignment]
-    Account = ProviderManifest = AppState = CustomerList = CustomerRecord = InvoiceTemplate = NewTaskDialog = AccountsPage = CustomerListsPage = None  # type: ignore[assignment]
+    Account = BrowserAuthDeclaration = BrowserOAuthProfile = CredentialField = ProviderManifest = RuntimeAdapterDeclaration = AppState = CustomerList = CustomerRecord = InvoiceTemplate = AddAccountDialog = NewTaskDialog = AccountsPage = CustomerListsPage = None  # type: ignore[assignment]
     SettingsManager = RecipientDeliveryReportRecord = Task = InvoiceTemplatesPage = ProvidersPage = ReportsPage = SettingsPage = CONST = None  # type: ignore[assignment]
     compact_message_box = None  # type: ignore[assignment]
     _PYSIDE6_AVAILABLE = False
@@ -128,6 +129,51 @@ class QMessageBoxRuntimeInteractionTests(unittest.TestCase):
                 click_button=QMessageBox.StandardButton.Yes,
                 default_button=QMessageBox.StandardButton.No,
             )
+
+
+@unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")
+class AddAccountBrowserOAuthRuntimeInteractionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_browser_oauth_capability_is_additive_and_compact_in_add_account_dialog(self):
+        class Runtime:
+            @staticmethod
+            def supports_browser_oauth(provider_id): return provider_id == "oauth-demo"
+            @staticmethod
+            def browser_oauth_profile(provider_id):
+                if provider_id != "oauth-demo": return None
+                return BrowserOAuthProfile(
+                    button_label="Connect OAuth Demo",
+                    redirect_uri="http://127.0.0.1:8765/oauth/callback/demo",
+                    pkce_required=True,
+                    connect_required_credential_keys=("client_id",),
+                    timeout_seconds=60,
+                )
+            @staticmethod
+            def supports_api_test(provider_id): return provider_id == "oauth-demo"
+
+        provider = ProviderManifest(
+            id="oauth-demo", name="OAuth Demo", version="1.1.0", description="runtime test",
+            credential_fields=(
+                CredentialField("client_id", "OAuth Client ID"),
+                CredentialField("refresh_token", "OAuth Refresh Token", kind="password"),
+            ),
+            account_modes=("Default",),
+            capabilities=("api_test",),
+            runtime_adapter=RuntimeAdapterDeclaration(1, "1.1.0", "create_adapter"),
+            browser_auth=BrowserAuthDeclaration(1),
+        )
+        dialog = AddAccountDialog([provider], provider_runtime=Runtime())
+        dialog.show()
+        self.app.processEvents()
+        self.assertTrue(dialog.oauth_host.isVisible())
+        self.assertEqual(dialog.oauth_button.text(), "Connect OAuth Demo")
+        self.assertIn("Connect once", dialog.oauth_status_label.text())
+        self.assertIn("refresh_token", dialog.credential_inputs)
+        dialog.reject()
+        dialog.deleteLater()
 
 
 @unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")

@@ -1,3 +1,13 @@
+## v1.0.0.1.49.1 — Persistent Browser OAuth + MSI Launch Integration
+
+`Invio v1.0.0.1.49` is the frozen parent baseline. This hotfix adds an optional, backward-compatible browser OAuth authorization contract for trusted P13 external providers and corrects the Windows MSI end-user launch entry without changing existing provider sending, Task, WorkerManager, storage schema or business logic.
+
+Browser-auth-capable providers can open the system browser, validate `state`, use PKCE where declared, receive a loopback callback or validate a manually pasted HTTPS callback, exchange the authorization code, discover the authorized organisation/tenant/company/location, and place only refresh/bootstrap credentials into the existing Add Account form. After the account is saved, credentials remain protected by Invio's existing OS keyring boundary; provider adapters silently refresh access tokens and, where the provider rotates refresh tokens, persist the latest refresh token in protected storage. Existing manually configured provider credentials remain supported.
+
+The MSI remains an unsigned per-user LocalAppData package by approved Signing Option C, so Windows may still display `Unknown Publisher`. The functional correction adds `Start Menu > Vib Tools > Invio`, verifies its target in CI, preserves the current install location/UpgradeCode, and removes the shortcut on uninstall.
+
+Version mapping: application/tag `1.0.0.1.49.1` / `v1.0.0.1.49.1`, PE `1.0.1.4901`, MSI `1.1.4901`, Python wheel `1.0.0.1.49.1`.
+
 ## v1.0.0.1.49 — Provider/Settings Compact Headers + Template/Reports Table Layout Correction
 
 UI-only correction on the frozen `v1.0.0.1.48.9` baseline. Providers and Settings retain their existing page/section hierarchy with compact search controls and reduced header spacing. Invoice Templates preserves all seven existing columns/row values/actions while widening the Actions cell safely and enabling explicit horizontal overflow handling. Reports preserves every Task Summary and Recipient Delivery History column/value and switches wide report tables to content-driven column widths with horizontal scrolling rather than hiding data. Backend/provider/storage/task behavior is unchanged.

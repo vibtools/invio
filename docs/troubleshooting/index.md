@@ -1,3 +1,13 @@
+## OAuth / MSI troubleshooting — v1.0.0.1.49.1
+
+**Browser opens but does not return to Invio:** verify that the provider console contains the exact registered redirect URI. Loopback ports must be available. For providers that require a production HTTPS redirect, paste the complete returned callback URL only into Invio's callback dialog.
+
+**Authorization state/callback rejected:** restart Connect rather than editing callback parameters. Invio deliberately fails closed on mismatched state, redirect path/host/port, duplicate critical parameters, provider denial, timeout or cancellation.
+
+**Provider worked previously but now requires reconnect:** authorization may have been revoked/expired, required scopes may have changed, or a rotating refresh token could not be saved. Reconnect and then run API Test.
+
+**MSI progress closes with no launch window:** v1.49.1 installs a Start Menu shortcut; launch `Start Menu > Vib Tools > Invio`. Under approved Signing Option C the package remains unsigned, so `Unknown Publisher` can still appear.
+
 ## v1.0.0.1.49 wide-table behavior
 
 Invoice Templates and Reports intentionally preserve all authoritative columns. On narrower windows or with long values, use the table horizontal scrollbar rather than expecting columns to be removed. Full cell values remain available through the existing table tooltip behavior.

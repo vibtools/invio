@@ -1,3 +1,7 @@
+## v1.0.0.1.49.1 — Connect once, reuse authorization
+
+For browser-auth-enabled providers, use **Accounts > Add Account > Connect <Provider>** to authorize in your normal browser. After connection, run API Test and save. Invio keeps the refresh/bootstrap credential in the existing protected OS credential store and the provider automatically obtains fresh access tokens when needed. You normally authorize once; reconnect only if the provider revokes/expires the grant, permissions change, or protected token persistence cannot continue.
+
 ## v1.0.0.1.49 — Compact Headers and Wide Tables
 
 Providers and Settings keep the same actions/controls with tighter frozen header spacing. Invoice Templates retains all seven columns and Edit/Delete actions. Reports retains all Task Summary and Recipient Delivery History columns; wide content can be reached through horizontal scrolling without losing report data.

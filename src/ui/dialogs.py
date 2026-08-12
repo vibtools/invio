@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import webbrowser
 from decimal import Decimal
 from typing import Any, Callable
 
@@ -32,7 +33,13 @@ from PySide6.QtWidgets import (
 
 from ..accounts.models import Account
 from ..core.provider_manager import ProviderManifest
-from ..core.provider_runtime import ProviderRuntime, ProviderRuntimeError
+from ..core.provider_runtime import (
+    BrowserOAuthSession,
+    ExternalOAuthConnectionResult,
+    LoopbackOAuthReceiver,
+    ProviderRuntime,
+    ProviderRuntimeError,
+)
 from ..core.state import AppState
 from ..invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCIES
 from .tokens import CONST
@@ -83,6 +90,52 @@ class _AccountVerificationWorker(QObject):
             self.failed.emit("API verification failed because of an unexpected internal error.")
         else:
             self.succeeded.emit(message)
+        finally:
+            self.finished.emit()
+
+
+class _BrowserOAuthWorker(QObject):
+    succeeded = Signal(object)
+    failed = Signal(str)
+    finished = Signal()
+
+    def __init__(
+        self,
+        runtime: ProviderRuntime,
+        provider_id: str,
+        session: BrowserOAuthSession,
+        credentials: dict[str, str],
+        mode: str,
+        *,
+        callback_url: str = "",
+        receiver: LoopbackOAuthReceiver | None = None,
+    ) -> None:
+        super().__init__()
+        self.runtime = runtime
+        self.provider_id = provider_id
+        self.session = session
+        self.credentials = dict(credentials)
+        self.mode = mode
+        self.callback_url = callback_url
+        self.receiver = receiver
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            callback_url = self.callback_url
+            if self.receiver is not None:
+                callback_url = self.receiver.wait(self.session.timeout_seconds)
+            if not callback_url:
+                raise ProviderRuntimeError("OAuth callback URL is unavailable.")
+            result = self.runtime.complete_browser_oauth(
+                self.provider_id, self.session, callback_url, self.credentials, mode=self.mode
+            )
+        except ProviderRuntimeError as exc:
+            self.failed.emit(str(exc))
+        except Exception:
+            self.failed.emit("Provider authorization failed because of an unexpected internal error.")
+        else:
+            self.succeeded.emit(result)
         finally:
             self.finished.emit()
 
@@ -148,6 +201,75 @@ def compact_message_box(
     box.setMinimumWidth(width)
     result = box.exec()
     return QMessageBox.StandardButton(result)
+
+
+def _request_oauth_callback_url(parent: QWidget, redirect_uri: str) -> str:
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Complete Provider Authorization")
+    dialog.setModal(True)
+    _apply_compact_dialog_geometry(
+        dialog, parent, width_ratio=0.50, preferred_height=250, min_width=600, max_width=760, min_height=230
+    )
+    root = build_dialog_shell(dialog)
+    note = label(
+        "After approving access in your browser, copy the complete final callback URL from the browser address bar and paste it below. "
+        "Invio validates the registered redirect URI and OAuth state before exchanging the code.",
+        "Description",
+        True,
+    )
+    root.addWidget(note)
+    redirect = QLineEdit(redirect_uri)
+    redirect.setReadOnly(True)
+    root.addWidget(form_group("Registered Redirect URI", redirect))
+    callback = QLineEdit()
+    callback.setPlaceholderText("https://.../?code=...&state=...")
+    root.addWidget(form_group("Final Callback URL", callback))
+    actions = QWidget()
+    actions.setObjectName("DialogActionFooter")
+    row = QHBoxLayout(actions)
+    row.setContentsMargins(0, CONST.dialog_gap, 0, 0)
+    row.addStretch(1)
+    cancel = button("Cancel", "ghost")
+    cont = button("Continue", "primary")
+    cancel.clicked.connect(dialog.reject)
+    cont.clicked.connect(dialog.accept)
+    row.addWidget(cancel)
+    row.addWidget(cont)
+    root.addWidget(actions)
+    QTimer.singleShot(0, callback.setFocus)
+    if dialog.exec() != dialog.DialogCode.Accepted:
+        return ""
+    return callback.text().strip()
+
+
+def _choose_oauth_account(parent: QWidget, choices) -> str:
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Choose Provider Account")
+    dialog.setModal(True)
+    _apply_compact_dialog_geometry(
+        dialog, parent, width_ratio=0.42, preferred_height=220, min_width=520, max_width=680, min_height=210
+    )
+    root = build_dialog_shell(dialog)
+    root.addWidget(label("The provider authorized more than one account. Choose the account Invio should use.", "Description", True))
+    combo = QComboBox()
+    for choice in choices:
+        combo.addItem(choice.label, choice.value)
+    root.addWidget(form_group("Provider account", combo))
+    actions = QWidget()
+    actions.setObjectName("DialogActionFooter")
+    row = QHBoxLayout(actions)
+    row.setContentsMargins(0, CONST.dialog_gap, 0, 0)
+    row.addStretch(1)
+    cancel = button("Cancel", "ghost")
+    choose = button("Use Account", "primary")
+    cancel.clicked.connect(dialog.reject)
+    choose.clicked.connect(dialog.accept)
+    row.addWidget(cancel)
+    row.addWidget(choose)
+    root.addWidget(actions)
+    if dialog.exec() != dialog.DialogCode.Accepted:
+        return ""
+    return str(combo.currentData() or "").strip()
 
 
 def _invoice_wrapped_label(text: str, role: str = "Description") -> QLabel:
@@ -247,6 +369,9 @@ class AddAccountDialog(QDialog):
         self._verification_thread: QThread | None = None
         self._verification_worker: _AccountVerificationWorker | None = None
         self._verification_credentials: dict[str, str] = {}
+        self._oauth_thread: QThread | None = None
+        self._oauth_worker: _BrowserOAuthWorker | None = None
+        self._oauth_receiver: LoopbackOAuthReceiver | None = None
         self.setWindowTitle("Edit Account" if account is not None else "Add Account")
         self.setModal(True)
         _apply_compact_dialog_geometry(
@@ -283,6 +408,17 @@ class AddAccountDialog(QDialog):
         self.credentials_layout.setHorizontalSpacing(CONST.dialog_gap)
         self.credentials_layout.setVerticalSpacing(CONST.dialog_gap)
         self.credentials_card.layout().addWidget(self.credentials_host)
+        self.oauth_host = QWidget()
+        self.oauth_host.setObjectName("BrowserOAuthHost")
+        oauth_row = QHBoxLayout(self.oauth_host)
+        oauth_row.setContentsMargins(0, CONST.dialog_gap, 0, 0)
+        oauth_row.setSpacing(CONST.dialog_gap)
+        self.oauth_status_label = inline_status("Browser authorization is available.", "neutral")
+        self.oauth_button = button("Connect Provider", "primary")
+        self.oauth_button.clicked.connect(self._oauth_button_clicked)
+        oauth_row.addWidget(self.oauth_status_label, 1)
+        oauth_row.addWidget(self.oauth_button)
+        self.credentials_card.layout().addWidget(self.oauth_host)
         root.addWidget(self.credentials_card)
 
         self.validation_label = inline_status("API test has not been run.", "neutral")
@@ -321,6 +457,7 @@ class AddAccountDialog(QDialog):
                 if field is not None:
                     field.setText(value)
             self._reset_validation()
+            self._update_oauth_controls()
         QTimer.singleShot(0, (self.account_name if self._provider_locked else self.provider_combo).setFocus)
 
     def _current_provider(self) -> ProviderManifest | None:
@@ -359,7 +496,151 @@ class AddAccountDialog(QDialog):
             )
         for column in range(column_count):
             self.credentials_layout.setColumnStretch(column, 1)
+        self._update_oauth_controls()
         self._reset_validation()
+
+    def _oauth_running(self) -> bool:
+        return self._oauth_thread is not None and self._oauth_thread.isRunning()
+
+    def _update_oauth_controls(self) -> None:
+        provider = self._current_provider()
+        available = bool(provider and self.provider_runtime.supports_browser_oauth(provider.id))
+        self.oauth_host.setVisible(available)
+        if not available:
+            return
+        profile = self.provider_runtime.browser_oauth_profile(provider.id)
+        if profile is not None:
+            self.oauth_button.setText(profile.button_label)
+        refresh_field = self.credential_inputs.get("refresh_token")
+        if refresh_field is not None and refresh_field.text().strip():
+            set_inline_status(self.oauth_status_label, "OAuth connection credentials are stored. Reconnect only if access is revoked.", "success")
+        else:
+            set_inline_status(self.oauth_status_label, "Connect once in your browser; Invio will use the saved refresh token afterward.", "neutral")
+        self.oauth_button.setEnabled(not self._oauth_running() and not self._verification_running())
+
+    def _oauth_button_clicked(self) -> None:
+        if self._oauth_running():
+            if self._oauth_receiver is not None:
+                self._oauth_receiver.cancel()
+                set_inline_status(self.oauth_status_label, "Cancelling provider authorization...", "neutral")
+                self.oauth_button.setEnabled(False)
+            return
+        self._start_browser_oauth()
+
+    def _start_browser_oauth(self) -> None:
+        if self._oauth_running() or self._verification_running():
+            return
+        provider = self._current_provider()
+        if provider is None:
+            return
+        credentials = self._credential_values()
+        self._verification_credentials = dict(credentials)
+        mode = self.mode_combo.currentText().strip()
+        try:
+            session = self.provider_runtime.create_browser_oauth_session(provider.id, credentials, mode=mode)
+            receiver = LoopbackOAuthReceiver(session.redirect_uri) if session.callback_mode == "loopback" else None
+        except ProviderRuntimeError as exc:
+            compact_message_box(self, "Provider Authorization", str(exc), icon=QMessageBox.Icon.Warning)
+            return
+        except Exception as exc:
+            compact_message_box(self, "Provider Authorization", str(exc), icon=QMessageBox.Icon.Warning)
+            return
+
+        if not webbrowser.open(session.authorization_url, new=1, autoraise=True):
+            if receiver is not None:
+                receiver.close()
+            compact_message_box(
+                self,
+                "Provider Authorization",
+                "Invio could not open the system browser. Check the default browser configuration and try again.",
+                icon=QMessageBox.Icon.Warning,
+            )
+            return
+
+        callback_url = ""
+        if session.callback_mode == "manual":
+            callback_url = _request_oauth_callback_url(self, session.redirect_uri)
+            if not callback_url:
+                set_inline_status(self.oauth_status_label, "Provider authorization cancelled.", "neutral")
+                return
+
+        set_inline_status(self.oauth_status_label, f"Waiting for {provider.name} authorization...", "info")
+        self._set_verification_controls_enabled(False)
+        self._oauth_receiver = receiver
+        if receiver is not None:
+            self.oauth_button.setText("Cancel Authorization")
+            self.oauth_button.setEnabled(True)
+        else:
+            self.oauth_button.setEnabled(False)
+        self._log_verification(f"Browser OAuth started: {provider.name} ({mode or 'Default'}).")
+        thread = QThread(self)
+        thread.setObjectName(f"InvioBrowserOAuth-{provider.id}")
+        worker = _BrowserOAuthWorker(
+            self.provider_runtime, provider.id, session, credentials, mode, callback_url=callback_url, receiver=receiver
+        )
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._oauth_succeeded)
+        worker.failed.connect(self._oauth_failed)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._oauth_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._oauth_thread = thread
+        self._oauth_worker = worker
+        thread.start()
+
+    @Slot(object)
+    def _oauth_succeeded(self, result: ExternalOAuthConnectionResult) -> None:
+        updates = dict(result.credential_updates)
+        selected_label = ""
+        if result.choices and result.choice_credential_key:
+            if len(result.choices) == 1:
+                selected = result.choices[0].value
+                selected_label = result.choices[0].label
+            else:
+                selected = _choose_oauth_account(self, result.choices)
+                if not selected:
+                    set_inline_status(self.oauth_status_label, "Provider account selection cancelled; reconnect to complete setup.", "warning")
+                    return
+                selected_label = next((choice.label for choice in result.choices if choice.value == selected), selected)
+            updates[result.choice_credential_key] = selected
+        for key, value in updates.items():
+            field = self.credential_inputs.get(key)
+            if field is not None:
+                field.setText(value)
+        self._validated = False
+        self._last_verification_at = ""
+        message = result.message
+        if selected_label:
+            message = f"{message} Account: {selected_label}."
+        set_inline_status(self.oauth_status_label, message, "success")
+        set_inline_status(self.validation_label, "OAuth connected. Run API Test before saving the account.", "neutral")
+        provider = self._current_provider()
+        if provider is not None:
+            self._log_verification(f"Browser OAuth connected: {provider.name} ({self.mode_combo.currentText().strip() or 'Default'}).")
+
+    @Slot(str)
+    def _oauth_failed(self, message: str) -> None:
+        safe = self._safe_verification_message(message)
+        provider = self._current_provider()
+        if "cancelled" in safe.casefold():
+            set_inline_status(self.oauth_status_label, "Provider authorization cancelled.", "neutral")
+            if provider is not None:
+                self._log_verification(f"Browser OAuth cancelled: {provider.name}.")
+            return
+        set_inline_status(self.oauth_status_label, f"Authorization failed: {safe}", "danger")
+        if provider is not None:
+            self._log_verification(f"Browser OAuth failed: {provider.name}: {safe}")
+        compact_message_box(self, "Provider Authorization Failed", safe, icon=QMessageBox.Icon.Warning)
+
+    @Slot()
+    def _oauth_finished(self) -> None:
+        self._oauth_worker = None
+        self._oauth_thread = None
+        self._oauth_receiver = None
+        self._set_verification_controls_enabled(True)
+        self._update_oauth_controls()
 
     def _has_api_test_adapter(self) -> bool:
         provider = self._current_provider()
@@ -419,6 +700,7 @@ class AddAccountDialog(QDialog):
         self.cancel_button.setEnabled(enabled)
         self.add_button.setEnabled(enabled)
         self.test_button.setEnabled(enabled and self._has_api_test_adapter())
+        self.oauth_button.setEnabled(enabled and self.provider_runtime.supports_browser_oauth(self._current_provider().id) if self._current_provider() is not None else False)
 
     def _safe_verification_message(self, message: str) -> str:
         safe = str(message).strip() or "Provider API verification failed."
@@ -537,14 +819,14 @@ class AddAccountDialog(QDialog):
         self.accept()
 
     def reject(self) -> None:  # type: ignore[override]
-        if self._verification_running():
-            self.validation_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+        if self._verification_running() or self._oauth_running():
+            self.validation_label.setText("Provider verification/authorization is still running. Wait for it to finish before closing this dialog.")
             return
         super().reject()
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        if self._verification_running():
-            self.validation_label.setText("API Test is still running. Wait for it to finish before closing this dialog.")
+        if self._verification_running() or self._oauth_running():
+            self.validation_label.setText("Provider verification/authorization is still running. Wait for it to finish before closing this dialog.")
             event.ignore()
             return
         super().closeEvent(event)

@@ -1,3 +1,12 @@
+## v1.0.0.1.49.1 — Persistent Browser OAuth + MSI Launch Integration
+
+- Add optional P13 Browser OAuth interface v1 without changing External Provider Adapter v1 execution semantics.
+- Add system-browser authorization with strict callback/state validation, PKCE support, single-use loopback callback receiver, cancellation/timeout, provider account discovery and fail-closed credential-field validation.
+- Persist only refresh/bootstrap credentials through the existing account/keyring workflow; access tokens are never persisted by the browser-auth host.
+- Preserve manual provider credential setup and all current provider Task/send/API-test behavior.
+- Add per-user Start Menu `Vib Tools/Invio` MSI shortcut, validate its target in Windows CI, and verify removal on uninstall.
+- Approved Signing Option C: no signing service/certificate is introduced; Windows `Unknown Publisher` may remain.
+
 ## v1.0.0.1.49 — Provider/Settings Header + Template/Reports Table Layout Correction
 
 - Compact Provider and Settings page/section header spacing without changing any controls, callbacks or persistence.

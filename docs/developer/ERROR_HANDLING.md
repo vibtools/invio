@@ -1,3 +1,7 @@
+## Browser OAuth errors — v1.0.0.1.49.1
+
+Browser authorization fails closed for unsupported/invalid redirect URIs, unavailable loopback ports, provider authorization denial, callback redirect mismatch, duplicate/missing state or code, state mismatch, timeout/cancel, non-HTTPS OAuth network endpoints, malformed token/discovery responses, undeclared credential output and any attempt by browser auth to persist access tokens. UI error messages pass through the existing secret-redaction boundary.
+
 ## v1.0.0.1.49
 
 No error-handling behavior changes. Provider install/uninstall errors, Settings save feedback, Invoice Template validation/actions, Reports export/clear-history handling and all backend failure semantics remain unchanged.

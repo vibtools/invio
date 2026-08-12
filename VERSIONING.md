@@ -1,3 +1,13 @@
+## v1.0.0.1.49.1 Mapping
+
+- Application: `1.0.0.1.49.1`
+- Tag: `v1.0.0.1.49.1`
+- PE: `1.0.1.4901`
+- MSI: `1.1.4901`
+- Python wheel: `1.0.0.1.49.1`
+
+This six-component hotfix uses the existing frozen version parser/mapping contract; no versioning architecture change is introduced.
+
 ## Current mapping — v1.0.0.1.49
 
 - Application: `1.0.0.1.49`

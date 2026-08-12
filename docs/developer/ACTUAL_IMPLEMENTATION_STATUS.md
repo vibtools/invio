@@ -1,3 +1,7 @@
+## v1.0.0.1.49.1 status
+
+Implemented: optional P13 Browser OAuth interface v1, system-browser authorization orchestration, strict callback/state/PKCE handling, protected refresh/bootstrap credential handoff, provider account discovery support, and MSI Start Menu launch integration. Existing provider task/send interface remains v1 and storage schema remains unchanged. Authenticode signing is explicitly not included under owner-approved Signing Option C.
+
 ## v1.0.0.1.49
 
 Implemented the locked UI-only Provider/Settings compact-header correction and Invoice Templates/Reports table-layout correction. Existing data projection, callbacks, provider/runtime, storage and task architecture remain unchanged.

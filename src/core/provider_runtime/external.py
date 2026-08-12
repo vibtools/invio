@@ -13,6 +13,7 @@ from ..provider_manager import ProviderManager, ProviderManifest, ProviderManife
 from .adapters import ProviderCapabilityProfile, ProviderSchedulingPolicy, registered_provider_ids
 
 EXTERNAL_ADAPTER_INTERFACE_VERSION = 1
+BROWSER_OAUTH_INTERFACE_VERSION = 1
 
 SAFE_READ = "SAFE_READ"
 IDEMPOTENT_MUTATION = "IDEMPOTENT_MUTATION"
@@ -38,6 +39,53 @@ class ExternalAccountTestContext:
     credentials: dict[str, str]
     mode: str
     request: Callable[..., dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class BrowserOAuthProfile:
+    button_label: str
+    redirect_uri: str = ""
+    redirect_uri_credential_key: str = ""
+    pkce_required: bool = True
+    connect_required_credential_keys: tuple[str, ...] = ()
+    timeout_seconds: int = 180
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOAuthAuthorizationContext:
+    provider_id: str
+    credentials: dict[str, str]
+    mode: str
+    redirect_uri: str
+    state: str
+    code_verifier: str
+    code_challenge: str
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOAuthCompletionContext:
+    provider_id: str
+    credentials: dict[str, str]
+    mode: str
+    redirect_uri: str
+    authorization_code: str
+    callback_params: dict[str, str]
+    code_verifier: str
+    request: Callable[..., Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOAuthAccountChoice:
+    value: str
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOAuthConnectionResult:
+    credential_updates: dict[str, str]
+    message: str
+    choices: tuple[ExternalOAuthAccountChoice, ...] = ()
+    choice_credential_key: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,6 +254,28 @@ class ExternalAdapterRegistry:
                 raise ExternalAdapterError("Adapter scheduling_policy must be ProviderSchedulingPolicy or None.")
             if scheduling is not None and scheduling.burst_capacity != 1:
                 raise ExternalAdapterError("External scheduling_policy burst_capacity must be 1.")
+
+            browser_declaration = manifest.browser_auth
+            browser_profile = getattr(adapter, "browser_oauth_profile", None)
+            if browser_declaration is not None:
+                if browser_declaration.interface_version != BROWSER_OAUTH_INTERFACE_VERSION:
+                    raise ExternalAdapterError("Unsupported browser OAuth interface version.")
+                if not isinstance(browser_profile, BrowserOAuthProfile):
+                    raise ExternalAdapterError("Manifest declares browser_auth but adapter browser_oauth_profile is missing or invalid.")
+                if not browser_profile.button_label.strip():
+                    raise ExternalAdapterError("Browser OAuth button label is required.")
+                if bool(browser_profile.redirect_uri) == bool(browser_profile.redirect_uri_credential_key):
+                    raise ExternalAdapterError(
+                        "Browser OAuth profile must define exactly one redirect URI source: fixed redirect_uri or redirect_uri_credential_key."
+                    )
+                if browser_profile.timeout_seconds < 30 or browser_profile.timeout_seconds > 900:
+                    raise ExternalAdapterError("Browser OAuth timeout must be between 30 and 900 seconds.")
+                if not callable(getattr(adapter, "build_oauth_authorization_url", None)):
+                    raise ExternalAdapterError("Browser OAuth adapter build_oauth_authorization_url is not callable.")
+                if not callable(getattr(adapter, "complete_oauth_authorization", None)):
+                    raise ExternalAdapterError("Browser OAuth adapter complete_oauth_authorization is not callable.")
+            elif browser_profile is not None:
+                raise ExternalAdapterError("Adapter exposes browser_oauth_profile but manifest does not declare browser_auth.")
 
             if "api_test" in profile.executable_capabilities and not callable(getattr(adapter, "test_account", None)):
                 raise ExternalAdapterError("Adapter declares api_test but test_account is not callable.")

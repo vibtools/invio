@@ -1,3 +1,7 @@
+## v1.0.0.1.49.1 compatibility
+
+Backward-compatible hotfix over v1.0.0.1.49. Existing External Provider Adapter interface v1, manually configured provider credentials, account records, protected credential references, Task snapshots, delivery ledger, WorkerManager, storage schema and business behavior remain compatible. Browser OAuth is optional and activates only when an installed external provider manifest declares `browser_auth` interface v1. The MSI remains a per-user LocalAppData installation with the existing UpgradeCode; the added Start Menu shortcut does not migrate application data.
+
 ## v1.0.0.1.49 UI compatibility
 
 Presentation-only correction. Provider install/load/uninstall behavior, Settings persistence, Invoice Template records/actions, Reports generation/export/clear-history behavior, all backend contracts and persisted data remain compatible with v1.0.0.1.48.9. No table columns or row values are removed.

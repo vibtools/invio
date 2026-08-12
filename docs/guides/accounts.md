@@ -1,3 +1,15 @@
+## Connect a browser-OAuth provider — v1.0.0.1.49.1
+
+1. Install a trusted provider bundle that declares Browser OAuth v1.
+2. Open **Accounts > Add Account**, select the provider and mode, and enter the provider's required pre-connect fields.
+3. Choose **Connect <Provider>**. Invio opens the system default browser; embedded WebViews are not used.
+4. Complete provider login/consent. Loopback callbacks return directly to Invio. Providers that require a production HTTPS redirect can require one-time pasting of the complete callback URL into Invio.
+5. If more than one organisation/tenant/location is authorized, select the intended account.
+6. Run **API Test** and save the Invio account.
+7. Subsequent access-token renewal is automatic through the provider adapter's saved refresh-token workflow. Reconnect only when the provider authorization is revoked/expired or permissions change.
+
+Manual refresh-token/account setup remains available for existing provider bundles and existing saved accounts.
+
 ## v1.0.0.1.48.8 Status Column Sizing
 
 The flat Accounts table is unchanged except that the `STATUS` column now sizes to the canonical badge's natural width. This prevents clipping on Windows font/DPI environments while keeping `ACCOUNT`, `PROVIDER`, `ACTION`, search, filters and pagination behavior unchanged.

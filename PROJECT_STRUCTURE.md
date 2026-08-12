@@ -1,3 +1,11 @@
+## v1.0.0.1.49.1 structure delta
+
+- `src/core/provider_runtime/oauth.py` — browser OAuth session/state/PKCE/callback/loopback primitives.
+- Existing `src/core/provider_runtime/external.py` gains optional Browser OAuth v1 metadata/contracts while retaining External Provider Adapter v1.
+- Existing `src/core/provider_manager/manager.py` accepts optional `browser_auth` manifest metadata.
+- `tests/test_browser_oauth.py` verifies the new host authorization boundary.
+- No folder reorganization or architecture migration is performed.
+
 ## v1.0.0.1.49 structure note
 
 No folder/module/API architecture change. Runtime UI changes are confined to existing Provider, Settings, Invoice Templates and Reports page composition plus their existing scoped QSS. Directly required tests, version metadata and documentation are synchronized.

@@ -60,6 +60,42 @@ def generate_wix_source(dist: Path, output: Path) -> Path:
     company_dir = ET.SubElement(local, _q("Directory"), {"Id": "VibToolsFolder", "Name": "Vib Tools"})
     install_dir = ET.SubElement(company_dir, _q("Directory"), {"Id": "INSTALLFOLDER", "Name": "Invio"})
 
+    program_menu = ET.SubElement(standard, _q("StandardDirectory"), {"Id": "ProgramMenuFolder"})
+    vib_tools_menu = ET.SubElement(program_menu, _q("Directory"), {"Id": "VibToolsProgramMenuFolder", "Name": "Vib Tools"})
+    shortcut_component = ET.SubElement(
+        vib_tools_menu,
+        _q("Component"),
+        {
+            "Id": "C_InvioStartMenuShortcut",
+            "Guid": "{" + str(uuid.uuid5(COMPONENT_NAMESPACE, "start-menu/Invio.lnk")).upper() + "}",
+        },
+    )
+    ET.SubElement(
+        shortcut_component,
+        _q("Shortcut"),
+        {
+            "Id": "S_InvioStartMenuShortcut",
+            "Name": "Invio",
+            "Description": "Invio Invoice Automation",
+            "Target": "[INSTALLFOLDER]Invio.exe",
+            "WorkingDirectory": "INSTALLFOLDER",
+        },
+    )
+    ET.SubElement(shortcut_component, _q("RemoveFolder"), {"Id": "R_VibToolsProgramMenuFolder", "On": "uninstall"})
+    ET.SubElement(
+        shortcut_component,
+        _q("RegistryValue"),
+        {
+            "Root": "HKCU",
+            "Key": r"Software\Vib Tools\Invio",
+            "Name": "StartMenuShortcut",
+            "Type": "integer",
+            "Value": "1",
+            "KeyPath": "yes",
+        },
+    )
+    ET.SubElement(feature, _q("ComponentRef"), {"Id": "C_InvioStartMenuShortcut"})
+
     directory_nodes: dict[Path, ET.Element] = {Path("."): install_dir}
     for directory in sorted((path for path in dist.rglob("*") if path.is_dir()), key=lambda p: (len(p.relative_to(dist).parts), p.as_posix().casefold())):
         relative = directory.relative_to(dist)

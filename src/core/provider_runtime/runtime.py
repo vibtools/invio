@@ -17,7 +17,7 @@ from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from ...accounts.models import Account
@@ -46,12 +46,27 @@ from .external import (
     IDEMPOTENT_MUTATION,
     NON_IDEMPOTENT_MUTATION,
     SAFE_READ,
+    BrowserOAuthProfile,
     ExternalAccountTestContext,
     ExternalAdapterError,
+    ExternalOAuthAuthorizationContext,
+    ExternalOAuthCompletionContext,
+    ExternalOAuthConnectionResult,
     ExternalAdapterRegistry,
     ExternalRecipientExecutionContext,
     ExternalRecipientResult,
     ExternalTaskValidationContext,
+)
+from .oauth import (
+    BrowserOAuthError,
+    BrowserOAuthSession,
+    LoopbackOAuthReceiver,
+    generate_pkce_verifier,
+    generate_state,
+    is_loopback_redirect,
+    parse_oauth_callback,
+    pkce_s256_challenge,
+    validate_redirect_uri,
 )
 from .preflight import canonical_refrens_base_url, preflight_runtime_inputs
 
@@ -340,6 +355,43 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
     return data
 
 
+def _stdlib_oauth_array_transport(
+    method: str, url: str, headers: dict[str, str], body: bytes | None, timeout: float
+) -> list[Any]:
+    """OAuth-only JSON array transport for provider discovery endpoints such as Xero /connections."""
+    request = Request(url, data=body, headers=headers, method=method.upper())
+    try:
+        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - OAuth URL is validated before this call
+            raw = response.read()
+    except HTTPError as exc:
+        try:
+            raw = exc.read()
+        except IncompleteRead as read_exc:
+            raw = bytes(read_exc.partial or b"")
+        try:
+            data = json.loads(raw.decode("utf-8")) if raw else {}
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            data = {"raw": raw.decode("utf-8", errors="replace")[:1000]}
+        status = int(exc.code)
+        raise ProviderRuntimeError(
+            _extract_api_error(data) or f"OAuth endpoint returned HTTP {status}.",
+            category="authentication" if status in {400, 401, 403} else "http",
+            retryable=False,
+            http_status=status,
+        ) from exc
+    except (URLError, TimeoutError, OSError, IncompleteRead) as exc:
+        raise _network_runtime_error(exc) from exc
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderRuntimeError("OAuth endpoint returned invalid JSON.", category="response", retryable=False) from exc
+    if not isinstance(data, list):
+        raise ProviderRuntimeError("OAuth endpoint returned an unexpected response format.", category="response", retryable=False)
+    return data
+
+
 def _form_body(values: dict[str, Any]) -> bytes:
     clean: list[tuple[str, str]] = []
     for key, value in values.items():
@@ -517,6 +569,169 @@ class ProviderRuntime:
         external = self.external_adapter(provider_id)
         return bool(external is not None and "api_test" in external.profile.executable_capabilities)
 
+    def supports_browser_oauth(self, provider_id: str) -> bool:
+        external = self.external_adapter(provider_id)
+        return bool(external is not None and isinstance(getattr(external, "browser_oauth_profile", None), BrowserOAuthProfile))
+
+    def browser_oauth_profile(self, provider_id: str) -> BrowserOAuthProfile | None:
+        external = self.external_adapter(provider_id)
+        profile = getattr(external, "browser_oauth_profile", None) if external is not None else None
+        return profile if isinstance(profile, BrowserOAuthProfile) else None
+
+    def create_browser_oauth_session(
+        self, provider_id: str, credentials: dict[str, str], *, mode: str = ""
+    ) -> BrowserOAuthSession:
+        external = self.external_adapter(provider_id)
+        profile = self.browser_oauth_profile(provider_id)
+        if external is None or profile is None:
+            raise ProviderRuntimeError("This provider does not expose the Invio browser OAuth contract.", category="preflight")
+        missing = [
+            key for key in profile.connect_required_credential_keys if not str(credentials.get(key, "")).strip()
+        ]
+        if missing:
+            raise ProviderRuntimeError(
+                "Browser authorization requires: " + ", ".join(missing) + ".", category="preflight", retryable=False
+            )
+        redirect_uri = str(profile.redirect_uri).strip()
+        if profile.redirect_uri_credential_key:
+            redirect_uri = str(credentials.get(profile.redirect_uri_credential_key, "")).strip()
+        try:
+            redirect_uri = validate_redirect_uri(redirect_uri)
+        except BrowserOAuthError as exc:
+            raise ProviderRuntimeError(str(exc), category="preflight", retryable=False) from exc
+
+        state = generate_state()
+        code_verifier = generate_pkce_verifier() if profile.pkce_required else ""
+        code_challenge = pkce_s256_challenge(code_verifier) if code_verifier else ""
+        context = ExternalOAuthAuthorizationContext(
+            provider_id=provider_id.strip().lower(),
+            credentials=dict(credentials),
+            mode=str(mode),
+            redirect_uri=redirect_uri,
+            state=state,
+            code_verifier=code_verifier,
+            code_challenge=code_challenge,
+        )
+        try:
+            authorization_url = str(external.build_oauth_authorization_url(context)).strip()
+        except ProviderRuntimeError:
+            raise
+        except BaseException as exc:
+            raise ProviderRuntimeError(
+                f"Browser OAuth authorization URL generation failed: {type(exc).__name__}: {exc}",
+                category="authentication", retryable=False,
+            ) from exc
+        parsed = urlsplit(authorization_url)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            raise ProviderRuntimeError(
+                "Browser OAuth authorization URL must use an absolute HTTPS provider endpoint.",
+                category="authentication", retryable=False,
+            )
+        return BrowserOAuthSession(
+            provider_id=provider_id.strip().lower(),
+            authorization_url=authorization_url,
+            redirect_uri=redirect_uri,
+            state=state,
+            code_verifier=code_verifier,
+            code_challenge=code_challenge,
+            callback_mode="loopback" if is_loopback_redirect(redirect_uri) else "manual",
+            timeout_seconds=int(profile.timeout_seconds),
+        )
+
+    @staticmethod
+    def wait_for_browser_oauth_callback(session: BrowserOAuthSession) -> str:
+        if session.callback_mode != "loopback":
+            raise ProviderRuntimeError("This OAuth session requires the browser callback URL to be pasted into Invio.")
+        try:
+            return LoopbackOAuthReceiver(session.redirect_uri).wait(session.timeout_seconds)
+        except BrowserOAuthError as exc:
+            raise ProviderRuntimeError(str(exc), category="authentication", retryable=False) from exc
+
+    def _external_oauth_request(
+        self, *, stage: str, method: str, url: str, headers: dict[str, str] | None = None,
+        body: bytes | None = None, json_data: dict[str, Any] | None = None, response_kind: str = "object",
+    ) -> Any:
+        del stage
+        parsed = urlsplit(str(url).strip())
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            raise ProviderRuntimeError("OAuth network requests must use absolute HTTPS endpoints.", category="authentication")
+        if body is not None and json_data is not None:
+            raise ProviderRuntimeError("OAuth request cannot provide both body and json_data.")
+        if response_kind not in {"object", "array"}:
+            raise ProviderRuntimeError("OAuth request declared an unsupported response kind.", category="preflight")
+        effective_headers = dict(headers or {})
+        effective_body = body
+        if json_data is not None:
+            effective_headers.setdefault("Content-Type", "application/json")
+            effective_body = _json_body(json_data)
+        if response_kind == "array":
+            if self._transport is _stdlib_transport:
+                return _stdlib_oauth_array_transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+            result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+            if not isinstance(result, list):
+                raise ProviderRuntimeError("OAuth endpoint returned an unexpected response format.", category="response")
+            return result
+        result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+        if not isinstance(result, dict):
+            raise ProviderRuntimeError("OAuth endpoint returned an unexpected response format.", category="response")
+        return result
+
+    def complete_browser_oauth(
+        self, provider_id: str, session: BrowserOAuthSession, callback_url: str,
+        credentials: dict[str, str], *, mode: str = "",
+    ) -> ExternalOAuthConnectionResult:
+        normalized = provider_id.strip().lower()
+        if session.provider_id != normalized:
+            raise ProviderRuntimeError("OAuth session provider does not match the selected provider.", category="authentication")
+        external = self.external_adapter(normalized)
+        if external is None or not self.supports_browser_oauth(normalized):
+            raise ProviderRuntimeError("Browser OAuth adapter is unavailable.", category="preflight")
+        try:
+            callback_params = parse_oauth_callback(
+                callback_url, redirect_uri=session.redirect_uri, expected_state=session.state
+            )
+        except BrowserOAuthError as exc:
+            raise ProviderRuntimeError(str(exc), category="authentication", retryable=False) from exc
+        context = ExternalOAuthCompletionContext(
+            provider_id=normalized,
+            credentials=dict(credentials),
+            mode=str(mode),
+            redirect_uri=session.redirect_uri,
+            authorization_code=callback_params["code"],
+            callback_params=callback_params,
+            code_verifier=session.code_verifier,
+            request=lambda **kwargs: self._external_oauth_request(**kwargs),
+        )
+        try:
+            result = external.complete_oauth_authorization(context)
+        except ProviderRuntimeError:
+            raise
+        except BaseException as exc:
+            raise ProviderRuntimeError(
+                f"Browser OAuth completion failed: {type(exc).__name__}: {exc}",
+                category="authentication", retryable=False,
+            ) from exc
+        if not isinstance(result, ExternalOAuthConnectionResult):
+            raise ProviderRuntimeError("Browser OAuth adapter returned an invalid connection result.", category="response")
+        manifest = self._external_registry.manager.get_installed(normalized) if self._external_registry is not None else None
+        allowed_keys = {field.key for field in manifest.credential_fields} if manifest is not None else set()
+        updates = {str(key): str(value) for key, value in result.credential_updates.items()}
+        if allowed_keys and any(key not in allowed_keys for key in updates):
+            raise ProviderRuntimeError("Browser OAuth adapter returned an undeclared credential field.", category="response")
+        if any("access_token" in key.casefold() for key in updates):
+            raise ProviderRuntimeError(
+                "Browser OAuth adapter attempted to persist an access token. Invio persists refresh/bootstrap credentials only.",
+                category="response",
+            )
+        if result.choice_credential_key and allowed_keys and result.choice_credential_key not in allowed_keys:
+            raise ProviderRuntimeError("Browser OAuth account-choice field is not declared by the provider manifest.", category="response")
+        return ExternalOAuthConnectionResult(
+            credential_updates=updates,
+            message=str(result.message).strip() or "Provider authorization completed.",
+            choices=tuple(result.choices),
+            choice_credential_key=str(result.choice_credential_key).strip(),
+        )
+
     def _external_api_test_request(
         self,
         *,
@@ -635,7 +850,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -2177,7 +2392,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2408,7 +2623,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

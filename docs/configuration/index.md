@@ -1,3 +1,7 @@
+## Browser OAuth provider configuration — v1.0.0.1.49.1
+
+If a trusted external provider declares Browser OAuth v1, Add/Edit Account displays a provider-specific **Connect** action. Enter only the provider bootstrap fields required before authorization (for example Client ID/Secret and an exact registered Redirect URI where applicable), connect in the system browser, allow Invio to capture/validate the callback, select an organisation/tenant if multiple are returned, then run API Test and save the account. Once saved, refresh/bootstrap credentials use the existing protected OS credential store. Access tokens are transient and are not written to account storage by the browser-auth host.
+
 ## v1.0.0.1.49 configuration impact
 
 No configuration keys or defaults change. Provider/Settings compact-header geometry and Invoice Templates/Reports table layout are presentation-only.

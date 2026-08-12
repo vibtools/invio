@@ -1,3 +1,7 @@
+## v1.0.0.1.49.1 Windows MSI behavior
+
+The MSI remains a per-user installation under `%LOCALAPPDATA%\Vib Tools\Invio`. It now creates `Start Menu > Vib Tools > Invio`, targeting the installed `Invio.exe`, and removes that shortcut on uninstall. Signing Option C is intentionally retained: the MSI is not Authenticode-signed, so Windows can display an `Unknown Publisher` warning. This warning is separate from MSI payload/install functionality.
+
 ## v1.0.0.1.49
 
 Installation requirements and dependency set are unchanged from v1.0.0.1.48.9. This update changes UI layout only.

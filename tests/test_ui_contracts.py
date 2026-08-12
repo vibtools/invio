@@ -505,6 +505,25 @@ class UiContractTests(unittest.TestCase):
         self.assertIn('dialog = AddAccountDialog(providers, self, provider_runtime=self.provider_runtime, log_callback=self.log)', window)
         self.assertIn('if account.status != "Verified"', window)
 
+    def test_v1491_browser_oauth_is_additive_and_uses_system_browser_with_existing_account_dialog(self):
+        root = Path(__file__).resolve().parents[1]
+        dialogs = (root / "src" / "ui" / "dialogs.py").read_text(encoding="utf-8")
+        runtime = (root / "src" / "core" / "provider_runtime" / "runtime.py").read_text(encoding="utf-8")
+        manager = (root / "src" / "core" / "provider_manager" / "manager.py").read_text(encoding="utf-8")
+        oauth = (root / "src" / "core" / "provider_runtime" / "oauth.py").read_text(encoding="utf-8")
+        self.assertIn('self.oauth_host.setObjectName("BrowserOAuthHost")', dialogs)
+        self.assertIn('webbrowser.open(session.authorization_url', dialogs)
+        self.assertIn('self.provider_runtime.create_browser_oauth_session', dialogs)
+        self.assertIn('self.runtime.complete_browser_oauth', dialogs)
+        self.assertIn('"OAuth connected. Run API Test before saving the account."', dialogs)
+        self.assertIn('def supports_browser_oauth(self, provider_id: str)', runtime)
+        self.assertIn('def create_browser_oauth_session(', runtime)
+        self.assertIn('def complete_browser_oauth(', runtime)
+        self.assertIn('browser_auth: BrowserAuthDeclaration | None', manager)
+        self.assertIn('secrets.compare_digest', oauth)
+        self.assertIn('class LoopbackOAuthReceiver:', oauth)
+        self.assertNotIn('QWebEngine', dialogs)
+
     def test_p02_durable_storage_is_wired_without_changing_task_thread_boundary(self):
         root = Path(__file__).resolve().parents[1]
         window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
