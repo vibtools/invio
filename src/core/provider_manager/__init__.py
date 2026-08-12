@@ -1,3 +1,31 @@
-from .manager import BrowserAuthDeclaration, CredentialField, ProviderManager, ProviderManifest, ProviderManifestError, RuntimeAdapterDeclaration
+from .manager import (
+    BrowserAuthDeclaration,
+    CREDENTIAL_OWNERSHIP_DISCOVERED,
+    CREDENTIAL_OWNERSHIP_GENERATED,
+    CREDENTIAL_OWNERSHIP_MANAGED,
+    CREDENTIAL_OWNERSHIP_USER_CHOICE,
+    CREDENTIAL_OWNERSHIP_USER_REQUIRED,
+    CredentialChoice,
+    CredentialField,
+    OnboardingDeclaration,
+    ProviderManager,
+    ProviderManifest,
+    ProviderManifestError,
+    RuntimeAdapterDeclaration,
+)
 
-__all__ = ["ProviderManager", "ProviderManifest", "ProviderManifestError", "CredentialField", "RuntimeAdapterDeclaration", "BrowserAuthDeclaration"]
+__all__ = [
+    "ProviderManager",
+    "ProviderManifest",
+    "ProviderManifestError",
+    "CredentialField",
+    "CredentialChoice",
+    "RuntimeAdapterDeclaration",
+    "BrowserAuthDeclaration",
+    "OnboardingDeclaration",
+    "CREDENTIAL_OWNERSHIP_USER_REQUIRED",
+    "CREDENTIAL_OWNERSHIP_USER_CHOICE",
+    "CREDENTIAL_OWNERSHIP_GENERATED",
+    "CREDENTIAL_OWNERSHIP_DISCOVERED",
+    "CREDENTIAL_OWNERSHIP_MANAGED",
+]

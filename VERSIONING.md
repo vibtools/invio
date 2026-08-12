@@ -1,3 +1,13 @@
+## v1.0.0.1.49.2 Mapping
+
+- Application: `1.0.0.1.49.2`
+- Tag: `v1.0.0.1.49.2`
+- PE: `1.0.1.4902`
+- MSI: `1.1.4902`
+- Python wheel: `1.0.0.1.49.2`
+
+This is a compatibility-correction release derived from the owner-frozen `v1.0.0.1.49.1 Provider Easy Onboarding V1` artifact. No provider bundle version changes are required.
+
 ## v1.0.0.1.49.1 Mapping
 
 - Application: `1.0.0.1.49.1`
@@ -320,3 +330,7 @@ P14 WiX version-verification corrective release. The pinned WiX Toolset remains 
 ## v1.0.0.1.38
 
 P14 build-verification correction derived from v1.37. Application identity maps to PE version `1.0.1.38`, MSI version `1.1.38`, and tag `v1.0.0.1.38`. The only build-behavior correction is suppressing WiX's default `.wixpdb` sidecar from the approved release directory; release topology and runtime behavior remain unchanged.
+
+## v1.0.0.1.49.1 same-version approved continuation
+
+Provider Easy Onboarding V1 is implemented on the frozen, unreleased `v1.0.0.1.49.1` candidate (`39574bc...`) and therefore does not create a new application version identity. Companion provider bundles advance independently to `v1.2.0`. A Git tag/release must still wait for the final candidate to pass the required non-tag CI gates.

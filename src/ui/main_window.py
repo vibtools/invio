@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.49.1 started.")
+        self.log("Invio v1.0.0.1.49.2 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("SidebarFooter")
         footer_layout = vbox(footer, (8, 8, 8, 8), 2)
         footer_layout.addWidget(label("Vib Tools", "SidebarFooterTitle", False))
-        footer_layout.addWidget(label("Production • v1.0.0.1.49.1", "SidebarFooterMeta", False))
+        footer_layout.addWidget(label("Production • v1.0.0.1.49.2", "SidebarFooterMeta", False))
         layout.addWidget(footer)
         return sidebar
 

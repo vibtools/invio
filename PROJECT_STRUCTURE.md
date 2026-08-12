@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 structure delta
+
+No folder/module reorganization is introduced. The runtime correction is confined to `src/ui/dialogs.py`; directly required regression/version metadata and documentation are synchronized. New release evidence is `PATCH_MANIFEST_v1.0.0.1.49.2.md`, `docs/release-notes/1.0.0.1.49.2.md`, and private `/project/` forensic records carried only in the replace-ready delta.
+
 ## v1.0.0.1.49.1 structure delta
 
 - `src/core/provider_runtime/oauth.py` — browser OAuth session/state/PKCE/callback/loopback primitives.
@@ -333,3 +337,9 @@ No core runtime module, page, schema table, WorkerManager subsystem, dependency 
 - `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.43.0.md` — approved UI findings/scope record.
 - `project/specifications/BASELINE_FREEZE_v1.0.0.1.43.0.md` — v1.42.0 parent baseline and v1.43.0 candidate boundary.
 - No folder/module reorganization, database schema change, provider/runtime interface, setting key, dependency or business workflow is introduced.
+
+## Provider Easy Onboarding V1 additions
+
+- `tests/test_provider_onboarding.py` — generic manifest/runtime/Quick Connect source contracts.
+- `examples/easy_onboarding_provider.md` — provider-developer onboarding declaration example.
+- Existing `src/core/provider_manager/`, `src/core/provider_runtime/`, and `src/ui/dialogs.py` own the additive metadata, host runtime and Add/Edit Account orchestration; no new provider-specific core module is introduced.

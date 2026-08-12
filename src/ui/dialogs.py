@@ -36,6 +36,7 @@ from ..core.provider_manager import ProviderManifest
 from ..core.provider_runtime import (
     BrowserOAuthSession,
     ExternalOAuthConnectionResult,
+    ExternalOnboardingResult,
     LoopbackOAuthReceiver,
     ProviderRuntime,
     ProviderRuntimeError,
@@ -90,6 +91,34 @@ class _AccountVerificationWorker(QObject):
             self.failed.emit("API verification failed because of an unexpected internal error.")
         else:
             self.succeeded.emit(message)
+        finally:
+            self.finished.emit()
+
+
+class _AccountOnboardingWorker(QObject):
+    succeeded = Signal(object)
+    failed = Signal(str)
+    finished = Signal()
+
+    def __init__(self, runtime: ProviderRuntime, provider_id: str, credentials: dict[str, str], mode: str) -> None:
+        super().__init__()
+        self.runtime = runtime
+        self.provider_id = provider_id
+        self.credentials = dict(credentials)
+        self.mode = mode
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            result = self.runtime.prepare_external_account(
+                self.provider_id, self.credentials, mode=self.mode
+            )
+        except ProviderRuntimeError as exc:
+            self.failed.emit(str(exc))
+        except Exception:
+            self.failed.emit("Provider account preparation failed because of an unexpected internal error.")
+        else:
+            self.succeeded.emit(result)
         finally:
             self.finished.emit()
 
@@ -363,7 +392,9 @@ class AddAccountDialog(QDialog):
         self.log_callback = log_callback
         self.account = account
         self._provider_locked = account is not None
-        self.credential_inputs: dict[str, QLineEdit] = {}
+        self.credential_inputs: dict[str, QLineEdit | QComboBox] = {}
+        self.credential_groups: dict[str, QWidget] = {}
+        self._advanced_credentials_visible = False
         self._validated = False
         self._last_verification_at = ""
         self._verification_thread: QThread | None = None
@@ -372,6 +403,10 @@ class AddAccountDialog(QDialog):
         self._oauth_thread: QThread | None = None
         self._oauth_worker: _BrowserOAuthWorker | None = None
         self._oauth_receiver: LoopbackOAuthReceiver | None = None
+        self._onboarding_thread: QThread | None = None
+        self._onboarding_worker: _AccountOnboardingWorker | None = None
+        self._pending_onboarding_after_oauth = False
+        self._pending_auto_verify_after_onboarding = False
         self.setWindowTitle("Edit Account" if account is not None else "Add Account")
         self.setModal(True)
         _apply_compact_dialog_geometry(
@@ -408,6 +443,10 @@ class AddAccountDialog(QDialog):
         self.credentials_layout.setHorizontalSpacing(CONST.dialog_gap)
         self.credentials_layout.setVerticalSpacing(CONST.dialog_gap)
         self.credentials_card.layout().addWidget(self.credentials_host)
+        self.advanced_button = button("Advanced / Manual Setup", "ghost")
+        self.advanced_button.setCheckable(True)
+        self.advanced_button.toggled.connect(self._toggle_advanced_credentials)
+        self.credentials_card.layout().addWidget(self.advanced_button)
         self.oauth_host = QWidget()
         self.oauth_host.setObjectName("BrowserOAuthHost")
         oauth_row = QHBoxLayout(self.oauth_host)
@@ -455,7 +494,7 @@ class AddAccountDialog(QDialog):
             for key, value in account.credentials.items():
                 field = self.credential_inputs.get(key)
                 if field is not None:
-                    field.setText(value)
+                    self._set_credential_widget_value(field, value)
             self._reset_validation()
             self._update_oauth_controls()
         QTimer.singleShot(0, (self.account_name if self._provider_locked else self.provider_combo).setFocus)
@@ -464,6 +503,22 @@ class AddAccountDialog(QDialog):
         provider_id = self.provider_combo.currentData()
         return next((item for item in self.providers if item.id == provider_id), None)
 
+    def _supports_onboarding(self, provider_id: str) -> bool:
+        """Treat Easy Onboarding as an optional additive runtime capability.
+
+        Browser-OAuth-only/legacy runtime collaborators used by the existing
+        Add Account contract predate Provider Easy Onboarding V1 and therefore
+        may not expose ``supports_onboarding`` at all.  Missing capability
+        methods must behave as unsupported instead of making dialog creation
+        fail.
+        """
+        checker = getattr(self.provider_runtime, "supports_onboarding", None)
+        return bool(callable(checker) and checker(provider_id))
+
+    def _onboarding_profile(self, provider_id: str):
+        getter = getattr(self.provider_runtime, "onboarding_profile", None)
+        return getter(provider_id) if callable(getter) else None
+
     def _clear_dynamic_widgets(self) -> None:
         while self.credentials_layout.count():
             item = self.credentials_layout.takeAt(0)
@@ -471,6 +526,7 @@ class AddAccountDialog(QDialog):
             if widget is not None:
                 widget.deleteLater()
         self.credential_inputs.clear()
+        self.credential_groups.clear()
 
     def _rebuild_provider_fields(self) -> None:
         self._clear_dynamic_widgets()
@@ -480,43 +536,84 @@ class AddAccountDialog(QDialog):
             self._update_api_test_availability()
             return
         self.mode_combo.addItems(provider.account_modes or ("Default",))
+        onboarding_enabled = provider.onboarding is not None and self._supports_onboarding(provider.id)
+        self._advanced_credentials_visible = False
+        self.advanced_button.setChecked(False)
+        self.advanced_button.setVisible(onboarding_enabled)
         column_count = 2 if len(provider.credential_fields) > 2 else 1
         for index, field in enumerate(provider.credential_fields):
-            edit = QLineEdit()
-            edit.setPlaceholderText(field.placeholder)
-            if field.kind == "password":
-                edit.setEchoMode(QLineEdit.EchoMode.Password)
-            edit.textChanged.connect(lambda _text: self._reset_validation())
+            if field.choices:
+                edit = QComboBox()
+                for choice in field.choices:
+                    edit.addItem(choice.label, choice.value)
+                edit.currentIndexChanged.connect(lambda _index: self._reset_validation())
+            else:
+                edit = QLineEdit()
+                edit.setPlaceholderText(field.placeholder)
+                if field.kind == "password":
+                    edit.setEchoMode(QLineEdit.EchoMode.Password)
+                edit.textChanged.connect(lambda _text: self._reset_validation())
             self.credential_inputs[field.key] = edit
+            group = form_group(field.label, edit)
+            self.credential_groups[field.key] = group
             row, column = divmod(index, column_count)
-            self.credentials_layout.addWidget(
-                form_group(field.label, edit),
-                row,
-                column,
-            )
+            self.credentials_layout.addWidget(group, row, column)
+            if onboarding_enabled and not field.quick_connect_visible:
+                group.setVisible(False)
         for column in range(column_count):
             self.credentials_layout.setColumnStretch(column, 1)
         self._update_oauth_controls()
         self._reset_validation()
 
+    def _toggle_advanced_credentials(self, checked: bool) -> None:
+        self._advanced_credentials_visible = bool(checked)
+        provider = self._current_provider()
+        if provider is None or provider.onboarding is None:
+            return
+        for field in provider.credential_fields:
+            group = self.credential_groups.get(field.key)
+            if group is not None:
+                group.setVisible(field.quick_connect_visible or self._advanced_credentials_visible)
+        self.advanced_button.setText(
+            "Hide Advanced Setup" if self._advanced_credentials_visible else "Advanced / Manual Setup"
+        )
+
     def _oauth_running(self) -> bool:
         return self._oauth_thread is not None and self._oauth_thread.isRunning()
 
+    def _onboarding_running(self) -> bool:
+        return self._onboarding_thread is not None and self._onboarding_thread.isRunning()
+
     def _update_oauth_controls(self) -> None:
         provider = self._current_provider()
-        available = bool(provider and self.provider_runtime.supports_browser_oauth(provider.id))
+        browser_available = bool(provider and self.provider_runtime.supports_browser_oauth(provider.id))
+        onboarding_available = bool(provider and self._supports_onboarding(provider.id))
+        available = browser_available or onboarding_available
         self.oauth_host.setVisible(available)
         if not available:
             return
-        profile = self.provider_runtime.browser_oauth_profile(provider.id)
-        if profile is not None:
-            self.oauth_button.setText(profile.button_label)
+        browser_profile = self.provider_runtime.browser_oauth_profile(provider.id) if browser_available else None
+        onboarding_profile = self._onboarding_profile(provider.id) if onboarding_available else None
+        if browser_profile is not None:
+            self.oauth_button.setText(browser_profile.button_label)
+        elif onboarding_profile is not None:
+            self.oauth_button.setText(onboarding_profile.button_label)
         refresh_field = self.credential_inputs.get("refresh_token")
-        if refresh_field is not None and refresh_field.text().strip():
-            set_inline_status(self.oauth_status_label, "OAuth connection credentials are stored. Reconnect only if access is revoked.", "success")
+        if refresh_field is not None and self._credential_widget_value(refresh_field):
+            if onboarding_available:
+                status_message = "Connected securely. Reconnect only if provider access is revoked."
+            else:
+                status_message = "OAuth connection credentials are stored. Reconnect only if access is revoked."
+            set_inline_status(self.oauth_status_label, status_message, "success")
         else:
-            set_inline_status(self.oauth_status_label, "Connect once in your browser; Invio will use the saved refresh token afterward.", "neutral")
-        self.oauth_button.setEnabled(not self._oauth_running() and not self._verification_running())
+            if onboarding_available:
+                status_message = "Quick Connect will authorize, discover and prepare this provider account automatically."
+            else:
+                status_message = "Connect once in your browser; Invio will use the saved refresh token afterward."
+            set_inline_status(self.oauth_status_label, status_message, "neutral")
+        self.oauth_button.setEnabled(
+            not self._oauth_running() and not self._onboarding_running() and not self._verification_running()
+        )
 
     def _oauth_button_clicked(self) -> None:
         if self._oauth_running():
@@ -525,10 +622,14 @@ class AddAccountDialog(QDialog):
                 set_inline_status(self.oauth_status_label, "Cancelling provider authorization...", "neutral")
                 self.oauth_button.setEnabled(False)
             return
-        self._start_browser_oauth()
+        provider = self._current_provider()
+        if provider is not None and self.provider_runtime.supports_browser_oauth(provider.id):
+            self._start_browser_oauth()
+        elif provider is not None and self._supports_onboarding(provider.id):
+            self._start_account_onboarding()
 
     def _start_browser_oauth(self) -> None:
-        if self._oauth_running() or self._verification_running():
+        if self._oauth_running() or self._onboarding_running() or self._verification_running():
             return
         provider = self._current_provider()
         if provider is None:
@@ -608,15 +709,19 @@ class AddAccountDialog(QDialog):
         for key, value in updates.items():
             field = self.credential_inputs.get(key)
             if field is not None:
-                field.setText(value)
+                self._set_credential_widget_value(field, value)
         self._validated = False
         self._last_verification_at = ""
         message = result.message
         if selected_label:
             message = f"{message} Account: {selected_label}."
         set_inline_status(self.oauth_status_label, message, "success")
-        set_inline_status(self.validation_label, "OAuth connected. Run API Test before saving the account.", "neutral")
         provider = self._current_provider()
+        if provider is not None and self._supports_onboarding(provider.id):
+            set_inline_status(self.validation_label, "Authorization complete. Preparing provider account...", "info")
+            self._pending_onboarding_after_oauth = True
+        else:
+            set_inline_status(self.validation_label, "OAuth connected. Run API Test before saving the account.", "neutral")
         if provider is not None:
             self._log_verification(f"Browser OAuth connected: {provider.name} ({self.mode_combo.currentText().strip() or 'Default'}).")
 
@@ -641,6 +746,91 @@ class AddAccountDialog(QDialog):
         self._oauth_receiver = None
         self._set_verification_controls_enabled(True)
         self._update_oauth_controls()
+        if self._pending_onboarding_after_oauth:
+            self._pending_onboarding_after_oauth = False
+            QTimer.singleShot(0, self._start_account_onboarding)
+
+    def _start_account_onboarding(self) -> None:
+        if self._oauth_running() or self._onboarding_running() or self._verification_running():
+            return
+        provider = self._current_provider()
+        if provider is None or not self._supports_onboarding(provider.id):
+            return
+        credentials = self._credential_values()
+        self._verification_credentials = dict(credentials)
+        mode = self.mode_combo.currentText().strip()
+        set_inline_status(self.validation_label, f"Preparing {provider.name} account...", "info")
+        set_inline_status(self.oauth_status_label, "Discovering account settings and required provider resources...", "info")
+        self._set_verification_controls_enabled(False)
+        self._log_verification(f"Easy Onboarding preparation started: {provider.name} ({mode or 'Default'}).")
+        thread = QThread(self)
+        thread.setObjectName(f"InvioProviderOnboarding-{provider.id}")
+        worker = _AccountOnboardingWorker(self.provider_runtime, provider.id, credentials, mode)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._onboarding_succeeded)
+        worker.failed.connect(self._onboarding_failed)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._onboarding_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._onboarding_thread = thread
+        self._onboarding_worker = worker
+        thread.start()
+
+    @Slot(object)
+    def _onboarding_succeeded(self, result: ExternalOnboardingResult) -> None:
+        updates = dict(result.credential_updates)
+        selected_label = ""
+        if result.choices and result.choice_credential_key:
+            if len(result.choices) == 1:
+                selected = result.choices[0].value
+                selected_label = result.choices[0].label
+            else:
+                selected = _choose_oauth_account(self, result.choices)
+                if not selected:
+                    set_inline_status(self.validation_label, "Provider setup selection cancelled; reconnect to complete setup.", "warning")
+                    return
+                selected_label = next((choice.label for choice in result.choices if choice.value == selected), selected)
+            updates[result.choice_credential_key] = selected
+        for key, value in updates.items():
+            field = self.credential_inputs.get(key)
+            if field is not None:
+                self._set_credential_widget_value(field, value)
+        if not self.account_name.text().strip() and result.account_label:
+            self.account_name.setText(result.account_label)
+        message = result.message
+        if selected_label:
+            message = f"{message} Selection: {selected_label}."
+        set_inline_status(self.oauth_status_label, message, "success")
+        set_inline_status(self.validation_label, "Provider account prepared. Verifying connection...", "info")
+        provider = self._current_provider()
+        if provider is not None:
+            self._log_verification(f"Easy Onboarding prepared: {provider.name} ({self.mode_combo.currentText().strip() or 'Default'}).")
+            profile = self._onboarding_profile(provider.id)
+            self._pending_auto_verify_after_onboarding = bool(profile and profile.auto_verify)
+
+    @Slot(str)
+    def _onboarding_failed(self, message: str) -> None:
+        safe = self._safe_verification_message(message)
+        self._pending_auto_verify_after_onboarding = False
+        set_inline_status(self.oauth_status_label, f"Account preparation failed: {safe}", "danger")
+        set_inline_status(self.validation_label, "Quick Connect could not finish provider setup.", "danger")
+        provider = self._current_provider()
+        if provider is not None:
+            self._log_verification(f"Easy Onboarding failed: {provider.name}: {safe}")
+        compact_message_box(self, "Provider Setup Failed", safe, icon=QMessageBox.Icon.Warning)
+
+    @Slot()
+    def _onboarding_finished(self) -> None:
+        self._onboarding_worker = None
+        self._onboarding_thread = None
+        self._verification_credentials.clear()
+        self._set_verification_controls_enabled(True)
+        self._update_oauth_controls()
+        if self._pending_auto_verify_after_onboarding:
+            self._pending_auto_verify_after_onboarding = False
+            QTimer.singleShot(0, self._start_api_test)
 
     def _has_api_test_adapter(self) -> bool:
         provider = self._current_provider()
@@ -659,7 +849,7 @@ class AddAccountDialog(QDialog):
             )
 
     def _reset_validation(self) -> None:
-        if self._verification_running():
+        if self._verification_running() or self._oauth_running() or self._onboarding_running():
             return
         self._validated = False
         self._last_verification_at = ""
@@ -681,12 +871,33 @@ class AddAccountDialog(QDialog):
             return False, "Account name is required."
         for field in provider.credential_fields:
             input_widget = self.credential_inputs.get(field.key)
-            if field.required and (input_widget is None or not input_widget.text().strip()):
+            if field.required and (input_widget is None or not self._credential_widget_value(input_widget)):
+                if provider.onboarding is not None and not field.quick_connect_visible and not self._advanced_credentials_visible:
+                    return False, f"Use Quick Connect to complete the managed {provider.name} account setup."
                 return False, f"{field.label} is required."
         return True, ""
 
+    @staticmethod
+    def _credential_widget_value(widget: QLineEdit | QComboBox) -> str:
+        if isinstance(widget, QComboBox):
+            return str(widget.currentData() or widget.currentText()).strip()
+        return widget.text().strip()
+
+    @staticmethod
+    def _set_credential_widget_value(widget: QLineEdit | QComboBox, value: str) -> None:
+        clean = str(value).strip()
+        if isinstance(widget, QComboBox):
+            index = widget.findData(clean)
+            if index < 0 and clean:
+                widget.addItem(clean, clean)
+                index = widget.count() - 1
+            if index >= 0:
+                widget.setCurrentIndex(index)
+            return
+        widget.setText(clean)
+
     def _credential_values(self) -> dict[str, str]:
-        return {key: field.text().strip() for key, field in self.credential_inputs.items()}
+        return {key: self._credential_widget_value(field) for key, field in self.credential_inputs.items()}
 
     def _verification_running(self) -> bool:
         return self._verification_thread is not None and self._verification_thread.isRunning()
@@ -698,9 +909,20 @@ class AddAccountDialog(QDialog):
         for field in self.credential_inputs.values():
             field.setEnabled(enabled)
         self.cancel_button.setEnabled(enabled)
+        self.advanced_button.setEnabled(enabled)
         self.add_button.setEnabled(enabled)
         self.test_button.setEnabled(enabled and self._has_api_test_adapter())
-        self.oauth_button.setEnabled(enabled and self.provider_runtime.supports_browser_oauth(self._current_provider().id) if self._current_provider() is not None else False)
+        provider = self._current_provider()
+        self.oauth_button.setEnabled(
+            bool(
+                enabled
+                and provider is not None
+                and (
+                    self.provider_runtime.supports_browser_oauth(provider.id)
+                    or self._supports_onboarding(provider.id)
+                )
+            )
+        )
 
     def _safe_verification_message(self, message: str) -> str:
         safe = str(message).strip() or "Provider API verification failed."
@@ -819,14 +1041,14 @@ class AddAccountDialog(QDialog):
         self.accept()
 
     def reject(self) -> None:  # type: ignore[override]
-        if self._verification_running() or self._oauth_running():
-            self.validation_label.setText("Provider verification/authorization is still running. Wait for it to finish before closing this dialog.")
+        if self._verification_running() or self._oauth_running() or self._onboarding_running():
+            self.validation_label.setText("Provider verification/authorization/setup is still running. Wait for it to finish before closing this dialog.")
             return
         super().reject()
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
-        if self._verification_running() or self._oauth_running():
-            self.validation_label.setText("Provider verification/authorization is still running. Wait for it to finish before closing this dialog.")
+        if self._verification_running() or self._oauth_running() or self._onboarding_running():
+            self.validation_label.setText("Provider verification/authorization/setup is still running. Wait for it to finish before closing this dialog.")
             event.ignore()
             return
         super().closeEvent(event)

@@ -1,3 +1,12 @@
+## v1.0.0.1.49.2 — Provider Easy Onboarding compatibility correction
+
+- Fix Add/Edit Account construction for existing Browser-OAuth-only runtime collaborators that do not implement the newer optional `supports_onboarding()` / `onboarding_profile()` methods.
+- Centralize the optional onboarding capability probe in the existing dialog; a missing onboarding method now deterministically means “unsupported” rather than crashing.
+- Preserve the pre-existing Browser-OAuth-only status copy when Easy Onboarding is unavailable; Quick Connect messaging is now shown only when the provider actually exposes onboarding.
+- Preserve the full v1.49.1 Quick Connect chain for the real `ProviderRuntime`: Browser OAuth → provider preparation/discovery → automatic API Test.
+- Preserve Advanced / Manual Setup, saved-account compatibility, provider Task/send semantics, MSI/WiX behavior and all unrelated application behavior.
+- Synchronize v1.49.2 release/version/test/forensic records. Companion provider bundles remain v1.2.0 because no provider-adapter defect was found in this audit.
+
 ## v1.0.0.1.49.1 — Persistent Browser OAuth + MSI Launch Integration
 
 - Add optional P13 Browser OAuth interface v1 without changing External Provider Adapter v1 execution semantics.
@@ -7,6 +16,11 @@
 - Add per-user Start Menu `Vib Tools/Invio` MSI shortcut, validate its target in Windows CI, and verify removal on uninstall.
 - Approved Signing Option C: no signing service/certificate is introduced; Windows `Unknown Publisher` may remain.
 - CI correction: the v1.49.1 repository contract now treats `/project/` forensic records as optional/private, matching the existing Git-ignore/privacy contract so clean GitHub checkouts validate only tracked release evidence.
+- Add generic Provider Easy Onboarding V1 metadata/runtime contract for trusted external providers; legacy manifests remain compatible because omitted credential ownership defaults to user-required.
+- Add credential ownership (`user_required`, `user_choice`, `generated`, `discovered`, `managed`) and optional friendly machine-value choices so Quick Connect can hide raw tokens/IDs and present provider regions/accounts without hardcoding provider UI.
+- Add generic provider account preparation with host-controlled HTTPS reads/mutations, retry restrictions, declared-output validation and access-token persistence rejection.
+- Add Quick Connect Accounts UX: unavoidable inputs only, Advanced / Manual Setup fallback, Browser OAuth → discovery/preparation → automatic real API Test, friendly provider-account selection and account-name suggestion.
+- Companion v1.2.0 Zoho Books/Invoice, Xero, QuickBooks Online and Square bundles implement the same onboarding contract; provider send/Task semantics remain unchanged.
 
 ## v1.0.0.1.49 — Provider/Settings Header + Template/Reports Table Layout Correction
 

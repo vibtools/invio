@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 compatibility
+
+Backward compatibility is restored at the Add Account runtime-collaborator boundary. Browser OAuth support remains independently usable when the supplied runtime object has no Easy Onboarding methods; missing optional onboarding capability is interpreted as unsupported. Existing provider manifests, saved credential keys, External Provider Adapter interface v1, Browser OAuth v1, provider onboarding v1, Task snapshots, SQLite schema v5, WorkerManager and distribution architecture remain unchanged.
+
 ## v1.0.0.1.49.1 compatibility
 
 Backward-compatible hotfix over v1.0.0.1.49. Existing External Provider Adapter interface v1, manually configured provider credentials, account records, protected credential references, Task snapshots, delivery ledger, WorkerManager, storage schema and business behavior remain compatible. Browser OAuth is optional and activates only when an installed external provider manifest declares `browser_auth` interface v1. The MSI remains a per-user LocalAppData installation with the existing UpgradeCode; the added Start Menu shortcut does not migrate application data.
@@ -252,3 +256,7 @@ The Windows release contract remains portable ZIP + MSI + wheel + `SHA256SUMS.tx
 ## v1.0.0.1.40 compatibility note
 
 No runtime dependency, SQLite schema, CredentialStore, Task/WorkerManager or provider-manifest compatibility contract changes. The two new Settings fields are backward-compatible because missing keys load their blank defaults. Customer defaults are materialized on future imports; existing durable customer records are not silently rewritten. Windows icon packaging depends on owner-provided `assets/icons/app.ico` and `app.png`.
+
+## Provider Easy Onboarding V1 compatibility
+
+Easy Onboarding is additive. External Provider Adapter interface v1 and Browser OAuth v1 remain supported. Old provider manifests that omit credential `ownership`, `choices`, or `onboarding` retain the existing credential UI and execution behavior. Existing saved accounts remain readable because the stored credential keys are unchanged. New v1.2.0 companion OAuth bundles require an Invio host containing Easy Onboarding V1 for Quick Connect preparation; Advanced/manual compatibility remains based on the provider's declared fields.

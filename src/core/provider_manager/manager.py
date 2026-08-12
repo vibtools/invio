@@ -11,6 +11,26 @@ from pathlib import Path
 _PROVIDER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{1,63}$")
 
 
+CREDENTIAL_OWNERSHIP_USER_REQUIRED = "user_required"
+CREDENTIAL_OWNERSHIP_USER_CHOICE = "user_choice"
+CREDENTIAL_OWNERSHIP_GENERATED = "generated"
+CREDENTIAL_OWNERSHIP_DISCOVERED = "discovered"
+CREDENTIAL_OWNERSHIP_MANAGED = "managed"
+CREDENTIAL_OWNERSHIPS = frozenset({
+    CREDENTIAL_OWNERSHIP_USER_REQUIRED,
+    CREDENTIAL_OWNERSHIP_USER_CHOICE,
+    CREDENTIAL_OWNERSHIP_GENERATED,
+    CREDENTIAL_OWNERSHIP_DISCOVERED,
+    CREDENTIAL_OWNERSHIP_MANAGED,
+})
+
+
+@dataclass(frozen=True, slots=True)
+class CredentialChoice:
+    label: str
+    value: str
+
+
 @dataclass(frozen=True, slots=True)
 class CredentialField:
     key: str
@@ -18,10 +38,21 @@ class CredentialField:
     kind: str = "text"
     required: bool = True
     placeholder: str = ""
+    ownership: str = CREDENTIAL_OWNERSHIP_USER_REQUIRED
+    choices: tuple[CredentialChoice, ...] = field(default_factory=tuple)
+
+    @property
+    def quick_connect_visible(self) -> bool:
+        return self.ownership == CREDENTIAL_OWNERSHIP_USER_REQUIRED
 
 
 @dataclass(frozen=True, slots=True)
 class BrowserAuthDeclaration:
+    interface_version: int
+
+
+@dataclass(frozen=True, slots=True)
+class OnboardingDeclaration:
     interface_version: int
 
 
@@ -37,6 +68,7 @@ class ProviderManifest:
     source_path: Path | None = None
     runtime_adapter: RuntimeAdapterDeclaration | None = None
     browser_auth: BrowserAuthDeclaration | None = None
+    onboarding: OnboardingDeclaration | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,8 +117,29 @@ class ProviderManager:
             key = str(item.get("key", "")).strip()
             label = str(item.get("label", "")).strip()
             kind = str(item.get("kind", "text")).strip().lower()
+            ownership = str(item.get("ownership", CREDENTIAL_OWNERSHIP_USER_REQUIRED)).strip().lower()
             if not key or not label or kind not in {"text", "password"}:
                 raise ProviderManifestError("Credential fields require key, label and a text/password kind.")
+            if ownership not in CREDENTIAL_OWNERSHIPS:
+                raise ProviderManifestError(
+                    "Credential field ownership must be user_required, user_choice, generated, discovered or managed."
+                )
+            raw_choices = item.get("choices", [])
+            if not isinstance(raw_choices, list):
+                raise ProviderManifestError("Credential field choices must be an array when provided.")
+            choices: list[CredentialChoice] = []
+            seen_choice_values: set[str] = set()
+            for choice in raw_choices:
+                if not isinstance(choice, dict):
+                    raise ProviderManifestError("Credential field choices require label/value objects.")
+                choice_label = str(choice.get("label", "")).strip()
+                choice_value = str(choice.get("value", "")).strip()
+                if not choice_label or not choice_value or choice_value in seen_choice_values:
+                    raise ProviderManifestError("Credential field choices require non-empty labels and unique non-empty values.")
+                seen_choice_values.add(choice_value)
+                choices.append(CredentialChoice(choice_label, choice_value))
+            if choices and kind != "text":
+                raise ProviderManifestError("Credential field choices are supported only for text fields.")
             fields.append(
                 CredentialField(
                     key=key,
@@ -94,6 +147,8 @@ class ProviderManager:
                     kind=kind,
                     required=bool(item.get("required", True)),
                     placeholder=str(item.get("placeholder", "")),
+                    ownership=ownership,
+                    choices=tuple(choices),
                 )
             )
 
@@ -130,6 +185,21 @@ class ProviderManager:
             if runtime_adapter is None:
                 raise ProviderManifestError("browser_auth requires an executable runtime_adapter.")
             browser_auth = BrowserAuthDeclaration(browser_interface_version)
+
+        onboarding = None
+        onboarding_raw = raw.get("onboarding")
+        if onboarding_raw is not None:
+            if not isinstance(onboarding_raw, dict):
+                raise ProviderManifestError("onboarding must be an object when provided.")
+            try:
+                onboarding_interface_version = int(onboarding_raw.get("interface_version"))
+            except (TypeError, ValueError) as exc:
+                raise ProviderManifestError("onboarding.interface_version must be an integer.") from exc
+            if onboarding_interface_version != 1:
+                raise ProviderManifestError("onboarding.interface_version must be 1 for the current Invio host contract.")
+            if runtime_adapter is None:
+                raise ProviderManifestError("onboarding requires an executable runtime_adapter.")
+            onboarding = OnboardingDeclaration(onboarding_interface_version)
         return ProviderManifest(
             id=provider_id,
             name=name,
@@ -141,6 +211,7 @@ class ProviderManager:
             source_path=path,
             runtime_adapter=runtime_adapter,
             browser_auth=browser_auth,
+            onboarding=onboarding,
         )
 
     def inspect_manifest(self, path: str | Path) -> ProviderManifest:
@@ -239,6 +310,7 @@ class ProviderManager:
                 or staged.capabilities != manifest.capabilities
                 or staged.runtime_adapter != manifest.runtime_adapter
                 or staged.browser_auth != manifest.browser_auth
+                or staged.onboarding != manifest.onboarding
             ):
                 raise ProviderManifestError("Provider manifest changed while it was being staged; load was cancelled.")
             staged_packaged = self.get_packaged(staged.id)

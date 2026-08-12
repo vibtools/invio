@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 provider compatibility note
+
+Easy Onboarding remains an optional additive capability. Host UI capability detection must not require `supports_onboarding()` from older Browser-OAuth-only collaborators. Missing onboarding capability is equivalent to “not supported”; no external adapter interface or provider execution contract changed.
+
 ## Browser OAuth v1 provider capability — v1.0.0.1.49.1
 
 Trusted executable provider bundles may optionally declare `"browser_auth": {"interface_version": 1}` and expose one `BrowserOAuthProfile` plus `build_oauth_authorization_url()` and `complete_oauth_authorization()` methods. The existing External Provider Adapter v1 `test_account / validate_task / execute_recipient` contract is unchanged.
@@ -152,3 +156,11 @@ To use it:
 6. Begin with one controlled recipient.
 
 Owner live acceptance confirms the plugin can create/post an Odoo invoice and execute invoice email sending. Invio Reports still distinguish provider acceptance from independently confirmed mailbox delivery. For partial/ambiguous non-idempotent operations, inspect Odoo before replay because the frozen P13/P10 uncertainty rules intentionally prevent blind duplicate writes.
+
+## Provider Easy Onboarding V1
+
+Easy Onboarding is provider-driven rather than Zoho-specific. A trusted external provider can opt into the host `onboarding` interface, classify which credentials the user must supply, and implement discovery/preparation through the host request boundary. The Accounts UI remains generic and does not contain provider-specific organization/item/tenant logic.
+
+The v1.2.0 companion OAuth bundles use this contract for Zoho Books, Zoho Invoice, Xero, QuickBooks Online and Square. Stripe and other providers that already require only simple credentials continue through their existing setup path unless their provider bundle later declares onboarding. Legacy provider bundles remain installable and keep the previous raw credential form.
+
+Automatic resource preparation is deliberately narrow and idempotence-aware: reuse an authoritative compatible resource first; create only a strictly required provider resource when safe; never silently redesign a chart of accounts, tax policy, payment configuration, legal identity, branding or other business policy.

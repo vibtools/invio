@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 status
+
+Provider Easy Onboarding V1 remains implemented. The v1.49.2 correction fixes one Windows-native regression where Add Account unconditionally called the optional onboarding capability method on a Browser-OAuth-only runtime test/collaborator. Capability absence now fails closed as unsupported and preserves Browser OAuth. Provider v1.2.0 bundles require no change after deterministic re-audit.
+
 ## v1.0.0.1.49.1 status
 
 Implemented: optional P13 Browser OAuth interface v1, system-browser authorization orchestration, strict callback/state/PKCE handling, protected refresh/bootstrap credential handoff, provider account discovery support, and MSI Start Menu launch integration. Existing provider task/send interface remains v1 and storage schema remains unchanged. Authenticode signing is explicitly not included under owner-approved Signing Option C.
@@ -390,3 +394,7 @@ P11 remains LIVE ACCEPTANCE PENDING; P14 remains CERTIFICATION PENDING; producti
 - Agiled Task execution remains intentionally unavailable because the supplied OpenAPI does not define the invoice request mapping or invoice email/send operation required by Invio's Task contract.
 - Refrens deterministic HTTP failures now surface a separate provider `CODE <status>` Live Log line.
 - Refrens `HTTP 400: Not allowed to send mail` is an external provider rejection; no code bypass is claimed.
+
+## v1.0.0.1.49.1 Provider Easy Onboarding V1
+
+Implemented: generic credential ownership/friendly choices, optional external-provider onboarding interface v1, constrained host onboarding request/result validation, Add/Edit Account Quick Connect orchestration, Advanced/manual fallback, automatic API verification and compatibility with existing Browser OAuth/External Adapter v1. The companion v1.2.0 OAuth provider set implements provider-specific preparation without moving that logic into Invio core. MSI work remains outside this continuation.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 compatibility note
+
+Quick Connect remains provider-driven. If a runtime/provider surface exposes Browser OAuth but not Easy Onboarding, Add/Edit Account now keeps the pre-onboarding Browser OAuth workflow instead of failing during dialog construction. Providers that declare Easy Onboarding continue to hide managed fields and retain Advanced / Manual Setup.
+
 ## Connect a browser-OAuth provider — v1.0.0.1.49.1
 
 1. Install a trusted provider bundle that declares Browser OAuth v1.
@@ -30,3 +34,11 @@ As of `v1.0.0.1.48.6`, Accounts retain the v1.48.5 flat list with a compact bala
 - The popup opens inward from the action control and falls back above the row when bottom space is insufficient.
 
 No API, credential, provider-runtime, task-reservation, persistence, business, global token, or data-contract behavior changes are introduced.
+
+## Quick Connect / Easy Onboarding — v1.0.0.1.49.1
+
+When an installed provider supports Easy Onboarding V1, Add/Edit Account defaults to **Quick Connect**. Enter only the visible provider-required fields and choose the Connect/Quick Connect action. Invio completes Browser OAuth when supported, receives the refresh token, discovers provider account identifiers, lets you choose between multiple accounts using friendly names, prepares narrowly required provider resources, and runs the provider's real API Test automatically.
+
+Generated refresh tokens and discovered/managed IDs are hidden in Quick Connect but remain part of the existing OS-protected account credential payload. **Advanced / Manual Setup** reveals the raw manifest fields for backward compatibility and recovery. Existing saved accounts keep their current credentials and are not forced to reconnect solely because the UI supports Easy Onboarding.
+
+A Quick Connect account is not save-ready until the same existing API verification gate succeeds. Provider authorization revocation, permission/scope changes, or an unrefreshable token can still require Reconnect.

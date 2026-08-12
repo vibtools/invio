@@ -14,6 +14,7 @@ from .adapters import ProviderCapabilityProfile, ProviderSchedulingPolicy, regis
 
 EXTERNAL_ADAPTER_INTERFACE_VERSION = 1
 BROWSER_OAUTH_INTERFACE_VERSION = 1
+ONBOARDING_INTERFACE_VERSION = 1
 
 SAFE_READ = "SAFE_READ"
 IDEMPOTENT_MUTATION = "IDEMPOTENT_MUTATION"
@@ -84,6 +85,29 @@ class ExternalOAuthAccountChoice:
 class ExternalOAuthConnectionResult:
     credential_updates: dict[str, str]
     message: str
+    choices: tuple[ExternalOAuthAccountChoice, ...] = ()
+    choice_credential_key: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderOnboardingProfile:
+    button_label: str = "Quick Connect"
+    auto_verify: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOnboardingContext:
+    provider_id: str
+    credentials: dict[str, str]
+    mode: str
+    request: Callable[..., Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalOnboardingResult:
+    credential_updates: dict[str, str]
+    message: str
+    account_label: str = ""
     choices: tuple[ExternalOAuthAccountChoice, ...] = ()
     choice_credential_key: str = ""
 
@@ -276,6 +300,22 @@ class ExternalAdapterRegistry:
                     raise ExternalAdapterError("Browser OAuth adapter complete_oauth_authorization is not callable.")
             elif browser_profile is not None:
                 raise ExternalAdapterError("Adapter exposes browser_oauth_profile but manifest does not declare browser_auth.")
+
+            onboarding_declaration = manifest.onboarding
+            onboarding_profile = getattr(adapter, "onboarding_profile", None)
+            if onboarding_declaration is not None:
+                if onboarding_declaration.interface_version != ONBOARDING_INTERFACE_VERSION:
+                    raise ExternalAdapterError("Unsupported provider onboarding interface version.")
+                if not isinstance(onboarding_profile, ProviderOnboardingProfile):
+                    raise ExternalAdapterError(
+                        "Manifest declares onboarding but adapter onboarding_profile is missing or invalid."
+                    )
+                if not onboarding_profile.button_label.strip():
+                    raise ExternalAdapterError("Provider onboarding button label is required.")
+                if not callable(getattr(adapter, "prepare_account", None)):
+                    raise ExternalAdapterError("Provider onboarding adapter prepare_account is not callable.")
+            elif onboarding_profile is not None:
+                raise ExternalAdapterError("Adapter exposes onboarding_profile but manifest does not declare onboarding.")
 
             if "api_test" in profile.executable_capabilities and not callable(getattr(adapter, "test_account", None)):
                 raise ExternalAdapterError("Adapter declares api_test but test_account is not callable.")

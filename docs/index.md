@@ -1,3 +1,7 @@
+## Current release candidate — v1.0.0.1.49.2
+
+v1.49.2 is a narrow compatibility correction on the frozen Provider Easy Onboarding V1 baseline. Existing Browser-OAuth-only runtime collaborators can open Add/Edit Account without implementing Easy Onboarding methods; the real Invio `ProviderRuntime` continues to expose the complete Quick Connect flow unchanged.
+
 ## Current release candidate — v1.0.0.1.49.1
 
 This hotfix adds optional browser-based provider authorization with persistent protected refresh credentials and corrects the Windows MSI Start Menu launch entry. Existing provider sending and application business workflows remain frozen.
@@ -216,3 +220,7 @@ Agiled Account API Test is now executable against the exact current `GET https:/
 ## Current production baseline
 
 **Invio v1.0.0.1.40.2** is the first owner-accepted production release. Odoo Provider v1.0.0 is the live end-to-end accepted invoice-send path. P14 is complete by explicit owner production acceptance; Refrens P11 live mail acceptance remains deferred/non-blocking and is not claimed as certified delivery.
+
+## Provider Easy Onboarding
+
+`v1.0.0.1.49.1` includes a generic Quick Connect account-setup contract for trusted external providers. See **Guides → Accounts**, **Guides → Providers**, and **API → Provider Manifest** for user and provider-developer behavior.

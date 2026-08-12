@@ -1,4 +1,10 @@
-## v1.0.0.1.49.1 — Persistent Browser OAuth + MSI Launch Integration
+## v1.0.0.1.49.2 — Provider Easy Onboarding compatibility correction
+
+`Invio v1.0.0.1.49.1 Provider Easy Onboarding V1` is the frozen parent baseline. This correction keeps Easy Onboarding optional at the Add/Edit Account UI boundary: an existing Browser-OAuth-only runtime collaborator that predates `supports_onboarding()` is treated as not supporting onboarding instead of raising `AttributeError` while the dialog is constructed. Full `ProviderRuntime` Quick Connect behavior is unchanged.
+
+No provider Task/send semantics, External Provider Adapter v1 contract, Browser OAuth v1 flow, WorkerManager, Task state machine, delivery ledger, database schema, customer/template/report behavior, MSI/WiX behavior, provider bundles, dependency stack, or unrelated UI is changed. Version mapping: application/tag `1.0.0.1.49.2` / `v1.0.0.1.49.2`, PE `1.0.1.4902`, MSI `1.1.4902`, Python wheel `1.0.0.1.49.2`.
+
+## v1.0.0.1.49.1 — Persistent Browser OAuth + Provider Easy Onboarding + MSI Launch Integration
 
 `Invio v1.0.0.1.49` is the frozen parent baseline. This hotfix adds an optional, backward-compatible browser OAuth authorization contract for trusted P13 external providers and corrects the Windows MSI end-user launch entry without changing existing provider sending, Task, WorkerManager, storage schema or business logic.
 
@@ -7,6 +13,14 @@ Browser-auth-capable providers can open the system browser, validate `state`, us
 The MSI remains an unsigned per-user LocalAppData package by approved Signing Option C, so Windows may still display `Unknown Publisher`. The functional correction adds `Start Menu > Vib Tools > Invio`, verifies its target in CI, preserves the current install location/UpgradeCode, and removes the shortcut on uninstall.
 
 Version mapping: application/tag `1.0.0.1.49.1` / `v1.0.0.1.49.1`, PE `1.0.1.4901`, MSI `1.1.4901`, Python wheel `1.0.0.1.49.1`.
+
+### Provider Easy Onboarding V1
+
+`v1.0.0.1.49.1` now includes an optional provider-driven **Easy Onboarding V1** contract. Providers that opt in classify credential values as user-required, user-choice, generated, discovered, or Invio-managed. Add/Edit Account shows only unavoidable user inputs in Quick Connect mode; generated refresh tokens, provider organisation/tenant/company/location identifiers and managed resource IDs stay hidden while remaining available to the protected credential workflow. **Advanced / Manual Setup** preserves the existing raw-field path for backward compatibility.
+
+Quick Connect composes the existing Browser OAuth flow with provider-controlled discovery/preparation and then runs the existing real API Test automatically. Provider-specific account choices use friendly labels while Invio stores the provider IDs. External Provider Adapter interface v1 and all Task execution/send semantics remain unchanged. The contract is generic: any future trusted external provider can declare `onboarding.interface_version = 1` and implement `prepare_account()` without changing the Accounts UI.
+
+The companion v1.2.0 OAuth provider bundles use the same host contract: Zoho Books, Zoho Invoice, Xero, QuickBooks Online and Square. Zoho Books/Invoice reuse or create one deterministic `Invio Service` item; Xero safely discovers a usable sales account without changing the chart of accounts; QuickBooks reuses/creates `Invio Service` only when an Income account is unambiguous; Square derives location/currency configuration. Existing saved accounts are not forced to reconnect solely because of this host update.
 
 ## v1.0.0.1.49 — Provider/Settings Compact Headers + Template/Reports Table Layout Correction
 

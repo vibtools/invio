@@ -161,3 +161,63 @@ This same-version correction is applied on top of the frozen `2bbd7635f77ed4bc2a
 - `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.49.1.md`
 
 No runtime/source implementation file, workflow file, version marker, dependency file or provider bundle is modified by this CI correction.
+
+## Provider Easy Onboarding V1 continuation on frozen candidate `39574bc`
+
+This continuation is applied on top of commit `39574bc70aaf8ea8254a830a244a1a5c52252f8a` and keeps application version `1.0.0.1.49.1`. Scope is limited to generic provider account onboarding plus required documentation/tests. MSI/WiX/CI installer behavior is not changed.
+
+Host changes: provider credential ownership/friendly choices, optional `onboarding` declaration v1, constrained onboarding request/result contract, Quick Connect hidden-managed-field UI, Advanced / Manual Setup fallback, Browser OAuth → preparation → automatic API Test chaining, existing account compatibility and future-provider generic extensibility. Companion v1.2.0 bundles for Zoho Books, Zoho Invoice, Xero, QuickBooks Online and Square implement the same contract without changing their Task send interfaces.
+
+## Provider Easy Onboarding V1 exact continuation delta inventory
+
+Frozen input: `39574bc70aaf8ea8254a830a244a1a5c52252f8a` (`v1.0.0.1.49.1` candidate). This inventory is only the Easy Onboarding continuation; it does not repeat earlier v1.49.1 payloads.
+
+### Added
+
+- `examples/easy_onboarding_provider.md`
+- `project/research/PROVIDER_EASY_ONBOARDING_V1_IMPLEMENTATION_v1.0.0.1.49.1.md`
+- `project/specifications/PROVIDER_EASY_ONBOARDING_V1_SCOPE_LOCK_v1.0.0.1.49.1.md`
+- `tests/test_provider_onboarding.py`
+
+### Modified
+
+- `CHANGELOG.md`
+- `COMPATIBILITY.md`
+- `PATCH_MANIFEST_v1.0.0.1.49.1.md`
+- `PROJECT_STRUCTURE.md`
+- `README.md`
+- `VERSIONING.md`
+- `docs/api/provider-manifest.md`
+- `docs/configuration/index.md`
+- `docs/developer/ACTUAL_IMPLEMENTATION_STATUS.md`
+- `docs/developer/ERROR_HANDLING.md`
+- `docs/developer/architecture.md`
+- `docs/getting-started/installation.md`
+- `docs/guides/accounts.md`
+- `docs/guides/providers.md`
+- `docs/index.md`
+- `docs/release-notes/1.0.0.1.49.1.md`
+- `docs/troubleshooting/index.md`
+- `docs/user/usage.md`
+- `project/architecture/ARCHITECTURE.md`
+- `project/planning/PHASE_COMPLETION_LOG.md`
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.49.1.md`
+- `src/core/provider_manager/__init__.py`
+- `src/core/provider_manager/manager.py`
+- `src/core/provider_runtime/__init__.py`
+- `src/core/provider_runtime/external.py`
+- `src/core/provider_runtime/runtime.py`
+- `src/ui/dialogs.py`
+
+### Removed
+
+None.
+
+### Counts
+
+- Added: 4
+- Modified before regenerated checksum inventory: 27
+- Removed: 0
+- Regenerated `SHA256SUMS.txt`: 1 additional modified path
+- Final delta paths: 32
+- `SHA256SUMS.txt` payload entries: 31

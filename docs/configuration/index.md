@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 configuration compatibility
+
+No new setting or credential field is introduced. Easy Onboarding remains provider-declared and optional; Browser OAuth remains independently usable when onboarding is absent.
+
 ## Browser OAuth provider configuration — v1.0.0.1.49.1
 
 If a trusted external provider declares Browser OAuth v1, Add/Edit Account displays a provider-specific **Connect** action. Enter only the provider bootstrap fields required before authorization (for example Client ID/Secret and an exact registered Redirect URI where applicable), connect in the system browser, allow Invio to capture/validate the callback, select an organisation/tenant if multiple are returned, then run API Test and save the account. Once saved, refresh/bootstrap credentials use the existing protected OS credential store. Access tokens are transient and are not written to account storage by the browser-auth host.
@@ -133,3 +137,7 @@ No new Settings key or provider credential field is added. Agiled continues to s
 ## Odoo Provider v1.0.0 configuration
 
 The bundled external Odoo plugin requires four protected Account fields: Odoo Base URL, Database, Username / Email, and API Key. The Base URL is the instance origin only; the plugin adds `/jsonrpc`. Credentials are stored through the same protected credential store as other providers. The plugin remains external trusted code and must be explicitly loaded before its Account type is available.
+
+## Provider onboarding configuration
+
+Easy Onboarding configuration lives in each trusted external provider manifest and adapter, not in global Invio settings. Credential ownership controls Quick Connect visibility; generated/discovered/managed values are persisted only through the existing protected account credential store when the account is saved. Advanced / Manual Setup remains available for manifest-declared credentials.

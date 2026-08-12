@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 optional capability handling
+
+Missing Easy Onboarding methods on a Browser-OAuth-only runtime are not exceptional failures. The Add Account UI treats an absent `supports_onboarding`/`onboarding_profile` method as “capability unavailable”; actual errors from a declared/available onboarding implementation remain surfaced by the existing preparation worker/error path.
+
 ## Browser OAuth errors — v1.0.0.1.49.1
 
 Browser authorization fails closed for unsupported/invalid redirect URIs, unavailable loopback ports, provider authorization denial, callback redirect mismatch, duplicate/missing state or code, state mismatch, timeout/cancel, non-HTTPS OAuth network endpoints, malformed token/discovery responses, undeclared credential output and any attempt by browser auth to persist access tokens. UI error messages pass through the existing secret-redaction boundary.
@@ -524,3 +528,7 @@ Refrens create success is no longer treated as send acceptance. Invoice creation
 Agiled API Test now performs one exact side-effect-free Bearer request to `GET https://api.agiled.ai/public/v1/me`. Provider HTTP failures continue through `ProviderRuntimeError`; no API key is logged or persisted outside the existing protected credential store. Agiled Task execution remains fail-closed before invoice transport because the supplied current OpenAPI does not define a field-level invoice mutation contract or invoice email/send operation.
 
 For Refrens, the existing documented `/businesses/:urlKey/invoices/:invoiceID/email` operation is preserved. When a `ProviderRuntimeError` contains `http_status`, the provider log now emits a separate `CODE <status>` line. The live `HTTP 400: Not allowed to send mail` response is treated as a deterministic provider-side permission/capability rejection; it is not retried automatically, bypassed, or converted into provider acceptance.
+
+## Easy Onboarding failures
+
+Onboarding fails closed when authorization is incomplete, a returned credential key is undeclared, an adapter attempts to persist an access token, a provider account/resource cannot be selected unambiguously, or an HTTPS operation violates its declared mutation/retry contract. `NON_IDEMPOTENT_MUTATION` is never automatically replayed by the onboarding host. UI/log messages pass through the existing secret-redaction boundary.

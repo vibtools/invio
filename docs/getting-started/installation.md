@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 release identity
+
+The application identity advances to v1.0.0.1.49.2 (PE `1.0.1.4902`, MSI `1.1.4902`). MSI topology, Start Menu shortcut behavior, per-user LocalAppData installation, UpgradeCode policy and unsigned Signing Option C remain unchanged.
+
 ## v1.0.0.1.49.1 Windows MSI behavior
 
 The MSI remains a per-user installation under `%LOCALAPPDATA%\Vib Tools\Invio`. It now creates `Start Menu > Vib Tools > Invio`, targeting the installed `Invio.exe`, and removes that shortcut on uninstall. Signing Option C is intentionally retained: the MSI is not Authenticode-signed, so Windows can display an `Unknown Publisher` warning. This warning is separate from MSI payload/install functionality.
@@ -182,3 +186,7 @@ Agiled still uses the existing single protected `API Key` credential field. A su
 ## Bundled Odoo external provider — v1.0.0.1.40.2 production release
 
 The production release includes the validated Odoo Provider v1.0.0 under `providers/plugins/odoo/`. It is deliberately not auto-installed because P13 requires explicit trusted-code approval for executable external adapters. After Invio is installed, use **Providers → Load Provider** and select the bundled `provider.json`, then approve the sibling `adapter.py` only if the bundle is trusted.
+
+## Easy Onboarding provider bundles
+
+Invio core installation is unchanged. To use Easy Onboarding, load a trusted external provider bundle that declares `onboarding.interface_version = 1`; the provider `provider.json` and sibling `adapter.py` must remain together during **Providers → Load Provider**. Existing legacy provider bundles remain supported and use their previous credential setup. Companion OAuth provider bundles implementing Easy Onboarding are versioned independently from the Invio application.

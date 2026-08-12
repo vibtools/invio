@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2
+
+Scope-locked Provider Easy Onboarding compatibility correction: preserve the v1.49.1 generic onboarding architecture while restoring Browser-OAuth-only runtime compatibility at Add/Edit Account dialog construction. No P06+ Task behavior, provider send semantics, MSI behavior, architecture redesign, or unrelated feature work is included.
+
 ## v1.0.0.1.49.1
 
 Approved maintenance scope only: Windows MSI launch-entry correction plus optional persistent browser OAuth authorization for P13 external provider plugins. No production phase is reopened and no Task/provider-send/storage roadmap semantics are changed.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 host compatibility note
+
+`onboarding.interface_version = 1` remains optional. The host UI must treat a missing Easy Onboarding runtime capability as unsupported rather than requiring it from Browser-OAuth-only integrations. Manifest schema, ownership values, Browser OAuth v1, External Provider Adapter v1 and provider Task execution contracts are unchanged.
+
 # Provider Manifest Contract
 
 ## v1.0.0.1.41.1 UI resource boundary
@@ -114,3 +118,21 @@ Rules:
 - The profile defines exactly one redirect source: a fixed `redirect_uri` or a `redirect_uri_credential_key`.
 - Returned credential updates are restricted to manifest-declared credential keys; access-token persistence is rejected by the host.
 - This declaration is optional and does not alter the External Provider Adapter v1 task interface.
+
+## Provider Easy Onboarding V1 — v1.0.0.1.49.1
+
+Trusted executable external providers may optionally declare:
+
+```json
+"onboarding": {
+  "interface_version": 1
+}
+```
+
+`runtime_adapter` is required. The adapter must expose `onboarding_profile: ProviderOnboardingProfile` and `prepare_account(context) -> ExternalOnboardingResult`. This contract is additive to Browser OAuth and External Provider Adapter v1.
+
+Credential fields may also declare `ownership`: `user_required`, `user_choice`, `generated`, `discovered`, or `managed`. Omitted ownership remains `user_required` so old provider manifests preserve their existing UI. Quick Connect shows only `user_required` fields by default; Advanced / Manual Setup exposes the complete manifest-declared field set. Optional `choices` on a text credential field provide friendly labels while storing the exact machine value, for example a Zoho region label mapped to its Accounts server URL.
+
+`prepare_account()` receives protected bootstrap credentials and a host `request()` function. Onboarding requests must use absolute HTTPS. `SAFE_READ` may retry transient failures. `IDEMPOTENT_MUTATION` may retry only when the provider exposes a stable idempotency primitive and the adapter declares its stable reference. `NON_IDEMPOTENT_MUTATION` is single-attempt; providers must reconcile on the next onboarding run before creating again. Returned credential keys and choice targets must already be declared in the manifest. The host rejects attempted access-token persistence.
+
+The contract intentionally does not prescribe provider business objects. A provider may discover an organization/tenant/company/location, return friendly choices, or bootstrap a narrowly required invoice resource. Provider-specific accounting or legal policy must remain fail-closed rather than guessed.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 Add Account startup correction
+
+If a Browser-OAuth-capable provider/runtime does not implement Easy Onboarding V1, Add/Edit Account must still open normally and expose its existing OAuth action. v1.49.2 corrects the v1.49.1 `AttributeError: ... supports_onboarding` regression. Qt offscreen-plugin/font-directory warnings seen in automated GUI tests are not this failure and do not indicate an onboarding exception.
+
 ## OAuth / MSI troubleshooting — v1.0.0.1.49.1
 
 **Browser opens but does not return to Invio:** verify that the provider console contains the exact registered redirect URI. Loopback ports must be available. For providers that require a production HTTPS redirect, paste the complete returned callback URL only into Invio's callback dialog.
@@ -278,3 +282,11 @@ The explicit Refrens invoice email endpoint is documented and the current Invio 
 The production Odoo integration is shipped as an external trusted plugin, not an auto-installed packaged provider. Open **Providers → Load Provider**, select `providers/plugins/odoo/provider.json`, approve the trusted executable adapter, then add the Odoo Account. If API Test fails, verify Base URL, database technical name, username/email, API key, and that the Odoo user can access Accounting/invoice models.
 
 If an Odoo Task becomes **Uncertain**, do not blindly create a new full Task for the same recipient. Inspect Odoo for an already-created/posted invoice or already-triggered email first; the P13/P10 non-idempotent safety boundary intentionally blocks assumptions after ambiguous external writes.
+
+## Easy Onboarding troubleshooting — v1.0.0.1.49.1
+
+**Refresh token / Organization ID is not visible:** expected in Quick Connect for an Easy-Onboarding provider. Invio obtains/stores generated and discovered values internally. Use **Advanced / Manual Setup** only when provider setup or recovery requires raw fields.
+
+**Quick Connect authorizes but preparation fails:** read the provider-safe error. Invio can fail closed when it cannot select an accounting resource unambiguously or a required provider permission/scope is missing. Correct the provider-side prerequisite or use Advanced setup only when the provider documentation explicitly identifies the required value.
+
+**Existing account opens as Connected:** existing refresh/bootstrap credentials were preserved. A host update does not require reauthorization unless the provider grant/scopes themselves require it.

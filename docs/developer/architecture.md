@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2 architecture correction
+
+The provider-account setup architecture is unchanged. `AddAccountDialog` now probes the optional Easy Onboarding runtime capability defensively through one local helper. This restores the additive boundary promised by v1.49.1: Browser OAuth-only collaborators remain valid, while a full `ProviderRuntime` still composes OAuth, `prepare_external_account()`, and API verification. No core provider runtime, Task/WorkerManager, storage, delivery-ledger, MSI or dependency architecture changes are introduced.
+
 ## v1.0.0.1.49.1 — Optional browser OAuth boundary
 
 Browser OAuth extends P13 without replacing External Provider Adapter v1. `ProviderManager` parses the optional manifest declaration; `ExternalAdapterRegistry` validates provider OAuth hooks; `ProviderRuntime` creates authorization sessions, restricts OAuth network endpoints to HTTPS, validates completion output and never persists access tokens; `oauth.py` owns state, PKCE, redirect identity and loopback callback primitives; `AddAccountDialog` orchestrates the system browser and transfers only approved credential updates into the existing account form. Account persistence remains the unchanged AppState/DomainStore/OS-keyring path.
@@ -391,3 +395,11 @@ Refrens keeps its existing authentication -> invoice-create -> explicit invoice-
 ## v1.0.0.1.40.2 production Odoo plugin distribution
 
 The production release adds no provider runtime interface or WorkerManager architecture. The validated Odoo adapter is stored as distribution source at `providers/plugins/odoo/` and is loaded through the existing P13 registry workflow. It is not placed under `providers/packages/`, so packaged-provider reservation/reconciliation semantics remain unchanged. Wheel metadata includes the plugin files, while the existing Nuitka `providers=providers` data inclusion carries the same tree into Windows distributions.
+
+## Provider Easy Onboarding V1 architecture — v1.0.0.1.49.1
+
+Easy Onboarding extends the existing external-provider boundary without changing External Provider Adapter v1. `ProviderManager` parses optional credential ownership/choices plus `onboarding.interface_version = 1`. `ExternalAdapterRegistry` validates the adapter's `ProviderOnboardingProfile` and `prepare_account()` method. `ProviderRuntime.prepare_external_account()` supplies a constrained host HTTPS request function and validates all returned credential updates against the installed manifest. `AddAccountDialog` orchestrates Quick Connect as Browser OAuth (when declared) → provider preparation/discovery → existing API Test → existing account save/protected credential boundary.
+
+The UI keeps every manifest field internally so existing accounts and Advanced / Manual Setup remain lossless, but only user-required fields are visible in Quick Connect. Generated/discovered/managed values never require a provider-specific UI implementation. Provider account choices carry friendly labels and exact machine values.
+
+Onboarding is outside Task execution. It does not use or modify the delivery ledger, WorkerManager, immutable Task snapshots, Task retry/resume semantics or provider send operations. Account-setup mutations have their own explicit SAFE_READ / IDEMPOTENT_MUTATION / NON_IDEMPOTENT_MUTATION retry rules.

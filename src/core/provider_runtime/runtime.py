@@ -47,11 +47,14 @@ from .external import (
     NON_IDEMPOTENT_MUTATION,
     SAFE_READ,
     BrowserOAuthProfile,
+    ProviderOnboardingProfile,
     ExternalAccountTestContext,
     ExternalAdapterError,
     ExternalOAuthAuthorizationContext,
     ExternalOAuthCompletionContext,
     ExternalOAuthConnectionResult,
+    ExternalOnboardingContext,
+    ExternalOnboardingResult,
     ExternalAdapterRegistry,
     ExternalRecipientExecutionContext,
     ExternalRecipientResult,
@@ -732,6 +735,133 @@ class ProviderRuntime:
             choice_credential_key=str(result.choice_credential_key).strip(),
         )
 
+    def supports_onboarding(self, provider_id: str) -> bool:
+        external = self.external_adapter(provider_id)
+        return bool(
+            external is not None
+            and isinstance(getattr(external, "onboarding_profile", None), ProviderOnboardingProfile)
+            and callable(getattr(external, "prepare_account", None))
+        )
+
+    def onboarding_profile(self, provider_id: str) -> ProviderOnboardingProfile | None:
+        external = self.external_adapter(provider_id)
+        profile = getattr(external, "onboarding_profile", None) if external is not None else None
+        return profile if isinstance(profile, ProviderOnboardingProfile) else None
+
+    def _external_onboarding_request(
+        self,
+        *,
+        provider_id: str,
+        stage: str,
+        operation_kind: str,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        body: bytes | None = None,
+        json_data: dict[str, Any] | None = None,
+        idempotency_key: str = "",
+        response_kind: str = "object",
+    ) -> Any:
+        del provider_id
+        clean_stage = str(stage).strip()
+        if not clean_stage or len(clean_stage) > 96 or any(ch.isspace() for ch in clean_stage):
+            raise ProviderRuntimeError("External onboarding operation stage is invalid.", category="preflight")
+        if operation_kind not in EXTERNAL_OPERATION_KINDS:
+            raise ProviderRuntimeError("External onboarding operation kind is unsupported.", category="preflight")
+        if operation_kind == IDEMPOTENT_MUTATION and not str(idempotency_key).strip():
+            raise ProviderRuntimeError(
+                "IDEMPOTENT_MUTATION onboarding requests require a stable provider-supported idempotency reference.",
+                category="preflight",
+            )
+        if operation_kind != IDEMPOTENT_MUTATION and idempotency_key:
+            raise ProviderRuntimeError(
+                "Only IDEMPOTENT_MUTATION onboarding requests may declare an idempotency reference.",
+                category="preflight",
+            )
+        parsed = urlsplit(str(url).strip())
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            raise ProviderRuntimeError("Provider onboarding requests must use absolute HTTPS endpoints.", category="preflight")
+        if body is not None and json_data is not None:
+            raise ProviderRuntimeError("External onboarding request cannot provide both body and json_data.")
+        if response_kind not in {"object", "array"}:
+            raise ProviderRuntimeError("External onboarding request declared an unsupported response kind.", category="preflight")
+        effective_headers = dict(headers or {})
+        effective_body = body
+        if json_data is not None:
+            effective_headers.setdefault("Content-Type", "application/json")
+            effective_body = _json_body(json_data)
+
+        attempt = 1
+        while True:
+            try:
+                if response_kind == "array" and self._transport is _stdlib_transport:
+                    result = _stdlib_oauth_array_transport(
+                        method.upper(), url, effective_headers, effective_body, self.timeout
+                    )
+                else:
+                    result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+                if response_kind == "array":
+                    if not isinstance(result, list):
+                        raise ProviderRuntimeError(
+                            "Provider onboarding endpoint returned an unexpected response format.", category="response"
+                        )
+                elif not isinstance(result, dict):
+                    raise ProviderRuntimeError(
+                        "Provider onboarding endpoint returned an unexpected response format.", category="response"
+                    )
+                return result
+            except ProviderRuntimeError as exc:
+                retry_allowed = operation_kind in {SAFE_READ, IDEMPOTENT_MUTATION} and exc.retryable
+                if not retry_allowed or attempt >= MAX_TOTAL_ATTEMPTS:
+                    raise
+                time.sleep(self._retry_delay_seconds(attempt, exc))
+                attempt += 1
+
+    def prepare_external_account(
+        self, provider_id: str, credentials: dict[str, str], *, mode: str = ""
+    ) -> ExternalOnboardingResult:
+        normalized = provider_id.strip().lower()
+        external = self.external_adapter(normalized)
+        if external is None or not self.supports_onboarding(normalized):
+            raise ProviderRuntimeError("This provider does not expose Invio Easy Onboarding V1.", category="preflight")
+        context = ExternalOnboardingContext(
+            provider_id=normalized,
+            credentials=dict(credentials),
+            mode=str(mode),
+            request=lambda **kwargs: self._external_onboarding_request(provider_id=normalized, **kwargs),
+        )
+        try:
+            result = external.prepare_account(context)
+        except ProviderRuntimeError:
+            raise
+        except BaseException as exc:
+            raise ProviderRuntimeError(
+                f"External provider onboarding failed: {type(exc).__name__}: {exc}",
+                category="provider", retryable=False,
+            ) from exc
+        if not isinstance(result, ExternalOnboardingResult):
+            raise ProviderRuntimeError("Provider onboarding adapter returned an invalid result.", category="response")
+        manifest = self._external_registry.manager.get_installed(normalized) if self._external_registry is not None else None
+        allowed_keys = {field.key for field in manifest.credential_fields} if manifest is not None else set()
+        updates = {str(key): str(value) for key, value in result.credential_updates.items()}
+        if allowed_keys and any(key not in allowed_keys for key in updates):
+            raise ProviderRuntimeError("Provider onboarding returned an undeclared credential field.", category="response")
+        if any("access_token" in key.casefold() for key in updates):
+            raise ProviderRuntimeError(
+                "Provider onboarding attempted to persist an access token. Invio persists refresh/bootstrap credentials only.",
+                category="response",
+            )
+        choice_key = str(result.choice_credential_key).strip()
+        if choice_key and allowed_keys and choice_key not in allowed_keys:
+            raise ProviderRuntimeError("Provider onboarding choice field is not declared by the provider manifest.", category="response")
+        return ExternalOnboardingResult(
+            credential_updates=updates,
+            message=str(result.message).strip() or "Provider account prepared.",
+            account_label=str(result.account_label).strip(),
+            choices=tuple(result.choices),
+            choice_credential_key=choice_key,
+        )
+
     def _external_api_test_request(
         self,
         *,
@@ -850,7 +980,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.2 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -2392,7 +2522,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.2 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2623,7 +2753,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.1 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.2 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

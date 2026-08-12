@@ -1,3 +1,7 @@
+## v1.0.0.1.49.2
+
+Provider Easy Onboarding behavior is unchanged for supported providers. Browser-OAuth-only providers continue to use their existing Connect flow even when they do not implement the newer Easy Onboarding capability.
+
 ## v1.0.0.1.49.1 — Connect once, reuse authorization
 
 For browser-auth-enabled providers, use **Accounts > Add Account > Connect <Provider>** to authorize in your normal browser. After connection, run API Test and save. Invio keeps the refresh/bootstrap credential in the existing protected OS credential store and the provider automatically obtains fresh access tokens when needed. You normally authorize once; reconnect only if the provider revokes/expires the grant, permissions change, or protected token persistence cannot continue.
@@ -275,3 +279,7 @@ A Refrens Task now treats invoice creation and invoice-email triggering as separ
 ## Odoo production provider — v1.0.0.1.40.2
 
 The first production release ships Odoo Provider v1.0.0 under `providers/plugins/odoo/`. Load it explicitly from **Providers → Load Provider**, review the trusted-code warning, add an Odoo account and run API Test. Start live use with one controlled recipient. The owner has accepted a real Odoo end-to-end invoice send as the production provider path for this release.
+
+## Easy provider account setup
+
+For providers that support Easy Onboarding, use **Accounts → Add Account → Quick Connect**. Supply only the visible required values, complete the browser authorization when opened, choose a provider account only if Invio finds more than one, and wait for preparation plus automatic API verification. Raw refresh tokens and provider IDs are hidden by default. **Advanced / Manual Setup** remains available when needed.
