@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  INVIO_VERSION: "1.0.0.1.49.4"
-  INVIO_PE_VERSION: "1.0.1.4904"
+  INVIO_VERSION: "1.0.0.1.49.5"
+  INVIO_PE_VERSION: "1.0.1.4905"
   NUITKA_VERSION: "4.1.3"
   WIX_VERSION: "6.0.2"
 
@@ -94,6 +94,7 @@ jobs:
           include-package: |
             keyring.backends
             keyring
+            truststore
             jaraco.classes
             jaraco.context
             jaraco.functools
@@ -155,6 +156,19 @@ jobs:
             Remove-Item Env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE -ErrorAction SilentlyContinue
           }
 
+      - name: Smoke compiled Windows native TLS backend
+        shell: pwsh
+        run: |
+          $env:INVIO_P14_COMPILED_TLS_SMOKE = "1"
+          $exe = (Resolve-Path "dist\windows\Invio\Invio.exe").Path
+          try {
+            $process = Start-Process -FilePath $exe -PassThru -Wait
+            if ($process.ExitCode -ne 0) { throw "Compiled Windows native TLS backend smoke failed with exit code $($process.ExitCode)." }
+          }
+          finally {
+            Remove-Item Env:INVIO_P14_COMPILED_TLS_SMOKE -ErrorAction SilentlyContinue
+          }
+
       - name: Setup .NET for WiX
         uses: actions/setup-dotnet@v4
         with:
@@ -203,6 +217,15 @@ jobs:
           }
           finally {
             Remove-Item Env:INVIO_P14_COMPILED_CREDENTIAL_SMOKE -ErrorAction SilentlyContinue
+          }
+
+          $env:INVIO_P14_COMPILED_TLS_SMOKE = "1"
+          try {
+            $tlsProcess = Start-Process -FilePath $installedExe -PassThru -Wait
+            if ($tlsProcess.ExitCode -ne 0) { throw "MSI-installed Windows native TLS backend smoke failed with exit code $($tlsProcess.ExitCode)." }
+          }
+          finally {
+            Remove-Item Env:INVIO_P14_COMPILED_TLS_SMOKE -ErrorAction SilentlyContinue
           }
 
           $smoke = Join-Path $env:RUNNER_TEMP "invio-msi-smoke"

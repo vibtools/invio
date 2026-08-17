@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 actual TLS implementation
+
+Windows ProviderRuntime HTTPS uses a cached `truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` with `CERT_REQUIRED`, hostname checking enabled and HTTP/1.1 ALPN. `_verified_urlopen()` applies that context only to Windows HTTPS. Non-Windows requests retain the previous stdlib `urlopen()` call. `truststore` is required by source/wheel and explicitly bundled by Nuitka.
+
 ## v1.0.0.1.49.4 IVX verification status
 
 The v1.49.3 IVX implementation was native-Windows audited. Confirmed failures were isolated to IVX path inspection and ProvidersPage optional logo-resolution compatibility. Additional IVX-only forensic cases exposed canonical path aliases, Windows-unsafe filenames, unsupported compression exception leakage, incomplete PNG validation and builder final-output publication before validation. All corrections remain within Provider IVX Package System V1; provider execution/runtime contracts are frozen.

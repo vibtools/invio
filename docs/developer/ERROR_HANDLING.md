@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 TLS error contract
+
+Windows native trust changes only certificate-chain construction. `SSLCertVerificationError` remains `ProviderRuntimeError(category="tls", retryable=False)`. Missing/failed native trust initialization is also a permanent TLS error. No certificate failure is retried or ignored.
+
 ## IVX correction — v1.0.0.1.49.4
 
 All archive-validation failures, including unsupported ZIP compression, are normalized to `IvxPackageError`/`ProviderManifestError` instead of leaking implementation exceptions to the Provider UI. Raw archive names are validated before platform normalization. Invalid/oversized optional logos continue to fall back rather than disabling a valid provider package. The IVX builder validates a temporary `.ivx` before publishing the final output, so a failed final validation does not leave a newly published invalid artifact.

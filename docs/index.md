@@ -1,3 +1,7 @@
+## Current version — v1.0.0.1.49.5
+
+Phase 1 corrects Windows/RDP provider TLS trust compatibility by using the native Windows certificate trust store in the shared ProviderRuntime transport. Certificate and hostname verification remain mandatory.
+
 ## Current version — v1.0.0.1.49.4
 
 Provider IVX Package System V1 remains the active provider-distribution contract. v1.49.4 corrects native Windows raw ZIP path validation, additive provider-logo lookup compatibility, canonical/portable archive-path validation, unsupported-compression error containment, optional PNG safety checks and IVX builder publication atomicity. No provider API/send or application business workflow changed.

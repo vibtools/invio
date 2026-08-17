@@ -66,10 +66,36 @@ def _run_p14_compiled_credential_smoke() -> int | None:
     return result
 
 
+def _run_p14_compiled_tls_smoke() -> int | None:
+    """Verify the packaged Windows TLS backend without making a network request."""
+    if os.environ.get("INVIO_P14_COMPILED_TLS_SMOKE") != "1":
+        return None
+    if sys.platform != "win32":
+        return 89
+    import ssl
+
+    from .core.provider_runtime.runtime import ProviderRuntimeError, _windows_native_tls_context
+
+    try:
+        context = _windows_native_tls_context()
+    except ProviderRuntimeError:
+        return 90
+    if context.verify_mode != ssl.CERT_REQUIRED:
+        return 91
+    if not context.check_hostname:
+        return 92
+    if context.__class__.__module__.split(".", 1)[0] != "truststore":
+        return 93
+    return 0
+
+
 def main() -> int:
     credential_smoke = _run_p14_compiled_credential_smoke()
     if credential_smoke is not None:
         return credential_smoke
+    tls_smoke = _run_p14_compiled_tls_smoke()
+    if tls_smoke is not None:
+        return tls_smoke
 
     _set_windows_app_user_model_id()
     app = QApplication(sys.argv)

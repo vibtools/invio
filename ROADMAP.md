@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 Phase 1 scope status
+
+Phase 1 — RDP / TLS Trust & API Connectivity is the only active maintenance scope. The confirmed fix is centralized in the shared Windows TLS transport; Phase 2 provider-limit circuit breaking, Phase 3 sending controls, and Phase 4 Dynamic Tags remain explicitly deferred.
+
 ## v1.0.0.1.49.4
 
 IVX verification/correction only. Native Windows path-validation and provider-card compatibility defects plus IVX package hardening discovered by forensic audit are corrected without reopening provider execution, OAuth, Task, storage, MSI or business-workflow roadmap scope.

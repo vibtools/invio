@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from src.core.provider_manager import ProviderManager
-from src.core.provider_runtime import ExternalAdapterRegistry
+from src.core.provider_runtime import ExternalAdapterRegistry, SAFE_READ
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "providers" / "plugins" / "odoo"
@@ -35,6 +35,47 @@ class OdooProviderBundleTests(unittest.TestCase):
             adapter.profile.executable_capabilities,
             frozenset({"invoice", "send_invoice", "api_test"}),
         )
+
+    def test_odoo_api_test_contract_still_uses_safe_read_jsonrpc_stages(self):
+        manager = ProviderManager(ROOT)
+        manifest = manager.inspect_manifest(BUNDLE / "provider.json")
+        adapter = ExternalAdapterRegistry.validate_adapter(manifest, BUNDLE / "adapter.py")
+
+        class Context:
+            credentials = {
+                "base_url": "https://applemobileshopnow.odoo.com",
+                "database": "demo-db",
+                "username": "user@example.com",
+                "api_key": "secret",
+            }
+
+            def __init__(self):
+                self.calls = []
+
+            def request(self, **kwargs):
+                self.calls.append(kwargs)
+                stage = kwargs["stage"]
+                if stage == "authenticate":
+                    return {"result": 7}
+                if stage == "account_move_access":
+                    return {"result": []}
+                if stage == "send_wizard_contract":
+                    return {
+                        "result": {
+                            "move_id": {},
+                            "sending_methods": {},
+                            "sending_method_checkboxes": {},
+                            "mail_partner_ids": {},
+                        }
+                    }
+                raise AssertionError(stage)
+
+        context = Context()
+        message = adapter.test_account(context)
+        self.assertEqual(message, "Odoo API connection verified.")
+        self.assertEqual([call["stage"] for call in context.calls], ["authenticate", "account_move_access", "send_wizard_contract"])
+        self.assertTrue(all(call["operation_kind"] == SAFE_READ for call in context.calls))
+        self.assertTrue(all(call["url"] == "https://applemobileshopnow.odoo.com/jsonrpc" for call in context.calls))
 
     def test_odoo_bundle_internal_checksums_are_complete(self):
         declared = {}

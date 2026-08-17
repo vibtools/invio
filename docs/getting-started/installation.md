@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 Windows TLS runtime dependency
+
+Windows builds include the `truststore` runtime so provider HTTPS validation uses the native Windows CryptoAPI trust store. Normal installation requires no certificate bypass or manual CA bundle configuration.
+
 ## v1.0.0.1.49.4 installation note
 
 No dependency, Python, wheel, Nuitka or WiX/MSI installation change is introduced. Apply this replace-ready delta over the exact v1.0.0.1.49.3 project root, run `python scripts/test/audit.py`, and require native Windows tests plus non-tag GitHub CI to pass before tagging.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 import threading
 import time
 import unittest
@@ -19,6 +20,8 @@ from src.core.provider_runtime.runtime import (
     _cooperative_retry_wait,
     _parse_retry_after,
     _stdlib_transport,
+    _verified_urlopen,
+    _windows_native_tls_context,
 )
 from src.core.state import AppState
 
@@ -171,6 +174,85 @@ class P08ReliabilityTests(unittest.TestCase):
                 _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
         self.assertEqual(raised.exception.category, "tls")
         self.assertFalse(raised.exception.retryable)
+
+
+    def test_windows_https_transport_uses_native_truststore_with_verification_and_hostname_checks(self):
+        class FakeContext:
+            def __init__(self, protocol):
+                self.protocol = protocol
+                self.verify_mode = None
+                self.check_hostname = False
+                self.alpn = None
+
+            def set_alpn_protocols(self, protocols):
+                self.alpn = list(protocols)
+
+        class FakeTruststore:
+            SSLContext = FakeContext
+
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"{}"
+
+        _windows_native_tls_context.cache_clear()
+        try:
+            with (
+                patch("src.core.provider_runtime.runtime.sys.platform", "win32"),
+                patch("src.core.provider_runtime.runtime._truststore", FakeTruststore),
+                patch("src.core.provider_runtime.runtime.urlopen", return_value=Response()) as mocked_open,
+            ):
+                result = _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+            self.assertEqual(result, {})
+            context = mocked_open.call_args.kwargs["context"]
+            self.assertEqual(context.protocol, ssl.PROTOCOL_TLS_CLIENT)
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.alpn, ["http/1.1"])
+        finally:
+            _windows_native_tls_context.cache_clear()
+
+    def test_windows_https_transport_fails_closed_when_native_trust_backend_is_missing(self):
+        _windows_native_tls_context.cache_clear()
+        try:
+            with (
+                patch("src.core.provider_runtime.runtime.sys.platform", "win32"),
+                patch("src.core.provider_runtime.runtime._truststore", None),
+                patch("src.core.provider_runtime.runtime.urlopen") as mocked_open,
+            ):
+                with self.assertRaises(ProviderRuntimeError) as raised:
+                    _stdlib_transport("GET", "https://api.example.test", {}, None, 30.0)
+            self.assertEqual(raised.exception.category, "tls")
+            self.assertFalse(raised.exception.retryable)
+            self.assertIn("native TLS trust backend is unavailable", str(raised.exception))
+            mocked_open.assert_not_called()
+        finally:
+            _windows_native_tls_context.cache_clear()
+
+    def test_non_windows_https_transport_preserves_existing_stdlib_urlopen_path(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b"{}"
+
+        request = __import__("urllib.request", fromlist=["Request"]).Request("https://api.example.test")
+        with (
+            patch("src.core.provider_runtime.runtime.sys.platform", "linux"),
+            patch("src.core.provider_runtime.runtime.urlopen", return_value=Response()) as mocked_open,
+        ):
+            with _verified_urlopen(request, timeout=30.0) as response:
+                self.assertEqual(response.read(), b"{}")
+        self.assertNotIn("context", mocked_open.call_args.kwargs)
 
     def test_retryable_recipient_failure_retries_at_most_three_total_attempts_and_counts_once(self):
         attempts = {"send": 0}

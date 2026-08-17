@@ -19,6 +19,7 @@ def main() -> int:
 
     from src.core.paths import application_root, validate_runtime_resources
     from src.core.provider_manager import ProviderManager
+    from src.core.provider_runtime.runtime import _windows_native_tls_context
     from src.core.storage import CredentialStore
     from src.core.worker_manager import WorkerManager
     from src.tasks.models import Task
@@ -29,6 +30,14 @@ def main() -> int:
     root = application_root()
     if os.environ.get("INVIO_P14_EXPECT_INSTALLED") == "1" and "site-packages" not in root.as_posix().lower():
         raise SystemExit(f"Expected installed-wheel resource root, got {root}")
+    import ssl
+
+    tls_context = _windows_native_tls_context()
+    if tls_context.verify_mode != ssl.CERT_REQUIRED or not tls_context.check_hostname:
+        raise SystemExit("Windows native TLS trust context is not fail-closed.")
+    if tls_context.__class__.__module__.split(".", 1)[0] != "truststore":
+        raise SystemExit(f"Unexpected Windows TLS backend: {tls_context.__class__.__module__}")
+
     manager = ProviderManager(root)
     packaged = {item.id for item in manager.list_available()}
     if packaged != {"stripe", "refrens", "agiled"}:

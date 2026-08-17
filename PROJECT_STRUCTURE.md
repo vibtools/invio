@@ -268,7 +268,7 @@ No folder/module/page/schema/dependency structure is added, removed, renamed or 
 - `src/core/paths.py` — deterministic source/install resource-root and required-runtime-resource validation.
 - `tests/test_p14_certification.py` — deterministic large-import, injected execution soak, packaging inventory and subprocess crash/recovery gates.
 - `scripts/test/p14_wheel_audit.py` — built-wheel content integrity check.
-- `scripts/test/p14_windows_smoke.py` — Windows-native installed-wheel PySide6/keyring/resource/page/three-QThread smoke.
+- `scripts/test/p14_windows_smoke.py` — Windows-native installed-wheel PySide6/keyring/resource/TLS-backend/page/three-QThread smoke.
 - `.github/workflows/ci.yml` — existing Ubuntu audit retained plus Windows/Python-3.12 clean-wheel/native-smoke job.
 
 No new application page, storage schema/table, provider package contract, runtime dependency or installer framework is added.
@@ -356,3 +356,8 @@ No core runtime module, page, schema table, WorkerManager subsystem, dependency 
 - `tests/test_provider_onboarding.py` — generic manifest/runtime/Quick Connect source contracts.
 - `examples/easy_onboarding_provider.md` — provider-developer onboarding declaration example.
 - Existing `src/core/provider_manager/`, `src/core/provider_runtime/`, and `src/ui/dialogs.py` own the additive metadata, host runtime and Add/Edit Account orchestration; no new provider-specific core module is introduced.
+
+
+### v1.0.0.1.49.5 TLS transport correction
+
+No new application page, provider adapter, Task subsystem, storage table or package directory is introduced. `src/core/provider_runtime/runtime.py` adds the Windows native trust context around the existing `urllib` transport; `truststore` is the only new runtime dependency. `src/app.py` gains only an explicit build-smoke hook used by CI to prove the packaged TLS backend is present and fail-closed.

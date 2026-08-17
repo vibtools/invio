@@ -1,3 +1,10 @@
+## v1.0.0.1.49.5 — Windows/RDP Native TLS Trust Correction
+
+- Corrected the confirmed Windows/RDP certificate-chain divergence by using the native Windows CryptoAPI trust store for shared ProviderRuntime HTTPS verification.
+- Added required `truststore>=0.10.4,<0.11` runtime support and explicit Nuitka/wheel/MSI verification gates.
+- Certificate and hostname verification remain mandatory and TLS verification errors remain permanent/non-retryable.
+- No Odoo business logic, Task/WorkerManager, storage, OAuth/IVX contract, UI, or Phase 2-4 behavior changed.
+
 ## v1.0.0.1.49.4 — Provider IVX Windows Security & Compatibility Correction
 
 - Fix native Windows IVX raw-path validation by inspecting `ZipInfo.orig_filename` before Python platform normalization can convert backslashes to `/`.

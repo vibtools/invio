@@ -7,18 +7,25 @@ import json
 import random
 import socket
 import ssl
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
+from functools import lru_cache
 from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
+
+try:
+    import truststore as _truststore
+except ImportError:  # pragma: no cover - required dependency is verified by distribution/Windows gates
+    _truststore = None
 
 from ...accounts.models import Account
 from ...customers.models import CustomerRecord
@@ -265,6 +272,42 @@ def _parse_retry_after(value: str | None) -> float | None:
     return max(0.0, (retry_at - datetime.now(timezone.utc)).total_seconds())
 
 
+@lru_cache(maxsize=1)
+def _windows_native_tls_context() -> Any:
+    """Return the verified Windows-native TLS context used by all ProviderRuntime HTTPS I/O."""
+    if sys.platform != "win32":
+        raise ProviderRuntimeError(
+            "Windows native TLS trust was requested on a non-Windows platform.",
+            category="tls",
+            retryable=False,
+        )
+    if _truststore is None:
+        raise ProviderRuntimeError(
+            "Invio Windows native TLS trust backend is unavailable. Reinstall Invio so the required truststore runtime is present.",
+            category="tls",
+            retryable=False,
+        )
+    try:
+        context = _truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = True
+        context.set_alpn_protocols(["http/1.1"])
+    except Exception as exc:
+        raise ProviderRuntimeError(
+            f"Invio could not initialize the Windows native TLS trust backend: {exc}",
+            category="tls",
+            retryable=False,
+        ) from exc
+    return context
+
+
+def _verified_urlopen(request: Request, *, timeout: float):
+    """Open a provider URL with native Windows trust while preserving stdlib behavior elsewhere."""
+    if sys.platform == "win32" and urlsplit(request.full_url).scheme.casefold() == "https":
+        return urlopen(request, timeout=timeout, context=_windows_native_tls_context())
+    return urlopen(request, timeout=timeout)
+
+
 def _network_runtime_error(exc: BaseException) -> ProviderRuntimeError:
     reason = exc.reason if isinstance(exc, URLError) else exc
     if isinstance(reason, ssl.SSLCertVerificationError):
@@ -313,7 +356,7 @@ def _stdlib_transport(method: str, url: str, headers: dict[str, str], body: byte
     try:
         # urllib exposes one socket timeout value; P08 deliberately uses the
         # same explicit bound for connection establishment and response reads.
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - fixed HTTPS provider endpoints / trusted Refrens endpoint
+        with _verified_urlopen(request, timeout=timeout) as response:  # noqa: S310 - provider endpoints are preflight-validated
             raw = response.read()
     except HTTPError as exc:
         try:
@@ -364,7 +407,7 @@ def _stdlib_oauth_array_transport(
     """OAuth-only JSON array transport for provider discovery endpoints such as Xero /connections."""
     request = Request(url, data=body, headers=headers, method=method.upper())
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - OAuth URL is validated before this call
+        with _verified_urlopen(request, timeout=timeout) as response:  # noqa: S310 - OAuth URL is validated before this call
             raw = response.read()
     except HTTPError as exc:
         try:
@@ -980,7 +1023,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.4 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -2522,7 +2565,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.4 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2753,7 +2796,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.4 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

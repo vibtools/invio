@@ -188,6 +188,7 @@ P02 recovers Task-level metadata only. `Running`, `Paused`, or `Stopping` is con
 - PySide6 >=6.7,<7
 - openpyxl >=3.1,<4
 - keyring >=25.7,<26
+- truststore >=0.10.4,<0.11 (Windows native TLS trust backend)
 - stdlib `sqlite3` for domain persistence
 
 ## 10. Current Extension Boundary
@@ -413,3 +414,8 @@ Easy Onboarding extends the existing external-provider boundary without changing
 The UI keeps every manifest field internally so existing accounts and Advanced / Manual Setup remain lossless, but only user-required fields are visible in Quick Connect. Generated/discovered/managed values never require a provider-specific UI implementation. Provider account choices carry friendly labels and exact machine values.
 
 Onboarding is outside Task execution. It does not use or modify the delivery ledger, WorkerManager, immutable Task snapshots, Task retry/resume semantics or provider send operations. Account-setup mutations have their own explicit SAFE_READ / IDEMPOTENT_MUTATION / NON_IDEMPOTENT_MUTATION retry rules.
+
+
+## v1.0.0.1.49.5 Windows native TLS boundary
+
+ProviderRuntime retains `urllib` as the HTTP transport. On Windows HTTPS only, `_verified_urlopen()` supplies a cached `truststore.SSLContext(PROTOCOL_TLS_CLIENT)` so chain building uses Windows CryptoAPI while `CERT_REQUIRED` and hostname verification remain enabled. Non-Windows requests keep the previous stdlib path. The TLS backend is transport infrastructure; provider adapters, Task execution and storage contracts are unchanged.

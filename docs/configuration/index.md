@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 TLS configuration note
+
+There is no insecure TLS switch. On Windows, Invio uses the native OS trust policy; on non-Windows systems the existing stdlib TLS path remains unchanged.
+
 ## v1.0.0.1.49.4 configuration note
 
 No new application setting or provider credential field is introduced. IVX validation hardening and provider-logo compatibility are automatic host behavior; existing Provider, OAuth and Easy Onboarding configuration remains unchanged.

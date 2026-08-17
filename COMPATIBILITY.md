@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 Windows TLS compatibility
+
+Windows provider HTTPS now uses the native CryptoAPI trust store through `truststore>=0.10.4,<0.11`, allowing the packaged runtime to use the same managed trust and missing-intermediate behavior as Windows. Non-Windows HTTP/TLS behavior is unchanged. Invalid/untrusted certificates remain rejected.
+
 ## v1.0.0.1.49.4 compatibility
 
 - IVX Format remains version 1; existing valid v1.49.3-generated IVX packages remain compatible.

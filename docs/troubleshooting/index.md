@@ -1,3 +1,7 @@
+## v1.0.0.1.49.5 Windows/RDP TLS troubleshooting
+
+If a provider reports a certificate verification error, Invio still fails closed. Windows builds use native CryptoAPI trust through `truststore`; inspect the Windows certificate chain and endpoint hostname rather than disabling verification. The v1.49.5 correction specifically addresses the prior packaged OpenSSL/native Windows chain divergence.
+
 ## v1.0.0.1.49.4 IVX troubleshooting
 
 - **Unsafe/non-canonical archive path:** rebuild the IVX from a clean provider folder using `scripts/provider/build_ivx.py`; do not hand-author backslashes, `./`, repeated `/`, drive paths or Windows-reserved names.

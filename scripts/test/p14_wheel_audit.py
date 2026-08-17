@@ -63,6 +63,8 @@ def main() -> int:
         if len(dist_info) != 1:
             raise SystemExit("Wheel has an unexpected dist-info metadata layout.")
         metadata = archive.read(dist_info[0]).decode("utf-8", errors="replace")
+        if "Requires-Dist: truststore" not in metadata:
+            raise SystemExit("Wheel metadata is missing the required Windows native truststore dependency.")
         if f"Version: {EXPECTED_WHEEL_VERSION}" not in metadata:
             raise SystemExit(
                 "Wheel metadata version is not the canonical Python wheel identity "

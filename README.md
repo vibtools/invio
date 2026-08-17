@@ -1,3 +1,7 @@
+## Current baseline candidate — v1.0.0.1.49.5
+
+Phase 1 corrects a verified Windows/RDP TLS trust-chain compatibility defect in the shared HTTPS transport. Windows requests use the native OS trust store through `truststore`; certificate and hostname verification remain fail-closed. Provider business logic and all Phase 2-4 work remain unchanged.
+
 ## v1.0.0.1.49.4 — Provider IVX Windows Security & Compatibility Correction
 
 `Invio v1.0.0.1.49.3 Provider IVX Package System V1` is the frozen parent baseline. Native Windows verification exposed two release-blocking defects: raw ZIP backslash paths were normalized by Python before the IVX validator inspected `ZipInfo.filename`, and the Providers page treated the new `ProviderManager.provider_logo_path()` capability as mandatory for legacy manager collaborators. The correction validates raw `ZipInfo.orig_filename`, keeps plugin-logo lookup additive via `getattr`, and adds non-GUI regression coverage so these contracts are checked even when PySide6 runtime tests are unavailable.
@@ -288,8 +292,9 @@ Settings remain a separate non-sensitive per-user JSON file. They control startu
 - PySide6 6.7+
 - openpyxl 3.1+
 - keyring 25.7+
+- truststore 0.10.4+ (<0.11)
 
-P02 adds `keyring>=25.7,<26`. The current keyring release line supports Python 3.12 and provides the approved system-keyring APIs used by Invio. Provider HTTP calls still use Python's standard library. 
+P02 adds `keyring>=25.7,<26`. The current keyring release line supports Python 3.12 and provides the approved system-keyring APIs used by Invio. Provider HTTP calls continue to use Python `urllib`; v1.49.5 adds `truststore>=0.10.4,<0.11` only as the Windows-native certificate verification backend for that shared transport.
 
 ## Run
 
