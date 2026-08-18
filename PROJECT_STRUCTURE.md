@@ -1,3 +1,11 @@
+## v1.0.0.1.49.9 release-record additions
+
+- `PATCH_MANIFEST_v1.0.0.1.49.9.md` — replace-ready correction inventory.
+- `docs/release-notes/1.0.0.1.49.9.md` — Windows CI correction release note.
+- `project/research/ROOT_CAUSE_VERIFICATION_v1.0.0.1.49.9.md` — run `32097949119` root-cause record.
+- `project/research/FINAL_FORENSIC_VERIFICATION_v1.0.0.1.49.9.md` — final correction verification.
+- `project/specifications/BASELINE_FREEZE_v1.0.0.1.49.9.md` — next baseline freeze record.
+
 ## v1.0.0.1.49.8 sending-control boundary
 
 Phase 3 remains inside existing modules: Settings owns user defaults; `TaskExecutionSnapshot` owns immutable per-Task sending controls; `DomainStore` schema v6 persists them; `ProviderRuntime` enforces retry/timeout/rate/delay behavior; Settings Page exposes the controls. No new application page, worker subsystem, provider payload layer, or parallel execution architecture is introduced.

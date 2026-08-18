@@ -1,3 +1,7 @@
+## CI: Phase-3 schema migration test reports `WinError 32` on Windows — v1.0.0.1.49.9
+
+GitHub run `32097949119` exposed a test-fixture-only file lock: `sqlite3.Connection` was used as a transaction context manager but not explicitly closed before `TemporaryDirectory` cleanup. v1.0.0.1.49.9 closes both fixture connections explicitly. If this exact test fails again, capture the owning test/process instead of retrying the workflow repeatedly.
+
 ## v1.0.0.1.49.8 Sending Controls troubleshooting
 
 If a custom provider rate cannot be selected, first check whether the installed executable provider declares a scheduling policy. Odoo intentionally shows no custom numeric rate because no authoritative policy is declared. If a saved custom rate exceeds a provider's current ceiling, Invio fails Task creation rather than bypassing the ceiling. Existing Tasks keep their captured sending controls; create a new Task when intentionally adopting changed Settings.

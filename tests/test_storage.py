@@ -842,7 +842,7 @@ class Phase3SendingControlStorageTests(unittest.TestCase):
     def test_schema_v5_migrates_to_v6_with_baseline_safe_defaults(self):
         with tempfile.TemporaryDirectory() as td:
             db_path = Path(td) / "domain.sqlite3"
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 connection.executescript(SCHEMA_V1)
                 connection.executescript(MIGRATION_V1_TO_V2)
                 connection.executescript(MIGRATION_V2_TO_V3)
@@ -851,7 +851,7 @@ class Phase3SendingControlStorageTests(unittest.TestCase):
                 connection.execute("PRAGMA user_version = 5")
                 connection.commit()
             DomainStore(db_path)
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
                 columns = {row[1] for row in connection.execute("PRAGMA table_info(task_execution_snapshots)")}
             self.assertTrue({

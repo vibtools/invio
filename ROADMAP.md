@@ -1,3 +1,7 @@
+## v1.0.0.1.49.9 Phase-3 Windows CI closeout
+
+Phase 3 remains implemented exactly as v1.0.0.1.49.8. v1.0.0.1.49.9 closes the Windows-only CI blocker from run `32097949119` without adding Phase 4 or changing provider/runtime behavior. Phase 4 remains the next planned product phase after the new non-tag CI is green and this baseline is accepted.
+
 ## v1.0.0.1.49.8 — Phase 3 Sending Controls
 
 Phase 3 implements bounded timeout/attempt/recipient-delay/provider-rate Settings and immutable per-Task persistence. Phase 1 TLS and Phase 2 provider-stop behavior remain frozen. Phase 4 Deterministic Dynamic Tags remains the next separately approval-gated update and is not included here.

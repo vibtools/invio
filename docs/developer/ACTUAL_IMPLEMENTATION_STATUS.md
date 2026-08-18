@@ -1,3 +1,7 @@
+## v1.0.0.1.49.9 — Phase-3 Windows CI correction
+
+**Status:** implementation corrected; post-push Windows CI acceptance pending. GitHub run `32097949119` passed Linux and all Windows Phase-3/runtime/UI tests except one Windows-only cleanup error in `Phase3SendingControlStorageTests.test_schema_v5_migrates_to_v6_with_baseline_safe_defaults`. The test fixture now explicitly closes its two SQLite connections. Production `DomainStore`, schema v6, Phase-3 controls and frozen Phase-1/2/runtime boundaries are unchanged.
+
 ## v1.0.0.1.49.8 Phase 3 actual implementation
 
 Status: **SOURCE VERIFIED / NATIVE CI PENDING**. Bounded timeout, automatic-attempt, additional-recipient-delay and declared-provider-rate controls are implemented and are captured per Task. SQLite schema is now v6, adding only Task snapshot sending-control columns; the P10 ledger tables are unchanged. Stripe ceiling remains 20 req/s/account, Refrens 1 req/s/account and Odoo remains without a numeric scheduling policy. Phase-1 native TLS and Phase-2 fatal-limit behavior are preserved. Dynamic Tags remain NOT IMPLEMENTED and outside this phase. Native dependency-installed CI verification is still required before release acceptance.

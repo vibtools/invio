@@ -1,3 +1,7 @@
+## v1.0.0.1.49.9 Windows SQLite test-handle correction
+
+Windows `WinError 32` during `TemporaryDirectory` cleanup must not be treated as an application migration failure when the handle belongs to a regression fixture. The Phase-3 v5→v6 migration test now uses `contextlib.closing(sqlite3.connect(...))` for both fixture connections. Production `DomainStore._connection()` already closes connections in `finally`, and its migration/backup error handling is unchanged.
+
 ## v1.0.0.1.49.8 sending-control safety
 
 Invalid timeout/attempt/delay values fail Settings validation. Provider rate overrides fail before Task creation when no declared ceiling exists or the requested rate exceeds the provider ceiling. Loaded schema-v6 Task snapshots fail closed on non-finite/out-of-range sending-control values. Retry-After remains mandatory; max-attempt Settings never make a permanent/non-idempotent failure retryable. Phase-2 fatal external-provider stop conditions still terminate the batch before the next recipient and are not delayed by the new recipient-delay control.

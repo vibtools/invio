@@ -1,3 +1,7 @@
+## Current baseline candidate — v1.0.0.1.49.9
+
+v1.0.0.1.49.9 is a narrow Windows CI correction over the accepted Phase-3 implementation. GitHub Actions run `32097949119` proved the Linux job and all Phase-3 runtime/UI tests green; the Windows job failed only because the new schema-v5→v6 migration test fixture left its own SQLite connections open until temporary-directory cleanup. The fixture now explicitly closes those test connections. Production `DomainStore`, SQLite schema v6, Sending & Retry controls, provider rate ceilings, Phase-1 TLS, Phase-2 fatal-limit semantics, WorkerManager/QThread ownership and all provider/UI workflows remain unchanged.
+
 ## Current baseline candidate — v1.0.0.1.49.8
 
 Phase 3 adds bounded Sending Scheduler / Retry / Delay controls without changing provider business payloads, Phase-1 TLS trust, Phase-2 fatal-limit circuit-breaking, WorkerManager/QThread ownership, or Dynamic Tags. New Tasks freeze their sending controls into the immutable execution snapshot and SQLite schema v6 persists those controls across restart. Defaults preserve v1.49.7 behavior: 30-second Task network timeout, three total automatic attempts, zero additional recipient delay, Stripe 20 requests/second/account, Refrens 1 request/second/account, and no invented Odoo numeric scheduling policy. Provider `Retry-After`, internal retry taxonomy/backoff/jitter/cooldowns and non-idempotent no-blind-replay rules remain authoritative.

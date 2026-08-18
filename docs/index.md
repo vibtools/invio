@@ -1,3 +1,7 @@
+## Current baseline candidate — v1.0.0.1.49.9
+
+v1.0.0.1.49.9 retains the complete v1.0.0.1.49.8 Phase-3 Sending Scheduler / Retry / Delay feature set and fixes only the Windows SQLite connection lifecycle in its schema-migration regression fixture. No application workflow, Settings contract, provider behavior, task execution or database schema changed.
+
 ## Current version — v1.0.0.1.49.8
 
 Phase 3 exposes bounded sending controls while preserving host/provider ceilings. New Task snapshots freeze timeout, automatic-attempt count, additional recipient delay and any approved lower per-account provider rate. SQLite schema v6 makes the captured contract restart-safe. Stripe remains capped at 20 req/s/account, Refrens at 1 req/s/account, and Odoo remains without a declared numeric scheduler ceiling.

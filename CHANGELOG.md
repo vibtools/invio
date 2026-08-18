@@ -1,3 +1,11 @@
+## v1.0.0.1.49.9 — Windows Phase-3 Migration Test / CI Correction
+
+- Corrects the Windows-only schema-v5→v6 migration regression fixture so both SQLite connections are explicitly closed before `TemporaryDirectory` cleanup.
+- Root cause: Python's `sqlite3.Connection` context manager commits/rolls back but does not close the connection; Windows therefore retained `domain.sqlite3` and raised `WinError 32` during cleanup.
+- Production `DomainStore` already uses an explicit close in its connection context manager and is unchanged. SQLite schema remains v6.
+- Preserves all v1.49.8 Phase-3 timeout/attempt/delay/rate semantics, Phase-1 TLS, Phase-2 circuit breaker, provider behavior, WorkerManager/QThread architecture, UI/UX, dependencies and Dynamic-Tags deferral.
+- Synchronizes release identity to application `1.0.0.1.49.9`, PE `1.0.1.4909`, MSI `1.1.4909`, and wheel `1.0.0.1.49.9`.
+
 ## v1.0.0.1.49.8 — Sending Scheduler / Retry / Delay Controls
 
 - Adds Settings controls for Task Network Timeout (10–120s, default 30), Maximum Automatic Attempts (1–3, default 3), and Additional Recipient Delay (0–60s, default 0).

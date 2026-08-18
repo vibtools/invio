@@ -1,3 +1,13 @@
+## Current mapping — v1.0.0.1.49.9
+
+- Application: `1.0.0.1.49.9`
+- Git tag mapping: `v1.0.0.1.49.9`
+- PE: `1.0.1.4909`
+- MSI: `1.1.4909`
+- Python package/wheel: `1.0.0.1.49.9`
+
+This is the Windows CI/test-handle correction over v1.0.0.1.49.8. Product behavior and schema remain the Phase-3 v1.0.0.1.49.8 contract. Tag/release remains gated by non-tag GitHub CI and owner acceptance.
+
 ## Current mapping — v1.0.0.1.49.8
 
 - Application: `1.0.0.1.49.8`
