@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 release-audit boundary
+
+No production package, module, page, schema, provider interface or worker architecture is added or removed. The only functional correction is in `scripts/test/p14_distribution_audit.py`: compiled Python dependency source layout is no longer treated as an end-user portable-file contract. Existing compiled TLS smoke gates remain authoritative. Phase-1/2 runtime code is unchanged except release identity/User-Agent strings.
+
 ## v1.0.0.1.49.6 Phase 2 provider-stop boundary
 
 No new production package, page, database table, worker type, provider interface version or directory is introduced. The Phase-2 implementation is contained in the existing shared `ProviderRuntimeError` / external batch loop, Odoo external adapter evidence classification, and MainWindow terminal-message reconciliation. Odoo plugin metadata advances to v1.0.1; IVX Format V1 and External Adapter Interface V1 remain unchanged.

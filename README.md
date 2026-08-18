@@ -1,4 +1,8 @@
-## Current baseline candidate — v1.0.0.1.49.6
+## Current baseline candidate — v1.0.0.1.49.7
+
+v1.49.7 corrects only the verified GitHub Actions P14 release-audit false negative from the v1.49.6 Windows build. Nuitka successfully compiled and executed the native `truststore` TLS backend in both OneDir and MSI smoke tests, but the final portable audit incorrectly required the original `Invio/truststore/__init__.py` source file. The audit now checks only stable portable resources while executable smoke gates remain the runtime proof. Phase-1 TLS and Phase-2 provider-limit behavior remain unchanged.
+
+## v1.0.0.1.49.6 — Provider Fatal-Limit Circuit Breaker
 
 Phase 2 adds a generic fail-safe external-provider batch circuit breaker. Odoo v1.0.1 uses it only for the proven daily email-limit condition and post-send `UNVERIFIED` evidence. The current non-idempotent recipient is preserved as Uncertain when required, untouched recipients stay Pending, no later recipient starts after the stop condition, and the existing Task card retains an actionable stop message. Phase-1 native Windows TLS remains intact; Phase 3 sending controls and Phase 4 Dynamic Tags remain deferred.
 

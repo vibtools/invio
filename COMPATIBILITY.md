@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 CI / distribution compatibility
+
+The Windows runtime contract is unchanged from v1.49.6. Nuitka may compile Python dependencies without leaving their original package `__init__.py` source files in the OneDir tree, so the release audit now verifies portable end-user resources structurally while the existing compiled OneDir and MSI-installed TLS smoke gates verify the native `truststore` runtime directly.
+
 ## v1.0.0.1.49.6 external-provider continuation compatibility
 
 External Adapter Interface V1 remains unchanged. `ProviderRuntimeError` gains optional backward-compatible batch-halt metadata; existing adapters that do not set it retain their prior recipient-level continuation behavior. Odoo adapter v1.0.1 requires Invio v1.49.6 for the new terminal quota/UNVERIFIED semantics. Existing Task states, durable ledger schema, IVX Format V1, OAuth/Easy Onboarding, WorkerManager and Phase-1 Windows TLS contracts remain compatible and unchanged.

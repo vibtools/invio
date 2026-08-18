@@ -6,8 +6,9 @@ import zipfile
 from pathlib import Path
 
 REQUIRED_PORTABLE = {
+    # Python dependencies compiled by Nuitka are verified by executable smoke gates,
+    # not by requiring source .py files in the standalone directory.
     "Invio/Invio.exe",
-    "Invio/truststore/__init__.py",
     "Invio/assets/icons/checkmark.svg",
     "Invio/assets/icons/providers/stripe.png",
     "Invio/assets/icons/providers/refrens.png",

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 CI correction status
+
+Scope-locked correction of the verified GitHub Actions release-payload false negative from run `32084087751`: Windows tests, OneDir startup, native TLS, credential storage and MSI install/run/uninstall all passed, but the final P14 portable audit incorrectly required a Nuitka-compiled dependency's source `truststore/__init__.py`. No Phase 3/4 implementation is introduced.
+
 ## v1.0.0.1.49.6 Phase 2 scope status
 
 Phase 2 — Provider Fatal Error / Account Limit Circuit Breaker & Task UX is implemented as the active candidate. It preserves the Phase-1 Windows native TLS correction while adding generic external batch-halt metadata, Odoo daily-limit/UNVERIFIED safety classification, durable Pending/Uncertain preservation, and accurate existing Task-card messaging. Phase 3 sending controls and Phase 4 Dynamic Tags remain explicitly deferred. Final live RDP acceptance for Phase 1 is owner-deferred until the combined release.

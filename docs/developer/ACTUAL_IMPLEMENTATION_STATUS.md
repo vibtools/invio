@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 actual CI correction
+
+Phase-1 Windows native TLS and Phase-2 external-provider circuit-breaker implementation remain operationally unchanged. The only defect found in the v1.49.6 verification pass was the P14 final portable audit assuming that a Nuitka-compiled dependency must appear as `Invio/truststore/__init__.py`. The compiled OneDir and MSI TLS smoke gates already execute the native trust backend successfully; v1.49.7 removes only that false structural requirement and adds a regression contract for the real compiled layout.
+
 ## v1.0.0.1.49.6 actual Phase-2 implementation
 
 Implemented: generic external-provider batch-halt metadata; stop-before-next-recipient behavior; durable Pending/Uncertain preservation; durable-summary progress text; existing Task-card provider stop-message preservation; Odoo v1.0.1 daily-email-limit terminal classification; Odoo `UNVERIFIED` post-send evidence no longer accepted as success. Not implemented in this phase: scheduler/rate controls, automatic Odoo account failover, new Task states/schema/pages, Dynamic Tags, or Phase-1 live RDP acceptance.

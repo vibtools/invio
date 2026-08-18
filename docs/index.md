@@ -1,3 +1,7 @@
+## Current version — v1.0.0.1.49.7
+
+v1.49.7 is a narrow CI/release-audit correction over the verified Phase-1/Phase-2 implementation. Windows native TLS, provider fatal-limit handling, Odoo v1.0.1, Task/WorkerManager, storage and UI workflows are unchanged.
+
 ## Current version — v1.0.0.1.49.6
 
 Phase 2 adds the provider fatal-limit circuit breaker and Odoo v1.0.1 safe mail-evidence handling. Phase-1 Windows native TLS remains enabled; Phase 3/4 are deferred.

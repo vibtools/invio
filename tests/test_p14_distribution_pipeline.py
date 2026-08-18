@@ -50,7 +50,6 @@ class P14DistributionPipelineTests(unittest.TestCase):
             Path('providers/packages/stripe/provider.json'),
             Path('providers/packages/refrens/provider.json'),
             Path('providers/packages/agiled/provider.json'),
-            Path('truststore/__init__.py'),
         ):
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -103,7 +102,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             app_dir, portable = prepare_distribution(nuitka, root / "dist" / "windows", root / "dist" / "release")
             self.assertTrue((app_dir / "Invio.exe").is_file())
             self.assertFalse((app_dir / "main.exe").exists())
-            self.assertEqual(portable.name, "Invio_v1.0.0.1.49.6_windows_x64_portable.zip")
+            self.assertEqual(portable.name, "Invio_v1.0.0.1.49.7_windows_x64_portable.zip")
             with zipfile.ZipFile(portable) as archive:
                 self.assertIsNone(archive.testzip())
                 names = set(archive.namelist())
@@ -128,7 +127,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), second.read_bytes())
             text = first.read_text(encoding="utf-8")
             self.assertIn('Scope="perUser"', text)
-            self.assertIn('Version="1.1.4906"', text)
+            self.assertIn('Version="1.1.4907"', text)
             self.assertIn(f'UpgradeCode="{UPGRADE_CODE}"', text)
             self.assertIn('Id="LocalAppDataFolder"', text)
             self.assertIn('Name="Vib Tools"', text)
@@ -147,8 +146,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
     def test_github_workflow_builds_wheel_nuitka_onedir_wix_msi_and_tag_release(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         required_fragments = (
-            'INVIO_VERSION: "1.0.0.1.49.6"',
-            'INVIO_PE_VERSION: "1.0.1.4906"',
+            'INVIO_VERSION: "1.0.0.1.49.7"',
+            'INVIO_PE_VERSION: "1.0.1.4907"',
             'NUITKA_VERSION: "4.1.3"',
             'WIX_VERSION: "6.0.2"',
             "$wixVersion = (wix --version).Trim()",
@@ -227,6 +226,15 @@ class P14DistributionPipelineTests(unittest.TestCase):
 
 
 
+
+    def test_distribution_audit_does_not_require_nuitka_compiled_dependency_source_files(self):
+        distribution_audit = (ROOT / "scripts" / "test" / "p14_distribution_audit.py").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        self.assertNotIn("Invio/truststore/__init__.py", distribution_audit)
+        self.assertIn("Smoke compiled Windows native TLS backend", workflow)
+        self.assertIn("INVIO_P14_COMPILED_TLS_SMOKE", workflow)
+        self.assertIn("MSI-installed Windows native TLS backend smoke failed", workflow)
+
     def test_distribution_audit_accepts_complete_structural_payload_with_exact_checksums(self):
         import subprocess
 
@@ -237,8 +245,8 @@ class P14DistributionPipelineTests(unittest.TestCase):
             (nuitka / "main.exe").write_bytes(b"MZ-INVIO")
             self._populate_resources(nuitka)
             _app_dir, portable = prepare_distribution(nuitka, root / "windows", root / "release")
-            (root / "release" / "Invio_v1.0.0.1.49.6_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
-            (root / "release" / "invio-1.0.0.1.49.6-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "Invio_v1.0.0.1.49.7_windows_x64_setup.msi").write_bytes(b"MSI-STRUCTURAL-TEST-FIXTURE")
+            (root / "release" / "invio-1.0.0.1.49.7-py3-none-any.whl").write_bytes(b"WHEEL-STRUCTURAL-TEST-FIXTURE")
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "build" / "finalize_release_checksums.py"), str(root / "release")],
                 check=True,
@@ -253,7 +261,7 @@ class P14DistributionPipelineTests(unittest.TestCase):
                     "--release-dir",
                     str(root / "release"),
                     "--version",
-                    "1.0.0.1.49.6",
+                    "1.0.0.1.49.7",
                 ],
                 check=True,
                 cwd=ROOT,

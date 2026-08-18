@@ -1,4 +1,13 @@
-## Current mapping — v1.0.0.1.49.6
+## Current mapping — v1.0.0.1.49.7
+
+- Application: `1.0.0.1.49.7`
+- Git tag: `v1.0.0.1.49.7`
+- PE: `1.0.1.4907`
+- MSI: `1.1.4907`
+- Python package/wheel: `1.0.0.1.49.7`
+- Odoo external provider: `1.0.1` (unchanged)
+
+## Previous mapping — v1.0.0.1.49.6
 
 - Application: `1.0.0.1.49.6`
 - Git tag: `v1.0.0.1.49.6`

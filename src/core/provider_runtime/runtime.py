@@ -1029,7 +1029,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -2593,7 +2593,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2824,7 +2824,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

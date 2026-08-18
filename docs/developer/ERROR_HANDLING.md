@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 release-audit correction
+
+No application error-handling semantics change. This release corrects a CI audit false positive: a compiled Nuitka dependency is validated by executable smoke behavior rather than by requiring its original Python source file to remain in the portable directory. TLS remains fail-closed and provider terminal-error behavior remains the v1.49.6 contract.
+
 ## v1.0.0.1.49.6 provider terminal-error contract
 
 `ProviderRuntimeError` keeps its existing category/retry metadata and adds optional `halt_batch`, `halt_code`, and `user_message` fields. Defaults preserve legacy behavior. The generic external batch reconciles the current recipient first, emits durable summary progress, then aborts before another recipient when `halt_batch=True`. Non-idempotent success before the error remains Uncertain; untouched recipients remain Pending.

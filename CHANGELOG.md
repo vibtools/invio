@@ -1,3 +1,11 @@
+## v1.0.0.1.49.7 — CI Release-Audit Correction
+
+- Corrected the P14 portable release audit to stop requiring `Invio/truststore/__init__.py`, a source-layout file that Nuitka does not guarantee in a compiled standalone distribution.
+- Kept the authoritative compiled OneDir and MSI-installed Windows native TLS smoke gates as the runtime proof that `truststore` is bundled and operational.
+- Added regression coverage so synthetic distribution fixtures no longer fabricate a `truststore/__init__.py` file that masks the real Nuitka layout.
+- Preserved the verified Phase-1 native TLS implementation and Phase-2 provider fatal-limit circuit breaker byte/functionally except for release identity/User-Agent version synchronization.
+- No provider behavior, Odoo v1.0.1 logic, Task/WorkerManager, storage, OAuth/IVX, Settings/UI workflow, retry/rate/delay behavior, schema, or MSI/WiX architecture changed.
+
 ## v1.0.0.1.49.6 — Provider Fatal-Limit Circuit Breaker
 
 - Added a backward-compatible external-provider batch-halt signal that reconciles the current recipient before stopping new recipient execution.

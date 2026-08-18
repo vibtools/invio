@@ -1,3 +1,7 @@
+## v1.0.0.1.49.7 GitHub Actions release-audit troubleshooting
+
+If Windows CI reaches `Assemble release payloads and checksums` and reports `Portable ZIP missing runtime files: Invio/truststore/__init__.py` while the earlier compiled Windows native TLS and MSI-installed TLS smoke steps passed, the failure is the obsolete v1.49.6 structural audit assumption rather than a missing runtime TLS backend. v1.49.7 removes that source-file requirement; do not copy Python source files into the compiled distribution as a workaround.
+
 ## v1.0.0.1.49.6 provider-limit / uncertain outcome troubleshooting
 
 If a Task stops because Odoo reports its daily email limit, Invio does not start another recipient. The current recipient can be Uncertain because the non-idempotent send mutation was already attempted; untouched recipients remain Pending. Review Odoo for the uncertain recipient and resolve the provider limit before using Resume Remaining. Automatic replay of Uncertain external recipients remains disabled.
