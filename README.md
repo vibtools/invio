@@ -1,8 +1,12 @@
-## Current Phase-4 implementation candidate — v1.0.0.1.50
+## Current release-readiness baseline — v1.0.0.1.50.1
+
+`v1.0.0.1.50.1` is a maintenance-only release-readiness synchronization over the owner-frozen `v1.0.0.1.50` Phase-4 baseline. The exact parent commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`: Linux and Windows jobs were green, Windows executed **642/642 tests PASS**, and the complete wheel → Nuitka OneDir → protected credential/TLS smoke → WiX MSI → P14 release-payload → artifact-upload chain passed. Phase 1 through Phase 4 runtime behavior remains frozen; this hotfix only closes release-record/status drift, one tracked Markdown trailing-whitespace defect, and current version/release metadata.
+
+## Accepted Phase-4 baseline — v1.0.0.1.50
 
 Invio v1.0.0.1.50 implements the owner-approved **Deterministic Dynamic Tags V1** scope over the CI-verified v1.0.0.1.49.9 baseline. Supported exact tags are `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, and `#YAAR#`. Unknown tag-like text remains literal. Date values are frozen from the Task-creation UTC reference; deterministic numeric tags are stable for the same Task+recipient through retry, Resume Remaining, Retry Failed, and restart recovery. Rendering is limited to Settings Default Customer Name provenance plus Invoice Template Memo, Footer, Customer Note, Terms, and Item Description. Recipient email is never changed.
 
-Phase 4 advances operational storage additively from schema v6 to **schema v7** so Settings-default dynamic-name provenance and the immutable Task Dynamic Tags version/UTC reference survive restart. Existing v6 Customer/Task rows migrate with Dynamic Tags disabled, preserving pre-Phase-4 literal behavior for already captured executions. No new UI page, preview workflow, provider-specific hidden tags, provider API capability, WorkerManager architecture, TLS behavior, Phase-2 circuit breaker, or Phase-3 scheduling behavior is introduced. GitHub Windows CI remains a post-push acceptance gate; it is not claimed here.
+Phase 4 advances operational storage additively from schema v6 to **schema v7** so Settings-default dynamic-name provenance and the immutable Task Dynamic Tags version/UTC reference survive restart. Existing v6 Customer/Task rows migrate with Dynamic Tags disabled, preserving pre-Phase-4 literal behavior for already captured executions. No new UI page, preview workflow, provider-specific hidden tags, provider API capability, WorkerManager architecture, TLS behavior, Phase-2 circuit breaker, or Phase-3 scheduling behavior is introduced. GitHub Actions run `32109507918` passed on exact commit `b87b412413f8788656c89b3b97a487d855d10d5f`, including native Windows **642/642 PASS** and the complete Windows distribution chain.
 
 ## Current baseline candidate — v1.0.0.1.49.9
 

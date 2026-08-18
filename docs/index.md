@@ -1,4 +1,8 @@
-## Current Phase-4 candidate — v1.0.0.1.50
+## v1.0.0.1.50.1 release readiness
+
+The owner-frozen v1.0.0.1.50 Phase-4 source at commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`, including native Windows **642/642** regression and the complete Windows distribution chain. v1.0.0.1.50.1 synchronizes that accepted evidence with current release/version records without changing Phase 1–4 behavior.
+
+## Accepted Phase-4 baseline — v1.0.0.1.50
 
 Deterministic Dynamic Tags V1 is implemented as a provider-neutral host feature. Exact tags: `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, `#YAAR#`. Unknown tags stay literal. Date tags use the frozen Task-creation UTC reference; numeric tags are stable for one Task+recipient across retry/resume/restart. Supported target fields are Settings Default Customer Name and Invoice Template Memo, Footer, Customer Note, Terms, and Item Description. Operational schema is v7. No new UI page or provider-specific tag is introduced.
 

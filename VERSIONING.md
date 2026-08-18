@@ -1,4 +1,14 @@
-## Current mapping — v1.0.0.1.50
+## Current mapping — v1.0.0.1.50.1
+
+- Application: `1.0.0.1.50.1`
+- Git tag: `v1.0.0.1.50.1`
+- PE: `1.0.1.5001`
+- MSI: `1.1.5001`
+- Python package/wheel: `1.0.0.1.50.1`
+
+This is a release-readiness hotfix over CI-accepted v1.0.0.1.50. It uses the existing six-part hotfix mapping (`revision * 100 + hotfix`) and does not change version-parser/build architecture. Creating/pushing the tag remains an explicit owner release action after the exact v1.0.0.1.50.1 commit passes its own non-tag CI.
+
+## Previous accepted mapping — v1.0.0.1.50
 
 - Application: `1.0.0.1.50`
 - Git tag mapping: `v1.0.0.1.50`
@@ -6,7 +16,7 @@
 - MSI: `1.1.50`
 - Python package/wheel: `1.0.0.1.50`
 
-This identity is the owner-approved Phase 4 Deterministic Dynamic Tags V1 implementation candidate over CI-verified v1.0.0.1.49.9. Tag/release remains gated by candidate verification, non-tag GitHub CI and owner acceptance.
+This identity is the owner-approved Phase 4 Deterministic Dynamic Tags V1 baseline over CI-verified v1.0.0.1.49.9. Exact commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`; tag publication remains owner-controlled.
 
 ## Previous mapping — v1.0.0.1.49.9
 

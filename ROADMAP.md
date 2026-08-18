@@ -1,8 +1,12 @@
-## Phase 4 — Deterministic Dynamic Tags V1 — v1.0.0.1.50 IMPLEMENTATION CANDIDATE
+## Release readiness — v1.0.0.1.50.1
 
-Owner-approved post-production Phase 4 is implemented in the source candidate. It introduces only the exact seven-tag provider-neutral renderer, Settings-default customer-name provenance, immutable Task-creation UTC tag reference, deterministic per-Task+recipient numeric values, and additive schema-v7 persistence. Unknown tags remain literal. No new UI page/preview or provider-specific tag contract is added.
+Phase 4 Deterministic Dynamic Tags V1 in `v1.0.0.1.50` is now CI-accepted on exact commit `b87b412413f8788656c89b3b97a487d855d10d5f` by GitHub Actions run `32109507918`. The run passed Linux tests, native Windows **642/642** regression, wheel/P14, PySide6/keyring/resource smoke, Nuitka OneDir, credential/TLS smokes, WiX MSI lifecycle, release-payload audit, and artifact upload. `v1.0.0.1.50.1` does not reopen any functional phase; it synchronizes release readiness and version identity only.
 
-Phase-4 source verification and packaging remain separate gates from GitHub Windows CI acceptance. Phase-1 TLS, Phase-2 fatal-limit behavior, Phase-3 sending/retry/delay/rate controls and historical P01–P14 production records remain unchanged.
+## Phase 4 — Deterministic Dynamic Tags V1 — v1.0.0.1.50 ACCEPTED BASELINE
+
+Owner-approved post-production Phase 4 is implemented and accepted in v1.0.0.1.50. It introduces only the exact seven-tag provider-neutral renderer, Settings-default customer-name provenance, immutable Task-creation UTC tag reference, deterministic per-Task+recipient numeric values, and additive schema-v7 persistence. Unknown tags remain literal. No new UI page/preview or provider-specific tag contract is added.
+
+Phase-4 source verification, native Windows regression, packaging and artifact gates passed in GitHub Actions run `32109507918` on exact commit `b87b412413f8788656c89b3b97a487d855d10d5f`. Phase-1 TLS, Phase-2 fatal-limit behavior, Phase-3 sending/retry/delay/rate controls and historical P01–P14 production records remain unchanged.
 
 ## v1.0.0.1.49.9 Phase-3 Windows CI closeout
 

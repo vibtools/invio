@@ -1,3 +1,7 @@
+## v1.0.0.1.50.1 release-readiness structure
+
+No production package, module, page, schema table/column, dependency, provider, worker, or folder architecture is added/removed/renamed. The only new public release records are `PATCH_MANIFEST_v1.0.0.1.50.1.md` and `docs/release-notes/1.0.0.1.50.1.md`; private `/project/` verification/freeze records are updated in owner baselines but remain Git-ignored. Runtime source changes are release-identity strings only.
+
 ## v1.0.0.1.50 Phase-4 structure
 
 Phase 4 adds one focused runtime module: `src/core/dynamic_tags.py`. Existing customer/import, Task snapshot, storage, provider-runtime and preflight modules are extended in place. SQLite becomes schema v7 through additive columns only. No application page, provider package, WorkerManager subsystem, delivery-ledger table, dependency or top-level directory is added/removed/renamed. `tests/test_phase4_dynamic_tags.py` owns focused Dynamic Tags V1 regression coverage.

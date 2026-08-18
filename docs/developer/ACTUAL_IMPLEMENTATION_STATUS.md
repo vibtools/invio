@@ -1,6 +1,10 @@
+## v1.0.0.1.50.1 — Phase 1–4 release readiness
+
+**Status: RELEASE-READINESS MAINTENANCE / RUNTIME FROZEN.** Phase 4 v1.0.0.1.50 at commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`, including native Windows **642/642 PASS**, wheel/P14, compiled PySide6/keyring, Nuitka startup, credential and Windows-native TLS smokes, WiX MSI lifecycle, P14 release-payload audit, and artifact upload. Phase-1 TLS, Phase-2 provider terminal-stop semantics, Phase-3 sending controls and Phase-4 Dynamic Tags V1 remain unchanged in this hotfix.
+
 ## v1.0.0.1.50 — Phase 4 Deterministic Dynamic Tags V1
 
-Status: **IMPLEMENTED CANDIDATE / POST-PUSH WINDOWS CI PENDING**. The source contains one central exact-tag renderer, deterministic Task+recipient numeric values, Task-creation UTC date semantics, Settings-default-only dynamic customer-name provenance, recipient-specific provider input rendering, and schema-v7 persistence. Existing v6 captured Tasks remain Dynamic Tags version 0/literal. Phase-1 TLS, Phase-2 batch halt semantics, Phase-3 sending controls, provider interface versions, WorkerManager and Task state machine remain frozen.
+Status: **CI-VERIFIED / OWNER-FROZEN BASELINE**. The source contains one central exact-tag renderer, deterministic Task+recipient numeric values, Task-creation UTC date semantics, Settings-default-only dynamic customer-name provenance, recipient-specific provider input rendering, and schema-v7 persistence. Existing v6 captured Tasks remain Dynamic Tags version 0/literal. Exact commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`, including native Windows **642/642 PASS** and the complete Windows distribution chain. Phase-1 TLS, Phase-2 batch halt semantics, Phase-3 sending controls, provider interface versions, WorkerManager and Task state machine remain frozen.
 
 ## v1.0.0.1.49.9 — Phase-3 Windows CI correction
 

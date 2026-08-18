@@ -1,3 +1,7 @@
+## v1.0.0.1.50.1 Release-Readiness Compatibility
+
+This maintenance hotfix is runtime/architecture compatible with the owner-frozen v1.0.0.1.50 Phase-4 baseline. Operational SQLite remains schema **v7**. Dynamic Tags V1, Phase-3 sending controls, Phase-2 circuit-breaker semantics, Phase-1 TLS verification, provider contracts, Task/WorkerManager architecture, credential storage, OAuth/Easy Onboarding, IVX, UI pages and dependencies are unchanged. The existing six-part version mapper yields PE `1.0.1.5001` and MSI `1.1.5001`.
+
 ## v1.0.0.1.50 Dynamic Tags compatibility
 
 - Operational DB schema advances additively from v6 to v7; v6 databases are backed up and migrated through the existing migration mechanism.

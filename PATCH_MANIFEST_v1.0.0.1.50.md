@@ -1,6 +1,6 @@
 # Invio v1.0.0.1.50 — Phase 4 Dynamic Tags Patch Manifest
 
-**Parent baseline:** Invio v1.0.0.1.49.9 @ `5b4dc934e62a9aead3a20e9b321b5eaf8fbf85d1`  
+**Parent baseline:** Invio v1.0.0.1.49.9 @ `5b4dc934e62a9aead3a20e9b321b5eaf8fbf85d1`
 **Parent uploaded ZIP SHA-256:** `ce6641afcdb0bb457db80285641a894374f80c108cea02797a3d1583b64803cc`
 
 ## Approved implementation
@@ -20,4 +20,4 @@ Phase-1 TLS, Phase-2 fatal-limit semantics, Phase-3 sending controls, WorkerMana
 
 ## Verification status
 
-Local verification is complete: Phase-4 direct tests 11/11 PASS; affected backend regression 300/300 PASS; release/P14/repository gate 109/109 PASS; final audit 642 total with 622 executed PASS, 20 PySide6-gated SKIP, 0 FAIL and 0 ERROR; syntax/privacy/provider-visibility PASS; wheel/P14 wheel audit PASS (59 source modules, 12 exact runtime resources). The final owner delta contains 8 added + 32 modified + 0 removed = 40 paths, including regenerated root `SHA256SUMS.txt`. GitHub Windows CI is a post-push acceptance gate and is not represented as passed until an actual run succeeds.
+Local verification is complete: Phase-4 direct tests 11/11 PASS; affected backend regression 300/300 PASS; release/P14/repository gate 109/109 PASS; final audit 642 total with 622 executed PASS, 20 PySide6-gated SKIP, 0 FAIL and 0 ERROR; syntax/privacy/provider-visibility PASS; wheel/P14 wheel audit PASS (59 source modules, 12 exact runtime resources). The final owner delta contains 8 added + 32 modified + 0 removed = 40 paths, including regenerated root `SHA256SUMS.txt`. The post-push acceptance gate subsequently passed in GitHub Actions run `32109507918` on commit `b87b412413f8788656c89b3b97a487d855d10d5f`: Windows full regression was **642/642 PASS** and the Windows distribution/P14 artifact chain passed.

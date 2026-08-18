@@ -1,3 +1,12 @@
+## v1.0.0.1.50.1 — Phase 1–4 Release-Readiness Certification Correction
+
+- Records GitHub Actions run `32109507918` as the authoritative post-push acceptance for v1.0.0.1.50 commit `b87b412413f8788656c89b3b97a487d855d10d5f`: Linux test and Windows build jobs passed.
+- Records the native Windows full regression result from that clean GitHub checkout: **642/642 PASS**, including Phase-4 Dynamic Tags tests and the current schema-v7 migration contracts.
+- Records successful wheel/P14 audit, native PySide6/keyring/resource smoke, Nuitka OneDir startup, protected-credential and Windows-native-TLS smokes, WiX MSI build/install/run/uninstall, release-payload audit, and artifact upload.
+- Removes one tracked trailing-whitespace defect from the historical v1.0.0.1.50 patch manifest.
+- Synchronizes the release identity to application/wheel `1.0.0.1.50.1`, PE `1.0.1.5001`, MSI `1.1.5001`, and future tag `v1.0.0.1.50.1` using the existing six-part hotfix mapping.
+- No Phase-1 TLS, Phase-2 provider circuit-breaker, Phase-3 sending-control, Phase-4 Dynamic Tags, provider, storage-schema, Task/WorkerManager, credential, OAuth/IVX, or UI/UX behavior changes are introduced.
+
 ## v1.0.0.1.50 — Deterministic Dynamic Tags V1
 
 - Adds one provider-neutral Dynamic Tags V1 renderer with the exact supported registry: `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, and `#YAAR#`.
