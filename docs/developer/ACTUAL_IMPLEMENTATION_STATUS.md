@@ -1,3 +1,7 @@
+## v1.0.0.1.50 — Phase 4 Deterministic Dynamic Tags V1
+
+Status: **IMPLEMENTED CANDIDATE / POST-PUSH WINDOWS CI PENDING**. The source contains one central exact-tag renderer, deterministic Task+recipient numeric values, Task-creation UTC date semantics, Settings-default-only dynamic customer-name provenance, recipient-specific provider input rendering, and schema-v7 persistence. Existing v6 captured Tasks remain Dynamic Tags version 0/literal. Phase-1 TLS, Phase-2 batch halt semantics, Phase-3 sending controls, provider interface versions, WorkerManager and Task state machine remain frozen.
+
 ## v1.0.0.1.49.9 — Phase-3 Windows CI correction
 
 **Status:** implementation corrected; post-push Windows CI acceptance pending. GitHub run `32097949119` passed Linux and all Windows Phase-3/runtime/UI tests except one Windows-only cleanup error in `Phase3SendingControlStorageTests.test_schema_v5_migrates_to_v6_with_baseline_safe_defaults`. The test fixture now explicitly closes its two SQLite connections. Production `DomainStore`, schema v6, Phase-3 controls and frozen Phase-1/2/runtime boundaries are unchanged.

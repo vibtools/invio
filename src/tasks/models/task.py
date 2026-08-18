@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 
+from ...core.dynamic_tags import DYNAMIC_TAGS_VERSION, utc_reference_now
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate
 
@@ -111,6 +112,8 @@ class TaskExecutionSnapshot:
     customers: tuple[CustomerRecord, ...] = ()
     template: TaskInvoiceTemplateSnapshot | None = None
     sending_controls: TaskSendingControls = TaskSendingControls()
+    dynamic_tags_version: int = 0
+    tag_reference_utc: str = ""
 
     @classmethod
     def capture(
@@ -130,6 +133,8 @@ class TaskExecutionSnapshot:
             customers=tuple(customers),
             template=TaskInvoiceTemplateSnapshot.from_template(template),
             sending_controls=sending_controls or TaskSendingControls(),
+            dynamic_tags_version=DYNAMIC_TAGS_VERSION,
+            tag_reference_utc=utc_reference_now(),
         )
 
     @classmethod
@@ -147,6 +152,8 @@ class TaskExecutionSnapshot:
             customers=(),
             template=None,
             sending_controls=TaskSendingControls(),
+            dynamic_tags_version=0,
+            tag_reference_utc="",
         )
 
     @property

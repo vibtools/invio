@@ -1,3 +1,7 @@
+## Current Phase-4 candidate — v1.0.0.1.50
+
+Deterministic Dynamic Tags V1 is implemented as a provider-neutral host feature. Exact tags: `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, `#YAAR#`. Unknown tags stay literal. Date tags use the frozen Task-creation UTC reference; numeric tags are stable for one Task+recipient across retry/resume/restart. Supported target fields are Settings Default Customer Name and Invoice Template Memo, Footer, Customer Note, Terms, and Item Description. Operational schema is v7. No new UI page or provider-specific tag is introduced.
+
 ## Current baseline candidate — v1.0.0.1.49.9
 
 v1.0.0.1.49.9 retains the complete v1.0.0.1.49.8 Phase-3 Sending Scheduler / Retry / Delay feature set and fixes only the Windows SQLite connection lifecycle in its schema-migration regression fixture. No application workflow, Settings contract, provider behavior, task execution or database schema changed.

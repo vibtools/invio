@@ -1,3 +1,17 @@
+## v1.0.0.1.50 — Deterministic Dynamic Tags V1
+
+- Adds one provider-neutral Dynamic Tags V1 renderer with the exact supported registry: `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, and `#YAAR#`.
+- `#NAME#` resolves to the normalized recipient email local-part and `#EMAIL#` to the normalized full recipient email; neither changes the actual recipient address.
+- `#R5#` and `#R11#` are deterministic random-looking numeric values derived from Task identity + normalized recipient + tag, so the same durable execution reproduces the same text across retry/resume/restart.
+- `#DATE#`, `#DATE-NAME#`, and `#YAAR#` use the immutable Task-creation **UTC** reference, formatting respectively as `August 18, 2026`, `Tuesday`, and `2026` for that example date.
+- Unknown tag-like text remains literal (`KEEP_LITERAL`). Matching is exact and case-sensitive.
+- Renders only Settings Default Customer Name provenance and Invoice Template Memo, Footer, Customer Note, Terms, and Item Description; non-target fields remain literal.
+- Restricts dynamic customer-name activation to the Settings Default Customer Name import-default path. Explicit imported names retain literal behavior.
+- Advances SQLite schema v6→v7 additively with customer/snapshot name-provenance plus Task Dynamic Tags version/UTC-reference fields. Existing v6 rows migrate with Dynamic Tags disabled to preserve existing captured executions.
+- Stripe, Refrens and external adapters receive recipient-rendered copies through the existing host runtime; provider capability mappings and External Adapter Interface v1 remain unchanged.
+- Preserves Phase-1 TLS, Phase-2 fatal-limit circuit breaker, Phase-3 sending controls, Retry-After/backoff/cooldown rules, non-idempotent replay safety, WorkerManager/QThread ownership, Task state machine, OAuth/Easy Onboarding, IVX and unrelated UI/UX.
+- Synchronizes release identity to application/wheel `1.0.0.1.50`, PE `1.0.1.50`, MSI `1.1.50`.
+
 ## v1.0.0.1.49.9 — Windows Phase-3 Migration Test / CI Correction
 
 - Corrects the Windows-only schema-v5→v6 migration regression fixture so both SQLite connections are explicitly closed before `TemporaryDirectory` cleanup.

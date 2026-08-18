@@ -1,3 +1,7 @@
+## Dynamic Tags in Tasks — v1.0.0.1.50
+
+New Tasks freeze Dynamic Tags V1 and the Task-creation UTC reference into the immutable execution snapshot. The same Task+recipient therefore resolves `#R5#`, `#R11#`, and all date-dependent tags identically through automatic retry, Retry Failed, Resume Remaining, and application restart recovery. Invoice Template rendering is limited to Memo, Footer, Customer Note, Terms, and Item Description. Template Name, Invoice Title/Subtitle/Type, currency, quantities, amounts, tax values, account data, Task names and the actual recipient email are not tag-rendered.
+
 ## v1.0.0.1.49.8 immutable sending controls
 
 Each newly created Task now captures `TaskSendingControls` beside the existing immutable provider/account/customer/template snapshot. The captured contract includes Task network timeout, maximum automatic attempts, additional recipient delay and the approved per-account rate selection. Start, Resume Remaining and Retry Failed reuse the same captured values after application restart. Settings edits after Task creation never rewrite this snapshot. Current provider safety ceilings remain authoritative and can only reduce an older captured rate if the provider ceiling becomes more conservative.

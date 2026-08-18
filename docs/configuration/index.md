@@ -1,3 +1,9 @@
+## Dynamic Tags V1 — v1.0.0.1.50
+
+The existing **Default Customer Name** setting may contain supported Dynamic Tags. When a supported tag is present in that Settings default, imported customer records preserve the raw template plus an internal dynamic-name marker so the name resolves only when a Task executes for a recipient. Explicit names imported from CSV/TSV/XLSX/XLSM remain literal unless the configured Settings default overrides them under the existing import-default precedence.
+
+Supported exact tags: `#NAME#`, `#EMAIL#`, `#R5#`, `#R11#`, `#DATE#`, `#DATE-NAME#`, `#YAAR#`. Unknown tags remain literal. No separate Dynamic Tags settings page exists.
+
 ## v1.0.0.1.49.8 Sending & Retry configuration
 
 Settings now includes **Sending & Retry** and **Provider Rate Limits** controls:

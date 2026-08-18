@@ -1,3 +1,11 @@
+## v1.0.0.1.50 Dynamic Tags compatibility
+
+- Operational DB schema advances additively from v6 to v7; v6 databases are backed up and migrated through the existing migration mechanism.
+- Existing v6 customer-name rows receive `name_is_dynamic=0`; existing captured Task snapshots receive Dynamic Tags version `0` and no UTC reference, so their reserved-looking text remains literal.
+- New Tasks capture Dynamic Tags V1 plus a UTC Task-creation reference. No existing provider manifest, external adapter interface, IVX format, credential format, Task status, WorkerManager thread contract or delivery-ledger table is changed.
+- Settings and Invoice Template UI layouts remain compatible; the existing text inputs accept the approved tags without a new page or preview surface.
+- Provider compatibility is host-side: Stripe/Refrens/external execution receives rendered copies while existing provider capability/unsupported-field rules remain authoritative.
+
 ## v1.0.0.1.49.9 Windows CI compatibility correction
 
 This release does not change the application compatibility contract introduced by v1.0.0.1.49.8. It corrects only a Windows test-fixture handle lifecycle: Phase-3 migration verification now closes SQLite connections explicitly before temporary directory cleanup. Operational schema remains v6 and existing v5→v6 migration behavior is unchanged.

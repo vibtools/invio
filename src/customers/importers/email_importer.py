@@ -7,6 +7,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+from ...core.dynamic_tags import contains_supported_dynamic_tag
 from ..models import CustomerRecord
 
 EMAIL_RE = re.compile(r"[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.I)
@@ -190,7 +191,14 @@ def apply_customer_defaults(
         email_username = record.email.split("@", 1)[0]
         name = configured_name or record.name or email_username
         country = configured_country or record.country or "US"
-        normalized.append(CustomerRecord(record.email, name, country))
+        normalized.append(
+            CustomerRecord(
+                record.email,
+                name,
+                country,
+                name_is_dynamic=bool(configured_name and contains_supported_dynamic_tag(configured_name)),
+            )
+        )
     return normalized
 
 

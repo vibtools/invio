@@ -50,6 +50,7 @@ from .schema import (
     MIGRATION_V3_TO_V4,
     MIGRATION_V4_TO_V5,
     MIGRATION_V5_TO_V6,
+    MIGRATION_V6_TO_V7,
     SCHEMA_V1,
 )
 
@@ -143,7 +144,7 @@ class DomainStore:
             raise DomainStoreError(f"Operational storage could not be initialized: {exc}") from exc
 
     def _migrate(self, connection: sqlite3.Connection, version: int, *, backup_required: bool) -> None:
-        if version not in {0, 1, 2, 3, 4, 5}:
+        if version not in {0, 1, 2, 3, 4, 5, 6}:
             raise DomainStoreMigrationError(f"No migration path exists from schema {version} to {DOMAIN_SCHEMA_VERSION}.")
 
         if version == 0:
@@ -169,26 +170,34 @@ class DomainStore:
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
         elif version == 1:
             scripts.append(MIGRATION_V1_TO_V2)
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
         elif version == 2:
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
         elif version == 3:
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
         elif version == 4:
             scripts.append(MIGRATION_V4_TO_V5)
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
         elif version == 5:
             scripts.append(MIGRATION_V5_TO_V6)
+            scripts.append(MIGRATION_V6_TO_V7)
+        elif version == 6:
+            scripts.append(MIGRATION_V6_TO_V7)
 
         script = f"BEGIN IMMEDIATE;\n{'\n'.join(scripts)}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
@@ -1172,7 +1181,8 @@ class DomainStore:
     ) -> TaskExecutionSnapshot:
         row = connection.execute(
             "SELECT snapshot_state, provider_id, assignment_strategy, network_timeout_seconds, "
-            "max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account "
+            "max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account, "
+            "dynamic_tags_version, tag_reference_utc "
             "FROM task_execution_snapshots WHERE task_id=?",
             (task_id,),
         ).fetchone()
@@ -1239,6 +1249,8 @@ class DomainStore:
                 customers=(),
                 template=None,
                 sending_controls=sending_controls,
+                dynamic_tags_version=int(row["dynamic_tags_version"]),
+                tag_reference_utc=str(row["tag_reference_utc"]),
             )
 
         if state != TASK_SNAPSHOT_CAPTURED:
@@ -1259,7 +1271,7 @@ class DomainStore:
             )
 
         customer_rows = connection.execute(
-            "SELECT email, name, country FROM task_snapshot_customers WHERE task_id=? ORDER BY ordinal",
+            "SELECT email, name, country, name_is_dynamic FROM task_snapshot_customers WHERE task_id=? ORDER BY ordinal",
             (task_id,),
         ).fetchall()
         template_row = connection.execute(
@@ -1313,11 +1325,14 @@ class DomainStore:
                     email=str(customer_row["email"]),
                     name=str(customer_row["name"]),
                     country=str(customer_row["country"]),
+                    name_is_dynamic=bool(customer_row["name_is_dynamic"]),
                 )
                 for customer_row in customer_rows
             ),
             template=template,
             sending_controls=sending_controls,
+            dynamic_tags_version=int(row["dynamic_tags_version"]),
+            tag_reference_utc=str(row["tag_reference_utc"]),
         )
 
     def load(self, credential_store: CredentialStore) -> LoadedDomain:
@@ -1373,7 +1388,7 @@ class DomainStore:
                 for row in connection.execute("SELECT id, name FROM customer_lists ORDER BY rowid").fetchall():
                     item = CustomerList(id=str(row["id"]), name=str(row["name"]))
                     customer_rows = connection.execute(
-                        "SELECT email, name, country FROM customer_emails WHERE list_id=? ORDER BY ordinal",
+                        "SELECT email, name, country, name_is_dynamic FROM customer_emails WHERE list_id=? ORDER BY ordinal",
                         (item.id,),
                     ).fetchall()
                     item.customers = [
@@ -1381,6 +1396,7 @@ class DomainStore:
                             email=str(customer_row["email"]),
                             name=str(customer_row["name"]),
                             country=str(customer_row["country"]),
+                            name_is_dynamic=bool(customer_row["name_is_dynamic"]),
                         )
                         for customer_row in customer_rows
                     ]
@@ -1729,9 +1745,9 @@ class DomainStore:
         def write(connection: sqlite3.Connection) -> None:
             connection.execute("DELETE FROM customer_emails WHERE list_id=?", (item.id,))
             connection.executemany(
-                "INSERT INTO customer_emails (list_id, ordinal, email, name, country) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO customer_emails (list_id, ordinal, email, name, country, name_is_dynamic) VALUES (?, ?, ?, ?, ?, ?)",
                 [
-                    (item.id, ordinal, customer.email, customer.name, customer.country)
+                    (item.id, ordinal, customer.email, customer.name, customer.country, int(customer.name_is_dynamic))
                     for ordinal, customer in enumerate(item.customers)
                 ],
             )
@@ -1810,12 +1826,14 @@ class DomainStore:
         connection.execute(
             """INSERT INTO task_execution_snapshots (
                    task_id, snapshot_state, provider_id, assignment_strategy, network_timeout_seconds,
-                   max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account,
+                   dynamic_tags_version, tag_reference_utc
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 task.id, snapshot.state, snapshot.provider_id, snapshot.assignment_strategy,
                 controls.network_timeout_seconds, controls.max_automatic_attempts,
                 controls.additional_recipient_delay_seconds, controls.rate_limit_per_account,
+                snapshot.dynamic_tags_version, snapshot.tag_reference_utc,
             ),
         )
         if task.total != len(snapshot.customers):
@@ -1830,9 +1848,9 @@ class DomainStore:
             raise ValueError("Captured task execution snapshot template name does not match the task binding.")
 
         connection.executemany(
-            "INSERT INTO task_snapshot_customers (task_id, ordinal, email, name, country) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO task_snapshot_customers (task_id, ordinal, email, name, country, name_is_dynamic) VALUES (?, ?, ?, ?, ?, ?)",
             [
-                (task.id, ordinal, customer.email, customer.name, customer.country)
+                (task.id, ordinal, customer.email, customer.name, customer.country, int(customer.name_is_dynamic))
                 for ordinal, customer in enumerate(snapshot.customers)
             ],
         )

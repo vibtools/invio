@@ -1,3 +1,7 @@
+## v1.0.0.1.50 Dynamic Tags error/safety contract
+
+Dynamic Tags V1 resolves only exact supported tokens. Owner policy is `KEEP_LITERAL`, therefore unknown token-shaped text is not guessed, rejected, or transformed. New captured Tasks must carry Dynamic Tags version 1 and a valid UTC Task-creation reference; unsupported versions or invalid/missing V1 references fail closed during preflight/runtime before provider mutation. Existing migrated snapshots remain version 0 with no tag reference and retain literal behavior. Recipient email is never rewritten by rendering.
+
 ## v1.0.0.1.49.9 Windows SQLite test-handle correction
 
 Windows `WinError 32` during `TemporaryDirectory` cleanup must not be treated as an application migration failure when the handle belongs to a regression fixture. The Phase-3 v5→v6 migration test now uses `contextlib.closing(sqlite3.connect(...))` for both fixture connections. Production `DomainStore._connection()` already closes connections in `finally`, and its migration/backup error handling is unchanged.

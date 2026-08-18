@@ -1,3 +1,7 @@
+## v1.0.0.1.50 Phase-4 structure
+
+Phase 4 adds one focused runtime module: `src/core/dynamic_tags.py`. Existing customer/import, Task snapshot, storage, provider-runtime and preflight modules are extended in place. SQLite becomes schema v7 through additive columns only. No application page, provider package, WorkerManager subsystem, delivery-ledger table, dependency or top-level directory is added/removed/renamed. `tests/test_phase4_dynamic_tags.py` owns focused Dynamic Tags V1 regression coverage.
+
 ## v1.0.0.1.49.9 release-record additions
 
 - `PATCH_MANIFEST_v1.0.0.1.49.9.md` — replace-ready correction inventory.

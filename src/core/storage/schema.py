@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DOMAIN_SCHEMA_VERSION = 6
+DOMAIN_SCHEMA_VERSION = 7
 
 SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -231,6 +231,14 @@ WHERE snapshot_state = 'Captured' AND provider_id = 'stripe';
 UPDATE task_execution_snapshots
 SET rate_limit_per_account = 1.0
 WHERE snapshot_state = 'Captured' AND provider_id = 'refrens';
+"""
+
+
+MIGRATION_V6_TO_V7 = """
+ALTER TABLE customer_emails ADD COLUMN name_is_dynamic INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE task_snapshot_customers ADD COLUMN name_is_dynamic INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE task_execution_snapshots ADD COLUMN dynamic_tags_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE task_execution_snapshots ADD COLUMN tag_reference_utc TEXT NOT NULL DEFAULT '';
 """
 
 APPLICATION_TABLES = {

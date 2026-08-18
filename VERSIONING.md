@@ -1,4 +1,14 @@
-## Current mapping — v1.0.0.1.49.9
+## Current mapping — v1.0.0.1.50
+
+- Application: `1.0.0.1.50`
+- Git tag mapping: `v1.0.0.1.50`
+- PE: `1.0.1.50`
+- MSI: `1.1.50`
+- Python package/wheel: `1.0.0.1.50`
+
+This identity is the owner-approved Phase 4 Deterministic Dynamic Tags V1 implementation candidate over CI-verified v1.0.0.1.49.9. Tag/release remains gated by candidate verification, non-tag GitHub CI and owner acceptance.
+
+## Previous mapping — v1.0.0.1.49.9
 
 - Application: `1.0.0.1.49.9`
 - Git tag mapping: `v1.0.0.1.49.9`

@@ -1,3 +1,9 @@
+## Phase 4 — Deterministic Dynamic Tags V1 — v1.0.0.1.50 IMPLEMENTATION CANDIDATE
+
+Owner-approved post-production Phase 4 is implemented in the source candidate. It introduces only the exact seven-tag provider-neutral renderer, Settings-default customer-name provenance, immutable Task-creation UTC tag reference, deterministic per-Task+recipient numeric values, and additive schema-v7 persistence. Unknown tags remain literal. No new UI page/preview or provider-specific tag contract is added.
+
+Phase-4 source verification and packaging remain separate gates from GitHub Windows CI acceptance. Phase-1 TLS, Phase-2 fatal-limit behavior, Phase-3 sending/retry/delay/rate controls and historical P01–P14 production records remain unchanged.
+
 ## v1.0.0.1.49.9 Phase-3 Windows CI closeout
 
 Phase 3 remains implemented exactly as v1.0.0.1.49.8. v1.0.0.1.49.9 closes the Windows-only CI blocker from run `32097949119` without adding Phase 4 or changing provider/runtime behavior. Phase 4 remains the next planned product phase after the new non-tag CI is green and this baseline is accepted.

@@ -97,7 +97,7 @@ class P02StorageTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        self.assertEqual(version, 6)
+        self.assertEqual(version, 7)
         self.assertIn("accounts", tables)
         self.assertIn("tasks", tables)
         self.assertIn("account_reservations", tables)
@@ -322,7 +322,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v1.sqlite3.pre_migration_v1.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
             columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
         self.assertIn("last_verification_at", columns)
         self.assertIn("verification_error_summary", columns)
@@ -679,7 +679,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy.sqlite3.pre_migration_v0.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
 
     def test_unversioned_unknown_schema_is_rejected_without_replacement(self):
         legacy = self.root / "unknown.sqlite3"
@@ -775,7 +775,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v2.sqlite3.pre_migration_v2.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
             row = connection.execute(
                 "SELECT email, name, country FROM customer_emails WHERE list_id='list_old'"
             ).fetchone()
@@ -852,7 +852,7 @@ class Phase3SendingControlStorageTests(unittest.TestCase):
                 connection.commit()
             DomainStore(db_path)
             with closing(sqlite3.connect(db_path)) as connection:
-                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
                 columns = {row[1] for row in connection.execute("PRAGMA table_info(task_execution_snapshots)")}
             self.assertTrue({
                 "network_timeout_seconds", "max_automatic_attempts",
@@ -989,7 +989,7 @@ class P05SnapshotStorageTests(unittest.TestCase):
 
     def test_schema_v4_snapshot_tables_exist(self):
         with closing(sqlite3.connect(self.db_path)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertTrue(
             {
@@ -1258,7 +1258,7 @@ class P05SnapshotStorageTests(unittest.TestCase):
         self.assertIsNone(task.execution_snapshot.template)
         self.assertEqual(loaded.account_reservations[account_id], task_id)
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 7)
             row = connection.execute(
                 "SELECT snapshot_state, provider_id, assignment_strategy FROM task_execution_snapshots WHERE task_id=?",
                 (task_id,),

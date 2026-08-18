@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  INVIO_VERSION: "1.0.0.1.49.9"
-  INVIO_PE_VERSION: "1.0.1.4909"
+  INVIO_VERSION: "1.0.0.1.50"
+  INVIO_PE_VERSION: "1.0.1.50"
   NUITKA_VERSION: "4.1.3"
   WIX_VERSION: "6.0.2"
 

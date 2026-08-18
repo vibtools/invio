@@ -1,3 +1,7 @@
+## Dynamic Tags provider boundary — v1.0.0.1.50
+
+Dynamic Tags are resolved by the Invio host before provider mutation, not by individual provider adapters. Stripe, Refrens and executable external providers receive recipient-specific rendered copies through their existing contracts. Provider capability limits remain unchanged: Dynamic Tags do not create support for a field a provider already treats as unsupported, and External Provider Adapter Interface v1 / IVX format v1 are unchanged.
+
 ## v1.0.0.1.49.8 provider scheduling ceilings
 
 Provider scheduling policy remains host/provider-authoritative. Stripe declares 20 requests/second/account; Refrens declares 1 request/second/account. A user may choose a lower/equal per-provider rate that is enforced per selected account. Odoo continues to declare `scheduling_policy = None`, so Invio does not invent a numeric Odoo ceiling. Trusted P13 external adapters may expose a numeric ceiling only through a valid `ProviderSchedulingPolicy`; non-finite/non-positive rates, burst values other than 1, negative/non-finite cooldowns or caps below their base cooldown fail validation.

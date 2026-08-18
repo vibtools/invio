@@ -7,6 +7,7 @@ from typing import Iterable
 from urllib.parse import urlsplit
 
 from ...accounts.models import Account
+from ...core.dynamic_tags import DYNAMIC_TAGS_VERSION, DynamicTagContext, DynamicTagError
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, SUPPORTED_INVOICE_CURRENCY_SET
 from ...tasks.models import TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
@@ -501,6 +502,20 @@ def preflight_task(
         issues.append(PreflightIssue("snapshot-template-mismatch", "The immutable Task snapshot template does not match the Task binding."))
     if task.total != len(execution.customers):
         issues.append(PreflightIssue("snapshot-total-mismatch", "Task total does not match the immutable recipient snapshot."))
+    if execution.dynamic_tags_version not in {0, DYNAMIC_TAGS_VERSION}:
+        issues.append(PreflightIssue("dynamic-tags-version", "The immutable Task snapshot uses an unsupported Dynamic Tags version."))
+    elif execution.dynamic_tags_version == 0:
+        if execution.tag_reference_utc:
+            issues.append(PreflightIssue("dynamic-tags-reference", "A legacy Task snapshot contains an unexpected Dynamic Tags time reference."))
+    elif execution.customers:
+        try:
+            DynamicTagContext(
+                task_id=task.id,
+                recipient_email=execution.customers[0].email,
+                reference_utc=execution.tag_reference_utc,
+            )
+        except DynamicTagError as exc:
+            issues.append(PreflightIssue("dynamic-tags-reference", f"The immutable Task Dynamic Tags context is invalid: {exc}"))
     if issues:
         return PreflightResult(tuple(issues))
 

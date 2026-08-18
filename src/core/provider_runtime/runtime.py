@@ -29,6 +29,13 @@ except ImportError:  # pragma: no cover - required dependency is verified by dis
     _truststore = None
 
 from ...accounts.models import Account
+from ...core.dynamic_tags import (
+    DYNAMIC_TAGS_VERSION,
+    DynamicTagContext,
+    DynamicTagError,
+    render_dynamic_text,
+    render_invoice_template,
+)
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate, STRIPE_ZERO_DECIMAL_CURRENCIES
 from ...tasks.delivery_ledger import (
@@ -158,10 +165,11 @@ class CustomerSnapshot:
     email: str
     name: str = ""
     country: str = ""
+    name_is_dynamic: bool = False
 
     @classmethod
     def from_record(cls, record: CustomerRecord) -> "CustomerSnapshot":
-        return cls(record.email, record.name, record.country)
+        return cls(record.email, record.name, record.country, record.name_is_dynamic)
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -173,6 +181,8 @@ class TaskSnapshot:
     customers: tuple[CustomerSnapshot, ...]
     template: InvoiceTemplate
     sending_controls: TaskSendingControls
+    dynamic_tags_version: int
+    tag_reference_utc: str
 
     def __init__(
         self,
@@ -185,6 +195,8 @@ class TaskSnapshot:
         *,
         customers: tuple[CustomerSnapshot, ...] | None = None,
         sending_controls: TaskSendingControls | None = None,
+        dynamic_tags_version: int = 0,
+        tag_reference_utc: str = "",
     ) -> None:
         if customers is not None and customer_emails is not None:
             raise ValueError("Provide customers or customer_emails, not both.")
@@ -198,6 +210,8 @@ class TaskSnapshot:
         object.__setattr__(self, "customers", tuple(resolved))
         object.__setattr__(self, "template", template)
         object.__setattr__(self, "sending_controls", sending_controls or TaskSendingControls())
+        object.__setattr__(self, "dynamic_tags_version", int(dynamic_tags_version))
+        object.__setattr__(self, "tag_reference_utc", str(tag_reference_utc).strip())
 
     @property
     def customer_emails(self) -> tuple[str, ...]:
@@ -1040,7 +1054,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.9 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.50 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -1424,6 +1438,21 @@ class ProviderRuntime:
         if not execution.customers:
             raise ProviderRuntimeError("The immutable task snapshot has no recipients.")
         controls = execution.sending_controls
+        if execution.dynamic_tags_version not in {0, DYNAMIC_TAGS_VERSION}:
+            raise ProviderRuntimeError("The immutable task snapshot uses an unsupported Dynamic Tags version.")
+        if execution.dynamic_tags_version == 0:
+            if execution.tag_reference_utc:
+                raise ProviderRuntimeError("A legacy Task snapshot cannot contain a Dynamic Tags time reference.")
+        else:
+            try:
+                DynamicTagContext(
+                    task_id=task.id,
+                    recipient_email=execution.customers[0].email,
+                    reference_utc=execution.tag_reference_utc,
+                )
+            except DynamicTagError as exc:
+                raise ProviderRuntimeError(f"The immutable task snapshot Dynamic Tags context is invalid: {exc}") from exc
+
         if (
             not math.isfinite(controls.network_timeout_seconds)
             or controls.network_timeout_seconds < 10.0
@@ -1460,7 +1489,43 @@ class ProviderRuntime:
             template=execution.template.to_template(),
             customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
             sending_controls=execution.sending_controls,
+            dynamic_tags_version=execution.dynamic_tags_version,
+            tag_reference_utc=execution.tag_reference_utc,
         )
+
+    @staticmethod
+    def _render_recipient_dynamic_inputs(
+        snapshot: TaskSnapshot,
+        recipient_ordinal: int,
+    ) -> tuple[CustomerRecord, InvoiceTemplate]:
+        customer = snapshot.customers[recipient_ordinal]
+        if snapshot.dynamic_tags_version == 0:
+            return (
+                CustomerRecord(customer.email, customer.name, customer.country),
+                copy.deepcopy(snapshot.template),
+            )
+        if snapshot.dynamic_tags_version != DYNAMIC_TAGS_VERSION:
+            raise ProviderRuntimeError("The Task uses an unsupported Dynamic Tags version.")
+        try:
+            tag_context = DynamicTagContext(
+                task_id=snapshot.task_id,
+                recipient_email=customer.email,
+                reference_utc=snapshot.tag_reference_utc,
+            )
+            rendered_name = (
+                render_dynamic_text(customer.name, tag_context)
+                if customer.name_is_dynamic
+                else customer.name
+            )
+            rendered_customer = CustomerRecord(customer.email, rendered_name, customer.country)
+            rendered_template = render_invoice_template(snapshot.template, tag_context)
+        except (DynamicTagError, ValueError) as exc:
+            raise ProviderRuntimeError(
+                f"Dynamic Tags could not be rendered safely for {customer.email}: {exc}",
+                category="preflight",
+                retryable=False,
+            ) from exc
+        return rendered_customer, rendered_template
 
     def _provider_scheduling_policy(self, provider_id: str) -> ProviderSchedulingPolicy | None:
         adapter = provider_adapter_contract(provider_id)
@@ -2190,7 +2255,7 @@ class ProviderRuntime:
             }
             result_stage = ""
             try:
-                customer = snapshot.customers[recipient_ordinal]
+                customer, rendered_template = self._render_recipient_dynamic_inputs(snapshot, recipient_ordinal)
                 external_context = ExternalRecipientExecutionContext(
                     provider_id=snapshot.provider_id,
                     task_id=snapshot.task_id,
@@ -2198,8 +2263,8 @@ class ProviderRuntime:
                     account_name=account.name,
                     account_mode=account.mode,
                     credentials=dict(account.credentials),
-                    customer=CustomerRecord(customer.email, customer.name, customer.country),
-                    template=copy.deepcopy(snapshot.template),
+                    customer=customer,
+                    template=rendered_template,
                     request=lambda **kwargs: self._external_task_request(
                         context, snapshot=snapshot, account=account, run_id=run_id,
                         recipient_ordinal=recipient_ordinal, attempt_state=attempt_state,
@@ -2587,7 +2652,13 @@ class ProviderRuntime:
         key = account.credentials.get("secret_key", "").strip()
         self._validate_stripe_key(key)
         self._validate_stripe_mode(account, key)
-        template = snapshot.template
+        resolved_ordinal = recipient_ordinal
+        if resolved_ordinal < 0:
+            try:
+                resolved_ordinal = snapshot.customer_emails.index(email)
+            except ValueError as exc:
+                raise ProviderRuntimeError("Stripe recipient is outside the immutable Task snapshot.") from exc
+        _rendered_customer, template = self._render_recipient_dynamic_inputs(snapshot, resolved_ordinal)
         currency = template.currency.upper()
         scheduling_kwargs = {
             "context": context,
@@ -2739,7 +2810,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.9 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.50 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2970,7 +3041,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.9 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.50 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -3145,7 +3216,7 @@ class ProviderRuntime:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
             recipient_ordinal = full_index[email]
-            customer = snapshot.customers[recipient_ordinal]
+            customer, rendered_template = self._render_recipient_dynamic_inputs(snapshot, recipient_ordinal)
             primary_index = recipient_ordinal % len(snapshot.accounts)
             bound_account_id = attempted_account_ids.get(email)
             if email in attempted_before_execution and not bound_account_id:
@@ -3172,7 +3243,7 @@ class ProviderRuntime:
             stage = ""
             try:
                 payload = self.build_refrens_invoice_payload(
-                    snapshot.template,
+                    rendered_template,
                     customer_email=customer.email,
                     customer_country=customer.country,
                     customer_name=customer.name,

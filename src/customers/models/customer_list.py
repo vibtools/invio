@@ -16,18 +16,23 @@ class CustomerRecord:
     email: str
     name: str = ""
     country: str = ""
+    name_is_dynamic: bool = False
 
     def __post_init__(self) -> None:
         email = self.email.strip().lower()
         name = self.name.strip()
         country = self.country.strip().upper()
+        name_is_dynamic = self.name_is_dynamic
         if not email:
             raise ValueError("Customer email is required.")
         if country and (len(country) != 2 or not country.isascii() or not country.isalpha()):
             raise ValueError("Customer country must be a two-letter code when provided.")
+        if type(name_is_dynamic) is not bool:
+            raise ValueError("Customer dynamic-name marker must be a boolean.")
         object.__setattr__(self, "email", email)
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "country", country)
+        object.__setattr__(self, "name_is_dynamic", name_is_dynamic)
 
 
 class _CustomerEmailList(list[str]):
