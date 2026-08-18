@@ -790,5 +790,32 @@ def create_adapter():
 
 
 
+class Phase3ExternalSchedulingPolicyTests(P13ExternalAdapterTests):
+    def test_external_scheduling_policy_requires_finite_positive_rate_and_ordered_cooldowns(self):
+        source = self._adapter_source().replace(
+            "ProviderCapabilityProfile, ProviderRuntimeError",
+            "ProviderCapabilityProfile, ProviderRuntimeError, ProviderSchedulingPolicy",
+        ).replace(
+            "scheduling_policy = None",
+            "scheduling_policy = ProviderSchedulingPolicy(float('inf'), 1, 5.0, 60.0, 5.0, 60.0)",
+        )
+        bundle = self._bundle(adapter_source=source)
+        manifest = ProviderManager(self.root).inspect_manifest(bundle)
+        with self.assertRaisesRegex(ExternalAdapterError, "requests_per_second_per_account"):
+            ExternalAdapterRegistry.validate_adapter(manifest, bundle.parent / "adapter.py")
+
+        source = self._adapter_source().replace(
+            "ProviderCapabilityProfile, ProviderRuntimeError",
+            "ProviderCapabilityProfile, ProviderRuntimeError, ProviderSchedulingPolicy",
+        ).replace(
+            "scheduling_policy = None",
+            "scheduling_policy = ProviderSchedulingPolicy(2.0, 1, 10.0, 5.0, 5.0, 60.0)",
+        )
+        bundle = self._bundle(adapter_source=source)
+        manifest = ProviderManager(self.root).inspect_manifest(bundle)
+        with self.assertRaisesRegex(ExternalAdapterError, "account cooldown cap"):
+            ExternalAdapterRegistry.validate_adapter(manifest, bundle.parent / "adapter.py")
+
+
 if __name__ == "__main__":
     unittest.main()

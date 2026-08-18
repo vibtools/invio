@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-DOMAIN_SCHEMA_VERSION = 5
+DOMAIN_SCHEMA_VERSION = 6
 
 SCHEMA_V1 = """
 CREATE TABLE IF NOT EXISTS accounts (
@@ -216,6 +216,21 @@ CREATE TABLE task_delivery_operations (
 CREATE INDEX idx_task_delivery_runs_task ON task_delivery_runs(task_id, run_number);
 CREATE INDEX idx_task_delivery_recipients_email ON task_delivery_recipients(recipient_email);
 CREATE INDEX idx_task_delivery_operations_status ON task_delivery_operations(status);
+"""
+
+MIGRATION_V5_TO_V6 = """
+ALTER TABLE task_execution_snapshots ADD COLUMN network_timeout_seconds REAL NOT NULL DEFAULT 30.0;
+ALTER TABLE task_execution_snapshots ADD COLUMN max_automatic_attempts INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE task_execution_snapshots ADD COLUMN additional_recipient_delay_seconds REAL NOT NULL DEFAULT 0.0;
+ALTER TABLE task_execution_snapshots ADD COLUMN rate_limit_per_account REAL;
+
+UPDATE task_execution_snapshots
+SET rate_limit_per_account = 20.0
+WHERE snapshot_state = 'Captured' AND provider_id = 'stripe';
+
+UPDATE task_execution_snapshots
+SET rate_limit_per_account = 1.0
+WHERE snapshot_state = 'Captured' AND provider_id = 'refrens';
 """
 
 APPLICATION_TABLES = {

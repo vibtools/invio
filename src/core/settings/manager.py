@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
-SETTINGS_SCHEMA_VERSION = 1
+SETTINGS_SCHEMA_VERSION = 2
+NETWORK_TIMEOUT_MIN_SECONDS = 10.0
+NETWORK_TIMEOUT_MAX_SECONDS = 120.0
+MAX_AUTOMATIC_ATTEMPTS_LIMIT = 3
+RECIPIENT_DELAY_MAX_SECONDS = 60.0
 START_PAGE_LAST = "__last_page__"
 START_PAGES = (
     "Dashboard",
@@ -52,6 +57,11 @@ class AppSettings:
 
     default_customer_name: str = ""
     default_customer_country: str = ""
+
+    network_timeout_seconds: float = 30.0
+    max_automatic_attempts: int = 3
+    additional_recipient_delay_seconds: float = 0.0
+    provider_rate_overrides: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -300,12 +310,88 @@ class SettingsManager:
                 raise SettingsError("Default customer country must be a two-letter country code, for example US.")
             customer_country = defaults.default_customer_country
 
+        try:
+            network_timeout_seconds = float(settings.network_timeout_seconds)
+        except (TypeError, ValueError) as exc:
+            if strict:
+                raise SettingsError("Task network timeout must be a number of seconds.") from exc
+            network_timeout_seconds = defaults.network_timeout_seconds
+        if (
+            not math.isfinite(network_timeout_seconds)
+            or network_timeout_seconds < NETWORK_TIMEOUT_MIN_SECONDS
+            or network_timeout_seconds > NETWORK_TIMEOUT_MAX_SECONDS
+        ):
+            if strict:
+                raise SettingsError(
+                    f"Task network timeout must be between {int(NETWORK_TIMEOUT_MIN_SECONDS)} and "
+                    f"{int(NETWORK_TIMEOUT_MAX_SECONDS)} seconds."
+                )
+            network_timeout_seconds = defaults.network_timeout_seconds
+
+        try:
+            max_automatic_attempts = int(settings.max_automatic_attempts)
+        except (TypeError, ValueError) as exc:
+            if strict:
+                raise SettingsError("Maximum automatic attempts must be a whole number.") from exc
+            max_automatic_attempts = defaults.max_automatic_attempts
+        if max_automatic_attempts < 1 or max_automatic_attempts > MAX_AUTOMATIC_ATTEMPTS_LIMIT:
+            if strict:
+                raise SettingsError(
+                    f"Maximum automatic attempts must be between 1 and {MAX_AUTOMATIC_ATTEMPTS_LIMIT}."
+                )
+            max_automatic_attempts = defaults.max_automatic_attempts
+
+        try:
+            additional_recipient_delay_seconds = float(settings.additional_recipient_delay_seconds)
+        except (TypeError, ValueError) as exc:
+            if strict:
+                raise SettingsError("Additional recipient delay must be a number of seconds.") from exc
+            additional_recipient_delay_seconds = defaults.additional_recipient_delay_seconds
+        if (
+            not math.isfinite(additional_recipient_delay_seconds)
+            or additional_recipient_delay_seconds < 0
+            or additional_recipient_delay_seconds > RECIPIENT_DELAY_MAX_SECONDS
+        ):
+            if strict:
+                raise SettingsError(
+                    f"Additional recipient delay must be between 0 and {int(RECIPIENT_DELAY_MAX_SECONDS)} seconds."
+                )
+            additional_recipient_delay_seconds = defaults.additional_recipient_delay_seconds
+
+        raw_overrides = settings.provider_rate_overrides
+        provider_rate_overrides: dict[str, float] = {}
+        if not isinstance(raw_overrides, dict):
+            if strict:
+                raise SettingsError("Provider rate overrides must be stored as provider/rate pairs.")
+            raw_overrides = {}
+        for raw_provider_id, raw_rate in raw_overrides.items():
+            provider_id = str(raw_provider_id).strip().lower()
+            if not provider_id or len(provider_id) > 64 or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789_-" for ch in provider_id):
+                if strict:
+                    raise SettingsError("Provider rate override contains an invalid provider ID.")
+                continue
+            try:
+                rate = float(raw_rate)
+            except (TypeError, ValueError) as exc:
+                if strict:
+                    raise SettingsError(f"Rate override for {provider_id} must be numeric.") from exc
+                continue
+            if not math.isfinite(rate) or rate <= 0:
+                if strict:
+                    raise SettingsError(f"Rate override for {provider_id} must be greater than zero.")
+                continue
+            provider_rate_overrides[provider_id] = rate
+
         return AppSettings(
             start_page=start_page,
             max_log_entries=max_log_entries,
             default_file_folder=folder_value,
             default_customer_name=customer_name,
             default_customer_country=customer_country,
+            network_timeout_seconds=network_timeout_seconds,
+            max_automatic_attempts=max_automatic_attempts,
+            additional_recipient_delay_seconds=additional_recipient_delay_seconds,
+            provider_rate_overrides=provider_rate_overrides,
             **normalized_bools,
         )
 

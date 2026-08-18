@@ -7,7 +7,7 @@ from decimal import Decimal
 from ...accounts.models import Account
 from ...customers.models import CustomerList, CustomerRecord
 from ...invoices.templates import InvoiceItemTemplate, InvoiceTemplate, normalize_invoice_currency
-from ...tasks.models import Task, TaskExecutionSnapshot
+from ...tasks.models import Task, TaskExecutionSnapshot, TaskSendingControls
 from ...tasks.state_machine import TaskAction, require_task_action, validate_status_transition
 from ..storage import CredentialStore, CredentialStoreError, DomainStore, DomainStoreError, LoadedDomain
 
@@ -530,6 +530,7 @@ class AppState:
         account_ids: list[str],
         customer_list_id: str,
         invoice_template_id: str,
+        sending_controls: TaskSendingControls | None = None,
     ) -> Task:
         if not account_ids:
             raise StateError("Select at least one account.")
@@ -562,6 +563,7 @@ class AppState:
             account_ids=account_ids,
             customers=customer_list.customers,
             template=invoice_template,
+            sending_controls=sending_controls,
         )
         number = len(self.tasks) + 1
         task = Task(

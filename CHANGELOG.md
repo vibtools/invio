@@ -1,3 +1,13 @@
+## v1.0.0.1.49.8 — Sending Scheduler / Retry / Delay Controls
+
+- Adds Settings controls for Task Network Timeout (10–120s, default 30), Maximum Automatic Attempts (1–3, default 3), and Additional Recipient Delay (0–60s, default 0).
+- Adds provider-specific per-account rate overrides that may only reduce/equal a declared host/provider ceiling. Stripe remains capped at 20 req/s/account and Refrens at 1 req/s/account; Odoo declares no scheduling policy and therefore exposes no custom numeric rate.
+- Freezes sending controls into each new immutable `TaskExecutionSnapshot`; later Settings changes do not mutate Start/Resume/Retry behavior for an existing Task.
+- Advances SQLite operational storage from schema v5 to additive schema v6, persisting timeout/attempt/delay/rate controls while retaining all existing domain and P10 delivery-ledger tables.
+- Preserves current `Retry-After`, retryable HTTP classification, exponential backoff/jitter, account/provider cooldown, account-binding/failover safety, non-idempotent uncertainty, one-QThread-per-Task architecture, Phase-1 TLS and Phase-2 fatal-limit semantics.
+- Strengthens trusted external-adapter scheduling-policy validation before a declared policy can be used as an authoritative rate ceiling.
+- Dynamic Tags remain outside Phase 3 and are not implemented in this release.
+
 ## v1.0.0.1.49.7 — CI Release-Audit Correction
 
 - Corrected the P14 portable release audit to stop requiring `Invio/truststore/__init__.py`, a source-layout file that Nuitka does not guarantee in a compiled standalone distribution.

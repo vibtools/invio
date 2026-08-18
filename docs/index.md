@@ -1,3 +1,7 @@
+## Current version — v1.0.0.1.49.8
+
+Phase 3 exposes bounded sending controls while preserving host/provider ceilings. New Task snapshots freeze timeout, automatic-attempt count, additional recipient delay and any approved lower per-account provider rate. SQLite schema v6 makes the captured contract restart-safe. Stripe remains capped at 20 req/s/account, Refrens at 1 req/s/account, and Odoo remains without a declared numeric scheduler ceiling.
+
 ## Current version — v1.0.0.1.49.7
 
 v1.49.7 is a narrow CI/release-audit correction over the verified Phase-1/Phase-2 implementation. Windows native TLS, provider fatal-limit handling, Odoo v1.0.1, Task/WorkerManager, storage and UI workflows are unchanged.

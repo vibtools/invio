@@ -95,6 +95,14 @@ class TaskInvoiceTemplateSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class TaskSendingControls:
+    network_timeout_seconds: float = 30.0
+    max_automatic_attempts: int = 3
+    additional_recipient_delay_seconds: float = 0.0
+    rate_limit_per_account: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class TaskExecutionSnapshot:
     state: str
     provider_id: str
@@ -102,6 +110,7 @@ class TaskExecutionSnapshot:
     assignment_strategy: str
     customers: tuple[CustomerRecord, ...] = ()
     template: TaskInvoiceTemplateSnapshot | None = None
+    sending_controls: TaskSendingControls = TaskSendingControls()
 
     @classmethod
     def capture(
@@ -111,6 +120,7 @@ class TaskExecutionSnapshot:
         account_ids: list[str] | tuple[str, ...],
         customers: list[CustomerRecord] | tuple[CustomerRecord, ...],
         template: InvoiceTemplate,
+        sending_controls: TaskSendingControls | None = None,
     ) -> "TaskExecutionSnapshot":
         return cls(
             state=TASK_SNAPSHOT_CAPTURED,
@@ -119,6 +129,7 @@ class TaskExecutionSnapshot:
             assignment_strategy=TASK_ASSIGNMENT_STRATEGY,
             customers=tuple(customers),
             template=TaskInvoiceTemplateSnapshot.from_template(template),
+            sending_controls=sending_controls or TaskSendingControls(),
         )
 
     @classmethod
@@ -135,6 +146,7 @@ class TaskExecutionSnapshot:
             assignment_strategy=TASK_ASSIGNMENT_STRATEGY,
             customers=(),
             template=None,
+            sending_controls=TaskSendingControls(),
         )
 
     @property

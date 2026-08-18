@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 provider scheduling ceilings
+
+Provider scheduling policy remains host/provider-authoritative. Stripe declares 20 requests/second/account; Refrens declares 1 request/second/account. A user may choose a lower/equal per-provider rate that is enforced per selected account. Odoo continues to declare `scheduling_policy = None`, so Invio does not invent a numeric Odoo ceiling. Trusted P13 external adapters may expose a numeric ceiling only through a valid `ProviderSchedulingPolicy`; non-finite/non-positive rates, burst values other than 1, negative/non-finite cooldowns or caps below their base cooldown fail validation.
+
 ## Odoo v1.0.1 — Phase-2 stop semantics
 
 When Odoo provider evidence reports the proven daily email limit, Invio v1.49.6 activates the generic external batch circuit breaker after reconciling the current recipient. When post-send evidence is `UNVERIFIED`, Invio also halts and does not record confirmed success. Ordinary recipient-specific mail failures do not activate the terminal circuit breaker. No Odoo scheduler/rate policy is added in Phase 2.

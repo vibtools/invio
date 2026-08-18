@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 — Phase 3 Sending Controls
+
+Phase 3 implements bounded timeout/attempt/recipient-delay/provider-rate Settings and immutable per-Task persistence. Phase 1 TLS and Phase 2 provider-stop behavior remain frozen. Phase 4 Deterministic Dynamic Tags remains the next separately approval-gated update and is not included here.
+
 ## v1.0.0.1.49.7 CI correction status
 
 Scope-locked correction of the verified GitHub Actions release-payload false negative from run `32084087751`: Windows tests, OneDir startup, native TLS, credential storage and MSI install/run/uninstall all passed, but the final P14 portable audit incorrectly required a Nuitka-compiled dependency's source `truststore/__init__.py`. No Phase 3/4 implementation is introduced.

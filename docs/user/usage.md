@@ -1,3 +1,7 @@
+## Sending controls — v1.0.0.1.49.8
+
+Open **Settings → Sending & Retry** to choose the timeout, maximum total automatic attempts and an optional delay between recipients. Under **Provider Rate Limits**, keep **Provider default** or select a lower custom per-account rate when that provider declares an approved ceiling. Existing Tasks keep the controls captured when they were created, so changing Settings does not alter an already-created Task, Resume Remaining operation or Retry Failed operation. Provider `Retry-After` and safety limits always win over a faster user choice.
+
 ## Provider IVX usage — v1.0.0.1.49.4
 
 The end-user workflow is unchanged: select one `.ivx` file with **Load Provider**, then Install after review/trust confirmation. v1.49.4 changes only validation and compatibility behind that workflow. Unsafe archives are rejected before import, while missing/invalid provider logos transparently use the host fallback icon.

@@ -147,7 +147,7 @@ class P10DeliveryLedgerTests(unittest.TestCase):
 
     def test_schema_v5_adds_exactly_three_delivery_tables(self):
         with closing(sqlite3.connect(self.db_path)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             tables = {
                 row[0]
                 for row in connection.execute(
@@ -171,7 +171,7 @@ class P10DeliveryLedgerTests(unittest.TestCase):
         DomainStore(legacy)
         self.assertTrue(legacy.with_name(f"{legacy.name}.pre_migration_v4.bak").exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM task_delivery_runs").fetchone()[0], 0)
 
     def test_run_id_is_distinct_from_task_id_and_run_number_increments(self):

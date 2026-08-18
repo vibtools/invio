@@ -24,6 +24,7 @@ from src.core.provider_runtime.runtime import (
     _windows_native_tls_context,
 )
 from src.core.state import AppState
+from src.tasks.models import TaskSendingControls
 
 
 class _Context:
@@ -426,6 +427,49 @@ class P08ReliabilityTests(unittest.TestCase):
         self.assertIn("self.worker_manager.stop_all()", close)
         self.assertIn("event.accept()", close)
         self.assertLess(close.index("event.ignore()"), close.index("event.accept()"))
+
+
+class Phase3RetryAndTimeoutControlTests(P08ReliabilityTests):
+    def test_task_timeout_and_attempt_limit_are_taken_from_immutable_snapshot(self):
+        state, task = self._stripe_state(["a@example.com"])
+        task.execution_snapshot = task.execution_snapshot.__class__(
+            state=task.execution_snapshot.state,
+            provider_id=task.execution_snapshot.provider_id,
+            account_ids=task.execution_snapshot.account_ids,
+            assignment_strategy=task.execution_snapshot.assignment_strategy,
+            customers=task.execution_snapshot.customers,
+            template=task.execution_snapshot.template,
+            sending_controls=TaskSendingControls(45.0, 1, 0.0, 20.0),
+        )
+        timeouts: list[float] = []
+        def transport(_method, _url, _headers, _body, timeout):
+            timeouts.append(timeout)
+            raise ProviderRuntimeError("temporary", category="network", retryable=True)
+        runtime = ProviderRuntime(transport=transport, retry_jitter_source=lambda: 0.0)
+        runtime._await_account_rate_slot = lambda *_args, **_kwargs: True  # type: ignore[method-assign]
+        context = _Context(task)
+        with self.assertRaises(ProviderRuntimeError):
+            runtime.make_task_runner(task, state)(context)
+        self.assertEqual(timeouts, [45.0])
+
+    def test_task_attempt_limit_two_stops_after_two_transient_attempts(self):
+        state, task = self._stripe_state(["a@example.com"])
+        task.execution_snapshot = task.execution_snapshot.__class__(
+            state=task.execution_snapshot.state, provider_id=task.execution_snapshot.provider_id,
+            account_ids=task.execution_snapshot.account_ids, assignment_strategy=task.execution_snapshot.assignment_strategy,
+            customers=task.execution_snapshot.customers, template=task.execution_snapshot.template,
+            sending_controls=TaskSendingControls(30.0, 2, 0.0, 20.0),
+        )
+        calls = {"count": 0}
+        def transport(*_args):
+            calls["count"] += 1
+            raise ProviderRuntimeError("temporary", category="network", retryable=True)
+        runtime = ProviderRuntime(transport=transport, retry_jitter_source=lambda: 0.0)
+        runtime._retry_delay_seconds = lambda *_args: 0.0  # type: ignore[method-assign]
+        runtime._await_account_rate_slot = lambda *_args, **_kwargs: True  # type: ignore[method-assign]
+        with self.assertRaises(ProviderRuntimeError):
+            runtime.make_task_runner(task, state)(_Context(task))
+        self.assertEqual(calls["count"], 2)
 
 
 if __name__ == "__main__":

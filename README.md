@@ -1,3 +1,7 @@
+## Current baseline candidate — v1.0.0.1.49.8
+
+Phase 3 adds bounded Sending Scheduler / Retry / Delay controls without changing provider business payloads, Phase-1 TLS trust, Phase-2 fatal-limit circuit-breaking, WorkerManager/QThread ownership, or Dynamic Tags. New Tasks freeze their sending controls into the immutable execution snapshot and SQLite schema v6 persists those controls across restart. Defaults preserve v1.49.7 behavior: 30-second Task network timeout, three total automatic attempts, zero additional recipient delay, Stripe 20 requests/second/account, Refrens 1 request/second/account, and no invented Odoo numeric scheduling policy. Provider `Retry-After`, internal retry taxonomy/backoff/jitter/cooldowns and non-idempotent no-blind-replay rules remain authoritative.
+
 ## Current baseline candidate — v1.0.0.1.49.7
 
 v1.49.7 corrects only the verified GitHub Actions P14 release-audit false negative from the v1.49.6 Windows build. Nuitka successfully compiled and executed the native `truststore` TLS backend in both OneDir and MSI smoke tests, but the final portable audit incorrectly required the original `Invio/truststore/__init__.py` source file. The audit now checks only stable portable resources while executable smoke gates remain the runtime proof. Phase-1 TLS and Phase-2 provider-limit behavior remain unchanged.

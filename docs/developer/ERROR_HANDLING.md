@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 sending-control safety
+
+Invalid timeout/attempt/delay values fail Settings validation. Provider rate overrides fail before Task creation when no declared ceiling exists or the requested rate exceeds the provider ceiling. Loaded schema-v6 Task snapshots fail closed on non-finite/out-of-range sending-control values. Retry-After remains mandatory; max-attempt Settings never make a permanent/non-idempotent failure retryable. Phase-2 fatal external-provider stop conditions still terminate the batch before the next recipient and are not delayed by the new recipient-delay control.
+
 ## v1.0.0.1.49.7 release-audit correction
 
 No application error-handling semantics change. This release corrects a CI audit false positive: a compiled Nuitka dependency is validated by executable smoke behavior rather than by requiring its original Python source file to remain in the portable directory. TLS remains fail-closed and provider terminal-error behavior remains the v1.49.6 contract.

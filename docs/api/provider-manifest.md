@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 scheduling-policy host contract
+
+No `provider.json` schema field is added. Scheduling remains a trusted runtime-adapter capability. If an external adapter exposes `scheduling_policy`, it must be `None` or a valid host `ProviderSchedulingPolicy` with a finite positive requests-per-second-per-account value, `burst_capacity == 1`, finite non-negative cooldown values and caps not below their base cooldowns. Invalid runtime policy fails closed before it can be used as a user-configurable safety ceiling.
+
 ## IVX Format v1 portability correction — v1.0.0.1.49.4
 
 The manifest schema is unchanged. IVX archive member names must use canonical forward-slash POSIX spelling. Backslashes, absolute/drive paths, `.`/`..` components, repeated empty components, Windows forbidden filename characters, trailing dot/space components and reserved Windows device names are rejected before staging. This keeps a single IVX byte stream deterministic and safe on both Windows and POSIX hosts. Unsupported ZIP compression also fails closed as an IVX validation error.

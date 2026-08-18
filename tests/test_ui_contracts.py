@@ -772,6 +772,32 @@ class V1470DesktopDesignSystemContractTests(unittest.TestCase):
 
 
 
+class Phase3SendingControlsUiContractTests(unittest.TestCase):
+    def test_phase3_settings_ui_exposes_only_bounded_sending_controls_on_existing_page(self):
+        root = Path(__file__).resolve().parents[1]
+        settings_page = (root / "src" / "ui" / "pages" / "settings_page.py").read_text(encoding="utf-8")
+        main_window = (root / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        self.assertIn('card("Sending & Retry")', settings_page)
+        self.assertIn('card("Provider Rate Limits")', settings_page)
+        self.assertIn('form_group("Task network timeout"', settings_page)
+        self.assertIn('form_group("Maximum automatic attempts"', settings_page)
+        self.assertIn('form_group("Additional recipient delay"', settings_page)
+        self.assertIn('Approved ceiling:', settings_page)
+        self.assertIn('Custom rate unavailable', settings_page)
+        self.assertIn('self._provider_rate_catalog()', main_window)
+        self.assertIn('resolve_task_sending_controls', main_window)
+        self.assertNotIn('Phase 3 Settings', main_window)
+
+    def test_phase3_worker_manager_and_task_state_machine_remain_untouched_architecturally(self):
+        root = Path(__file__).resolve().parents[1]
+        worker = (root / "src" / "core" / "worker_manager" / "manager.py").read_text(encoding="utf-8")
+        state_machine = (root / "src" / "tasks" / "state_machine.py").read_text(encoding="utf-8")
+        self.assertIn('thread = QThread(self)', worker)
+        self.assertIn('InvioTaskThread-', worker)
+        self.assertNotIn('ThreadPoolExecutor', worker)
+        self.assertIn('TASK_STATUSES', state_machine)
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -815,7 +841,7 @@ class P06UiContractTests(unittest.TestCase):
         new_task = source.split("def new_task", 1)[1].split("def _runner_for_task", 1)[0]
         self.assertIn("preflight_candidate(", new_task)
         self.assertIn("if not result.passed:", new_task)
-        self.assertLess(new_task.index("preflight_candidate("), new_task.index("self.state.create_task(**payload)"))
+        self.assertLess(new_task.index("preflight_candidate("), new_task.index("self.state.create_task(**payload, sending_controls=sending_controls)"))
 
     def test_p06_start_and_retry_share_preflight_gate_before_runner_creation(self):
         source = (Path(__file__).resolve().parents[1] / "src" / "ui" / "main_window.py").read_text(encoding="utf-8")

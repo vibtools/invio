@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 sending-control boundary
+
+Phase 3 remains inside existing modules: Settings owns user defaults; `TaskExecutionSnapshot` owns immutable per-Task sending controls; `DomainStore` schema v6 persists them; `ProviderRuntime` enforces retry/timeout/rate/delay behavior; Settings Page exposes the controls. No new application page, worker subsystem, provider payload layer, or parallel execution architecture is introduced.
+
 ## v1.0.0.1.49.7 release-audit boundary
 
 No production package, module, page, schema, provider interface or worker architecture is added or removed. The only functional correction is in `scripts/test/p14_distribution_audit.py`: compiled Python dependency source layout is no longer treated as an end-user portable-file contract. Existing compiled TLS smoke gates remain authoritative. Phase-1/2 runtime code is unchanged except release identity/User-Agent strings.

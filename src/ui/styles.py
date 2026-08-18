@@ -201,7 +201,7 @@ def app_qss() -> str:
         font-size: 11px;
     }}
     QLineEdit#ProviderSearchInput:focus {{ border-color: {c['focus']}; }}
-    QLineEdit, QComboBox, QSpinBox {{
+    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
         min-height: {CONST.input_height}px; max-height: {CONST.input_height}px;
         border-radius: {CONST.common_radius}px; border: 1px solid {c['input_border']};
         background: {c['input_background']}; color: {c['primary_text']};
@@ -300,9 +300,11 @@ def app_qss() -> str:
     QDialog QLineEdit,
     QDialog QComboBox,
     QDialog QSpinBox,
+    QDialog QDoubleSpinBox,
     QWidget#SettingsPage QLineEdit,
     QWidget#SettingsPage QComboBox,
-    QWidget#SettingsPage QSpinBox {{
+    QWidget#SettingsPage QSpinBox,
+    QWidget#SettingsPage QDoubleSpinBox {{
         min-height: {CONST.form_control_height}px;
         max-height: {CONST.form_control_height}px;
         border-radius: {CONST.form_radius}px;
@@ -751,7 +753,7 @@ def app_qss() -> str:
         border-color: #1E2633;
         border-radius: 8px;
     }}
-    QLineEdit, QComboBox, QSpinBox, QTextEdit, QPlainTextEdit {{
+    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {{
         font-weight: 400;
     }}
     QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QTextEdit:disabled, QPlainTextEdit:disabled {{
@@ -782,17 +784,17 @@ def app_qss() -> str:
         width: 14px;
         height: 14px;
     }}
-    QSpinBox::up-button, QSpinBox::down-button {{
+    QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
         width: 22px;
         border: none;
         background: transparent;
     }}
-    QSpinBox::up-arrow {{
+    QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{
         image: url("{chevron_up}");
         width: 12px;
         height: 12px;
     }}
-    QSpinBox::down-arrow {{
+    QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{
         image: url("{chevron_down}");
         width: 12px;
         height: 12px;

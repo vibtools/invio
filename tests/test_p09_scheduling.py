@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlparse
 from src.core.provider_runtime import AccountSnapshot, ProviderRuntime, ProviderRuntimeError, provider_adapter_contract
 from src.core.provider_runtime.runtime import _SchedulerHealthState, _stdlib_transport
 from src.core.state import AppState
+from src.core.settings import AppSettings
+from src.tasks.models import TaskSendingControls
 
 
 class _Context:
@@ -432,6 +434,61 @@ class P09SchedulingTests(unittest.TestCase):
         self.assertNotIn("ThreadPoolExecutor", worker)
         self.assertNotIn("asyncio", worker)
         self.assertEqual(worker.count("QThread("), 1)
+
+
+class Phase3SchedulingControlTests(P09SchedulingTests):
+    def test_provider_rate_override_cannot_exceed_authoritative_ceiling(self):
+        runtime = ProviderRuntime()
+        controls = runtime.resolve_task_sending_controls(
+            "stripe", AppSettings(provider_rate_overrides={"stripe": 10.0})
+        )
+        self.assertEqual(controls.rate_limit_per_account, 10.0)
+        with self.assertRaisesRegex(ProviderRuntimeError, "approved ceiling"):
+            runtime.resolve_task_sending_controls(
+                "stripe", AppSettings(provider_rate_overrides={"stripe": 20.001})
+            )
+        with self.assertRaisesRegex(ProviderRuntimeError, "does not declare"):
+            runtime.resolve_task_sending_controls(
+                "odoo", AppSettings(provider_rate_overrides={"odoo": 1.0})
+            )
+
+    def test_custom_stripe_rate_controls_per_account_slot_spacing(self):
+        state, task, accounts = self._state()
+        runtime = ProviderRuntime()
+        runtime._execution_local.sending_controls = TaskSendingControls(30.0, 3, 0.0, 10.0)
+        context = _Context(task)
+        account = self._account_snapshot(accounts[0])
+        clock = [100.0]
+        waits: list[float] = []
+        def wait(_context, delay):
+            waits.append(delay)
+            clock[0] += delay
+            return True
+        with patch("src.core.provider_runtime.runtime.time.monotonic", side_effect=lambda: clock[0]), patch(
+            "src.core.provider_runtime.runtime._cooperative_retry_wait", side_effect=wait
+        ):
+            self.assertTrue(runtime._await_account_rate_slot(context, "stripe", account))
+            self.assertTrue(runtime._await_account_rate_slot(context, "stripe", account))
+        self.assertEqual(len(waits), 1)
+        self.assertAlmostEqual(waits[0], 0.1, places=6)
+
+    def test_additional_recipient_delay_occurs_only_between_recipients(self):
+        state, task, _accounts = self._state(["a@example.com", "b@example.com"], account_count=1)
+        task.execution_snapshot = task.execution_snapshot.__class__(
+            state=task.execution_snapshot.state, provider_id=task.execution_snapshot.provider_id,
+            account_ids=task.execution_snapshot.account_ids, assignment_strategy=task.execution_snapshot.assignment_strategy,
+            customers=task.execution_snapshot.customers, template=task.execution_snapshot.template,
+            sending_controls=TaskSendingControls(30.0, 3, 2.5, 20.0),
+        )
+        runtime = ProviderRuntime()
+        runtime._send_stripe_invoice_with_retry = lambda *_args, **_kwargs: ({"id": "in_1"}, 1)  # type: ignore[method-assign]
+        waits: list[float] = []
+        def wait(_context, delay):
+            waits.append(delay)
+            return True
+        with patch("src.core.provider_runtime.runtime._cooperative_retry_wait", side_effect=wait):
+            runtime.make_task_runner(task, state)(_Context(task))
+        self.assertEqual(waits, [2.5])
 
 
 if __name__ == "__main__":

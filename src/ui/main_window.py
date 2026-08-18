@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self._connect_workers()
         self._apply_app_settings()
         self.navigate(self.settings_manager.startup_page())
-        self.log("Invio v1.0.0.1.49.7 started.")
+        self.log("Invio v1.0.0.1.49.8 started.")
         if self.settings_manager.load_warning:
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("SidebarFooter")
         footer_layout = vbox(footer, (8, 8, 8, 8), 2)
         footer_layout.addWidget(label("Vib Tools", "SidebarFooterTitle", False))
-        footer_layout.addWidget(label("Production • v1.0.0.1.49.7", "SidebarFooterMeta", False))
+        footer_layout.addWidget(label("Production • v1.0.0.1.49.8", "SidebarFooterMeta", False))
         layout.addWidget(footer)
         return sidebar
 
@@ -216,7 +216,11 @@ class MainWindow(QMainWindow):
             self.clear_delivery_history,
         )
         self.logs_page = LogsPage(self.clear_logs, self.export_logs)
-        self.settings_page = SettingsPage(self.app_settings, self.save_app_settings)
+        self.settings_page = SettingsPage(
+            self.app_settings,
+            self.save_app_settings,
+            self._provider_rate_catalog(),
+        )
 
         ordered = [
             ("Dashboard", self.dashboard_page),
@@ -264,6 +268,8 @@ class MainWindow(QMainWindow):
             self.providers_page.refresh()
         elif name == "Reports":
             self.reports_page.refresh()
+        elif name == "Settings":
+            self._refresh_settings_rate_limits()
         self.settings_manager.record_last_page(name)
 
     def _restore_window_geometry(self) -> None:
@@ -286,6 +292,23 @@ class MainWindow(QMainWindow):
                 min(max(state.y, available.top()), max_y),
             )
 
+    def _provider_rate_catalog(self) -> dict[str, tuple[str, float | None]]:
+        catalog: dict[str, tuple[str, float | None]] = {}
+        try:
+            installed = self.providers.list_installed()
+        except ProviderManifestError:
+            return catalog
+        for provider in installed:
+            profile = self.provider_runtime.capability_profile(provider.id)
+            if profile is None or not profile.task_execution_enabled:
+                continue
+            catalog[provider.id] = (provider.name, self.provider_runtime.scheduling_rate_ceiling(provider.id))
+        return catalog
+
+    def _refresh_settings_rate_limits(self) -> None:
+        if hasattr(self, "settings_page"):
+            self.settings_page.set_provider_rate_limits(self._provider_rate_catalog(), self.app_settings)
+
     def _apply_app_settings(self) -> None:
         if hasattr(self, "logs_page"):
             self.logs_page.configure(
@@ -295,8 +318,9 @@ class MainWindow(QMainWindow):
 
     def save_app_settings(self, settings: AppSettings) -> tuple[bool, str]:
         try:
+            self.provider_runtime.validate_provider_rate_overrides(settings.provider_rate_overrides)
             self.app_settings = self.settings_manager.update(settings)
-        except SettingsError as exc:
+        except (SettingsError, ProviderRuntimeError) as exc:
             self._message("Settings", str(exc), QMessageBox.Icon.Warning)
             return False, str(exc)
         self._apply_app_settings()
@@ -489,6 +513,7 @@ class MainWindow(QMainWindow):
         self.log(f"Provider installed: {provider.name} v{provider.version}")
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self._refresh_settings_rate_limits()
         self._refresh_dashboard()
 
     def uninstall_provider(self, provider_id: str) -> None:
@@ -546,6 +571,7 @@ class MainWindow(QMainWindow):
         self.providers_page.refresh()
         self.accounts_page.refresh()
         self.tasks_page.refresh()
+        self._refresh_settings_rate_limits()
         self._refresh_dashboard()
 
     def load_provider(self) -> None:
@@ -636,6 +662,7 @@ class MainWindow(QMainWindow):
         )
         self.providers_page.refresh()
         self.accounts_page.refresh()
+        self._refresh_settings_rate_limits()
         self._refresh_dashboard()
 
     # Accounts ----------------------------------------------------------
@@ -997,8 +1024,11 @@ class MainWindow(QMainWindow):
             self._message("Preflight Failed", result.message, QMessageBox.Icon.Warning)
             return
         try:
-            task = self.state.create_task(**payload)
-        except StateError as exc:
+            sending_controls = self.provider_runtime.resolve_task_sending_controls(
+                payload["provider_id"], self.app_settings
+            )
+            task = self.state.create_task(**payload, sending_controls=sending_controls)
+        except (StateError, ProviderRuntimeError) as exc:
             self._message("Task", str(exc), QMessageBox.Icon.Warning)
             return
         self.log(

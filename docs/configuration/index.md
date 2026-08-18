@@ -1,3 +1,14 @@
+## v1.0.0.1.49.8 Sending & Retry configuration
+
+Settings now includes **Sending & Retry** and **Provider Rate Limits** controls:
+
+- Task Network Timeout: 10–120 seconds; default 30.
+- Maximum Automatic Attempts: 1–3 total attempts; default 3.
+- Additional Recipient Delay: 0–60 seconds between resolved recipient executions; default 0.
+- Provider rate: provider default or a custom positive rate not exceeding the declared per-account ceiling.
+
+Stripe's ceiling is 20 req/s/account and Refrens' ceiling is 1 req/s/account. Odoo does not declare a scheduling policy, so a numeric rate override is unavailable rather than guessed. These values are non-sensitive Settings defaults. When a Task is created, validated effective selections are copied into its immutable execution snapshot; changing Settings later affects new Tasks only. `Retry-After`, retryability classification, internal backoff/jitter and provider/account cooldown remain non-user-bypassable.
+
 ## v1.0.0.1.49.5 TLS configuration note
 
 There is no insecure TLS switch. On Windows, Invio uses the native OS trust policy; on non-Windows systems the existing stdlib TLS path remains unchanged.

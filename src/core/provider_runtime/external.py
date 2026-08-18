@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -276,8 +277,31 @@ class ExternalAdapterRegistry:
             scheduling = getattr(adapter, "scheduling_policy", None)
             if scheduling is not None and not isinstance(scheduling, ProviderSchedulingPolicy):
                 raise ExternalAdapterError("Adapter scheduling_policy must be ProviderSchedulingPolicy or None.")
-            if scheduling is not None and scheduling.burst_capacity != 1:
-                raise ExternalAdapterError("External scheduling_policy burst_capacity must be 1.")
+            if scheduling is not None:
+                if scheduling.burst_capacity != 1:
+                    raise ExternalAdapterError("External scheduling_policy burst_capacity must be 1.")
+                numeric_values = (
+                    ("requests_per_second_per_account", scheduling.requests_per_second_per_account, True),
+                    ("account_cooldown_base_seconds", scheduling.account_cooldown_base_seconds, False),
+                    ("account_cooldown_cap_seconds", scheduling.account_cooldown_cap_seconds, False),
+                    ("provider_cooldown_base_seconds", scheduling.provider_cooldown_base_seconds, False),
+                    ("provider_cooldown_cap_seconds", scheduling.provider_cooldown_cap_seconds, False),
+                )
+                for field_name, raw_value, strictly_positive in numeric_values:
+                    value = float(raw_value)
+                    if not math.isfinite(value) or (value <= 0 if strictly_positive else value < 0):
+                        qualifier = "greater than zero" if strictly_positive else "zero or greater"
+                        raise ExternalAdapterError(
+                            f"External scheduling_policy {field_name} must be finite and {qualifier}."
+                        )
+                if scheduling.account_cooldown_cap_seconds < scheduling.account_cooldown_base_seconds:
+                    raise ExternalAdapterError(
+                        "External scheduling_policy account cooldown cap must be >= its base."
+                    )
+                if scheduling.provider_cooldown_cap_seconds < scheduling.provider_cooldown_base_seconds:
+                    raise ExternalAdapterError(
+                        "External scheduling_policy provider cooldown cap must be >= its base."
+                    )
 
             browser_declaration = manifest.browser_auth
             browser_profile = getattr(adapter, "browser_oauth_profile", None)

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 Phase 3 architecture
+
+Phase 3 composes existing layers rather than adding a scheduler subsystem. `SettingsManager` persists non-sensitive defaults; `AppState.create_task()` captures validated `TaskSendingControls`; schema-v6 `DomainStore` persists those fields in `task_execution_snapshots`; `ProviderRuntime` activates the captured controls only for the current Task execution thread. Existing shared scheduler health/cooldown state, deterministic account binding and one-QThread-per-Task ownership remain unchanged. Effective provider rate is never above the current declared policy ceiling.
+
 ## v1.0.0.1.49.4 IVX boundary correction
 
 Architecture is unchanged. Archive trust decisions now use the central-directory raw name (`ZipInfo.orig_filename`) while extraction continues only after the raw spelling is proven canonical and portable. Provider-card logo lookup remains an optional capability of `ProviderManager`; UI code uses duck-typed capability detection so older manager collaborators remain valid. IVX build tooling now validates the temporary archive before atomic publication.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 Sending Controls compatibility
+
+v1.49.8 preserves the existing provider API payloads, account assignment rules, WorkerManager/QThread model, Phase-1 Windows native TLS behavior and Phase-2 provider fatal-limit circuit breaker. Settings additions are non-sensitive and additive. Operational SQLite migrates v5→v6 by adding sending-control fields to the existing Task snapshot table; existing captured Stripe/Refrens Tasks receive their prior host pacing ceilings and all other existing Tasks retain baseline-safe default/no-override behavior. New Tasks use their captured values after restart, Resume Remaining and Retry Failed. A current provider safety ceiling may reduce an older captured user rate but an increased future ceiling never silently raises an existing Task's captured rate.
+
 ## v1.0.0.1.49.7 CI / distribution compatibility
 
 The Windows runtime contract is unchanged from v1.49.6. Nuitka may compile Python dependencies without leaving their original package `__init__.py` source files in the OneDir tree, so the release audit now verifies portable end-user resources structurally while the existing compiled OneDir and MSI-installed TLS smoke gates verify the native `truststore` runtime directly.

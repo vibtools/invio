@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 Sending Controls troubleshooting
+
+If a custom provider rate cannot be selected, first check whether the installed executable provider declares a scheduling policy. Odoo intentionally shows no custom numeric rate because no authoritative policy is declared. If a saved custom rate exceeds a provider's current ceiling, Invio fails Task creation rather than bypassing the ceiling. Existing Tasks keep their captured sending controls; create a new Task when intentionally adopting changed Settings.
+
 ## v1.0.0.1.49.7 GitHub Actions release-audit troubleshooting
 
 If Windows CI reaches `Assemble release payloads and checksums` and reports `Portable ZIP missing runtime files: Invio/truststore/__init__.py` while the earlier compiled Windows native TLS and MSI-installed TLS smoke steps passed, the failure is the obsolete v1.49.6 structural audit assumption rather than a missing runtime TLS backend. v1.49.7 removes that source-file requirement; do not copy Python source files into the compiled distribution as a workaround.

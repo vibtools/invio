@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 schema-v6 upgrade
+
+v1.49.8 advances operational SQLite from schema v5 to v6 using the existing pre-migration backup and transactional migration path. The migration adds only immutable Task-snapshot sending-control fields. Existing Stripe captured Tasks receive the prior 20 req/s/account host ceiling, existing Refrens captured Tasks receive the prior 1 req/s/account ceiling, and other Tasks use baseline-safe default/no-rate-override behavior. Existing accounts, customer lists, invoice templates, Tasks and all three P10 delivery-ledger tables are preserved.
+
 ## v1.0.0.1.49.5 Windows TLS runtime dependency
 
 Windows builds include the `truststore` runtime so provider HTTPS validation uses the native Windows CryptoAPI trust store. Normal installation requires no certificate bypass or manual CA bundle configuration.

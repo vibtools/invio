@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 immutable sending controls
+
+Each newly created Task now captures `TaskSendingControls` beside the existing immutable provider/account/customer/template snapshot. The captured contract includes Task network timeout, maximum automatic attempts, additional recipient delay and the approved per-account rate selection. Start, Resume Remaining and Retry Failed reuse the same captured values after application restart. Settings edits after Task creation never rewrite this snapshot. Current provider safety ceilings remain authoritative and can only reduce an older captured rate if the provider ceiling becomes more conservative.
+
 ## Compact New Task Dialog — v1.0.0.1.48.4
 
 The New Task dialog keeps the same required inputs and validation rules but presents them compactly: Provider + account filters + account search on one row, the existing account table/pagination in the middle, and Invoice Template + Customer List + Cancel + Create Task on one bottom row. Account verification/reservation eligibility and Task payload semantics are unchanged.

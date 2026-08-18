@@ -7,6 +7,7 @@ from .task import (
     TaskExecutionSnapshot,
     TaskInvoiceItemSnapshot,
     TaskInvoiceTemplateSnapshot,
+    TaskSendingControls,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "TaskExecutionSnapshot",
     "TaskInvoiceItemSnapshot",
     "TaskInvoiceTemplateSnapshot",
+    "TaskSendingControls",
 ]

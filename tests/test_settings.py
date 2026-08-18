@@ -124,5 +124,45 @@ class SettingsManagerTests(unittest.TestCase):
             self.assertNotIn("credentials", corpus)
 
 
+class Phase3SendingSettingsTests(unittest.TestCase):
+    def test_phase3_defaults_preserve_existing_runtime_behavior(self):
+        settings = SettingsManager.defaults()
+        self.assertEqual(settings.network_timeout_seconds, 30.0)
+        self.assertEqual(settings.max_automatic_attempts, 3)
+        self.assertEqual(settings.additional_recipient_delay_seconds, 0.0)
+        self.assertEqual(settings.provider_rate_overrides, {})
+
+    def test_phase3_sending_controls_round_trip(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "settings.json"
+            manager = SettingsManager(path)
+            saved = manager.update(AppSettings(
+                network_timeout_seconds=45,
+                max_automatic_attempts=2,
+                additional_recipient_delay_seconds=1.5,
+                provider_rate_overrides={"stripe": 10.0, "refrens": 0.5},
+            ))
+            loaded = SettingsManager(path).settings
+            self.assertEqual(loaded, saved)
+            self.assertEqual(loaded.provider_rate_overrides, {"stripe": 10.0, "refrens": 0.5})
+
+    def test_phase3_sending_control_bounds_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            manager = SettingsManager(Path(td) / "settings.json")
+            invalid = (
+                AppSettings(network_timeout_seconds=9),
+                AppSettings(network_timeout_seconds=121),
+                AppSettings(max_automatic_attempts=0),
+                AppSettings(max_automatic_attempts=4),
+                AppSettings(additional_recipient_delay_seconds=-0.1),
+                AppSettings(additional_recipient_delay_seconds=60.1),
+                AppSettings(provider_rate_overrides={"stripe": 0}),
+            )
+            for candidate in invalid:
+                with self.subTest(candidate=candidate):
+                    with self.assertRaises(SettingsError):
+                        manager.update(candidate)
+
+
 if __name__ == "__main__":
     unittest.main()

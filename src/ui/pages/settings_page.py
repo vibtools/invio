@@ -8,6 +8,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
@@ -18,7 +19,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...core.settings import START_PAGE_LAST, START_PAGES, AppSettings, SettingsManager
+from ...core.settings import (
+    MAX_AUTOMATIC_ATTEMPTS_LIMIT,
+    NETWORK_TIMEOUT_MAX_SECONDS,
+    NETWORK_TIMEOUT_MIN_SECONDS,
+    RECIPIENT_DELAY_MAX_SECONDS,
+    START_PAGE_LAST,
+    START_PAGES,
+    AppSettings,
+    SettingsManager,
+)
 from ..tokens import CONST
 from ..widgets import button, card, form_group, label, page_header, section_toolbar
 
@@ -32,13 +42,20 @@ _SETTINGS_COUNTRY_FIELD_WIDTH = 120
 class SettingsPage(QWidget):
     """User-facing controls for Invio's persistent application preferences."""
 
-    def __init__(self, settings: AppSettings, on_save: SaveSettingsHandler):
+    def __init__(
+        self,
+        settings: AppSettings,
+        on_save: SaveSettingsHandler,
+        provider_rate_limits: dict[str, tuple[str, float | None]] | None = None,
+    ):
         super().__init__()
         self._on_save = on_save
         self.setObjectName("SettingsPage")
         self._settings_cards: list[tuple[QWidget, str]] = []
         self._settings_matches: dict[QWidget, bool] = {}
         self._settings_columns = 0
+        self._provider_rate_limits = dict(provider_rate_limits or {})
+        self._provider_rate_controls: dict[str, tuple[QComboBox, QDoubleSpinBox, float | None]] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(CONST.page_padding, CONST.page_padding, CONST.page_padding, CONST.page_padding)
@@ -153,6 +170,44 @@ class SettingsPage(QWidget):
             "file locations default file folder system folder browse remember last folder provider loading customer imports report exports log exports",
         )
 
+        # Sending & retry ----------------------------------------------
+        sending = card("Sending & Retry")
+        self.network_timeout_seconds = QDoubleSpinBox()
+        self.network_timeout_seconds.setRange(NETWORK_TIMEOUT_MIN_SECONDS, NETWORK_TIMEOUT_MAX_SECONDS)
+        self.network_timeout_seconds.setDecimals(0)
+        self.network_timeout_seconds.setSingleStep(5.0)
+        self.network_timeout_seconds.setSuffix(" sec")
+        sending.layout().addWidget(form_group("Task network timeout", self.network_timeout_seconds))
+
+        self.max_automatic_attempts = QSpinBox()
+        self.max_automatic_attempts.setRange(1, MAX_AUTOMATIC_ATTEMPTS_LIMIT)
+        self.max_automatic_attempts.setSuffix(" attempts")
+        sending.layout().addWidget(form_group("Maximum automatic attempts", self.max_automatic_attempts))
+
+        self.additional_recipient_delay_seconds = QDoubleSpinBox()
+        self.additional_recipient_delay_seconds.setRange(0.0, RECIPIENT_DELAY_MAX_SECONDS)
+        self.additional_recipient_delay_seconds.setDecimals(1)
+        self.additional_recipient_delay_seconds.setSingleStep(0.5)
+        self.additional_recipient_delay_seconds.setSuffix(" sec")
+        sending.layout().addWidget(form_group("Additional recipient delay", self.additional_recipient_delay_seconds))
+        self._register_settings_card(
+            sending,
+            "sending retry task network timeout automatic attempts additional recipient delay bounded retry after",
+        )
+
+        # Provider rate limits -----------------------------------------
+        self.provider_rates_card = card("Provider Rate Limits")
+        self.provider_rates_container = QWidget()
+        self.provider_rates_layout = QVBoxLayout(self.provider_rates_container)
+        self.provider_rates_layout.setContentsMargins(0, 0, 0, 0)
+        self.provider_rates_layout.setSpacing(8)
+        self.provider_rates_card.layout().addWidget(self.provider_rates_container)
+        self._register_settings_card(
+            self.provider_rates_card,
+            "provider rate limits requests per second account ceiling stripe refrens odoo custom lower rate",
+        )
+        self._rebuild_provider_rate_rows(settings)
+
         # Customer defaults --------------------------------------------
         customer_defaults = card("Customer Defaults")
         self.default_customer_name = QLineEdit()
@@ -196,6 +251,75 @@ class SettingsPage(QWidget):
 
         self.load_settings(settings)
         self._reflow_settings_grid(force=True)
+
+    def set_provider_rate_limits(
+        self,
+        provider_rate_limits: dict[str, tuple[str, float | None]],
+        settings: AppSettings | None = None,
+    ) -> None:
+        self._provider_rate_limits = dict(provider_rate_limits)
+        self._rebuild_provider_rate_rows(settings or self._collect_settings())
+
+    def _rebuild_provider_rate_rows(self, settings: AppSettings) -> None:
+        while self.provider_rates_layout.count():
+            item = self.provider_rates_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._provider_rate_controls.clear()
+
+        if not self._provider_rate_limits:
+            self.provider_rates_layout.addWidget(label("No installed Task provider declares a rate policy.", "Caption"))
+            return
+
+        for provider_id, (provider_name, ceiling) in sorted(
+            self._provider_rate_limits.items(), key=lambda item: item[1][0].casefold()
+        ):
+            row = QWidget()
+            grid = QGridLayout(row)
+            grid.setContentsMargins(0, 0, 0, 0)
+            grid.setHorizontalSpacing(8)
+            grid.setVerticalSpacing(4)
+            grid.addWidget(label(provider_name, "Body"), 0, 0)
+
+            if ceiling is None:
+                grid.addWidget(label("Approved ceiling: Not declared", "Caption"), 0, 1)
+                mode = QComboBox()
+                mode.addItem("Custom rate unavailable", "unavailable")
+                mode.setEnabled(False)
+                rate = QDoubleSpinBox()
+                rate.setRange(0.001, 1000000.0)
+                rate.setDecimals(3)
+                rate.setEnabled(False)
+                grid.addWidget(mode, 1, 0)
+                grid.addWidget(rate, 1, 1)
+                self._provider_rate_controls[provider_id] = (mode, rate, None)
+            else:
+                grid.addWidget(label(f"Approved ceiling: {ceiling:g} req/s/account", "Caption"), 0, 1)
+                mode = QComboBox()
+                mode.addItem("Provider default", "default")
+                mode.addItem("Custom lower rate", "custom")
+                rate = QDoubleSpinBox()
+                rate.setRange(0.001, float(ceiling))
+                rate.setDecimals(3)
+                rate.setSingleStep(min(1.0, max(0.001, float(ceiling) / 10.0)))
+                rate.setSuffix(" req/s/account")
+                custom_value = settings.provider_rate_overrides.get(provider_id)
+                if custom_value is not None:
+                    mode.setCurrentIndex(mode.findData("custom"))
+                    rate.setValue(min(float(ceiling), float(custom_value)))
+                else:
+                    rate.setValue(float(ceiling))
+                rate.setEnabled(mode.currentData() == "custom")
+                mode.currentIndexChanged.connect(
+                    lambda _index, combo=mode, control=rate: control.setEnabled(combo.currentData() == "custom")
+                )
+                grid.addWidget(mode, 1, 0)
+                grid.addWidget(rate, 1, 1)
+                self._provider_rate_controls[provider_id] = (mode, rate, float(ceiling))
+            grid.setColumnStretch(0, 1)
+            grid.setColumnStretch(1, 1)
+            self.provider_rates_layout.addWidget(row)
 
     def _register_settings_card(self, settings_card: QWidget, keywords: str) -> None:
         searchable = f"{keywords} {settings_card.windowTitle()}".casefold()
@@ -272,8 +396,16 @@ class SettingsPage(QWidget):
         self.remember_last_folder.setChecked(settings.remember_last_folder)
         self.default_customer_name.setText(settings.default_customer_name)
         self.default_customer_country.setText(settings.default_customer_country)
+        self.network_timeout_seconds.setValue(settings.network_timeout_seconds)
+        self.max_automatic_attempts.setValue(settings.max_automatic_attempts)
+        self.additional_recipient_delay_seconds.setValue(settings.additional_recipient_delay_seconds)
+        self._rebuild_provider_rate_rows(settings)
 
     def _collect_settings(self) -> AppSettings:
+        provider_rate_overrides: dict[str, float] = {}
+        for provider_id, (mode, rate, ceiling) in self._provider_rate_controls.items():
+            if ceiling is not None and mode.currentData() == "custom":
+                provider_rate_overrides[provider_id] = float(rate.value())
         return AppSettings(
             start_page=str(self.start_page.currentData()),
             remember_window=self.remember_window.isChecked(),
@@ -289,6 +421,10 @@ class SettingsPage(QWidget):
             remember_last_folder=self.remember_last_folder.isChecked(),
             default_customer_name=self.default_customer_name.text().strip(),
             default_customer_country=self.default_customer_country.text().strip(),
+            network_timeout_seconds=self.network_timeout_seconds.value(),
+            max_automatic_attempts=self.max_automatic_attempts.value(),
+            additional_recipient_delay_seconds=self.additional_recipient_delay_seconds.value(),
+            provider_rate_overrides=provider_rate_overrides,
         )
 
     def _save(self) -> None:

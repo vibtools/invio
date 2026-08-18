@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -38,6 +39,7 @@ from ...tasks.models import (
     TaskExecutionSnapshot,
     TaskInvoiceItemSnapshot,
     TaskInvoiceTemplateSnapshot,
+    TaskSendingControls,
 )
 from ...tasks.state_machine import TASK_STATUSES
 from .credential_store import CredentialStore, CredentialStoreError
@@ -47,6 +49,7 @@ from .schema import (
     MIGRATION_V2_TO_V3,
     MIGRATION_V3_TO_V4,
     MIGRATION_V4_TO_V5,
+    MIGRATION_V5_TO_V6,
     SCHEMA_V1,
 )
 
@@ -140,7 +143,7 @@ class DomainStore:
             raise DomainStoreError(f"Operational storage could not be initialized: {exc}") from exc
 
     def _migrate(self, connection: sqlite3.Connection, version: int, *, backup_required: bool) -> None:
-        if version not in {0, 1, 2, 3, 4}:
+        if version not in {0, 1, 2, 3, 4, 5}:
             raise DomainStoreMigrationError(f"No migration path exists from schema {version} to {DOMAIN_SCHEMA_VERSION}.")
 
         if version == 0:
@@ -165,20 +168,27 @@ class DomainStore:
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
+            scripts.append(MIGRATION_V5_TO_V6)
         elif version == 1:
             scripts.append(MIGRATION_V1_TO_V2)
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
+            scripts.append(MIGRATION_V5_TO_V6)
         elif version == 2:
             scripts.append(MIGRATION_V2_TO_V3)
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
+            scripts.append(MIGRATION_V5_TO_V6)
         elif version == 3:
             scripts.append(MIGRATION_V3_TO_V4)
             scripts.append(MIGRATION_V4_TO_V5)
+            scripts.append(MIGRATION_V5_TO_V6)
         elif version == 4:
             scripts.append(MIGRATION_V4_TO_V5)
+            scripts.append(MIGRATION_V5_TO_V6)
+        elif version == 5:
+            scripts.append(MIGRATION_V5_TO_V6)
 
         script = f"BEGIN IMMEDIATE;\n{'\n'.join(scripts)}\nPRAGMA user_version = {DOMAIN_SCHEMA_VERSION};\nCOMMIT;"
         try:
@@ -1161,7 +1171,9 @@ class DomainStore:
         account_ids: list[str],
     ) -> TaskExecutionSnapshot:
         row = connection.execute(
-            "SELECT snapshot_state, provider_id, assignment_strategy FROM task_execution_snapshots WHERE task_id=?",
+            "SELECT snapshot_state, provider_id, assignment_strategy, network_timeout_seconds, "
+            "max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account "
+            "FROM task_execution_snapshots WHERE task_id=?",
             (task_id,),
         ).fetchone()
         if row is None:
@@ -1172,6 +1184,18 @@ class DomainStore:
         state = str(row["snapshot_state"])
         provider_id = str(row["provider_id"])
         assignment_strategy = str(row["assignment_strategy"])
+        try:
+            rate_raw = row["rate_limit_per_account"]
+            sending_controls = TaskSendingControls(
+                network_timeout_seconds=float(row["network_timeout_seconds"]),
+                max_automatic_attempts=int(row["max_automatic_attempts"]),
+                additional_recipient_delay_seconds=float(row["additional_recipient_delay_seconds"]),
+                rate_limit_per_account=None if rate_raw is None else float(rate_raw),
+            )
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise DomainStoreCorruptionError(
+                f"Task '{task_id}' immutable sending controls are invalid."
+            ) from exc
         if provider_id != task_provider_id:
             raise DomainStoreCorruptionError(
                 f"Task '{task_id}' execution snapshot provider does not match the task provider."
@@ -1207,9 +1231,14 @@ class DomainStore:
                 raise DomainStoreCorruptionError(
                     f"Legacy task '{task_id}' contains partial immutable snapshot data."
                 )
-            return TaskExecutionSnapshot.legacy_unavailable(
+            return TaskExecutionSnapshot(
+                state=TASK_SNAPSHOT_LEGACY_UNAVAILABLE,
                 provider_id=provider_id,
-                account_ids=account_ids,
+                account_ids=tuple(account_ids),
+                assignment_strategy=assignment_strategy,
+                customers=(),
+                template=None,
+                sending_controls=sending_controls,
             )
 
         if state != TASK_SNAPSHOT_CAPTURED:
@@ -1288,6 +1317,7 @@ class DomainStore:
                 for customer_row in customer_rows
             ),
             template=template,
+            sending_controls=sending_controls,
         )
 
     def load(self, credential_store: CredentialStore) -> LoadedDomain:
@@ -1576,6 +1606,22 @@ class DomainStore:
                 raise DomainStoreCorruptionError(f"Task '{task.name}' snapshot assignment strategy is unsupported.")
             if tuple(task.account_ids) != snapshot.account_ids:
                 raise DomainStoreCorruptionError(f"Task '{task.name}' snapshot account order does not match the task account order.")
+            controls = snapshot.sending_controls
+            if (
+                not math.isfinite(controls.network_timeout_seconds)
+                or controls.network_timeout_seconds < 10.0
+                or controls.network_timeout_seconds > 120.0
+                or controls.max_automatic_attempts < 1
+                or controls.max_automatic_attempts > 3
+                or not math.isfinite(controls.additional_recipient_delay_seconds)
+                or controls.additional_recipient_delay_seconds < 0.0
+                or controls.additional_recipient_delay_seconds > 60.0
+                or (
+                    controls.rate_limit_per_account is not None
+                    and (not math.isfinite(controls.rate_limit_per_account) or controls.rate_limit_per_account <= 0.0)
+                )
+            ):
+                raise DomainStoreCorruptionError(f"Task '{task.name}' immutable sending controls are outside supported bounds.")
             if snapshot.state == TASK_SNAPSHOT_CAPTURED:
                 if snapshot.template is None:
                     raise DomainStoreCorruptionError(f"Task '{task.name}' captured snapshot has no invoice template.")
@@ -1760,9 +1806,17 @@ class DomainStore:
         if not snapshot.customers:
             raise ValueError("Captured task execution snapshot must contain at least one recipient.")
 
+        controls = snapshot.sending_controls
         connection.execute(
-            "INSERT INTO task_execution_snapshots (task_id, snapshot_state, provider_id, assignment_strategy) VALUES (?, ?, ?, ?)",
-            (task.id, snapshot.state, snapshot.provider_id, snapshot.assignment_strategy),
+            """INSERT INTO task_execution_snapshots (
+                   task_id, snapshot_state, provider_id, assignment_strategy, network_timeout_seconds,
+                   max_automatic_attempts, additional_recipient_delay_seconds, rate_limit_per_account
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                task.id, snapshot.state, snapshot.provider_id, snapshot.assignment_strategy,
+                controls.network_timeout_seconds, controls.max_automatic_attempts,
+                controls.additional_recipient_delay_seconds, controls.rate_limit_per_account,
+            ),
         )
         if task.total != len(snapshot.customers):
             raise ValueError("Task total must equal the immutable execution-snapshot recipient count.")

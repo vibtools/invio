@@ -18,8 +18,10 @@ from src.core.storage import (
     DomainStoreMigrationError,
 )
 from src.customers.models import CustomerList, CustomerRecord
-from src.tasks.models import TASK_SNAPSHOT_LEGACY_UNAVAILABLE, Task, TaskExecutionSnapshot
-from src.core.storage.schema import MIGRATION_V1_TO_V2, MIGRATION_V2_TO_V3, SCHEMA_V1
+from src.tasks.models import TASK_SNAPSHOT_LEGACY_UNAVAILABLE, Task, TaskExecutionSnapshot, TaskSendingControls
+from src.core.storage.schema import (
+    MIGRATION_V1_TO_V2, MIGRATION_V2_TO_V3, MIGRATION_V3_TO_V4, MIGRATION_V4_TO_V5, SCHEMA_V1
+)
 
 
 class FakeKeyring:
@@ -95,7 +97,7 @@ class P02StorageTests(unittest.TestCase):
         with closing(sqlite3.connect(self.db_path)) as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        self.assertEqual(version, 5)
+        self.assertEqual(version, 6)
         self.assertIn("accounts", tables)
         self.assertIn("tasks", tables)
         self.assertIn("account_reservations", tables)
@@ -320,7 +322,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v1.sqlite3.pre_migration_v1.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)").fetchall()}
         self.assertIn("last_verification_at", columns)
         self.assertIn("verification_error_summary", columns)
@@ -677,7 +679,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy.sqlite3.pre_migration_v0.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
 
     def test_unversioned_unknown_schema_is_rejected_without_replacement(self):
         legacy = self.root / "unknown.sqlite3"
@@ -773,7 +775,7 @@ class P02StorageTests(unittest.TestCase):
         backup = legacy.with_name("legacy_v2.sqlite3.pre_migration_v2.bak")
         self.assertTrue(backup.exists())
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             row = connection.execute(
                 "SELECT email, name, country FROM customer_emails WHERE list_id='list_old'"
             ).fetchone()
@@ -834,6 +836,50 @@ class P02StorageTests(unittest.TestCase):
                 connection.execute("SELECT email FROM customer_emails WHERE list_id='list_wal'").fetchone()[0],
                 "wal@example.com",
             )
+
+
+class Phase3SendingControlStorageTests(unittest.TestCase):
+    def test_schema_v5_migrates_to_v6_with_baseline_safe_defaults(self):
+        with tempfile.TemporaryDirectory() as td:
+            db_path = Path(td) / "domain.sqlite3"
+            with sqlite3.connect(db_path) as connection:
+                connection.executescript(SCHEMA_V1)
+                connection.executescript(MIGRATION_V1_TO_V2)
+                connection.executescript(MIGRATION_V2_TO_V3)
+                connection.executescript(MIGRATION_V3_TO_V4)
+                connection.executescript(MIGRATION_V4_TO_V5)
+                connection.execute("PRAGMA user_version = 5")
+                connection.commit()
+            DomainStore(db_path)
+            with sqlite3.connect(db_path) as connection:
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+                columns = {row[1] for row in connection.execute("PRAGMA table_info(task_execution_snapshots)")}
+            self.assertTrue({
+                "network_timeout_seconds", "max_automatic_attempts",
+                "additional_recipient_delay_seconds", "rate_limit_per_account"
+            }.issubset(columns))
+
+    def test_phase3_task_controls_survive_restart(self):
+        with tempfile.TemporaryDirectory() as td:
+            backend = FakeKeyring()
+            credentials = CredentialStore(backend)
+            store = DomainStore(Path(td) / "domain.sqlite3")
+            state = AppState(domain_store=store, credential_store=credentials, loaded=store.load(credentials))
+            account = state.add_account(
+                "stripe", "Stripe", "Primary", "Test", {"secret_key": "sk_test_x"}, status="Verified"
+            )
+            customer_list = state.create_customer_list("Customers")
+            state.add_emails(customer_list.id, ["a@example.com"])
+            template = state.save_invoice_template(
+                template_id=None, name="Default", currency="USD", days_until_due=30, memo="", footer="",
+                automatic_tax=False, reuse_customer=True, items=[("Service", "1", "10.00")],
+            )
+            controls = TaskSendingControls(60.0, 2, 2.5, 8.0)
+            task = state.create_task(
+                "stripe", "Stripe", [account.id], customer_list.id, template.id, sending_controls=controls
+            )
+            restored = AppState(domain_store=store, credential_store=credentials, loaded=store.load(credentials))
+            self.assertEqual(restored.tasks[task.id].execution_snapshot.sending_controls, controls)
 
 
 if __name__ == "__main__":
@@ -943,7 +989,7 @@ class P05SnapshotStorageTests(unittest.TestCase):
 
     def test_schema_v4_snapshot_tables_exist(self):
         with closing(sqlite3.connect(self.db_path)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertTrue(
             {
@@ -1212,7 +1258,7 @@ class P05SnapshotStorageTests(unittest.TestCase):
         self.assertIsNone(task.execution_snapshot.template)
         self.assertEqual(loaded.account_reservations[account_id], task_id)
         with closing(sqlite3.connect(legacy)) as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 5)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
             row = connection.execute(
                 "SELECT snapshot_state, provider_id, assignment_strategy FROM task_execution_snapshots WHERE task_id=?",
                 (task_id,),

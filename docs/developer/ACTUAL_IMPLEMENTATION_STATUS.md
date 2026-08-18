@@ -1,3 +1,7 @@
+## v1.0.0.1.49.8 Phase 3 actual implementation
+
+Status: **SOURCE VERIFIED / NATIVE CI PENDING**. Bounded timeout, automatic-attempt, additional-recipient-delay and declared-provider-rate controls are implemented and are captured per Task. SQLite schema is now v6, adding only Task snapshot sending-control columns; the P10 ledger tables are unchanged. Stripe ceiling remains 20 req/s/account, Refrens 1 req/s/account and Odoo remains without a numeric scheduling policy. Phase-1 native TLS and Phase-2 fatal-limit behavior are preserved. Dynamic Tags remain NOT IMPLEMENTED and outside this phase. Native dependency-installed CI verification is still required before release acceptance.
+
 ## v1.0.0.1.49.7 actual CI correction
 
 Phase-1 Windows native TLS and Phase-2 external-provider circuit-breaker implementation remain operationally unchanged. The only defect found in the v1.49.6 verification pass was the P14 final portable audit assuming that a Nuitka-compiled dependency must appear as `Invio/truststore/__init__.py`. The compiled OneDir and MSI TLS smoke gates already execute the native trust backend successfully; v1.49.7 removes only that false structural requirement and adds a regression contract for the real compiled layout.

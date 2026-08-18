@@ -534,6 +534,40 @@ class AccountsPageRuntimeInteractionTests(unittest.TestCase):
         )
 
 
+@unittest.skipUnless(_PYSIDE6_AVAILABLE, "PySide6 runtime dependency is not installed")
+class Phase3SettingsRuntimeInteractionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_sending_controls_load_collect_and_provider_ceiling_disable_behavior(self):
+        settings = SettingsManager.defaults()
+        settings.network_timeout_seconds = 45.0
+        settings.max_automatic_attempts = 2
+        settings.additional_recipient_delay_seconds = 1.5
+        settings.provider_rate_overrides = {"stripe": 10.0}
+        saved = []
+        page = SettingsPage(
+            settings,
+            lambda value: (saved.append(value) or True, "ok"),
+            {"stripe": ("Stripe", 20.0), "odoo": ("Odoo", None)},
+        )
+        self.assertEqual(page.network_timeout_seconds.value(), 45.0)
+        self.assertEqual(page.max_automatic_attempts.value(), 2)
+        self.assertEqual(page.additional_recipient_delay_seconds.value(), 1.5)
+        stripe_mode, stripe_rate, stripe_ceiling = page._provider_rate_controls["stripe"]
+        self.assertEqual(stripe_ceiling, 20.0)
+        self.assertEqual(stripe_mode.currentData(), "custom")
+        self.assertAlmostEqual(stripe_rate.value(), 10.0)
+        odoo_mode, odoo_rate, odoo_ceiling = page._provider_rate_controls["odoo"]
+        self.assertIsNone(odoo_ceiling)
+        self.assertFalse(odoo_mode.isEnabled())
+        self.assertFalse(odoo_rate.isEnabled())
+        collected = page._collect_settings()
+        self.assertEqual(collected.provider_rate_overrides, {"stripe": 10.0})
+        page.deleteLater()
+
+
 if __name__ == "__main__":
     unittest.main()
 

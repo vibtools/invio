@@ -1,3 +1,13 @@
+## Current mapping — v1.0.0.1.49.8
+
+- Application: `1.0.0.1.49.8`
+- Git tag mapping: `v1.0.0.1.49.8`
+- PE: `1.0.1.4908`
+- MSI: `1.1.4908`
+- Python package/wheel: `1.0.0.1.49.8`
+
+This identity is the Phase 3 Sending Scheduler / Retry / Delay Controls implementation candidate over the frozen v1.49.7 baseline. Tag/release remains gated by non-tag GitHub CI and owner acceptance.
+
 ## Current mapping — v1.0.0.1.49.7
 
 - Application: `1.0.0.1.49.7`

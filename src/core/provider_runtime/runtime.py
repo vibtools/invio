@@ -4,6 +4,7 @@ import base64
 import copy
 import hashlib
 import json
+import math
 import random
 import socket
 import ssl
@@ -41,7 +42,13 @@ from ...tasks.delivery_ledger import (
     DELIVERY_RUN_FAILED,
     DELIVERY_RUN_STOPPED,
 )
-from ...tasks.models import LEGACY_SNAPSHOT_MESSAGE, TASK_ASSIGNMENT_STRATEGY, TASK_SNAPSHOT_CAPTURED, Task
+from ...tasks.models import (
+    LEGACY_SNAPSHOT_MESSAGE,
+    TASK_ASSIGNMENT_STRATEGY,
+    TASK_SNAPSHOT_CAPTURED,
+    Task,
+    TaskSendingControls,
+)
 from ...tasks.state_machine import TaskExecutionMode, is_pristine_first_run
 from ..observability import redact_sensitive_text
 from ..state import AppState
@@ -165,6 +172,7 @@ class TaskSnapshot:
     accounts: tuple[AccountSnapshot, ...]
     customers: tuple[CustomerSnapshot, ...]
     template: InvoiceTemplate
+    sending_controls: TaskSendingControls
 
     def __init__(
         self,
@@ -176,6 +184,7 @@ class TaskSnapshot:
         template: InvoiceTemplate,
         *,
         customers: tuple[CustomerSnapshot, ...] | None = None,
+        sending_controls: TaskSendingControls | None = None,
     ) -> None:
         if customers is not None and customer_emails is not None:
             raise ValueError("Provide customers or customer_emails, not both.")
@@ -188,6 +197,7 @@ class TaskSnapshot:
         object.__setattr__(self, "accounts", accounts)
         object.__setattr__(self, "customers", tuple(resolved))
         object.__setattr__(self, "template", template)
+        object.__setattr__(self, "sending_controls", sending_controls or TaskSendingControls())
 
     @property
     def customer_emails(self) -> tuple[str, ...]:
@@ -536,6 +546,7 @@ class ProviderRuntime:
         self._account_health: dict[tuple[str, str], _SchedulerHealthState] = {}
         self._provider_health: dict[str, _SchedulerHealthState] = {}
         self._account_next_request_at: dict[tuple[str, str], float] = {}
+        self._execution_local = threading.local()
         self._external_registry = ExternalAdapterRegistry(project_root) if project_root is not None else None
 
     def clear_task(self, task_id: str) -> None:
@@ -719,11 +730,11 @@ class ProviderRuntime:
         if response_kind == "array":
             if self._transport is _stdlib_transport:
                 return _stdlib_oauth_array_transport(method.upper(), url, effective_headers, effective_body, self.timeout)
-            result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+            result = self._transport(method.upper(), url, effective_headers, effective_body, self._effective_network_timeout())
             if not isinstance(result, list):
                 raise ProviderRuntimeError("OAuth endpoint returned an unexpected response format.", category="response")
             return result
-        result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+        result = self._transport(method.upper(), url, effective_headers, effective_body, self._effective_network_timeout())
         if not isinstance(result, dict):
             raise ProviderRuntimeError("OAuth endpoint returned an unexpected response format.", category="response")
         return result
@@ -848,7 +859,7 @@ class ProviderRuntime:
                         method.upper(), url, effective_headers, effective_body, self.timeout
                     )
                 else:
-                    result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+                    result = self._transport(method.upper(), url, effective_headers, effective_body, self._effective_network_timeout())
                 if response_kind == "array":
                     if not isinstance(result, list):
                         raise ProviderRuntimeError(
@@ -861,7 +872,7 @@ class ProviderRuntime:
                 return result
             except ProviderRuntimeError as exc:
                 retry_allowed = operation_kind in {SAFE_READ, IDEMPOTENT_MUTATION} and exc.retryable
-                if not retry_allowed or attempt >= MAX_TOTAL_ATTEMPTS:
+                if not retry_allowed or attempt >= self._effective_max_attempts():
                     raise
                 time.sleep(self._retry_delay_seconds(attempt, exc))
                 attempt += 1
@@ -943,9 +954,9 @@ class ProviderRuntime:
         attempt = 1
         while True:
             try:
-                return self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+                return self._transport(method.upper(), url, effective_headers, effective_body, self._effective_network_timeout())
             except ProviderRuntimeError as exc:
-                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                if not exc.retryable or attempt >= self._effective_max_attempts():
                     raise
                 time.sleep(self._retry_delay_seconds(attempt, exc))
                 attempt += 1
@@ -1029,7 +1040,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.8 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -1181,6 +1192,14 @@ class ProviderRuntime:
             batch_handler = self._run_external_batch
             runtime_profile = external_adapter.profile
 
+        captured_rate = snapshot.sending_controls.rate_limit_per_account
+        current_ceiling = self.scheduling_rate_ceiling(snapshot.provider_id)
+        if captured_rate is not None and current_ceiling is None:
+            raise ProviderRuntimeError(
+                "This Task captured a provider rate but the current provider contract no longer declares an approved ceiling.",
+                category="scheduler",
+            )
+
         runtime_preflight = preflight_runtime_inputs(
             provider_id=snapshot.provider_id,
             template=snapshot.template,
@@ -1327,6 +1346,8 @@ class ProviderRuntime:
                     ) from exc
                 run_id = run.run_id
                 _context_log(context, f"Durable delivery run {run.run_id} started (run {run.run_number}).", category="TASK")
+            previous_controls = getattr(self._execution_local, "sending_controls", None)
+            self._execution_local.sending_controls = snapshot.sending_controls
             try:
                 if external_adapter is not None:
                     batch_handler(
@@ -1371,6 +1392,14 @@ class ProviderRuntime:
                             category="storage",
                             retryable=False,
                         ) from exc
+            finally:
+                if previous_controls is None:
+                    try:
+                        del self._execution_local.sending_controls
+                    except AttributeError:
+                        pass
+                else:
+                    self._execution_local.sending_controls = previous_controls
 
         return runner
 
@@ -1394,6 +1423,22 @@ class ProviderRuntime:
             raise ProviderRuntimeError("The task total no longer matches its immutable recipient snapshot.")
         if not execution.customers:
             raise ProviderRuntimeError("The immutable task snapshot has no recipients.")
+        controls = execution.sending_controls
+        if (
+            not math.isfinite(controls.network_timeout_seconds)
+            or controls.network_timeout_seconds < 10.0
+            or controls.network_timeout_seconds > 120.0
+            or controls.max_automatic_attempts < 1
+            or controls.max_automatic_attempts > MAX_TOTAL_ATTEMPTS
+            or not math.isfinite(controls.additional_recipient_delay_seconds)
+            or controls.additional_recipient_delay_seconds < 0.0
+            or controls.additional_recipient_delay_seconds > 60.0
+            or (
+                controls.rate_limit_per_account is not None
+                and (not math.isfinite(controls.rate_limit_per_account) or controls.rate_limit_per_account <= 0.0)
+            )
+        ):
+            raise ProviderRuntimeError("The immutable task snapshot contains unsupported sending controls.")
 
         accounts: list[AccountSnapshot] = []
         for account_id in execution.account_ids:
@@ -1414,6 +1459,7 @@ class ProviderRuntime:
             customer_emails=None,
             template=execution.template.to_template(),
             customers=tuple(CustomerSnapshot.from_record(customer) for customer in execution.customers),
+            sending_controls=execution.sending_controls,
         )
 
     def _provider_scheduling_policy(self, provider_id: str) -> ProviderSchedulingPolicy | None:
@@ -1422,6 +1468,95 @@ class ProviderRuntime:
             return adapter.scheduling_policy
         external = self.external_adapter(provider_id)
         return external.scheduling_policy if external is not None else None
+
+    def scheduling_rate_ceiling(self, provider_id: str) -> float | None:
+        policy = self._provider_scheduling_policy(provider_id)
+        if policy is None:
+            return None
+        rate = float(policy.requests_per_second_per_account)
+        return rate if math.isfinite(rate) and rate > 0 else None
+
+    def resolve_task_sending_controls(self, provider_id: str, settings: Any) -> TaskSendingControls:
+        timeout = float(getattr(settings, "network_timeout_seconds", DEFAULT_CONNECT_TIMEOUT_SECONDS))
+        attempts = int(getattr(settings, "max_automatic_attempts", MAX_TOTAL_ATTEMPTS))
+        delay = float(getattr(settings, "additional_recipient_delay_seconds", 0.0))
+        if not math.isfinite(timeout) or timeout < 10.0 or timeout > 120.0:
+            raise ProviderRuntimeError("Task network timeout must be between 10 and 120 seconds.", category="settings")
+        if attempts < 1 or attempts > MAX_TOTAL_ATTEMPTS:
+            raise ProviderRuntimeError(
+                f"Maximum automatic attempts must be between 1 and {MAX_TOTAL_ATTEMPTS}.", category="settings"
+            )
+        if not math.isfinite(delay) or delay < 0.0 or delay > 60.0:
+            raise ProviderRuntimeError("Additional recipient delay must be between 0 and 60 seconds.", category="settings")
+
+        overrides = getattr(settings, "provider_rate_overrides", {})
+        override = None
+        if isinstance(overrides, dict) and provider_id.strip().lower() in overrides:
+            override = float(overrides[provider_id.strip().lower()])
+            if not math.isfinite(override) or override <= 0:
+                raise ProviderRuntimeError("Provider rate override must be greater than zero.", category="settings")
+        ceiling = self.scheduling_rate_ceiling(provider_id)
+        if override is not None and ceiling is None:
+            raise ProviderRuntimeError(
+                f"{provider_id.title()} does not declare an approved scheduling rate ceiling; custom rate is unavailable.",
+                category="settings",
+            )
+        if override is not None and override > float(ceiling):
+            raise ProviderRuntimeError(
+                f"{provider_id.title()} rate cannot exceed the approved ceiling of {float(ceiling):g} requests/sec/account.",
+                category="settings",
+            )
+        selected_rate = override if override is not None else ceiling
+        return TaskSendingControls(
+            network_timeout_seconds=timeout,
+            max_automatic_attempts=attempts,
+            additional_recipient_delay_seconds=delay,
+            rate_limit_per_account=selected_rate,
+        )
+
+    def validate_provider_rate_overrides(self, overrides: dict[str, float]) -> None:
+        for provider_id, raw_rate in dict(overrides).items():
+            rate = float(raw_rate)
+            ceiling = self.scheduling_rate_ceiling(provider_id)
+            if ceiling is None:
+                raise ProviderRuntimeError(
+                    f"{provider_id.title()} does not declare an approved scheduling rate ceiling; custom rate is unavailable.",
+                    category="settings",
+                )
+            if not math.isfinite(rate) or rate <= 0 or rate > ceiling:
+                raise ProviderRuntimeError(
+                    f"{provider_id.title()} rate must be greater than zero and no higher than "
+                    f"{ceiling:g} requests/sec/account.",
+                    category="settings",
+                )
+
+    def _active_sending_controls(self) -> TaskSendingControls | None:
+        controls = getattr(self._execution_local, "sending_controls", None)
+        return controls if isinstance(controls, TaskSendingControls) else None
+
+    def _effective_network_timeout(self) -> float:
+        controls = self._active_sending_controls()
+        return float(controls.network_timeout_seconds) if controls is not None else self.timeout
+
+    def _effective_max_attempts(self) -> int:
+        controls = self._active_sending_controls()
+        return int(controls.max_automatic_attempts) if controls is not None else MAX_TOTAL_ATTEMPTS
+
+    def _effective_rate_per_account(self, provider_id: str, policy: ProviderSchedulingPolicy) -> float:
+        ceiling = float(policy.requests_per_second_per_account)
+        controls = self._active_sending_controls()
+        if controls is None or controls.rate_limit_per_account is None:
+            return ceiling
+        return min(ceiling, float(controls.rate_limit_per_account))
+
+    def _wait_additional_recipient_delay(self, context: Any, snapshot: TaskSnapshot, completed_count: int) -> bool:
+        if completed_count <= 0:
+            return True
+        delay = max(0.0, float(snapshot.sending_controls.additional_recipient_delay_seconds))
+        if delay <= 0.0:
+            return not context.stop_flag.is_set() and _wait_for_resume(context)
+        _context_log(context, f"Waiting {delay:g}s additional recipient delay before the next recipient.", category="TASK")
+        return _cooperative_retry_wait(context, delay)
 
     @staticmethod
     def _cooldown_delay(
@@ -1582,7 +1717,14 @@ class ProviderRuntime:
                 category="scheduler",
                 retryable=False,
             )
-        interval = 1.0 / float(policy.requests_per_second_per_account)
+        effective_rate = self._effective_rate_per_account(provider_id, policy)
+        if not math.isfinite(effective_rate) or effective_rate <= 0:
+            raise ProviderRuntimeError(
+                f"Unsupported {provider_id.title()} effective scheduling rate.",
+                category="scheduler",
+                retryable=False,
+            )
+        interval = 1.0 / effective_rate
         key = (provider_id.strip().lower(), account.id)
         while True:
             if context.stop_flag.is_set() or not _wait_for_resume(context):
@@ -1787,14 +1929,14 @@ class ProviderRuntime:
                 )
                 return result, attempt
             except ProviderRuntimeError as exc:
-                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                if not exc.retryable or attempt >= self._effective_max_attempts():
                     setattr(exc, "attempt_number", attempt)
                     raise
                 retry_number = attempt
                 delay = self._retry_delay_seconds(retry_number, exc)
                 _context_log(context, 
                     f"Stripe transient failure for {email} via account '{account.name}' "
-                    f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. "
+                    f"(attempt {attempt}/{self._effective_max_attempts()}): {exc}. "
                     f"Retrying in {delay:.2f}s."
                 )
                 if not _cooperative_retry_wait(context, delay):
@@ -1897,7 +2039,7 @@ class ProviderRuntime:
                         category="storage",
                     ) from exc
             try:
-                result = self._transport(method.upper(), url, effective_headers, effective_body, self.timeout)
+                result = self._transport(method.upper(), url, effective_headers, effective_body, self._effective_network_timeout())
             except ProviderRuntimeError as exc:
                 uncertain = operation_kind == NON_IDEMPOTENT_MUTATION and self._external_mutation_is_ambiguous(exc)
                 status = DELIVERY_OPERATION_UNCERTAIN if uncertain else DELIVERY_OPERATION_FAILED
@@ -1924,14 +2066,14 @@ class ProviderRuntime:
                     setattr(wrapped, "attempt_number", attempt_number)
                     raise wrapped from exc
                 retry_allowed = operation_kind in {SAFE_READ, IDEMPOTENT_MUTATION} and exc.retryable
-                if not retry_allowed or attempt_number >= MAX_TOTAL_ATTEMPTS:
+                if not retry_allowed or attempt_number >= self._effective_max_attempts():
                     setattr(exc, "attempt_number", attempt_number)
                     raise
                 delay = self._retry_delay_seconds(attempt_number, exc)
                 _context_log(
                     context,
                     f"External provider transient failure during {clean_stage} "
-                    f"(attempt {attempt_number}/{MAX_TOTAL_ATTEMPTS}): {exc}. Retrying in {delay:.2f}s.",
+                    f"(attempt {attempt_number}/{self._effective_max_attempts()}): {exc}. Retrying in {delay:.2f}s.",
                 )
                 if not _cooperative_retry_wait(context, delay):
                     raise ProviderRuntimeError("External provider retry stopped by user request.", category="stopped") from exc
@@ -2021,6 +2163,8 @@ class ProviderRuntime:
         _context_log(context, f"External {snapshot.provider_id} batch started with {len(recipients)} recipient(s).", category="TASK")
         attempted = 0
         for email in recipients:
+            if not self._wait_additional_recipient_delay(context, snapshot, attempted):
+                break
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
             recipient_ordinal = full_index[email]
@@ -2220,6 +2364,8 @@ class ProviderRuntime:
         )
 
         for email in recipients:
+            if not self._wait_additional_recipient_delay(context, snapshot, attempted):
+                break
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
             recipient_ordinal = full_index[email]
@@ -2593,7 +2739,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.8 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2644,7 +2790,7 @@ class ProviderRuntime:
                 ledger_started = True
 
         try:
-            result = self._transport(method.upper(), url, headers, body, self.timeout)
+            result = self._transport(method.upper(), url, headers, body, self._effective_network_timeout())
         except Exception as exc:
             if ledger_started and self._domain_store is not None and account is not None:
                 if isinstance(exc, ProviderRuntimeError):
@@ -2772,13 +2918,13 @@ class ProviderRuntime:
                     raise ProviderRuntimeError("Refrens authentication response did not contain accessToken.")
                 return token, base_url, url_key, attempt
             except ProviderRuntimeError as exc:
-                if not exc.retryable or attempt >= MAX_TOTAL_ATTEMPTS:
+                if not exc.retryable or attempt >= self._effective_max_attempts():
                     setattr(exc, "attempt_number", attempt)
                     raise
                 delay = self._retry_delay_seconds(attempt, exc)
                 _context_log(context, 
                     f"Refrens authentication transient failure for {email} via account '{account.name}' "
-                    f"(attempt {attempt}/{MAX_TOTAL_ATTEMPTS}): {exc}. Retrying in {delay:.2f}s."
+                    f"(attempt {attempt}/{self._effective_max_attempts()}): {exc}. Retrying in {delay:.2f}s."
                 )
                 if not _cooperative_retry_wait(context, delay):
                     raise ProviderRuntimeError(
@@ -2824,7 +2970,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.7 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.8 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"
@@ -2880,7 +3026,7 @@ class ProviderRuntime:
                 ledger_started = True
 
         try:
-            result = self._transport(method.upper(), url, headers, body, self.timeout)
+            result = self._transport(method.upper(), url, headers, body, self._effective_network_timeout())
         except Exception as exc:
             if ledger_started and self._domain_store is not None and account is not None:
                 operation_status = DELIVERY_OPERATION_FAILED
@@ -2994,6 +3140,8 @@ class ProviderRuntime:
         )
 
         for email in recipients:
+            if not self._wait_additional_recipient_delay(context, snapshot, attempted):
+                break
             if context.stop_flag.is_set() or not _wait_for_resume(context):
                 break
             recipient_ordinal = full_index[email]

@@ -4,6 +4,7 @@ import unittest
 
 from src.core.state import AppState, StateError
 from src.customers.models import CustomerRecord
+from src.tasks.models import TaskSendingControls
 
 
 class AppStateTests(unittest.TestCase):
@@ -217,6 +218,27 @@ class AppStateTests(unittest.TestCase):
         )
         self.assertEqual(len(result.conflicts), 1)
         self.assertTrue(result.conflicts[0].startswith("Row 7: a@example.com:"))
+
+class Phase3TaskSendingControlStateTests(unittest.TestCase):
+    def test_task_creation_captures_sending_controls_immutably(self):
+        state = AppState()
+        account = state.add_account("stripe", "Stripe", "A", "Test", {"secret_key": "x"}, status="Verified")
+        customer_list = state.create_customer_list("Customers")
+        state.add_emails(customer_list.id, ["a@example.com"])
+        template = state.save_invoice_template(
+            template_id=None, name="Default", currency="USD", days_until_due=30, memo="", footer="",
+            automatic_tax=False, reuse_customer=True, items=[("Service", "1", "10.00")],
+        )
+        controls = TaskSendingControls(45.0, 2, 1.5, 10.0)
+        task = state.create_task(
+            "stripe", "Stripe", [account.id], customer_list.id, template.id, sending_controls=controls
+        )
+        self.assertEqual(task.execution_snapshot.sending_controls, controls)
+        self.assertEqual(task.execution_snapshot.sending_controls.network_timeout_seconds, 45.0)
+        self.assertEqual(task.execution_snapshot.sending_controls.max_automatic_attempts, 2)
+        self.assertEqual(task.execution_snapshot.sending_controls.additional_recipient_delay_seconds, 1.5)
+        self.assertEqual(task.execution_snapshot.sending_controls.rate_limit_per_account, 10.0)
+
 
 if __name__ == "__main__":
     unittest.main()
