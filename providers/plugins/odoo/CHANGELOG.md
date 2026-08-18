@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 — 2026-08-17
+
+- Added authoritative Odoo daily-email-limit classification for Invio's generic external-provider batch circuit breaker.
+- Treat post-send `UNVERIFIED` mail evidence as an uncertain provider outcome instead of confirmed success.
+- Preserve recipient-level mail failures as non-fatal unless the provider reports the proven daily-limit condition.
+- Keep Odoo scheduling policy, JSON-RPC workflow, account schema, and invoice/send operations unchanged.
+
 ## 1.0.0 — 2026-08-10
 
 - Initial Invio external Odoo provider.

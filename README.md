@@ -1,4 +1,8 @@
-## Current baseline candidate — v1.0.0.1.49.5
+## Current baseline candidate — v1.0.0.1.49.6
+
+Phase 2 adds a generic fail-safe external-provider batch circuit breaker. Odoo v1.0.1 uses it only for the proven daily email-limit condition and post-send `UNVERIFIED` evidence. The current non-idempotent recipient is preserved as Uncertain when required, untouched recipients stay Pending, no later recipient starts after the stop condition, and the existing Task card retains an actionable stop message. Phase-1 native Windows TLS remains intact; Phase 3 sending controls and Phase 4 Dynamic Tags remain deferred.
+
+## v1.0.0.1.49.5 — Windows/RDP Native TLS Trust Correction
 
 Phase 1 corrects a verified Windows/RDP TLS trust-chain compatibility defect in the shared HTTPS transport. Windows requests use the native OS trust store through `truststore`; certificate and hostname verification remain fail-closed. Provider business logic and all Phase 2-4 work remain unchanged.
 

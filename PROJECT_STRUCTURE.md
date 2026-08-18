@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 Phase 2 provider-stop boundary
+
+No new production package, page, database table, worker type, provider interface version or directory is introduced. The Phase-2 implementation is contained in the existing shared `ProviderRuntimeError` / external batch loop, Odoo external adapter evidence classification, and MainWindow terminal-message reconciliation. Odoo plugin metadata advances to v1.0.1; IVX Format V1 and External Adapter Interface V1 remain unchanged.
+
 ## v1.0.0.1.49.4 structure note
 
 No architecture or folder reorganization is introduced. Corrections stay inside the existing IVX distribution layer (`src/core/provider_manager/ivx.py`), existing provider-card visual resolver (`src/ui/pages/providers_page.py`), IVX developer builder and directly required tests/version/docs. New v1.49.4 forensic/release records are added; Task/storage/OAuth/MSI modules remain frozen.

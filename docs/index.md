@@ -1,4 +1,8 @@
-## Current version — v1.0.0.1.49.5
+## Current version — v1.0.0.1.49.6
+
+Phase 2 adds the provider fatal-limit circuit breaker and Odoo v1.0.1 safe mail-evidence handling. Phase-1 Windows native TLS remains enabled; Phase 3/4 are deferred.
+
+## v1.0.0.1.49.5
 
 Phase 1 corrects Windows/RDP provider TLS trust compatibility by using the native Windows certificate trust store in the shared ProviderRuntime transport. Certificate and hostname verification remain mandatory.
 

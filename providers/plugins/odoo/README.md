@@ -1,6 +1,6 @@
-# Invio Odoo Provider v1.0.0
+# Invio Odoo Provider v1.0.1
 
-Trusted executable external provider plugin for Invio `v1.0.0.1.40.2`.
+Trusted executable external provider plugin for Invio `v1.0.0.1.49.6`.
 
 ## Scope
 
@@ -78,6 +78,8 @@ Use the default `Invoice` title and blank subtitle for the first live canary.
 Odoo's legacy JSON-RPC write calls do not provide a provider-supported idempotency key in this implementation. All external writes therefore use Invio's `NON_IDEMPOTENT_MUTATION` contract.
 
 If a write has an ambiguous outcome or a later lifecycle stage fails after an external mutation succeeded, Invio may mark the recipient **Uncertain** and will not blindly replay it. This intentionally prevents duplicate customers/invoices/emails. Inspect Odoo before starting a new Task for an uncertain recipient.
+
+Invio v1.49.6 also halts the external batch before the next recipient when Odoo reports the proven daily email limit, or when post-send provider evidence is `UNVERIFIED`. The current recipient remains subject to Invio's durable Uncertain safety rule after a non-idempotent send mutation; untouched recipients remain Pending for safe later continuation.
 
 This is narrower than InvoiceRouter's own lifecycle checkpoint/resume implementation because Invio P13 interface v1 does not expose prior provider invoice IDs back to the external adapter on a later retry. No Invio core architecture was changed to bypass that safety boundary.
 

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 actual Phase-2 implementation
+
+Implemented: generic external-provider batch-halt metadata; stop-before-next-recipient behavior; durable Pending/Uncertain preservation; durable-summary progress text; existing Task-card provider stop-message preservation; Odoo v1.0.1 daily-email-limit terminal classification; Odoo `UNVERIFIED` post-send evidence no longer accepted as success. Not implemented in this phase: scheduler/rate controls, automatic Odoo account failover, new Task states/schema/pages, Dynamic Tags, or Phase-1 live RDP acceptance.
+
 ## v1.0.0.1.49.5 actual TLS implementation
 
 Windows ProviderRuntime HTTPS uses a cached `truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` with `CERT_REQUIRED`, hostname checking enabled and HTTP/1.1 ALPN. `_verified_urlopen()` applies that context only to Windows HTTPS. Non-Windows requests retain the previous stdlib `urlopen()` call. `truststore` is required by source/wheel and explicitly bundled by Nuitka.

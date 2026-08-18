@@ -1,3 +1,7 @@
+## Odoo v1.0.1 — Phase-2 stop semantics
+
+When Odoo provider evidence reports the proven daily email limit, Invio v1.49.6 activates the generic external batch circuit breaker after reconciling the current recipient. When post-send evidence is `UNVERIFIED`, Invio also halts and does not record confirmed success. Ordinary recipient-specific mail failures do not activate the terminal circuit breaker. No Odoo scheduler/rate policy is added in Phase 2.
+
 ## IVX validation correction — v1.0.0.1.49.4
 
 Continue loading providers with **Providers → Load Provider → `*.ivx`**. Provider authors should build packages with `scripts/provider/build_ivx.py`; the builder now validates its temporary archive before publishing the final file. Archive paths must be canonical forward-slash names and portable to Windows. A provider package with an unsupported compression method or unsafe path is rejected with a normal Provider error. Plugin `logo.png` remains optional; malformed or unsafe-dimension logos use the host fallback icon.

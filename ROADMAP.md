@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 Phase 2 scope status
+
+Phase 2 — Provider Fatal Error / Account Limit Circuit Breaker & Task UX is implemented as the active candidate. It preserves the Phase-1 Windows native TLS correction while adding generic external batch-halt metadata, Odoo daily-limit/UNVERIFIED safety classification, durable Pending/Uncertain preservation, and accurate existing Task-card messaging. Phase 3 sending controls and Phase 4 Dynamic Tags remain explicitly deferred. Final live RDP acceptance for Phase 1 is owner-deferred until the combined release.
+
 ## v1.0.0.1.49.5 Phase 1 scope status
 
 Phase 1 — RDP / TLS Trust & API Connectivity is the only active maintenance scope. The confirmed fix is centralized in the shared Windows TLS transport; Phase 2 provider-limit circuit breaking, Phase 3 sending controls, and Phase 4 Dynamic Tags remain explicitly deferred.

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 external-provider continuation compatibility
+
+External Adapter Interface V1 remains unchanged. `ProviderRuntimeError` gains optional backward-compatible batch-halt metadata; existing adapters that do not set it retain their prior recipient-level continuation behavior. Odoo adapter v1.0.1 requires Invio v1.49.6 for the new terminal quota/UNVERIFIED semantics. Existing Task states, durable ledger schema, IVX Format V1, OAuth/Easy Onboarding, WorkerManager and Phase-1 Windows TLS contracts remain compatible and unchanged.
+
 ## v1.0.0.1.49.5 Windows TLS compatibility
 
 Windows provider HTTPS now uses the native CryptoAPI trust store through `truststore>=0.10.4,<0.11`, allowing the packaged runtime to use the same managed trust and missing-intermediate behavior as Windows. Non-Windows HTTP/TLS behavior is unchanged. Invalid/untrusted certificates remain rejected.

@@ -120,6 +120,9 @@ class ProviderRuntimeError(RuntimeError):
         http_status: int | None = None,
         retry_after_seconds: float | None = None,
         rate_limit_reason: str | None = None,
+        halt_batch: bool = False,
+        halt_code: str | None = None,
+        user_message: str | None = None,
     ) -> None:
         super().__init__(message)
         self.category = category
@@ -127,6 +130,9 @@ class ProviderRuntimeError(RuntimeError):
         self.http_status = http_status
         self.retry_after_seconds = retry_after_seconds
         self.rate_limit_reason = str(rate_limit_reason or "").strip().lower() or None
+        self.halt_batch = bool(halt_batch)
+        self.halt_code = str(halt_code or "").strip().lower() or None
+        self.user_message = str(user_message or "").strip() or None
 
 
 Transport = Callable[[str, str, dict[str, str], bytes | None, float], dict[str, Any]]
@@ -1023,7 +1029,7 @@ class ProviderRuntime:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
-            "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools",
         }
         self._transport(
             "GET",
@@ -2126,7 +2132,9 @@ class ProviderRuntime:
                     else:
                         delivery.failed_recipients.add(email)
                 _context_log(context, f"External {snapshot.provider_id} execution failed for {email}: {exc}")
+                halt_error = exc if isinstance(exc, ProviderRuntimeError) and exc.halt_batch else None
             else:
+                halt_error = None
                 with self._state_lock:
                     delivery = self._delivery_state.get(snapshot.task_id)
                     if delivery is None or not delivery.continuation_safe:
@@ -2140,10 +2148,30 @@ class ProviderRuntime:
             summary = self.delivery_summary(context.task)
             if summary is None or not summary.continuation_safe:
                 raise ProviderRuntimeError("The external Task continuation state could not be reconciled safely.")
-            context.progress(
-                summary.processed, summary.success, summary.failed,
-                f"Processed {attempted}/{len(recipients)} external recipient(s).",
+            if halt_error is not None:
+                reason = halt_error.user_message or str(halt_error)
+                halt_message = (
+                    f"Stopped: {reason} "
+                    f"{len(summary.uncertain_recipients)} uncertain recipient(s); "
+                    f"{len(summary.pending_recipients)} pending. "
+                    "No additional recipients were started after the provider stop condition."
+                )
+                _context_log(
+                    context,
+                    f"External {snapshot.provider_id} circuit breaker activated: {reason}",
+                    severity="WARNING",
+                    category="TASK",
+                )
+                context.progress(summary.processed, summary.success, summary.failed, halt_message)
+                raise halt_error
+
+            progress_message = (
+                f"Resolved {summary.processed}/{len(snapshot.customer_emails)} external recipient(s): "
+                f"{summary.success} success, {summary.failed} failed, "
+                f"{len(summary.uncertain_recipients)} uncertain, "
+                f"{len(summary.pending_recipients)} pending."
             )
+            context.progress(summary.processed, summary.success, summary.failed, progress_message)
 
         summary = self.delivery_summary(context.task)
         if summary is None or not summary.continuation_safe:
@@ -2565,7 +2593,7 @@ class ProviderRuntime:
         headers = {
             "Authorization": f"Basic {token}",
             "Accept": "application/json",
-            "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools",
+            "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools",
         }
         body = None
         if method.upper() != "GET":
@@ -2796,7 +2824,7 @@ class ProviderRuntime:
         url = f"{trusted_base_url.rstrip('/')}{path}"
         if query:
             url = f"{url}?{urlencode(query)}"
-        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.5 Vib-Tools"}
+        headers = {"Accept": "application/json", "User-Agent": "Invio/1.0.0.1.49.6 Vib-Tools"}
         body = None
         if json_data is not None:
             headers["Content-Type"] = "application/json"

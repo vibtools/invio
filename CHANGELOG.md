@@ -1,3 +1,13 @@
+## v1.0.0.1.49.6 — Provider Fatal-Limit Circuit Breaker
+
+- Added a backward-compatible external-provider batch-halt signal that reconciles the current recipient before stopping new recipient execution.
+- Odoo provider v1.0.1 now classifies the proven daily email-limit evidence as a terminal provider-quota condition.
+- Odoo post-send `UNVERIFIED` evidence is no longer reported as confirmed success; the recipient remains Uncertain after the non-idempotent send mutation and the batch halts safely.
+- External progress text now reports durable resolved/success/failed/uncertain/pending counts instead of raw loop-attempt counts.
+- Existing Task cards preserve the actionable provider stop reason while keeping the existing `Stopped` state and safe Resume Remaining workflow.
+- Ordinary recipient-level external errors continue as before; no automatic Odoo cross-account quota failover, scheduler/rate change, new Task state, schema change, or Phase 3/4 behavior is introduced.
+- Phase-1 Windows native TLS implementation is preserved; owner deferred the final live RDP acceptance until the combined release.
+
 ## v1.0.0.1.49.5 — Windows/RDP Native TLS Trust Correction
 
 - Corrected the confirmed Windows/RDP certificate-chain divergence by using the native Windows CryptoAPI trust store for shared ProviderRuntime HTTPS verification.

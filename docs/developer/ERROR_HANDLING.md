@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 provider terminal-error contract
+
+`ProviderRuntimeError` keeps its existing category/retry metadata and adds optional `halt_batch`, `halt_code`, and `user_message` fields. Defaults preserve legacy behavior. The generic external batch reconciles the current recipient first, emits durable summary progress, then aborts before another recipient when `halt_batch=True`. Non-idempotent success before the error remains Uncertain; untouched recipients remain Pending.
+
 ## v1.0.0.1.49.5 TLS error contract
 
 Windows native trust changes only certificate-chain construction. `SSLCertVerificationError` remains `ProviderRuntimeError(category="tls", retryable=False)`. Missing/failed native trust initialization is also a permanent TLS error. No certificate failure is retried or ignored.

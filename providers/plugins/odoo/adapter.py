@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -16,8 +17,8 @@ from src.core.provider_runtime import (
 
 
 PROVIDER_ID = "odoo"
-ADAPTER_VERSION = "1.0.0"
-USER_AGENT = "Invio-Odoo-Provider/1.0.0 Vib-Tools"
+ADAPTER_VERSION = "1.0.1"
+USER_AGENT = "Invio-Odoo-Provider/1.0.1 Vib-Tools"
 
 
 class Adapter:
@@ -415,12 +416,9 @@ class Adapter:
             invoice_id=invoice_id,
             before_message_ids=before_message_ids,
         )
-        if evidence["status"] == "FAILED":
-            raise ProviderRuntimeError(
-                "Odoo invoice email provider evidence reported failure: " + evidence["message"],
-                category="provider-mail",
-                retryable=False,
-            )
+        evidence_error = self._email_evidence_error(evidence)
+        if evidence_error is not None:
+            raise evidence_error
         context.log(
             f"Odoo invoice email requested for {context.customer.email}; provider evidence: {evidence['status']}."
         )
@@ -723,6 +721,45 @@ class Adapter:
             context.log(f"Odoo mail evidence baseline unavailable: {exc}")
             return None
         return set(self._number_list(result))
+
+    @staticmethod
+    def _email_evidence_error(evidence: dict[str, str]) -> ProviderRuntimeError | None:
+        status = str(evidence.get("status", "")).strip().upper()
+        message = str(evidence.get("message", "")).strip()
+        if status == "FAILED":
+            normalized = message.casefold()
+            daily_limit = re.search(r"\breached your daily limit of \d+ emails?\b", normalized) is not None
+            if daily_limit:
+                return ProviderRuntimeError(
+                    "Odoo invoice email provider evidence reported failure: " + message,
+                    category="provider-quota",
+                    retryable=False,
+                    halt_batch=True,
+                    halt_code="daily-email-limit",
+                    user_message=(
+                        "Odoo daily email limit reached. No new recipients will be started in this Task. "
+                        "Resolve the provider limit before using Resume Remaining."
+                    ),
+                )
+            return ProviderRuntimeError(
+                "Odoo invoice email provider evidence reported failure: " + (message or "Odoo reported an email failure state."),
+                category="provider-mail",
+                retryable=False,
+            )
+        if status == "UNVERIFIED":
+            return ProviderRuntimeError(
+                "Odoo invoice email outcome could not be verified after the send request: "
+                + (message or "No conclusive provider mail evidence was available."),
+                category="provider-mail-unverified",
+                retryable=False,
+                halt_batch=True,
+                halt_code="mail-evidence-unverified",
+                user_message=(
+                    "Odoo invoice email outcome could not be verified. No new recipients will be started "
+                    "until the provider outcome is reviewed."
+                ),
+            )
+        return None
 
     def _inspect_email_evidence(
         self,

@@ -1,3 +1,7 @@
+## v1.0.0.1.49.6 provider-limit / uncertain outcome troubleshooting
+
+If a Task stops because Odoo reports its daily email limit, Invio does not start another recipient. The current recipient can be Uncertain because the non-idempotent send mutation was already attempted; untouched recipients remain Pending. Review Odoo for the uncertain recipient and resolve the provider limit before using Resume Remaining. Automatic replay of Uncertain external recipients remains disabled.
+
 ## v1.0.0.1.49.5 Windows/RDP TLS troubleshooting
 
 If a provider reports a certificate verification error, Invio still fails closed. Windows builds use native CryptoAPI trust through `truststore`; inspect the Windows certificate chain and endpoint hostname rather than disabling verification. The v1.49.5 correction specifically addresses the prior packaged OpenSSL/native Windows chain divergence.

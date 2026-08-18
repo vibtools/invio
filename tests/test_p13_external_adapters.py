@@ -95,7 +95,7 @@ class P13ExternalAdapterTests(unittest.TestCase):
 
     def _adapter_source(self, *, provider_id: str = "external_demo", adapter_version: str = "1.2.3", mutate_sys_path: bool = False, capabilities: str = 'frozenset({"invoice", "send_invoice", "api_test"})') -> str:
         sys_path_line = 'import sys; sys.path.append("P13_FORBIDDEN_PATH")' if mutate_sys_path else ''
-        return f'''from src.core.provider_runtime import (\n    ExternalRecipientResult, NON_IDEMPOTENT_MUTATION, SAFE_READ,\n    ProviderCapabilityProfile\n)\n{sys_path_line}\n\nclass Adapter:\n    interface_version = 1\n    provider_id = {provider_id!r}\n    adapter_version = {adapter_version!r}\n    scheduling_policy = None\n    profile = ProviderCapabilityProfile(\n        provider_id={provider_id!r},\n        executable_capabilities={capabilities},\n        task_execution_enabled=True,\n        task_unavailable_message="",\n        invoice_types=frozenset({{"INVOICE"}}),\n        currencies=None,\n        supports_automatic_tax=False,\n        supports_line_tax=False,\n        supports_customer_reuse=False,\n        supports_memo=True,\n        supports_footer=True,\n        supports_customer_note=True,\n        supports_terms=True,\n        required_customer_fields=("email",),\n    )\n\n    def test_account(self, context):\n        context.request(\n            stage="health", operation_kind=SAFE_READ, method="GET",\n            url="https://external.invalid/health", headers={{"Authorization": "Bearer " + context.credentials["token"]}},\n        )\n        return "External API connection verified."\n\n    def validate_task(self, context):\n        return ()\n\n    def execute_recipient(self, context):\n        result = context.request(\n            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",\n            url="https://external.invalid/invoices",\n            json_data={{"email": context.customer.email}}, provider_reference_key="id",\n        )\n        return ExternalRecipientResult(provider_invoice_id=result["id"], final_stage="external_mutation:invoice_send")\n\ndef create_adapter():\n    return Adapter()\n'''
+        return f'''from src.core.provider_runtime import (\n    ExternalRecipientResult, NON_IDEMPOTENT_MUTATION, SAFE_READ,\n    ProviderCapabilityProfile, ProviderRuntimeError\n)\n{sys_path_line}\n\nclass Adapter:\n    interface_version = 1\n    provider_id = {provider_id!r}\n    adapter_version = {adapter_version!r}\n    scheduling_policy = None\n    profile = ProviderCapabilityProfile(\n        provider_id={provider_id!r},\n        executable_capabilities={capabilities},\n        task_execution_enabled=True,\n        task_unavailable_message="",\n        invoice_types=frozenset({{"INVOICE"}}),\n        currencies=None,\n        supports_automatic_tax=False,\n        supports_line_tax=False,\n        supports_customer_reuse=False,\n        supports_memo=True,\n        supports_footer=True,\n        supports_customer_note=True,\n        supports_terms=True,\n        required_customer_fields=("email",),\n    )\n\n    def test_account(self, context):\n        context.request(\n            stage="health", operation_kind=SAFE_READ, method="GET",\n            url="https://external.invalid/health", headers={{"Authorization": "Bearer " + context.credentials["token"]}},\n        )\n        return "External API connection verified."\n\n    def validate_task(self, context):\n        return ()\n\n    def execute_recipient(self, context):\n        result = context.request(\n            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",\n            url="https://external.invalid/invoices",\n            json_data={{"email": context.customer.email}}, provider_reference_key="id",\n        )\n        return ExternalRecipientResult(provider_invoice_id=result["id"], final_stage="external_mutation:invoice_send")\n\ndef create_adapter():\n    return Adapter()\n'''
 
     def _bundle(self, *, runtime: bool = True, adapter_source: str | None = None, interface_version: int = 1) -> Path:
         bundle = self.root / "bundle"
@@ -127,7 +127,7 @@ class P13ExternalAdapterTests(unittest.TestCase):
             return {"id": "ext_inv_1"}
         raise AssertionError((method, url))
 
-    def _state_task(self):
+    def _state_task(self, emails: tuple[str, ...] = ("a@example.com",)):
         state = AppState(
             domain_store=self.store,
             credential_store=self.credentials,
@@ -138,7 +138,7 @@ class P13ExternalAdapterTests(unittest.TestCase):
             status="Verified", last_verification_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
         customers = state.create_customer_list("External Customers")
-        state.add_customers(customers.id, [CustomerRecord("a@example.com")])
+        state.add_customers(customers.id, [CustomerRecord(email) for email in emails])
         template = state.save_invoice_template(
             template_id=None, name="External Template", currency="USD", days_until_due=7,
             memo="", footer="", automatic_tax=False, reuse_customer=False,
@@ -375,6 +375,115 @@ def create_adapter(): return Adapter()
         task.status = "Stopped"
         with self.assertRaisesRegex(ProviderRuntimeError, "only uncertain provider outcomes"):
             runtime.make_task_runner(task, state, resume_remaining=True)
+
+    def test_external_fatal_batch_signal_halts_before_next_recipient_and_preserves_pending(self):
+        original = '''    def execute_recipient(self, context):
+        result = context.request(
+            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",
+            url="https://external.invalid/invoices",
+            json_data={"email": context.customer.email}, provider_reference_key="id",
+        )
+        return ExternalRecipientResult(provider_invoice_id=result["id"], final_stage="external_mutation:invoice_send")'''
+        replacement = '''    def execute_recipient(self, context):
+        context.request(
+            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",
+            url="https://external.invalid/invoices",
+            json_data={"email": context.customer.email}, provider_reference_key="id",
+        )
+        raise ProviderRuntimeError(
+            "provider daily quota reached", category="provider-quota", retryable=False,
+            halt_batch=True, halt_code="daily-limit",
+            user_message="Provider daily limit reached. No new recipients will be started.",
+        )'''
+        source = self._adapter_source().replace(original, replacement)
+        manager = ProviderManager(self.root)
+        runtime = ProviderRuntime(
+            project_root=self.root, domain_store=self.store,
+            transport=lambda *args: self._transport(*args),
+        )
+        manager.load_external(
+            self._bundle(adapter_source=source), allow_executable=True,
+            adapter_validator=runtime.validate_external_adapter,
+        )
+        runtime.reload_external_adapters()
+        state, task, _account, _template, _customers = self._state_task(
+            ("a@example.com", "b@example.com", "c@example.com")
+        )
+        context = _Context(task)
+        with self.assertRaisesRegex(ProviderRuntimeError, "daily quota reached") as captured:
+            runtime.make_task_runner(task, state)(context)
+        self.assertTrue(captured.exception.halt_batch)
+        self.assertEqual(captured.exception.halt_code, "daily-limit")
+        summary = runtime.delivery_summary(task)
+        self.assertEqual(summary.uncertain_recipients, ("a@example.com",))
+        self.assertEqual(summary.pending_recipients, ("b@example.com", "c@example.com"))
+        self.assertEqual(summary.success, 0)
+        self.assertEqual(summary.failed, 0)
+        self.assertEqual(summary.processed, 0)
+        self.assertTrue(context.progress_events)
+        self.assertTrue(context.progress_events[-1][3].startswith("Stopped: Provider daily limit reached."))
+        self.assertIn("1 uncertain recipient(s); 2 pending", context.progress_events[-1][3])
+        with closing(sqlite3.connect(self.store.path)) as connection:
+            recipient_rows = connection.execute(
+                "SELECT recipient_email, final_result FROM task_delivery_recipients ORDER BY recipient_ordinal"
+            ).fetchall()
+            operation_count = connection.execute(
+                "SELECT COUNT(*) FROM task_delivery_operations"
+            ).fetchone()[0]
+        self.assertEqual(recipient_rows[0], ("a@example.com", "Uncertain"))
+        self.assertEqual(recipient_rows[1:], [("b@example.com", "Pending"), ("c@example.com", "Pending")])
+        self.assertEqual(operation_count, 1)
+
+        task.status = "Stopped"
+        resume_context = _Context(task)
+        with self.assertRaisesRegex(ProviderRuntimeError, "daily quota reached"):
+            runtime.make_task_runner(task, state, resume_remaining=True)(resume_context)
+        resumed = runtime.delivery_summary(task)
+        self.assertEqual(resumed.uncertain_recipients, ("a@example.com", "b@example.com"))
+        self.assertEqual(resumed.pending_recipients, ("c@example.com",))
+        with closing(sqlite3.connect(self.store.path)) as connection:
+            operation_recipients = connection.execute(
+                "SELECT recipient_ordinal FROM task_delivery_operations ORDER BY rowid"
+            ).fetchall()
+        self.assertEqual(operation_recipients, [(0,), (1,)])
+
+    def test_external_nonfatal_recipient_error_still_continues_to_next_recipient(self):
+        original = '''    def execute_recipient(self, context):
+        result = context.request(
+            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",
+            url="https://external.invalid/invoices",
+            json_data={"email": context.customer.email}, provider_reference_key="id",
+        )
+        return ExternalRecipientResult(provider_invoice_id=result["id"], final_stage="external_mutation:invoice_send")'''
+        replacement = '''    def execute_recipient(self, context):
+        if context.customer.email == "a@example.com":
+            raise ProviderRuntimeError("recipient rejected", category="provider-mail", retryable=False)
+        result = context.request(
+            stage="invoice_send", operation_kind=NON_IDEMPOTENT_MUTATION, method="POST",
+            url="https://external.invalid/invoices",
+            json_data={"email": context.customer.email}, provider_reference_key="id",
+        )
+        return ExternalRecipientResult(provider_invoice_id=result["id"], final_stage="external_mutation:invoice_send")'''
+        source = self._adapter_source().replace(original, replacement)
+        manager = ProviderManager(self.root)
+        runtime = ProviderRuntime(
+            project_root=self.root, domain_store=self.store,
+            transport=lambda *args: self._transport(*args),
+        )
+        manager.load_external(
+            self._bundle(adapter_source=source), allow_executable=True,
+            adapter_validator=runtime.validate_external_adapter,
+        )
+        runtime.reload_external_adapters()
+        state, task, _account, _template, _customers = self._state_task(("a@example.com", "b@example.com"))
+        context = _Context(task)
+        with self.assertRaisesRegex(ProviderRuntimeError, r"1 external recipient\(s\) failed"):
+            runtime.make_task_runner(task, state)(context)
+        summary = runtime.delivery_summary(task)
+        self.assertEqual(summary.failed_recipients, ("a@example.com",))
+        self.assertEqual(summary.success, 1)
+        self.assertEqual(summary.processed, 2)
+        self.assertIn("Resolved 2/2 external recipient(s)", context.progress_events[-1][3])
 
     def test_atomic_install_rolls_back_if_manifest_replace_fails(self):
         manager = ProviderManager(self.root)

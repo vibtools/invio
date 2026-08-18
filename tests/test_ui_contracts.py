@@ -919,6 +919,9 @@ class P07UiContractTests(unittest.TestCase):
         finished = source.split("def _worker_finished", 1)[1].split("# Reports / logs", 1)[0]
         self.assertIn("reconcile_worker_terminal_status(task.status, status)", finished)
         self.assertIn("there are no recipients remaining to resume", finished)
+        self.assertIn('provider_stop_message.startswith("Stopped: ")', finished)
+        self.assertIn("if provider_stop_message:", finished)
+        self.assertIn("message = provider_stop_message", finished)
 
     def test_p07_correction_distinguishes_safe_empty_continuation_from_lost_identity_state(self):
         root = Path(__file__).resolve().parents[1]
