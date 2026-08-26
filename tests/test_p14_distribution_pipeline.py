@@ -196,6 +196,34 @@ class P14DistributionPipelineTests(unittest.TestCase):
         self.assertIn("-pdbtype none", workflow)
 
 
+    def test_update_fix_ci_is_source_only_and_release_build_is_tag_gated(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        linux_test = workflow.split("\n  test:\n", 1)[1].split("\n  windows-test:\n", 1)[0]
+        windows_test = workflow.split("\n  windows-test:\n", 1)[1].split("\n  windows-build:\n", 1)[0]
+        windows_build = workflow.split("\n  windows-build:\n", 1)[1].split("\n  release:\n", 1)[0]
+        release = workflow.split("\n  release:\n", 1)[1]
+
+        forbidden_update_fix_fragments = (
+            "pip wheel",
+            "Nuitka",
+            "wix build",
+            "msiexec",
+            "prepare_windows_distribution.py",
+            "finalize_release_checksums.py",
+            "actions/upload-artifact",
+            "gh release",
+        )
+        for job_name, block in (("test", linux_test), ("windows-test", windows_test)):
+            with self.subTest(job=job_name):
+                self.assertIn("python scripts/test/audit.py", block)
+                for fragment in forbidden_update_fix_fragments:
+                    self.assertNotIn(fragment, block)
+
+        self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", windows_build)
+        self.assertIn("if: startsWith(github.ref, 'refs/tags/v')", release)
+        self.assertIn("needs: [test, windows-test, windows-build]", release)
+
+
     def test_compiled_keyring_contract_covers_code_metadata_and_real_credential_round_trip(self):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         app_source = (ROOT / "src" / "app.py").read_text(encoding="utf-8")
