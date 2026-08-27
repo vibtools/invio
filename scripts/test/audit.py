@@ -34,6 +34,7 @@ def _purge_repository_bytecode() -> int:
 # source files on Windows, causing stale bytecode to override source truth.
 _purged_bytecode_dirs = _purge_repository_bytecode()
 
+from scripts.test.repository_hygiene import RepositoryHygieneError, assert_repository_source_hygiene
 from scripts.test.repository_syntax import RepositorySyntaxError, assert_repository_python_syntax
 
 
@@ -46,6 +47,13 @@ try:
 except RepositorySyntaxError as exc:
     raise SystemExit(str(exc)) from exc
 print(f"PASS ({checked} repository Python files)")
+
+print("\n== Repository source hygiene ==")
+try:
+    source_candidates = assert_repository_source_hygiene(ROOT)
+except RepositoryHygieneError as exc:
+    raise SystemExit(str(exc)) from exc
+print(f"PASS ({source_candidates} public source candidate files)")
 
 print("\n== Invio unit tests ==")
 subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"], cwd=ROOT, check=True)
