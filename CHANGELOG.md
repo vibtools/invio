@@ -4,8 +4,9 @@
 - Records the native Windows full regression result from that clean GitHub checkout: **642/642 PASS**, including Phase-4 Dynamic Tags tests and the current schema-v7 migration contracts.
 - Records successful wheel/P14 audit, native PySide6/keyring/resource smoke, Nuitka OneDir startup, protected-credential and Windows-native-TLS smokes, WiX MSI build/install/run/uninstall, release-payload audit, and artifact upload.
 - Removes one tracked trailing-whitespace defect from the historical v1.0.0.1.50 patch manifest.
-- Synchronizes the release identity to application/wheel `1.0.0.1.50.1`, PE `1.0.1.5001`, MSI `1.1.5001`, and future tag `v1.0.0.1.50.1` using the existing six-part hotfix mapping.
+- Synchronizes the release identity to application/wheel `1.0.0.1.50.1`, PE `1.0.1.5001`, MSI `1.1.5001`, and tag `v1.0.0.1.50.1` using the existing six-part hotfix mapping.
 - No Phase-1 TLS, Phase-2 provider circuit-breaker, Phase-3 sending-control, Phase-4 Dynamic Tags, provider, storage-schema, Task/WorkerManager, credential, OAuth/IVX, or UI/UX behavior changes are introduced.
+- Records that tag/release `v1.0.0.1.50.1` was published on 2026-08-18 with wheel, Windows portable ZIP, Windows MSI and release checksum assets.
 
 ## v1.0.0.1.50 — Deterministic Dynamic Tags V1
 

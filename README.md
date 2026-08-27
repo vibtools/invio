@@ -1,6 +1,8 @@
-## Current release-readiness baseline — v1.0.0.1.50.1
+## Current authoritative state — v1.0.0.1.50.1
 
-`v1.0.0.1.50.1` is a maintenance-only release-readiness synchronization over the owner-frozen `v1.0.0.1.50` Phase-4 baseline. The exact parent commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`: Linux and Windows jobs were green, Windows executed **642/642 tests PASS**, and the complete wheel → Nuitka OneDir → protected credential/TLS smoke → WiX MSI → P14 release-payload → artifact-upload chain passed. Phase 1 through Phase 4 runtime behavior remains frozen; this hotfix only closes release-record/status drift, one tracked Markdown trailing-whitespace defect, and current version/release metadata.
+Invio `v1.0.0.1.50.1` is the current published product release. The release was published on 2026-08-18 after the Phase-4 release-readiness chain completed successfully. Application/wheel version remains `1.0.0.1.50.1` and operational SQLite remains schema **v7**.
+
+Subsequent repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) corrected source-audit, CI source-only, checksum-lifecycle and workspace/source-provenance defects without changing application runtime, providers, UI/UX, schema, version, build artifacts, or the published release. Historical sections below describe the state of their named versions at that time; they are not alternate current baselines.
 
 ## Accepted Phase-4 baseline — v1.0.0.1.50
 
@@ -8,15 +10,15 @@ Invio v1.0.0.1.50 implements the owner-approved **Deterministic Dynamic Tags V1*
 
 Phase 4 advances operational storage additively from schema v6 to **schema v7** so Settings-default dynamic-name provenance and the immutable Task Dynamic Tags version/UTC reference survive restart. Existing v6 Customer/Task rows migrate with Dynamic Tags disabled, preserving pre-Phase-4 literal behavior for already captured executions. No new UI page, preview workflow, provider-specific hidden tags, provider API capability, WorkerManager architecture, TLS behavior, Phase-2 circuit breaker, or Phase-3 scheduling behavior is introduced. GitHub Actions run `32109507918` passed on exact commit `b87b412413f8788656c89b3b97a487d855d10d5f`, including native Windows **642/642 PASS** and the complete Windows distribution chain.
 
-## Current baseline candidate — v1.0.0.1.49.9
+## Historical baseline candidate — v1.0.0.1.49.9
 
 v1.0.0.1.49.9 is a narrow Windows CI correction over the accepted Phase-3 implementation. GitHub Actions run `32097949119` proved the Linux job and all Phase-3 runtime/UI tests green; the Windows job failed only because the new schema-v5→v6 migration test fixture left its own SQLite connections open until temporary-directory cleanup. The fixture now explicitly closes those test connections. Production `DomainStore`, SQLite schema v6, Sending & Retry controls, provider rate ceilings, Phase-1 TLS, Phase-2 fatal-limit semantics, WorkerManager/QThread ownership and all provider/UI workflows remain unchanged.
 
-## Current baseline candidate — v1.0.0.1.49.8
+## Historical baseline candidate — v1.0.0.1.49.8
 
 Phase 3 adds bounded Sending Scheduler / Retry / Delay controls without changing provider business payloads, Phase-1 TLS trust, Phase-2 fatal-limit circuit-breaking, WorkerManager/QThread ownership, or Dynamic Tags. New Tasks freeze their sending controls into the immutable execution snapshot and SQLite schema v6 persists those controls across restart. Defaults preserve v1.49.7 behavior: 30-second Task network timeout, three total automatic attempts, zero additional recipient delay, Stripe 20 requests/second/account, Refrens 1 request/second/account, and no invented Odoo numeric scheduling policy. Provider `Retry-After`, internal retry taxonomy/backoff/jitter/cooldowns and non-idempotent no-blind-replay rules remain authoritative.
 
-## Current baseline candidate — v1.0.0.1.49.7
+## Historical baseline candidate — v1.0.0.1.49.7
 
 v1.49.7 corrects only the verified GitHub Actions P14 release-audit false negative from the v1.49.6 Windows build. Nuitka successfully compiled and executed the native `truststore` TLS backend in both OneDir and MSI smoke tests, but the final portable audit incorrectly required the original `Invio/truststore/__init__.py` source file. The audit now checks only stable portable resources while executable smoke gates remain the runtime proof. Phase-1 TLS and Phase-2 provider-limit behavior remain unchanged.
 
