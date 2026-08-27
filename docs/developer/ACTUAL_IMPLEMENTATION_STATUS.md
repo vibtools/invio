@@ -1,3 +1,14 @@
+# Current authoritative implementation state
+
+- Product release: `v1.0.0.1.50.1` (published 2026-08-18).
+- Application/wheel version: `1.0.0.1.50.1`.
+- Operational SQLite schema: **v7**.
+- Phase 1–4 runtime behavior: implemented/accepted and frozen.
+- Repository-maintenance Phase-01 (F-001/F-002): complete; no runtime feature change.
+- Repository-maintenance Phase-02 (F-003/F-004): complete; no runtime feature change.
+
+Historical version sections below preserve point-in-time implementation evidence. Their candidate/baseline wording is historical and does not override this current state.
+
 ## v1.0.0.1.50.1 — Phase 1–4 release readiness
 
 **Status: RELEASE-READINESS MAINTENANCE / RUNTIME FROZEN.** Phase 4 v1.0.0.1.50 at commit `b87b412413f8788656c89b3b97a487d855d10d5f` passed GitHub Actions run `32109507918`, including native Windows **642/642 PASS**, wheel/P14, compiled PySide6/keyring, Nuitka startup, credential and Windows-native TLS smokes, WiX MSI lifecycle, P14 release-payload audit, and artifact upload. Phase-1 TLS, Phase-2 provider terminal-stop semantics, Phase-3 sending controls and Phase-4 Dynamic Tags V1 remain unchanged in this hotfix.
@@ -76,29 +87,29 @@ Status tone classification, display markers and table status-cell composition ar
 
 **IMPLEMENTED LOCALLY / REMOTE CONFIRMATION PENDING:** GitHub Actions run `31516505105` proves the Linux Qt dependency correction and real PySide6 popup runtime tests are working on both Linux and Windows. The remaining 21 failures are repository-contract failures caused by a partially unignored private `project/` tree. `v1.0.0.1.48.3` restores the established public/private test boundary: public CI no longer materializes `project/`, while a full private baseline continues to validate private records conditionally. Runtime/UI/business/provider/storage behavior is unchanged. A new pushed v1.48.3 run is required before claiming remote Windows wheel/Nuitka/MSI/artifact completion.
 
-## v1.0.0.1.47.0 UI Candidate Status
+## v1.0.0.1.47.0 Historical UI Candidate Status
 
 **Scope:** UI/UX only. The single-header shell, grouped SVG sidebar, standardized frameless dialog shell, centralized component states and approved Accounts/Customer Lists/Invoice Templates presentation are implemented. Provider runtime, storage, task execution, settings and business logic remain unchanged.
 
-## v1.0.0.1.46.0 candidate
+## v1.0.0.1.46.0 historical candidate
 
 Window-chrome scope implemented: custom MainTitleBar and DialogTitleBar; all provider/runtime/storage/business phases retain their prior status.
 
 # Actual Implementation Status
 
-## v1.0.0.1.45.0 candidate
+## v1.0.0.1.45.0 historical candidate
 
 Owner-frozen parent: `v1.0.0.1.44.0`. Candidate scope is limited to the Providers Page transient top-level-card prevention and compact Available/Verified placement/card-height correction. Provider/runtime/storage/business architecture remains unchanged.
 
-## v1.0.0.1.44.0 candidate
+## v1.0.0.1.44.0 historical candidate
 
 Parent baseline `v1.0.0.1.43.0` remains architecturally frozen. Candidate scope is limited to static intro/subtitle rendering plus version/tests/docs; no runtime/business/persistence architecture is reopened.
 
-**Current UI baseline/candidate:** `Invio v1.0.0.1.44.0` owner-frozen baseline → `Invio v1.0.0.1.45.0` Providers Page transient-window/card-layout fix candidate. Provider/runtime/storage/business behavior unchanged.
+**Historical UI baseline/candidate at that point:** `Invio v1.0.0.1.44.0` owner-frozen baseline → `Invio v1.0.0.1.45.0` Providers Page transient-window/card-layout fix candidate. Provider/runtime/storage/business behavior unchanged.
 
 
-**Official Production Baseline:** `Invio v1.0.0.1.40.2`  
-**Current UI baseline/candidate:** `Invio v1.0.0.1.41` owner-frozen baseline → `Invio v1.0.0.1.41.1` Providers Page final-polish candidate; provider/runtime/storage behavior unchanged.  
+**Historical first production baseline:** `Invio v1.0.0.1.40.2`
+**Historical UI baseline/candidate at that point:** `Invio v1.0.0.1.41` owner-frozen baseline → `Invio v1.0.0.1.41.1` Providers Page final-polish candidate; provider/runtime/storage behavior unchanged.
 **Production status:** **ACCEPTED / FIRST PRODUCTION RELEASE**  
 **P14:** **COMPLETE BY EXPLICIT OWNER PRODUCTION ACCEPTANCE**  
 **P11 Refrens:** **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED — NON-BLOCKING FOR v1.0.0.1.40.2**  
@@ -124,7 +135,7 @@ Parent baseline `v1.0.0.1.43.0` remains architecturally frozen. Candidate scope 
 | Refrens normal Task sending | BLOCKED externally / LIVE ACCEPTANCE DEFERRED | Authentication and invoice creation succeed live; the documented API email endpoint currently returns HTTP 400 `Not allowed to send mail`, so provider-side API mail permission/capability must be resolved before live acceptance |
 | Odoo external provider invoice sending | LIVE PRODUCTION ACCEPTED | Owner-confirmed Odoo Provider v1.0.0 end-to-end invoice creation/posting/email send through P13 |
 | Real Add Account API Test | WORKING by built-in/external providers | Stripe/Refrens verification remains real; Agiled now performs the verified Bearer safe-read `GET https://api.agiled.ai/public/v1/me` on the existing dedicated dialog `QThread` |
-| Durable Accounts metadata | WORKING | Current SQLite schema v5 retains IDs/provider/name/mode/status/verification health/credential reference; account-health columns originated in schema v2 |
+| Durable Accounts metadata | WORKING | Current SQLite schema v7 retains the existing Account identity/status/verification/credential-reference contract; account-health columns originated in schema v2 and later schema additions remain additive. |
 | Protected provider credentials | WORKING / NATIVE DISTRIBUTION ACCEPTED | `keyring` only; no plaintext fallback; Windows compiled credential smoke is part of the accepted P14 distribution evidence |
 | Durable Customer Lists | WORKING | Ordered customer records restore after restart; email mandatory, optional explicit name/country |
 | Durable Invoice Templates | WORKING | Template fields/items/terms restore; Decimal values stored as text |
@@ -135,7 +146,7 @@ Parent baseline `v1.0.0.1.43.0` remains architecturally frozen. Candidate scope 
 | Worker/network reliability | WORKING | P08 structured retry classification, bounded retry/backoff/jitter, Retry-After, explicit timeout policy and safe asynchronous shutdown; v1.0.0.1.24 corrects truncated-body/TLS-close transient classification |
 | Retry Failed / Resume Remaining in current session | WORKING | P07 uses exact ProviderRuntime failed/pending sets and immutable P05 ordering |
 | Retry Failed / Resume Remaining after app restart | WORKING | P10 uses durable latest recipient outcomes and exact attempted-account binding; unsupported historical evidence fails closed |
-| Recipient delivery ledger/provider IDs | WORKING | Schema v5 stores runs, per-run recipients, operations, attempts, idempotency evidence, provider customer/invoice IDs and sanitized errors |
+| Recipient delivery ledger/provider IDs | WORKING | Current schema v7 retains the P10 delivery-ledger tables introduced in schema v5: runs, per-run recipients, operations, attempts, idempotency evidence, provider customer/invoice IDs and sanitized errors. |
 | Recipient reports / structured logs / safe exports | WORKING | P12 uses the P10 ledger for recipient support rows, structured privacy-redacted Live Logs, atomic formula-safe CSV/text exports and closed-history retention controls |
 | Settings persistence | WORKING | Existing non-sensitive JSON remains separate from P02 storage |
 
@@ -160,7 +171,7 @@ Parent baseline `v1.0.0.1.43.0` remains architecturally frozen. Candidate scope 
 - Account reservation creation is transactional with Task creation. Task close transactionally deletes the Task and releases reservations.
 - Template parent/items/terms and customer email replacement are committed transactionally.
 - Startup integrity/schema validation rejects corrupt, unknown unversioned, and newer unsupported schemas without silently replacing them.
-- Existing supported schema-v0/v1/v2/v3/v4 databases use the existing WAL-aware pre-migration backup path before advancing to current schema v5.
+- Existing supported schema-v0/v1/v2/v3/v4 databases use the existing WAL-aware pre-migration backup path before advancing through the supported migration chain; schema v5 was the current target for this historical P02/P10 record.
 - Missing/unreadable protected credentials leave Account metadata visible but force runtime status `Not Verified`, preserving P01 Task gates.
 - Previously active Tasks are not automatically resumed after process restart.
 - Persistence failures are translated into existing `StateError`/user-facing handling; active task persistence failure requests WorkerManager stop.
@@ -338,7 +349,7 @@ The internal packaged-provider adapter registry is **WORKING**. Dynamic arbitrar
 
 ## P10 status - v1.0.0.1.27
 
-**WORKING:** SQLite schema v5; exactly three durable delivery-ledger tables; distinct execution Run IDs; write-ahead operation starts; P08 attempt history; exact Stripe Task-derived idempotency evidence; provider customer/invoice IDs when returned; sanitized durable errors; final Pending/Succeeded/Failed/Uncertain outcomes; interrupted-run recovery; durable aggregate reconciliation; restart-safe Resume Remaining / Retry Failed; P09 exact attempted-account binding across restart; historical ledger retention after Close Task.
+**WORKING:** P10 introduced the delivery ledger in SQLite schema v5; current schema v7 retains exactly three durable delivery-ledger tables; distinct execution Run IDs; write-ahead operation starts; P08 attempt history; exact Stripe Task-derived idempotency evidence; provider customer/invoice IDs when returned; sanitized durable errors; final Pending/Succeeded/Failed/Uncertain outcomes; interrupted-run recovery; durable aggregate reconciliation; restart-safe Resume Remaining / Retry Failed; P09 exact attempted-account binding across restart; historical ledger retention after Close Task.
 
 **FAIL-CLOSED:** pre-P10 non-pristine Tasks do not receive invented delivery history; unsupported or inconsistent durable continuation evidence is rejected. A required pre-request ledger write failure sends nothing; a post-provider ledger result failure stops before further side effects and leaves observable write-ahead evidence for restart recovery.
 

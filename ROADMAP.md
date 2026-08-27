@@ -1,6 +1,8 @@
-## Release readiness — v1.0.0.1.50.1
+## Current authoritative roadmap state — v1.0.0.1.50.1
 
-Phase 4 Deterministic Dynamic Tags V1 in `v1.0.0.1.50` is now CI-accepted on exact commit `b87b412413f8788656c89b3b97a487d855d10d5f` by GitHub Actions run `32109507918`. The run passed Linux tests, native Windows **642/642** regression, wheel/P14, PySide6/keyring/resource smoke, Nuitka OneDir, credential/TLS smokes, WiX MSI lifecycle, release-payload audit, and artifact upload. `v1.0.0.1.50.1` does not reopen any functional phase; it synchronizes release readiness and version identity only.
+Invio `v1.0.0.1.50.1` is the current published product release (published 2026-08-18). Phase 1–4 runtime behavior remains accepted/frozen, operational SQLite is schema **v7**, and the published release lineage remains unchanged. Repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) were completed afterward as non-functional source/repository corrections; they do not advance the product roadmap or change runtime behavior.
+
+All version-specific sections below are historical planning/acceptance records for their named versions. Terms such as “candidate”, “baseline”, or “next phase” inside those records describe their point-in-time state and are not current roadmap status.
 
 ## Phase 4 — Deterministic Dynamic Tags V1 — v1.0.0.1.50 ACCEPTED BASELINE
 
@@ -72,35 +74,35 @@ The approved Accounts-page **Compact Flat Account Table & Semantic Status UI** i
 
 The approved Tasks-page New Task modal compact UI redesign is the only v1.0.0.1.48.4 scope. It does not introduce a new production phase or alter the existing provider/task/storage roadmap.
 
-## Current CI/CD Stabilization Candidate — v1.0.0.1.48.3
+## Historical CI/CD Stabilization Candidate — v1.0.0.1.48.3
 
 Parent Official Baseline: `Invio_v1.0.0.1.48.02_CL_FIx_Baseline.zip`. Scope is limited to GitHub CI/test/build/release stabilization and required version/documentation synchronization. The correction restores the established public/private repository-contract boundary; it does not advance production phases or modify application behavior. A post-push GitHub Actions run remains the authoritative Windows OneDir/MSI/artifact confirmation gate.
 
-## Current Hotfix Candidate — v1.0.0.1.48.02
+## Historical Hotfix Candidate — v1.0.0.1.48.02
 
 Parent Official Baseline: `v1.0.0.1.48.01`. Scope is limited to the global app-owned `QMessageBox` / popup lifecycle regression and real PySide6 interaction regression coverage. Production/provider roadmap ordering and business/runtime phase status are unchanged.
 
-## Current Hotfix Candidate — v1.0.0.1.48.01
+## Historical Hotfix Candidate — v1.0.0.1.48.01
 
 Parent Official Baseline: `v1.0.0.1.48.0`. This candidate fixes only the Tasks `Close Task` confirmation boundary. Production/provider roadmap ordering and phase status are unchanged.
 
-## Current UI Candidate — v1.0.0.1.48.0
+## Historical UI Candidate — v1.0.0.1.48.0
 
 Parent Official Baseline: `v1.0.0.1.47.0`. This candidate is limited to custom Main/Dialog chrome spacing, app-owned dialog visual separation and duplicate dialog-title cleanup. Runtime/provider/business roadmap ordering is unchanged.
 
-## Current UI Candidate — v1.0.0.1.47.0
+## Historical UI Candidate — v1.0.0.1.47.0
 
 Parent Official Baseline: `v1.0.0.1.46.0`. This candidate is limited to the owner-approved Vib Tools desktop design-system refinement. Runtime/provider/business roadmap ordering is unchanged.
 
-**Current owner-frozen baseline:** `Invio v1.0.0.1.45.0`. **Active approved UI candidate:** `v1.0.0.1.46.0 — custom Main Window and app-owned Dialog title bars only`. Provider/runtime roadmap status is unchanged.
+**Historical owner-frozen baseline at that point:** `Invio v1.0.0.1.45.0`. **Historical approved UI candidate:** `v1.0.0.1.46.0 — custom Main Window and app-owned Dialog title bars only`. Provider/runtime roadmap status is unchanged.
 
 # Roadmap
 
-**Current owner-frozen UI baseline:** `Invio v1.0.0.1.44.0`. **Active approved UI candidate:** `Invio v1.0.0.1.45.0 — Providers Page transient-window/card-layout fix only`. Production/runtime phase status is inherited unchanged; this UI candidate does not reopen or advance any provider/runtime phase.
+**Historical owner-frozen UI baseline at that point:** `Invio v1.0.0.1.44.0`. **Historical approved UI candidate:** `Invio v1.0.0.1.45.0 — Providers Page transient-window/card-layout fix only`. Production/runtime phase status is inherited unchanged; this UI candidate does not reopen or advance any provider/runtime phase.
 
-Current owner-frozen Official UI Baseline: **Invio v1.0.0.1.41 — Providers Page UI/UX baseline**. The first production-release lineage remains rooted in v1.0.0.1.40.2.
+Historical owner-frozen Official UI Baseline at that point: **Invio v1.0.0.1.41 — Providers Page UI/UX baseline**. The first production-release lineage remains rooted in v1.0.0.1.40.2.
 
-Active approved UI candidate: **Invio v1.0.0.1.41.1 — Providers Page final UI polish only**. Production/runtime phase status remains inherited unchanged; this hotfix does not reopen or advance any provider/runtime phase.
+Historical approved UI candidate: **Invio v1.0.0.1.41.1 — Providers Page final UI polish only**. Production/runtime phase status remains inherited unchanged; this hotfix does not reopen or advance any provider/runtime phase.
 
 Owner acceptance on 2026-08-10 records a successful real Odoo end-to-end invoice delivery path through the frozen P13 external-provider contract and accepts the green Windows distribution pipeline as the P14 native packaging gate. **P14 is COMPLETE by explicit owner production acceptance.** P11 remains the separate Refrens-specific live acceptance phase and is **IMPLEMENTED / LIVE ACCEPTANCE DEFERRED (non-blocking for v1.0.0.1.40.2)** because Refrens API mail is rejected by the provider with `HTTP 400: Not allowed to send mail`.
 
