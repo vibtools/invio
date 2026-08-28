@@ -15,14 +15,14 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: '3.12.14'
       - name: Install Linux Qt runtime dependencies
         run: |
           sudo apt-get update
@@ -32,35 +32,41 @@ jobs:
             libopengl0 \
             libxkbcommon-x11-0 \
             libxcb-cursor0
+      - name: Pin pip
+        run: python -m pip install --disable-pip-version-check "pip==26.2.1"
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/ci-linux-py312.txt
       - name: Audit
         run: python scripts/test/audit.py
 
   windows-test:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: '3.12.10'
           architecture: 'x64'
+      - name: Pin pip
+        run: python -m pip install --disable-pip-version-check "pip==26.2.1"
       - name: Install application dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/ci-windows-py312.txt
       - name: Full regression audit
         run: python scripts/test/audit.py
 
   windows-build:
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: '3.12.10'
           architecture: 'x64'
+      - name: Pin pip
+        run: python -m pip install --disable-pip-version-check "pip==26.2.1"
       - name: Install application dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -c constraints/ci-windows-py312.txt
       - name: Full regression audit
         run: python scripts/test/audit.py
       - name: Verify workflow version mapping
@@ -73,7 +79,7 @@ jobs:
       - name: Build wheel
         shell: pwsh
         run: |
-          python -m pip install --upgrade setuptools wheel
+          python -m pip install --disable-pip-version-check -r constraints/ci-tools.txt
           New-Item -ItemType Directory -Force -Path dist\wheel | Out-Null
           python -m pip wheel . --no-deps --no-build-isolation -w dist\wheel
           $wheel = (Get-ChildItem dist\wheel\*.whl | Select-Object -First 1).FullName
@@ -82,9 +88,9 @@ jobs:
         shell: pwsh
         run: |
           python -m venv .p14-wheel-venv
-          .\.p14-wheel-venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.p14-wheel-venv\Scripts\python.exe -m pip install --disable-pip-version-check "pip==26.2.1"
           $wheel = (Get-ChildItem dist\wheel\*.whl | Select-Object -First 1).FullName
-          .\.p14-wheel-venv\Scripts\python.exe -m pip install $wheel
+          .\.p14-wheel-venv\Scripts\python.exe -m pip install -c constraints/ci-windows-py312.txt $wheel
       - name: Native PySide6/keyring/resource smoke
         shell: pwsh
         run: |
@@ -178,9 +184,9 @@ jobs:
           }
 
       - name: Setup .NET for WiX
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.424'
 
       - name: Install WiX Toolset
         shell: pwsh
@@ -265,7 +271,7 @@ jobs:
           python scripts/test/p14_distribution_audit.py --release-dir dist\release --version $env:INVIO_VERSION
 
       - name: Upload Windows distribution artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: invio-windows-distribution
           path: dist/release/*
@@ -274,18 +280,18 @@ jobs:
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [test, windows-test, windows-build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: '3.12.14'
       - name: Verify release tag matches Invio version
         run: python scripts/build/version_info.py --expect-tag "${GITHUB_REF_NAME}"
       - name: Download Windows distribution artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: invio-windows-distribution
           path: release

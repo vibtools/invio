@@ -254,7 +254,7 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn('"src.core.settings"', pyproject)
         self.assertIn('"providers.packages.stripe"', pyproject)
         self.assertIn('"assets.icons"', pyproject)
-        self.assertIn("windows-latest", workflow)
+        self.assertIn("runs-on: windows-2025", workflow)
         self.assertIn("p14_windows_smoke.py", workflow)
         self.assertIn("P14 CERTIFICATION PENDING", roadmap)
         self.assertIn("Production-ready: NO", release)
