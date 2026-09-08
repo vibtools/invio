@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QPoint, QSize, Qt
+from PySide6.QtCore import QObject, QPoint, QSize, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,9 +22,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..core.license import get_local_license as _get_local_license
+from ..core.license import is_provider_licensed as _license_is_active
+from ..core.license import revalidate_license as _revalidate_license
 from ..core.observability import StructuredLogEvent, atomic_write_csv, atomic_write_text, redact_sensitive_text
 from ..core.paths import asset_path
-from ..core.provider_manager import ProviderManager, ProviderManifest, ProviderManifestError
+from ..core.provider_manager import (
+    ProviderManager,
+    ProviderManifest,
+    ProviderManifestError,
+    RemoteProviderInfo,
+    RemoteRegistryError,
+    download_provider,
+    fetch_catalog,
+)
 from ..core.provider_runtime import (
     ProviderRuntime,
     ProviderRuntimeError,
@@ -53,7 +64,15 @@ from ..tasks.state_machine import (
     require_task_action,
     task_action_policy,
 )
-from .dialogs import AccountRetestDialog, AddAccountDialog, InvoiceTemplateDialog, NewCustomerListDialog, NewTaskDialog, compact_message_box
+from .dialogs import (
+    AccountRetestDialog,
+    AddAccountDialog,
+    InvoiceTemplateDialog,
+    LicenseActivationDialog,
+    NewCustomerListDialog,
+    NewTaskDialog,
+    compact_message_box,
+)
 from .pages import (
     AccountsPage,
     CustomerListsPage,
@@ -69,6 +88,84 @@ from .styles import app_qss
 from .title_bars import MainTitleBar, enable_frameless_window
 from .tokens import CONST, NAV_GROUPS
 from .widgets import hbox, label, vbox
+
+
+class _RemoteProviderCatalogWorker(QObject):
+    """Fetches the public provider catalog from invio.vib.tools off the UI thread."""
+
+    succeeded = Signal(object)
+    failed = Signal(str)
+    finished = Signal()
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            items = fetch_catalog()
+        except RemoteRegistryError as exc:
+            self.failed.emit(str(exc))
+        except Exception:
+            self.failed.emit("Could not load the online provider catalog because of an unexpected error.")
+        else:
+            self.succeeded.emit(items)
+        finally:
+            self.finished.emit()
+
+
+class _RemoteProviderDownloadWorker(QObject):
+    """Downloads and checksum-verifies a single provider package off the UI thread."""
+
+    succeeded = Signal(object, object)
+    failed = Signal(object, str)
+    finished = Signal(object)
+
+    def __init__(self, info: RemoteProviderInfo, dest_dir: Path) -> None:
+        super().__init__()
+        self.info = info
+        self.dest_dir = dest_dir
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            path = download_provider(self.info, self.dest_dir)
+        except RemoteRegistryError as exc:
+            self.failed.emit(self.info, str(exc))
+        except Exception:
+            self.failed.emit(self.info, "Provider download failed because of an unexpected error.")
+        else:
+            self.succeeded.emit(self.info, path)
+        finally:
+            self.finished.emit(self.info)
+
+
+class _LicenseRevalidationWorker(QObject):
+    """Re-checks already-activated licenses against the license server off the UI thread.
+
+    `is_provider_licensed` is a purely local/offline check, so without this periodic
+    network re-check an admin-side ban, expiry change, or HWID reset would never reach
+    an already-activated desktop. Runs once shortly after startup and then on a timer.
+    """
+
+    finished = Signal(list)
+
+    def __init__(self, provider_ids: list[str]) -> None:
+        super().__init__()
+        self.provider_ids = provider_ids
+
+    @Slot()
+    def run(self) -> None:
+        changed: list[str] = []
+        for provider_id in self.provider_ids:
+            try:
+                if _get_local_license(provider_id) is None:
+                    continue
+                before = _license_is_active(provider_id)
+                _revalidate_license(provider_id)
+                after = _license_is_active(provider_id)
+            except Exception:
+                continue
+            if before != after:
+                changed.append(provider_id)
+        self.finished.emit(changed)
 
 
 class MainWindow(QMainWindow):
@@ -87,6 +184,15 @@ class MainWindow(QMainWindow):
         )
         self.providers = ProviderManager(self.project_root)
         self.provider_runtime = ProviderRuntime(domain_store=self.domain_store, project_root=self.project_root)
+        self._remote_provider_downloads_dir = self.project_root / "providers" / ".remote_downloads"
+        self._remote_provider_catalog: list[RemoteProviderInfo] = []
+        self._remote_provider_busy_ids: set[int] = set()
+        self._remote_catalog_thread: QThread | None = None
+        self._remote_catalog_worker: _RemoteProviderCatalogWorker | None = None
+        self._remote_install_threads: dict[int, QThread] = {}
+        self._remote_install_workers: dict[int, _RemoteProviderDownloadWorker] = {}
+        self._license_revalidation_thread: QThread | None = None
+        self._license_revalidation_worker: _LicenseRevalidationWorker | None = None
         self.worker_manager = WorkerManager(self)
         self.task_runners: dict[str, TaskRunner] = {}
         self.pages: dict[str, QWidget] = {}
@@ -113,6 +219,12 @@ class MainWindow(QMainWindow):
             self.log(self.settings_manager.load_warning)
         for warning in self.state.recovery_warnings:
             self.log(warning)
+
+        self._license_revalidation_timer = QTimer(self)
+        self._license_revalidation_timer.setInterval(12 * 60 * 60 * 1000)
+        self._license_revalidation_timer.timeout.connect(self._run_license_revalidation)
+        self._license_revalidation_timer.start()
+        QTimer.singleShot(5000, self._run_license_revalidation)
 
     def register_task_runner(self, provider_id: str, runner: TaskRunner) -> None:
         """Backend integration point: inject a provider task runner by provider id."""
@@ -207,7 +319,12 @@ class MainWindow(QMainWindow):
             self.load_provider,
             self._runtime_capabilities_for_provider,
             self._runtime_adapter_status_for_provider,
+            self.install_remote_provider,
+            self.refresh_remote_providers,
+            self.open_license_dialog,
+            self.is_provider_licensed,
         )
+        self.refresh_remote_providers()
         self.reports_page = ReportsPage(
             self.state,
             self.export_report,
@@ -664,6 +781,156 @@ class MainWindow(QMainWindow):
         self.accounts_page.refresh()
         self._refresh_settings_rate_limits()
         self._refresh_dashboard()
+
+    # Online Provider Catalog (invio.vib.tools) --------------------------
+    def refresh_remote_providers(self) -> None:
+        if self._remote_catalog_thread is not None:
+            return
+        self.providers_page.set_remote_catalog(loading=True, busy_ids=self._remote_provider_busy_ids)
+        thread = QThread(self)
+        thread.setObjectName("InvioRemoteProviderCatalogFetch")
+        worker = _RemoteProviderCatalogWorker()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._remote_catalog_succeeded)
+        worker.failed.connect(self._remote_catalog_failed)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._remote_catalog_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._remote_catalog_thread = thread
+        self._remote_catalog_worker = worker
+        thread.start()
+
+    @Slot(object)
+    def _remote_catalog_succeeded(self, items: list[RemoteProviderInfo]) -> None:
+        self._remote_provider_catalog = items
+        self.providers_page.set_remote_catalog(items, busy_ids=self._remote_provider_busy_ids)
+
+    @Slot(str)
+    def _remote_catalog_failed(self, message: str) -> None:
+        self.providers_page.set_remote_catalog(
+            self._remote_provider_catalog, error=message, busy_ids=self._remote_provider_busy_ids
+        )
+
+    @Slot()
+    def _remote_catalog_finished(self) -> None:
+        self._remote_catalog_thread = None
+        self._remote_catalog_worker = None
+
+    def install_remote_provider(self, info: RemoteProviderInfo) -> None:
+        if info.remote_id in self._remote_provider_busy_ids:
+            return
+        self._remote_provider_busy_ids.add(info.remote_id)
+        self.providers_page.set_remote_catalog(
+            self._remote_provider_catalog, busy_ids=self._remote_provider_busy_ids
+        )
+        thread = QThread(self)
+        thread.setObjectName(f"InvioRemoteProviderDownload-{info.remote_id}")
+        worker = _RemoteProviderDownloadWorker(info, self._remote_provider_downloads_dir)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._remote_download_succeeded)
+        worker.failed.connect(self._remote_download_failed)
+        worker.finished.connect(self._remote_install_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._remote_install_threads[info.remote_id] = thread
+        self._remote_install_workers[info.remote_id] = worker
+        thread.start()
+
+    @Slot(object, object)
+    def _remote_download_succeeded(self, info: RemoteProviderInfo, path: Path) -> None:
+        try:
+            provider = self.providers.import_ivx(path)
+        except ProviderManifestError as exc:
+            self._message("Provider", f"Could not install {info.name}: {exc}", QMessageBox.Icon.Warning)
+            return
+        finally:
+            try:
+                Path(path).unlink(missing_ok=True)
+            except OSError:
+                pass
+        self.log(
+            f"Provider package downloaded from invio.vib.tools: {provider.name} v{provider.version}.",
+            severity="INFO",
+            category="APPLICATION",
+        )
+        self.install_provider(provider.id)
+
+    @Slot(object, str)
+    def _remote_download_failed(self, info: RemoteProviderInfo, message: str) -> None:
+        self._message("Provider", f"Could not download {info.name}: {message}", QMessageBox.Icon.Warning)
+
+    @Slot(object)
+    def _remote_install_finished(self, info: RemoteProviderInfo) -> None:
+        self._remote_provider_busy_ids.discard(info.remote_id)
+        self._remote_install_threads.pop(info.remote_id, None)
+        self._remote_install_workers.pop(info.remote_id, None)
+        self.providers_page.set_remote_catalog(
+            self._remote_provider_catalog, busy_ids=self._remote_provider_busy_ids
+        )
+
+    # License activation --------------------------------------------------
+    def is_provider_licensed(self, provider_id: str) -> bool:
+        try:
+            return _license_is_active(provider_id)
+        except Exception:
+            return False
+
+    def open_license_dialog(self, provider: ProviderManifest) -> None:
+        dialog = LicenseActivationDialog(provider, self)
+        if dialog.exec() == dialog.DialogCode.Accepted and dialog.result_record is not None:
+            self.log(
+                f"License activated: {provider.name} ({dialog.result_record.license_key}).",
+                severity="INFO",
+                category="APPLICATION",
+            )
+            # An external provider's adapter only registers as executable once
+            # it has an active license (see ExternalAdapterRegistry.reload_installed);
+            # re-check now so Accounts/Tasks unlock immediately, no restart needed.
+            self.provider_runtime.reload_external_adapters()
+            self.providers_page.refresh()
+            self.accounts_page.refresh()
+
+    def _run_license_revalidation(self) -> None:
+        if self._license_revalidation_thread is not None:
+            return
+        try:
+            provider_ids = [provider.id for provider in self.providers.list_installed()]
+        except ProviderManifestError:
+            return
+        if not provider_ids:
+            return
+        thread = QThread(self)
+        thread.setObjectName("InvioLicenseRevalidation")
+        worker = _LicenseRevalidationWorker(provider_ids)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._license_revalidation_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        self._license_revalidation_thread = thread
+        self._license_revalidation_worker = worker
+        thread.start()
+
+    @Slot(list)
+    def _license_revalidation_finished(self, changed_provider_ids: list) -> None:
+        self._license_revalidation_thread = None
+        self._license_revalidation_worker = None
+        if not changed_provider_ids:
+            return
+        self.provider_runtime.reload_external_adapters()
+        self.providers_page.refresh()
+        self.accounts_page.refresh()
+        for provider_id in changed_provider_ids:
+            self.log(
+                f"License status for provider '{provider_id}' changed after a routine server re-check.",
+                severity="INFO",
+                category="APPLICATION",
+            )
 
     # Accounts ----------------------------------------------------------
     def add_account(self) -> None:

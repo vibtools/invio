@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -28,6 +29,12 @@ class BrowserOAuthHostTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "providers" / "packages").mkdir(parents=True)
         (self.root / "providers" / "registry").mkdir(parents=True)
+        # This suite tests the Browser OAuth host contract, not licensing (covered
+        # separately); its synthetic test providers never hold a real activated
+        # license, so bypass that orthogonal gate here.
+        self._license_patch = patch("src.core.provider_runtime.external.is_provider_licensed", return_value=True)
+        self._license_patch.start()
+        self.addCleanup(self._license_patch.stop)
 
     def _bundle(self, *, browser_auth: bool = True) -> Path:
         bundle = self.root / "bundle"

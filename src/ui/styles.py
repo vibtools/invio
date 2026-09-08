@@ -30,7 +30,7 @@ def app_qss() -> str:
     QScrollArea#MinimalScrollArea, QScrollArea#MinimalScrollArea::viewport {{
         background: {c['page_background']}; border: none;
     }}
-    QWidget#SettingsContent, QWidget#DialogContent {{
+    QWidget#SettingsContent, QWidget#DialogContent, QWidget#ProvidersScrollContent {{
         background: {c['page_background']}; border: none;
     }}
     QWidget#Sidebar QScrollArea#MinimalScrollArea,

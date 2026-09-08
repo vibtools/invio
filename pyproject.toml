@@ -15,6 +15,7 @@ dependencies = [
   "openpyxl>=3.1,<4",
   "keyring>=25.7,<26",
   "truststore>=0.10.4,<0.11",
+  "cryptography>=42,<50",
 ]
 keywords = ["vib-tools", "desktop", "invoice", "automation", "pyside6"]
 classifiers = [

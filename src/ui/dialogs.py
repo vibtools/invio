@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..accounts.models import Account
+from ..core.license import LicenseError, LicenseRecord, activate_license
 from ..core.provider_manager import ProviderManifest
 from ..core.provider_runtime import (
     BrowserOAuthSession,
@@ -165,6 +166,30 @@ class _BrowserOAuthWorker(QObject):
             self.failed.emit("Provider authorization failed because of an unexpected internal error.")
         else:
             self.succeeded.emit(result)
+        finally:
+            self.finished.emit()
+
+
+class _LicenseActivationWorker(QObject):
+    succeeded = Signal(object)
+    failed = Signal(str, object)
+    finished = Signal()
+
+    def __init__(self, license_key: str, provider_id: str) -> None:
+        super().__init__()
+        self.license_key = license_key
+        self.provider_id = provider_id
+
+    @Slot()
+    def run(self) -> None:
+        try:
+            record = activate_license(self.license_key, self.provider_id)
+        except LicenseError as exc:
+            self.failed.emit(str(exc), list(exc.allowed_providers))
+        except Exception:
+            self.failed.emit("License activation failed because of an unexpected internal error.", [])
+        else:
+            self.succeeded.emit(record)
         finally:
             self.finished.emit()
 
@@ -355,6 +380,127 @@ def _dialog_footer(primary_text: str, primary_handler: Callable[[], None], cance
     layout.addWidget(cancel_button)
     layout.addWidget(primary_button)
     return host
+
+
+class LicenseActivationDialog(QDialog):
+    """License key activation modal for a single installed provider.
+
+    Shown from the Providers page's "Activate License" action. Runs the
+    network activation call on a background thread so the modal never
+    freezes, and clearly distinguishes a wrong/expired key from a valid key
+    that simply is not licensed for this particular provider.
+    """
+
+    def __init__(self, provider: ProviderManifest, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.provider = provider
+        self.result_record: LicenseRecord | None = None
+        self._thread: QThread | None = None
+        self._worker: _LicenseActivationWorker | None = None
+
+        self.setWindowTitle(f"Activate License - {provider.name}")
+        self.setModal(True)
+        _apply_compact_dialog_geometry(
+            self, parent, width_ratio=0.42, preferred_height=330, min_width=440, max_width=600, min_height=300
+        )
+        layout = build_dialog_shell(self)
+
+        layout.addWidget(
+            label(f"Enter your license key to activate {provider.name} for use in Invio.", "Description", True)
+        )
+
+        self.key_input = QLineEdit()
+        self.key_input.setPlaceholderText("INV-XXXX-XXXX-XXXX")
+        self.key_input.returnPressed.connect(self._activate)
+        layout.addWidget(form_group("License key", self.key_input))
+
+        self.status_label = inline_status("", "neutral")
+        self.status_label.setVisible(False)
+        layout.addWidget(self.status_label)
+
+        layout.addStretch(1)
+
+        cta_host = QWidget()
+        cta_host.setObjectName("NestedCard")
+        cta_layout = QHBoxLayout(cta_host)
+        cta_layout.setContentsMargins(CONST.card_padding, 10, CONST.card_padding, 10)
+        cta_layout.setSpacing(CONST.dialog_gap)
+        cta_layout.addWidget(label("Don't have a license key for this provider?", "Caption", True), 1)
+        get_key_button = button("Get a License Key", "ghost")
+        get_key_button.clicked.connect(lambda: webbrowser.open("https://invio.vib.tools"))
+        cta_layout.addWidget(get_key_button, 0)
+        layout.addWidget(cta_host)
+
+        footer = QWidget()
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(0, CONST.dialog_gap, 0, 0)
+        footer_layout.setSpacing(CONST.dialog_gap)
+        footer_layout.addStretch(1)
+        self.cancel_button = button("Cancel")
+        self.cancel_button.setObjectName("GhostButton")
+        self.cancel_button.clicked.connect(self.reject)
+        self.activate_button = button("Activate License", "primary")
+        self.activate_button.setDefault(True)
+        self.activate_button.setAutoDefault(True)
+        self.activate_button.clicked.connect(self._activate)
+        footer_layout.addWidget(self.cancel_button)
+        footer_layout.addWidget(self.activate_button)
+        layout.addWidget(footer)
+
+        QTimer.singleShot(0, self.key_input.setFocus)
+
+    def _set_busy(self, busy: bool) -> None:
+        self.activate_button.setEnabled(not busy)
+        self.key_input.setEnabled(not busy)
+
+    def _activate(self) -> None:
+        if self._thread is not None:
+            return
+        key = self.key_input.text().strip().upper()
+        if not key:
+            set_inline_status(self.status_label, "Enter a license key.", "warning")
+            self.status_label.setVisible(True)
+            return
+        self._set_busy(True)
+        set_inline_status(self.status_label, "Activating...", "info")
+        self.status_label.setVisible(True)
+
+        thread = QThread(self)
+        worker = _LicenseActivationWorker(key, self.provider.id)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.succeeded.connect(self._on_succeeded)
+        worker.failed.connect(self._on_failed)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._on_worker_finished)
+        thread.finished.connect(thread.deleteLater)
+        self._thread = thread
+        self._worker = worker
+        thread.start()
+
+    @Slot()
+    def _on_worker_finished(self) -> None:
+        self._thread = None
+        self._worker = None
+
+    @Slot(object)
+    def _on_succeeded(self, record: LicenseRecord) -> None:
+        self.result_record = record
+        self._set_busy(False)
+        set_inline_status(self.status_label, f"{self.provider.name} license activated successfully.", "success")
+        QTimer.singleShot(650, self.accept)
+
+    @Slot(str, object)
+    def _on_failed(self, message: str, allowed_providers: list[str]) -> None:
+        self._set_busy(False)
+        if allowed_providers:
+            names = ", ".join(allowed_providers)
+            text = f"This license key is valid for: {names}. It cannot activate {self.provider.name}."
+        else:
+            text = message
+        set_inline_status(self.status_label, text, "danger")
+        self.status_label.setVisible(True)
 
 
 class NewCustomerListDialog(QDialog):

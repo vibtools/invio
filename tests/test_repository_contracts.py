@@ -443,7 +443,7 @@ class RepositoryContractTests(unittest.TestCase):
         reflow = providers.split("def _reflow_cards", 1)[1].split("def _apply_filter", 1)[0]
         self.assertIn("item.setVisible(False)", reflow)
         self.assertLess(reflow.index("self.grid.addWidget(item, row, column)"), reflow.index("item.setVisible(True)"))
-        self.assertIn("PROVIDER_CARD_HEIGHT = 194", providers)
+        self.assertIn("PROVIDER_CARD_HEIGHT = 188", providers)
         self.assertIn("PROVIDER_STATUS_HEIGHT = 18", providers)
         self.assertIn("identity.addWidget(status, 0, Qt.AlignmentFlag.AlignLeft)", providers)
         self.assertIn("QFrame#PluginCard QLabel#StatusBadgeSuccess", styles)
@@ -519,7 +519,7 @@ class RepositoryContractTests(unittest.TestCase):
         release = (ROOT / "docs" / "release-notes" / "1.0.0.1.41.1.md").read_text(encoding="utf-8")
         self.assertIn('INVIO_VERSION: "1.0.0.1.50.1"', workflow)
         self.assertIn('INVIO_PE_VERSION: "1.0.1.5001"', workflow)
-        self.assertIn('PROVIDER_CARD_HEIGHT = 194', page)
+        self.assertIn('PROVIDER_CARD_HEIGHT = 188', page)
         self.assertIn('PROVIDER_LOGO_SIZE = 40', page)
         self.assertIn('"ProviderSearchInput"', page)
         self.assertIn('"ProviderLogo"', page)

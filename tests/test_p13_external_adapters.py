@@ -72,6 +72,12 @@ class P13ExternalAdapterTests(unittest.TestCase):
         (self.root / "providers" / "registry").mkdir(parents=True)
         self.store = DomainStore(self.root / "domain.sqlite3")
         self.credentials = CredentialStore(_Keyring())
+        # This suite tests the external-adapter registry/execution contract, not
+        # licensing (covered separately); its synthetic test providers never hold
+        # a real activated license, so bypass that orthogonal gate here.
+        self._license_patch = patch("src.core.provider_runtime.external.is_provider_licensed", return_value=True)
+        self._license_patch.start()
+        self.addCleanup(self._license_patch.stop)
 
     def _manifest_payload(self, *, runtime: bool = True, interface_version: int = 1) -> dict:
         payload = {
