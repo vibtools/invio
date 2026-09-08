@@ -221,6 +221,7 @@ class MainWindow(QMainWindow):
         self._remote_install_workers: dict[int, _RemoteProviderDownloadWorker] = {}
         self._license_revalidation_thread: QThread | None = None
         self._license_revalidation_worker: _LicenseRevalidationWorker | None = None
+        self._license_revalidation_start_timer: QTimer | None = None
         self.worker_manager = WorkerManager(self)
         self.task_runners: dict[str, TaskRunner] = {}
         self.pages: dict[str, QWidget] = {}
@@ -252,7 +253,10 @@ class MainWindow(QMainWindow):
         self._license_revalidation_timer.setInterval(12 * 60 * 60 * 1000)
         self._license_revalidation_timer.timeout.connect(self._run_license_revalidation)
         self._license_revalidation_timer.start()
-        QTimer.singleShot(5000, self._run_license_revalidation)
+        self._license_revalidation_start_timer = QTimer(self)
+        self._license_revalidation_start_timer.setSingleShot(True)
+        self._license_revalidation_start_timer.timeout.connect(self._run_license_revalidation)
+        self._license_revalidation_start_timer.start(5000)
 
     def register_task_runner(self, provider_id: str, runner: TaskRunner) -> None:
         """Backend integration point: inject a provider task runner by provider id."""
@@ -1897,6 +1901,9 @@ class MainWindow(QMainWindow):
         this MainWindow and can finish/fail safely in the background — avoiding the fatal
         Qt abort that destroying a running QThread's C++ object would otherwise cause.
         """
+        if self._license_revalidation_start_timer is not None:
+            self._license_revalidation_start_timer.stop()
+            self._license_revalidation_start_timer = None
         threads = list(self._remote_install_threads.values())
         if self._remote_catalog_thread is not None:
             threads.append(self._remote_catalog_thread)
