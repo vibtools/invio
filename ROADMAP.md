@@ -1,8 +1,12 @@
-## Current authoritative roadmap state — v1.0.0.1.50.1
+## Current authoritative roadmap state — v1.0.0.1.52
 
-Invio `v1.0.0.1.50.1` is the current published product release (published 2026-08-18). Phase 1–4 runtime behavior remains accepted/frozen, operational SQLite is schema **v7**, and the published release lineage remains unchanged. Repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) were completed afterward as non-functional source/repository corrections; they do not advance the product roadmap or change runtime behavior.
+Invio `v1.0.0.1.52` is the current published product release (published 2026-09-08). This release adds the website-issued license system, the Online Provider Catalog, a redesigned Providers page, and three additional reference provider packages (QuickBooks Online, Zoho Books, Zoho Invoice). Phase 1–4 runtime behavior remains accepted/frozen and operational SQLite remains schema **v7**. GitHub Actions run `34226609792` passed on exact commit `5534c82e5d325031e042a7f8c7057d6846c00fae`, including native Linux and Windows test suites (669/669 PASS).
 
 All version-specific sections below are historical planning/acceptance records for their named versions. Terms such as “candidate”, “baseline”, or “next phase” inside those records describe their point-in-time state and are not current roadmap status.
+
+## Accepted Phase-4 hotfix baseline — v1.0.0.1.50.1
+
+Invio v1.0.0.1.50.1 was the release-readiness hotfix over CI-accepted v1.0.0.1.50, published 2026-08-18. Phase 1–4 runtime behavior remained accepted/frozen, operational SQLite remained schema **v7**. Repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) were completed afterward as non-functional source/repository corrections; they did not advance the product roadmap or change runtime behavior.
 
 ## Phase 4 — Deterministic Dynamic Tags V1 — v1.0.0.1.50 ACCEPTED BASELINE
 

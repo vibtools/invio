@@ -1,3 +1,17 @@
+## v1.0.0.1.52 — License System, Online Provider Catalog, Providers Page Redesign
+
+- Adds a website-issued RSA license system (`src/core/license/client.py`): `activate_license()` against invio.vib.tools, local signature-verified/tamper-resistant caching, and `revalidate_license()` — a periodic (startup + every 12h) server re-check so an admin-side ban/expiry/HWID reset actually reaches an already-activated desktop instead of staying cached as valid forever.
+- Wires the license gate into `ExternalAdapterRegistry.reload_installed()`: an unlicensed external provider registers as `Unlicensed` and is blocked from Accounts/Task use before its adapter code ever loads.
+- Adds `LicenseActivationDialog` and license status UI (License/Re-license button, Licensed badge) on the Providers page.
+- Adds the Online Provider Catalog (`src/core/provider_manager/remote_registry.py`): fetches the public provider catalog from invio.vib.tools and downloads+checksum-verifies a selected provider's `.ivx`, feeding the existing `import_ivx`/`install_packaged` pipeline.
+- Redesigns the Providers page: scrollable layout, 3-column grid, Settings-page-matching background/card styling, fixed a card-overlap bug, and adds the Online Provider Catalog section.
+- Imports QuickBooks Online, Zoho Books and Zoho Invoice as full reference provider packages (adapter + tests + docs) under `providers/packages/`.
+- Adds the `cryptography` dependency (RSA signature verification) and repins `constraints/ci-linux-py312.txt`'s transitive `cryptography` version to stay within the declared `<50` range.
+- Synchronizes the release identity to application/wheel `1.0.0.1.52`, PE `1.0.1.52`, MSI `1.1.52`, and tag `v1.0.0.1.52`.
+- No Phase-1 TLS, Phase-2 provider circuit-breaker, Phase-3 sending-control, Phase-4 Dynamic Tags, storage-schema, Task/WorkerManager, or OAuth/IVX contract behavior changes are introduced.
+- Records GitHub Actions run `34226609792` as the authoritative pre-merge acceptance for commit `5534c82e5d325031e042a7f8c7057d6846c00fae`: native Linux and Windows test jobs both passed (669/669 PASS).
+- Records that tag/release `v1.0.0.1.52` was published on 2026-09-08 with wheel, Windows portable ZIP, Windows MSI and release checksum assets.
+
 ## v1.0.0.1.50.1 — Phase 1–4 Release-Readiness Certification Correction
 
 - Records GitHub Actions run `32109507918` as the authoritative post-push acceptance for v1.0.0.1.50 commit `b87b412413f8788656c89b3b97a487d855d10d5f`: Linux test and Windows build jobs passed.
