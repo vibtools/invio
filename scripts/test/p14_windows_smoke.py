@@ -98,6 +98,25 @@ def main() -> int:
     if len(started_threads) != 3 or len(finished) != 3:
         raise SystemExit(f"Three-Task native QThread smoke failed: threads={len(started_threads)}, finished={len(finished)}")
 
+    # Worker completion is emitted before the thread-finished cleanup signal.
+    # Drain the Qt event queue so the manager's QThread children terminate before
+    # interpreter shutdown destroys the manager.
+    cleanup_loop = QEventLoop()
+    cleanup_poll = QTimer()
+    cleanup_poll.setInterval(20)
+    cleanup_poll.timeout.connect(
+        lambda: cleanup_loop.quit() if not worker_manager.has_active_workers() else None
+    )
+    cleanup_poll.start()
+    cleanup_timeout = QTimer()
+    cleanup_timeout.setSingleShot(True)
+    cleanup_timeout.timeout.connect(cleanup_loop.quit)
+    cleanup_timeout.start(5000)
+    cleanup_loop.exec()
+    cleanup_poll.stop()
+    if worker_manager.has_active_workers():
+        raise SystemExit("Three-Task native QThread cleanup failed before interpreter shutdown")
+
     window = MainWindow(root)
     try:
         expected = [name for name, _icon in NAV_ITEMS]
