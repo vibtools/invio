@@ -752,6 +752,9 @@ class V149LayoutRuntimeInteractionTests(unittest.TestCase):
             def list_available(self):
                 return [provider_a, provider_b]
 
+            def installed_ids(self):
+                return {provider_a.id}
+
         provider_calls: list[tuple[str, str]] = []
         providers = ProvidersPage(
             ManagerStub(),

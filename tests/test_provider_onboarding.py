@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from src.core.provider_manager import ProviderManager, ProviderManifestError
 from src.core.provider_runtime import (
@@ -24,6 +25,12 @@ class ProviderEasyOnboardingHostTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "providers" / "packages").mkdir(parents=True)
         (self.root / "providers" / "registry").mkdir(parents=True)
+        # This suite tests the Easy Onboarding host contract, not licensing (covered
+        # separately); its synthetic test providers never hold a real activated
+        # license, so bypass that orthogonal gate here.
+        self._license_patch = patch("src.core.provider_runtime.external.is_provider_licensed", return_value=True)
+        self._license_patch.start()
+        self.addCleanup(self._license_patch.stop)
 
     def _bundle(self) -> Path:
         bundle = self.root / "bundle"

@@ -28,7 +28,7 @@ EXPECTED_LINUX_CONSTRAINTS = {
     "et-xmlfile==2.0.0",
     "SecretStorage==3.5.0",
     "jeepney==0.9.0",
-    "cryptography==50.0.1",
+    "cryptography==49.0.0",
     "cffi==2.1.1",
     "pycparser==3.0",
     "jaraco.classes==3.4.0",
