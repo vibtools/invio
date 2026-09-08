@@ -89,6 +89,34 @@ from .title_bars import MainTitleBar, enable_frameless_window
 from .tokens import CONST, NAV_GROUPS
 from .widgets import hbox, label, vbox
 
+# Background QThreads doing blocking network I/O (urllib has no mid-request cancel) can
+# still be running when their owning MainWindow is closed/garbage-collected. Qt aborts
+# the process if a QThread's C++ object is destroyed while its thread is still running,
+# so a still-running thread is moved here to keep a strong reference alive independent of
+# MainWindow's lifetime, letting it finish/fail naturally instead of forcing a wait long
+# enough to cover an arbitrary network timeout on every window close.
+_ORPHANED_BACKGROUND_THREADS: list[QThread] = []
+
+
+def _detach_running_thread(thread: QThread) -> None:
+    if thread is None or not thread.isRunning():
+        return
+    # Sever the Qt parent-child relationship (these threads are constructed as
+    # QThread(self) against MainWindow) so MainWindow's own destruction cannot cascade
+    # into force-destroying a still-running child QThread, which is what Qt's fatal
+    # "destroyed while running" abort actually guards against.
+    thread.setParent(None)
+    _ORPHANED_BACKGROUND_THREADS.append(thread)
+
+    def _cleanup() -> None:
+        try:
+            _ORPHANED_BACKGROUND_THREADS.remove(thread)
+        except ValueError:
+            pass
+        thread.deleteLater()
+
+    thread.finished.connect(_cleanup)
+
 
 class _RemoteProviderCatalogWorker(QObject):
     """Fetches the public provider catalog from invio.vib.tools off the UI thread."""
@@ -1851,8 +1879,37 @@ class MainWindow(QMainWindow):
             return
 
         self._shutdown_pending = False
+        self._stop_background_threads()
         geometry = self.normalGeometry() if self.isMaximized() else self.geometry()
         self.settings_manager.record_window_state(
             WindowState(geometry.x(), geometry.y(), geometry.width(), geometry.height())
         )
         event.accept()
+
+    def _stop_background_threads(self) -> None:
+        """Quit non-Task background QThreads, detaching any still running on window close.
+
+        These threads run blocking network I/O (urllib has no mid-request cancel), so
+        one can still be mid-request when the window closes. Rather than blocking the
+        close for as long as an arbitrary network timeout, a brief wait lets
+        already-finished/fast threads clean up immediately; anything still running is
+        detached to `_detach_running_thread` so it keeps a live reference independent of
+        this MainWindow and can finish/fail safely in the background — avoiding the fatal
+        Qt abort that destroying a running QThread's C++ object would otherwise cause.
+        """
+        threads = list(self._remote_install_threads.values())
+        if self._remote_catalog_thread is not None:
+            threads.append(self._remote_catalog_thread)
+        if self._license_revalidation_thread is not None:
+            threads.append(self._license_revalidation_thread)
+        for thread in threads:
+            if thread is not None and thread.isRunning():
+                thread.quit()
+        for thread in threads:
+            if thread is None:
+                continue
+            if not thread.wait(5000):
+                _detach_running_thread(thread)
+        self._remote_install_threads = {}
+        self._remote_catalog_thread = None
+        self._license_revalidation_thread = None
