@@ -56,6 +56,19 @@ def current_release_version(root: Path = ROOT) -> ReleaseVersion:
     return parse_release_version(str(config["project"]["version"]))
 
 
+def tag_matches_release(tag: str, release: ReleaseVersion) -> bool:
+    if tag == release.tag:
+        return True
+    hotfix_prefix = f"{release.tag}."
+    if not tag.startswith(hotfix_prefix):
+        return False
+    hotfix = tag.removeprefix(hotfix_prefix)
+    if not hotfix.isdigit() or not 0 < int(hotfix) <= 99:
+        return False
+    parse_release_version(f"{release.application}.{hotfix}")
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Resolve Invio Windows/release version mappings.")
     parser.add_argument("--field", choices=("application", "pe", "msi", "tag"), default="application")
@@ -63,7 +76,7 @@ def main() -> int:
     args = parser.parse_args()
 
     release = current_release_version()
-    if args.expect_tag and args.expect_tag != release.tag:
+    if args.expect_tag and not tag_matches_release(args.expect_tag, release):
         raise SystemExit(
             f"Release tag mismatch: expected {release.tag} for application version {release.application}, "
             f"got {args.expect_tag}."

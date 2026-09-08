@@ -17,7 +17,7 @@ if str(BUILD_DIR) not in sys.path:
 from finalize_release_checksums import digest  # noqa: E402
 from generate_wix_source import UPGRADE_CODE, generate_wix_source  # noqa: E402
 from prepare_windows_distribution import REQUIRED_RELATIVE_RESOURCES, prepare_distribution  # noqa: E402
-from version_info import parse_release_version  # noqa: E402
+from version_info import parse_release_version, tag_matches_release  # noqa: E402
 
 
 class P14DistributionPipelineTests(unittest.TestCase):
@@ -74,6 +74,13 @@ class P14DistributionPipelineTests(unittest.TestCase):
             parse_release_version("1.0.0.1.700.1")
         with self.assertRaises(ValueError):
             parse_release_version("1.0.0.1.40.200")
+
+    def test_release_tag_validation_accepts_patch_tags_for_current_release(self):
+        release = parse_release_version("1.0.0.1.52")
+        self.assertTrue(tag_matches_release("v1.0.0.1.52", release))
+        self.assertTrue(tag_matches_release("v1.0.0.1.52.4", release))
+        self.assertFalse(tag_matches_release("v1.0.0.1.53.1", release))
+        self.assertFalse(tag_matches_release("v1.0.0.1.52.100", release))
 
     def test_application_root_preserves_module_root_then_uses_exact_executable_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
