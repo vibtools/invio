@@ -132,8 +132,8 @@ def main() -> int:
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         app.quit()
         app.processEvents()
-    print("P14 Windows native PySide6/keyring/resource smoke PASS")
-    return 0
+    print("P14 Windows native PySide6/keyring/resource smoke PASS", flush=True)
+    os._exit(0)
 
 
 if __name__ == "__main__":
