@@ -57,7 +57,7 @@ def main() -> int:
     # Native WorkerManager smoke: prove three active Tasks own three distinct QThreads.
     import threading
     import time
-    from PySide6.QtCore import QEventLoop, QTimer
+    from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer
 
     worker_manager = WorkerManager()
     started_threads: set[int] = set()
@@ -127,6 +127,10 @@ def main() -> int:
             app.processEvents()
     finally:
         window.close()
+        window.deleteLater()
+        app.processEvents()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.quit()
         app.processEvents()
     print("P14 Windows native PySide6/keyring/resource smoke PASS")
     return 0
