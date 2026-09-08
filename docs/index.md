@@ -1,8 +1,12 @@
-## Current authoritative documentation state — v1.0.0.1.50.1
+## Current authoritative documentation state — v1.0.0.1.52
 
-Invio `v1.0.0.1.50.1` is the current published product release (published 2026-08-18). Application/wheel version remains `1.0.0.1.50.1`, operational SQLite remains schema **v7**, and Phase 1–4 runtime behavior remains frozen. Repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) were completed afterward without changing runtime behavior, provider contracts, UI/UX, schema, version, or published release artifacts.
+Invio `v1.0.0.1.52` is the current published product release (published 2026-09-08). Application/wheel version is `1.0.0.1.52`, operational SQLite remains schema **v7**, and Phase 1–4 runtime behavior remains frozen. This release adds the website-issued license system, the Online Provider Catalog, a redesigned Providers page, and three additional reference provider packages (QuickBooks Online, Zoho Books, Zoho Invoice). GitHub Actions run `34226609792` passed on exact commit `5534c82e5d325031e042a7f8c7057d6846c00fae`, including native Linux and Windows test suites (669/669 PASS).
 
 The version sections below are historical records for their named releases/candidates; historical “current” or “candidate” language must not be interpreted as an alternate present-day baseline.
+
+## Accepted Phase-4 hotfix baseline — v1.0.0.1.50.1
+
+Invio v1.0.0.1.50.1 was the release-readiness hotfix over CI-accepted v1.0.0.1.50, published 2026-08-18. Application/wheel version was `1.0.0.1.50.1`, operational SQLite remained schema **v7**, and Phase 1–4 runtime behavior remained frozen. Repository-maintenance Phase-01 (F-001/F-002) and Phase-02 (F-003/F-004) were completed afterward without changing runtime behavior, provider contracts, UI/UX, schema, version, or published release artifacts.
 
 ## Accepted Phase-4 baseline — v1.0.0.1.50
 

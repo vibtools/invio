@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - required dependency is verified by dis
     _truststore = None
 
 DEFAULT_LICENSE_BASE_URL = "https://invio.vib.tools"
-CLIENT_VERSION = "1.0.0.1.50.1"
+CLIENT_VERSION = "1.0.0.1.52"
 USER_AGENT = f"Invio/{CLIENT_VERSION} Vib-Tools"
 _REQUEST_TIMEOUT = 20.0
 _HWID_ACCOUNT_ID = "license-device-id"

@@ -1,13 +1,21 @@
 # Current authoritative implementation state
 
-- Product release: `v1.0.0.1.50.1` (published 2026-08-18).
-- Application/wheel version: `1.0.0.1.50.1`.
+- Product release: `v1.0.0.1.52` (published 2026-09-08).
+- Application/wheel version: `1.0.0.1.52`.
 - Operational SQLite schema: **v7**.
 - Phase 1–4 runtime behavior: implemented/accepted and frozen.
+- License system: RSA-signed activation, local tamper-resistant caching, periodic server re-validation (revocation propagation).
+- Online Provider Catalog: fetch/download/install providers from invio.vib.tools, reusing the existing import_ivx/install_packaged pipeline.
+- Providers page: redesigned (scrollable 3-column grid, Settings-page-matching styling).
+- Three additional reference provider packages: QuickBooks Online, Zoho Books, Zoho Invoice.
 - Repository-maintenance Phase-01 (F-001/F-002): complete; no runtime feature change.
 - Repository-maintenance Phase-02 (F-003/F-004): complete; no runtime feature change.
 
 Historical version sections below preserve point-in-time implementation evidence. Their candidate/baseline wording is historical and does not override this current state.
+
+## v1.0.0.1.52 — License system, Online Provider Catalog, Providers page redesign
+
+**Status: IMPLEMENTED / CI-VERIFIED.** Adds a website-issued RSA license system (`src/core/license/client.py`): activation against invio.vib.tools, local signature-verified caching, and a periodic (startup + every 12h) server re-check so an admin-side ban/expiry/HWID reset reaches an already-activated desktop — `ExternalAdapterRegistry.reload_installed()` gates unlicensed external providers to `Unlicensed` before their adapter code loads. Adds the Online Provider Catalog (`src/core/provider_manager/remote_registry.py`): fetch the public catalog and download+checksum-verify a provider's `.ivx`, feeding the existing `import_ivx`/`install_packaged` pipeline. Redesigns the Providers page (`src/ui/pages/providers_page.py`): scrollable layout, 3-column grid, Settings-page-matching background/card styling. Imports QuickBooks Online, Zoho Books and Zoho Invoice as full reference provider packages. GitHub Actions run `34226609792` passed on exact commit `5534c82e5d325031e042a7f8c7057d6846c00fae`, including native Linux and Windows test suites (669/669 PASS). Phase-1 TLS, Phase-2 provider terminal-stop semantics, Phase-3 sending controls and Phase-4 Dynamic Tags V1 remain unchanged.
 
 ## v1.0.0.1.50.1 — Phase 1–4 release readiness
 

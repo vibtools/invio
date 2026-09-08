@@ -40,7 +40,7 @@ class DocumentationTruthTests(unittest.TestCase):
         version = _version()
         note = _text(ROOT / "docs" / "release-notes" / f"{version}.md")
         self.assertIn(f"Tag `v{version}`", note)
-        self.assertIn("published on 2026-08-18", note)
+        self.assertIn("published on 2026-09-08", note)
         self.assertIn("Windows x64 MSI", note)
         lowered = note.lower()
         self.assertNotIn("tag is not created", lowered)
@@ -54,13 +54,13 @@ class DocumentationTruthTests(unittest.TestCase):
         next_heading = changelog.find("\n## ", start + len(marker))
         section = changelog[start:] if next_heading < 0 else changelog[start:next_heading]
         self.assertIn(f"tag `v{version}`", section)
-        self.assertIn("published on 2026-08-18", section)
+        self.assertIn("published on 2026-09-08", section)
         self.assertNotIn("future tag", section.lower())
 
     def test_current_facing_docs_have_one_authoritative_current_state(self) -> None:
         version = _version()
         banned_heading = re.compile(
-            r"^#{1,4}\s+Current\s+.*v1\.0\.0\.1\.(?!50\.1(?:\s|$))",
+            r"^#{1,4}\s+Current\s+.*v1\.0\.0\.1\.(?!52(?:\s|$))",
             re.MULTILINE | re.IGNORECASE,
         )
         for path in CURRENT_DOCS:
