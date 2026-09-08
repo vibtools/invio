@@ -10,6 +10,7 @@ from typing import Any, Callable, Protocol, runtime_checkable
 
 from ...customers.models import CustomerRecord
 from ...invoices.templates import InvoiceTemplate
+from ..license import is_provider_licensed
 from ..provider_manager import ProviderManager, ProviderManifest, ProviderManifestError
 from .adapters import ProviderCapabilityProfile, ProviderSchedulingPolicy, registered_provider_ids
 
@@ -26,6 +27,11 @@ ADAPTER_STATUS_EXECUTABLE = "Executable"
 ADAPTER_STATUS_MANIFEST_ONLY = "Manifest only"
 ADAPTER_STATUS_MISSING = "Missing"
 ADAPTER_STATUS_INCOMPATIBLE = "Incompatible"
+ADAPTER_STATUS_UNLICENSED = "Unlicensed"
+UNLICENSED_MESSAGE = (
+    "This provider requires an active license. Activate it from the Providers page before adding "
+    "Accounts or running Tasks with it."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -374,6 +380,18 @@ class ExternalAdapterRegistry:
                     manifest.id,
                     ADAPTER_STATUS_MANIFEST_ONLY,
                     "Manifest installed without an executable runtime adapter.",
+                )
+                continue
+            if not is_provider_licensed(manifest.id):
+                # Fail closed before the adapter is even loaded: an externally
+                # installed provider is not registered as executable - and is
+                # therefore unusable for Accounts or Tasks, exactly like a
+                # missing/incompatible adapter - until it has an active,
+                # locally-verified license for this exact provider id.
+                registrations[manifest.id] = ExternalAdapterRegistration(
+                    manifest.id,
+                    ADAPTER_STATUS_UNLICENSED,
+                    UNLICENSED_MESSAGE,
                 )
                 continue
             adapter_path = self.manager.external_adapter_path(manifest.id)

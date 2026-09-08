@@ -1,0 +1,109 @@
+{
+  "id": "zoho_books",
+  "name": "Zoho Books",
+  "version": "1.2.0",
+  "description": "Trusted external Zoho Books provider for Invio using OAuth 2.0 refresh tokens, real Zoho Books Contacts/Items/Currency/Invoices APIs, real invoice creation, and real invoice email sending.",
+  "credential_fields": [
+    {
+      "key": "accounts_server_url",
+      "label": "Zoho Region",
+      "kind": "text",
+      "required": true,
+      "placeholder": "",
+      "ownership": "user_required",
+      "choices": [
+        {
+          "label": "Global / United States",
+          "value": "https://accounts.zoho.com"
+        },
+        {
+          "label": "Europe",
+          "value": "https://accounts.zoho.eu"
+        },
+        {
+          "label": "India",
+          "value": "https://accounts.zoho.in"
+        },
+        {
+          "label": "Australia",
+          "value": "https://accounts.zoho.com.au"
+        },
+        {
+          "label": "Japan",
+          "value": "https://accounts.zoho.jp"
+        },
+        {
+          "label": "Canada",
+          "value": "https://accounts.zohocloud.ca"
+        },
+        {
+          "label": "China",
+          "value": "https://accounts.zoho.com.cn"
+        },
+        {
+          "label": "Saudi Arabia",
+          "value": "https://accounts.zoho.sa"
+        }
+      ]
+    },
+    {
+      "key": "client_id",
+      "label": "OAuth Client ID",
+      "kind": "text",
+      "required": true,
+      "placeholder": "1000.xxxxx",
+      "ownership": "user_required"
+    },
+    {
+      "key": "client_secret",
+      "label": "OAuth Client Secret",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Zoho OAuth client secret",
+      "ownership": "user_required"
+    },
+    {
+      "key": "refresh_token",
+      "label": "OAuth Refresh Token",
+      "kind": "password",
+      "required": true,
+      "placeholder": "1000.xxxxx",
+      "ownership": "generated"
+    },
+    {
+      "key": "organization_id",
+      "label": "Zoho Books Organization ID",
+      "kind": "text",
+      "required": true,
+      "placeholder": "10234695",
+      "ownership": "discovered"
+    },
+    {
+      "key": "default_item_id",
+      "label": "Default Item ID (optional)",
+      "kind": "text",
+      "required": false,
+      "placeholder": "Leave blank to resolve by exact item name",
+      "ownership": "managed"
+    }
+  ],
+  "account_modes": [
+    "Default"
+  ],
+  "capabilities": [
+    "invoice",
+    "send_invoice",
+    "api_test"
+  ],
+  "runtime_adapter": {
+    "interface_version": 1,
+    "adapter_version": "1.2.0",
+    "entrypoint": "create_adapter"
+  },
+  "browser_auth": {
+    "interface_version": 1
+  },
+  "onboarding": {
+    "interface_version": 1
+  }
+}

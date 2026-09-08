@@ -21,6 +21,13 @@ from .manager import (
     ProviderManifestError,
     RuntimeAdapterDeclaration,
 )
+from .remote_registry import (
+    DEFAULT_REGISTRY_BASE_URL,
+    RemoteProviderInfo,
+    RemoteRegistryError,
+    download_provider,
+    fetch_catalog,
+)
 
 __all__ = [
     "ProviderManager",
@@ -42,4 +49,9 @@ __all__ = [
     "IvxArchiveInspection",
     "IvxPackageError",
     "inspect_ivx",
+    "DEFAULT_REGISTRY_BASE_URL",
+    "RemoteProviderInfo",
+    "RemoteRegistryError",
+    "download_provider",
+    "fetch_catalog",
 ]

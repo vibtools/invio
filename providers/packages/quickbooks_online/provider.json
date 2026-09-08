@@ -1,0 +1,76 @@
+{
+  "id": "quickbooks_online",
+  "name": "QuickBooks Online",
+  "version": "1.2.0",
+  "description": "Trusted external QuickBooks Online provider for Invio using OAuth 2.0, real QBO Customer/Item/Invoice APIs, provider-supported requestid idempotency, and real invoice email sending.",
+  "credential_fields": [
+    {
+      "key": "client_id",
+      "label": "OAuth Client ID",
+      "kind": "text",
+      "required": true,
+      "placeholder": "Intuit app Client ID",
+      "ownership": "user_required"
+    },
+    {
+      "key": "client_secret",
+      "label": "OAuth Client Secret",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Intuit app Client Secret",
+      "ownership": "user_required"
+    },
+    {
+      "key": "redirect_uri",
+      "label": "OAuth Redirect URI",
+      "kind": "text",
+      "required": false,
+      "placeholder": "Registered HTTPS callback URL",
+      "ownership": "user_required"
+    },
+    {
+      "key": "refresh_token",
+      "label": "OAuth Refresh Token",
+      "kind": "password",
+      "required": true,
+      "placeholder": "Latest QuickBooks refresh token",
+      "ownership": "generated"
+    },
+    {
+      "key": "realm_id",
+      "label": "QuickBooks Realm ID",
+      "kind": "text",
+      "required": true,
+      "placeholder": "Company realmId",
+      "ownership": "discovered"
+    },
+    {
+      "key": "default_item_id",
+      "label": "Default Item ID",
+      "kind": "text",
+      "required": false,
+      "placeholder": "Optional QBO Item ID",
+      "ownership": "managed"
+    }
+  ],
+  "account_modes": [
+    "Sandbox",
+    "Production"
+  ],
+  "capabilities": [
+    "invoice",
+    "send_invoice",
+    "api_test"
+  ],
+  "runtime_adapter": {
+    "interface_version": 1,
+    "adapter_version": "1.2.0",
+    "entrypoint": "create_adapter"
+  },
+  "browser_auth": {
+    "interface_version": 1
+  },
+  "onboarding": {
+    "interface_version": 1
+  }
+}
