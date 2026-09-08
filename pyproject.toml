@@ -40,6 +40,7 @@ packages = [
   "src.core.provider_runtime",
   "src.core.storage",
   "src.core.worker_manager",
+  "src.core.license",
   "src.accounts",
   "src.accounts.models",
   "src.customers",
